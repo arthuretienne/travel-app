@@ -7,6 +7,17 @@ function Results({ recommendations, onReset }) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const formatNumber = (num) => {
+    // Format number to maximum 2 decimal places, removing unnecessary zeros
+    return parseFloat(num.toFixed(2));
+  };
+
+  const getDestinationImage = (city, country) => {
+    // Use Unsplash API for destination images
+    const query = encodeURIComponent(`${city} ${country} travel`);
+    return `https://source.unsplash.com/800x400/?${query}`;
+  };
+
   const getScoreColor = (score) => {
     if (score >= 90) return '#10b981'; // green
     if (score >= 80) return '#3b82f6'; // blue
@@ -29,9 +40,22 @@ function Results({ recommendations, onReset }) {
       <div className="trips-list">
         {recommendations.map((trip, index) => (
           <div key={index} className="trip-card-modern">
-            {/* Rank Badge */}
-            <div className="rank-badge" style={{ background: index === 0 ? '#fbbf24' : index === 1 ? '#9ca3af' : '#cd7f32' }}>
-              {index === 0 ? '🏆' : `#${index + 1}`}
+            {/* Destination Image */}
+            <div className="destination-image-container">
+              <img 
+                src={getDestinationImage(trip.destination.city, trip.destination.country)}
+                alt={`${trip.destination.city}, ${trip.destination.country}`}
+                className="destination-image"
+                onError={(e) => {
+                  // Fallback to a placeholder if image fails to load
+                  e.target.src = `https://source.unsplash.com/800x400/?${encodeURIComponent(trip.destination.city)}`;
+                }}
+              />
+              <div className="image-overlay"></div>
+              {/* Rank Badge */}
+              <div className="rank-badge" style={{ background: index === 0 ? '#fbbf24' : index === 1 ? '#9ca3af' : '#cd7f32' }}>
+                {index === 0 ? '🏆' : `#${index + 1}`}
+              </div>
             </div>
 
             {/* Main Content */}
@@ -50,7 +74,7 @@ function Results({ recommendations, onReset }) {
                 </div>
                 <div className="match-score" style={{ borderColor: getScoreColor(trip.score.total) }}>
                   <div className="score-number" style={{ color: getScoreColor(trip.score.total) }}>
-                    {trip.score.total}
+                    {formatNumber(trip.score.total)}
                   </div>
                   <div className="score-label">match</div>
                 </div>
@@ -78,14 +102,14 @@ function Results({ recommendations, onReset }) {
               <div className="price-overview">
                 <div className="price-main">
                   <div className="price-label">Total Trip Cost</div>
-                  <div className="price-value">€{trip.pricing.total}</div>
+                  <div className="price-value">€{formatNumber(trip.pricing.total)}</div>
                   {trip.pricing.remaining >= 0 ? (
                     <div className="price-remaining positive">
-                      €{trip.pricing.remaining} under budget ✓
+                      €{formatNumber(trip.pricing.remaining)} under budget ✓
                     </div>
                   ) : (
                     <div className="price-remaining negative">
-                      €{Math.abs(trip.pricing.remaining)} over budget
+                      €{formatNumber(Math.abs(trip.pricing.remaining))} over budget
                     </div>
                   )}
                 </div>
@@ -94,17 +118,17 @@ function Results({ recommendations, onReset }) {
                   <div className="price-item">
                     <span className="price-icon">✈️</span>
                     <span className="price-label">Flight</span>
-                    <span className="price-amount">€{trip.pricing.flight}</span>
+                    <span className="price-amount">€{formatNumber(trip.pricing.flight)}</span>
                   </div>
                   <div className="price-item">
                     <span className="price-icon">🏨</span>
                     <span className="price-label">Hotel ({trip.slot.duration - 1}n)</span>
-                    <span className="price-amount">€{trip.pricing.hotel}</span>
+                    <span className="price-amount">€{formatNumber(trip.pricing.hotel)}</span>
                   </div>
                   <div className="price-item">
                     <span className="price-icon">🎭</span>
                     <span className="price-label">Activities</span>
-                    <span className="price-amount">€{trip.pricing.activities}</span>
+                    <span className="price-amount">€{formatNumber(trip.pricing.activities)}</span>
                   </div>
                 </div>
               </div>
@@ -165,48 +189,48 @@ function Results({ recommendations, onReset }) {
                     <div className="score-bar-item">
                       <div className="score-bar-header">
                         <span>AI Match (40%)</span>
-                        <strong>{trip.score.breakdown.aiMatch}pts</strong>
+                        <strong>{formatNumber(trip.score.breakdown.aiMatch)}pts</strong>
                       </div>
                       <div className="score-bar-fill-container">
                         <div 
                           className="score-bar-fill" 
-                          style={{ width: `${trip.score.breakdown.aiMatch}%` }}
+                          style={{ width: `${formatNumber(trip.score.breakdown.aiMatch)}%` }}
                         ></div>
                       </div>
                     </div>
                     <div className="score-bar-item">
                       <div className="score-bar-header">
                         <span>Price Value (30%)</span>
-                        <strong>{trip.score.breakdown.price}pts</strong>
+                        <strong>{formatNumber(trip.score.breakdown.price)}pts</strong>
                       </div>
                       <div className="score-bar-fill-container">
                         <div 
                           className="score-bar-fill" 
-                          style={{ width: `${trip.score.breakdown.price}%` }}
+                          style={{ width: `${formatNumber(trip.score.breakdown.price)}%` }}
                         ></div>
                       </div>
                     </div>
                     <div className="score-bar-item">
                       <div className="score-bar-header">
                         <span>Originality (20%)</span>
-                        <strong>{trip.score.breakdown.originality}pts</strong>
+                        <strong>{formatNumber(trip.score.breakdown.originality)}pts</strong>
                       </div>
                       <div className="score-bar-fill-container">
                         <div 
                           className="score-bar-fill" 
-                          style={{ width: `${trip.score.breakdown.originality}%` }}
+                          style={{ width: `${formatNumber(trip.score.breakdown.originality)}%` }}
                         ></div>
                       </div>
                     </div>
                     <div className="score-bar-item">
                       <div className="score-bar-header">
                         <span>Availability (10%)</span>
-                        <strong>{trip.score.breakdown.availability}pts</strong>
+                        <strong>{formatNumber(trip.score.breakdown.availability)}pts</strong>
                       </div>
                       <div className="score-bar-fill-container">
                         <div 
                           className="score-bar-fill" 
-                          style={{ width: `${trip.score.breakdown.availability}%` }}
+                          style={{ width: `${formatNumber(trip.score.breakdown.availability)}%` }}
                         ></div>
                       </div>
                     </div>

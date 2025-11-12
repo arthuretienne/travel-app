@@ -10,11 +10,21 @@ dotenv.config({ path: __dirname + '/../../.env' });
 
 console.log('Checking Claude API Key:', process.env.ANTHROPIC_API_KEY ? 'API key is set' : 'API key is missing');
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+let client;
+try {
+  client = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  });
+} catch (error) {
+  console.error('Failed to initialize Claude client:', error);
+  // Client will be undefined, but server should still start
+}
 
 export async function generateDestinations(userProfile) {
+  if (!client) {
+    throw new Error('Claude client not initialized. Please check ANTHROPIC_API_KEY environment variable.');
+  }
+  
   const prompt = buildPrompt(userProfile);
 
   try {

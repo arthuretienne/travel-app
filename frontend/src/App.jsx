@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Onboarding from './components/Onboarding/Onboarding';
 import Results from './components/Results/Results';
+import LoadingState from './components/Loading/LoadingState';
 import { API_URL } from './api.js';
 import './App.css';
 
@@ -63,16 +64,7 @@ function App() {
         )}
 
         {step === 'loading' && (
-          <div className="loading-screen">
-            <div className="spinner"></div>
-            <h2>🤖 Finding your perfect trips...</h2>
-            <p>Analyzing your profile and searching thousands of flights</p>
-            <div className="loading-steps">
-              <div className="step">✅ Generating personalized destinations</div>
-              <div className="step">⏳ Checking flight availability</div>
-              <div className="step">⏳ Calculating best prices</div>
-            </div>
-          </div>
+          <LoadingState />
         )}
 
         {step === 'results' && recommendations && (

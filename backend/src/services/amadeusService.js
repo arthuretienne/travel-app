@@ -13,14 +13,25 @@ console.log('Amadeus credentials:', {
   clientSecret: process.env.AMADEUS_CLIENT_SECRET
 });
 
-const amadeus = new Amadeus({
-  clientId: process.env.AMADEUS_CLIENT_ID,
-  clientSecret: process.env.AMADEUS_CLIENT_SECRET,
-  hostname: 'test' // Use 'production' when ready
-});
+let amadeus;
+try {
+  amadeus = new Amadeus({
+    clientId: process.env.AMADEUS_CLIENT_ID,
+    clientSecret: process.env.AMADEUS_CLIENT_SECRET,
+    hostname: 'test' // Use 'production' when ready
+  });
+} catch (error) {
+  console.error('Failed to initialize Amadeus client:', error);
+  // Client will be undefined, but server should still start
+}
 
 // Pre-screening: Check which destinations have flights within budget
 export async function preScreenDestinations(destinations, originCity, userBudget) {
+  if (!amadeus) {
+    console.warn('Amadeus client not initialized, skipping pre-screening');
+    return destinations.slice(0, 5);
+  }
+  
   console.log('🔍 Pre-screening destinations with Flight Inspiration API...');
   
   try {
@@ -49,6 +60,11 @@ export async function preScreenDestinations(destinations, originCity, userBudget
 
 // Detailed search for top destinations
 export async function searchFlightOffers(destination, slot, originCity) {
+  if (!amadeus) {
+    console.warn('Amadeus client not initialized, cannot search flights');
+    return null;
+  }
+  
   try {
     const response = await amadeus.shopping.flightOffersSearch.get({
       originLocationCode: originCity,

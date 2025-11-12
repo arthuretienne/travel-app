@@ -265,18 +265,24 @@ select:focus {
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
+  color: #2c3e50;
 }
 
 .activity-button:hover {
   border-color: #667eea;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+  background: #f8f9ff;
 }
 
 .activity-button.active {
   border-color: #667eea;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  color: white !important;
+}
+
+.activity-button.active .activity-label {
+  color: white !important;
 }
 
 .activity-icon {
@@ -286,6 +292,7 @@ select:focus {
 .activity-label {
   font-size: 0.9rem;
   font-weight: 500;
+  color: #2c3e50;
 }
 
 /* Sliders */
