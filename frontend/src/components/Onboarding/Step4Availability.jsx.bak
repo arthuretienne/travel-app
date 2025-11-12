@@ -1,0 +1,259 @@
+// frontend/src/components/Onboarding/Step4Availability.jsx
+import { useState, useEffect } from 'react';
+
+function Step4Availability({ data, onUpdate, onSubmit, onPrev }) {
+  // frontend/src/components/Onboarding/Step4Availability.jsx
+import { useState, useEffect } from 'react';
+
+function Step4Availability({ data, onUpdate, onSubmit, onPrev }) {
+  const [formData, setFormData] = useState({
+    originCity: data.originCity || 'CDG',
+    professionalStatus: data.professionalStatus || 'salarié',
+    idealDuration: data.idealDuration || '1-semaine',
+    departureFlexibility: data.departureFlexibility || 'peu-importe',
+    timeHorizon: data.timeHorizon || '6-mois',
+    preferredMonths: data.preferredMonths || [],
+    slots: data.slots || []
+  });
+
+  const [newSlot, setNewSlot] = useState({
+    startDate: '',
+    endDate: ''
+  });
+
+  const [newSlot, setNewSlot] = useState({
+    startDate: '',
+    endDate: ''
+  });
+
+  useEffect(() => {
+    onUpdate(formData);
+  }, [formData]);
+
+  const toggleMonth = (month) => {
+    setFormData(prev => ({
+      ...prev,
+      preferredMonths: prev.preferredMonths.includes(month)
+        ? prev.preferredMonths.filter(m => m !== month)
+        : [...prev.preferredMonths, month]
+    }));
+  };
+
+  const months = [
+    { id: 'jan', label: 'Jan', season: 'winter' },
+    { id: 'feb', label: 'Feb', season: 'winter' },
+    { id: 'mar', label: 'Mar', season: 'spring' },
+    { id: 'apr', label: 'Apr', season: 'spring' },
+    { id: 'may', label: 'May', season: 'spring' },
+    { id: 'jun', label: 'Jun', season: 'summer' },
+    { id: 'jul', label: 'Jul', season: 'summer' },
+    { id: 'aug', label: 'Aug', season: 'summer' },
+    { id: 'sep', label: 'Sep', season: 'autumn' },
+    { id: 'oct', label: 'Oct', season: 'autumn' },
+    { id: 'nov', label: 'Nov', season: 'autumn' },
+    { id: 'dec', label: 'Dec', season: 'winter' }
+  ];
+
+  const addSlot = () => {
+    if (!newSlot.startDate || !newSlot.endDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+
+    if (new Date(newSlot.endDate) <= new Date(newSlot.startDate)) {
+      alert('End date must be after start date');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      slots: [...prev.slots, { ...newSlot }]
+    }));
+
+    // Reset the new slot form
+    setNewSlot({
+      startDate: '',
+      endDate: ''
+    });
+  };
+
+  const removeSlot = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      slots: prev.slots.filter((_, i) => i !== index)
+    }));
+  };
+
+  const canSubmit = true; // Always allow, AI will find best dates
+
+  return (
+    <div className="step-container">
+      <h2>📅 When can you travel?</h2>
+      <p className="step-description">
+        Add your available dates. The AI will match the best destinations to each time slot.
+      </p>
+
+      <div className="form-group">
+        <label>Origin City (Airport Code)</label>
+        <input
+          type="text"
+          value={formData.originCity}
+          onChange={(e) => setFormData({ ...formData, originCity: e.target.value.toUpperCase() })}
+          placeholder="CDG, ORY, LHR..."
+          maxLength={3}
+          className="text-input"
+        />
+        <small>3-letter IATA code (e.g., CDG for Paris, LHR for London)</small>
+      </div>
+
+      <div className="form-group">
+        <label>Professional Status</label>
+        <select
+          value={formData.professionalStatus}
+          onChange={(e) => setFormData({ ...formData, professionalStatus: e.target.value })}
+          className="select-input"
+        >
+          <option value="salarié">Employee</option>
+          <option value="freelance">Freelance</option>
+          <option value="étudiant">Student</option>
+          <option value="retraité">Retired</option>
+          <option value="autre">Other</option>
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label>Ideal trip duration</label>
+        <div className="button-group">
+          {[
+            { value: '3-5-jours', label: '3-5 days' },
+            { value: '1-semaine', label: '1 week' },
+            { value: '2-semaines', label: '2 weeks' },
+            { value: 'flexible', label: 'Flexible' }
+          ].map(option => (
+            <button
+              key={option.value}
+              type="button"
+              className={`option-button ${formData.idealDuration === option.value ? 'active' : ''}`}
+              onClick={() => setFormData({ ...formData, idealDuration: option.value })}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="form-group">
+        <label>Departure preference</label>
+        <div className="button-group">
+          <button
+            type="button"
+            className={`option-button ${formData.departureFlexibility === 'semaine' ? 'active' : ''}`}
+            onClick={() => setFormData({ ...formData, departureFlexibility: 'semaine' })}
+          >
+            📅 Weekday
+          </button>
+          <button
+            type="button"
+            className={`option-button ${formData.departureFlexibility === 'weekend' ? 'active' : ''}`}
+            onClick={() => setFormData({ ...formData, departureFlexibility: 'weekend' })}
+          >
+            🎉 Weekend
+          </button>
+          <button
+            type="button"
+            className={`option-button ${formData.departureFlexibility === 'peu-importe' ? 'active' : ''}`}
+            onClick={() => setFormData({ ...formData, departureFlexibility: 'peu-importe' })}
+          >
+            🎲 Any
+          </button>
+        </div>
+      </div>
+
+      <div className="availability-section">
+        <h3>Add Your Available Dates</h3>
+        <div className="date-picker-group">
+          <div className="date-input-wrapper">
+            <label>Start date</label>
+            <input
+              type="date"
+              value={newSlot.startDate}
+              onChange={(e) => setNewSlot({ ...newSlot, startDate: e.target.value })}
+              min={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+          <div className="date-input-wrapper">
+            <label>End date</label>
+            <input
+              type="date"
+              value={newSlot.endDate}
+              onChange={(e) => setNewSlot({ ...newSlot, endDate: e.target.value })}
+              min={newSlot.startDate || new Date().toISOString().split('T')[0]}
+            />
+          </div>
+          <button 
+            type="button"
+            className="btn-secondary" 
+            onClick={addSlot}
+          >
+            ➕ Add Slot
+          </button>
+        </div>
+
+        {formData.slots.length > 0 && (
+          <div className="slots-list">
+            <h4>Your Available Time Slots ({formData.slots.length})</h4>
+            {formData.slots.map((slot, index) => (
+              <div key={index} className="slot-item">
+                <span>
+                  {new Date(slot.startDate).toLocaleDateString()} - {new Date(slot.endDate).toLocaleDateString()}
+                </span>
+                <button 
+                  type="button"
+                  onClick={() => removeSlot(index)}
+                  className="btn-remove"
+                  aria-label="Remove time slot"
+                >
+                  ❌
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+            <h4>Your availability ({formData.slots.length} slots)</h4>
+            {formData.slots.map((slot, index) => (
+              <div key={index} className="slot-item">
+                <span className="slot-dates">
+                  ✓ {slot.startDate} → {slot.endDate}
+                </span>
+                <span className="slot-info">
+                  ({slot.duration} days, {slot.season})
+                </span>
+                <button
+                  className="btn-remove"
+                  onClick={() => removeSlot(index)}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="step-actions">
+        <button className="btn-secondary" onClick={onPrev}>
+          ← Back
+        </button>
+        <button 
+          className="btn-primary btn-submit" 
+          onClick={onSubmit}
+          disabled={!canSubmit}
+        >
+          🚀 Find My Trips
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default Step4Availability;
