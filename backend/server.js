@@ -45,6 +45,8 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📡 API endpoints available at http://localhost:${PORT}/api`);
+const serverUrl = process.env.RAILWAY_STATIC_URL || `http://localhost:${PORT}`;
+console.log(`🚀 Server running on ${serverUrl}`);
+console.log(`📡 API endpoints available at ${serverUrl}/api`);
+
 });

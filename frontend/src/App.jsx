@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Onboarding from './components/Onboarding/Onboarding';
 import Results from './components/Results/Results';
+import { API_URL } from './api';
 import './App.css';
 
 function App() {
@@ -9,14 +10,12 @@ function App() {
   const [recommendations, setRecommendations] = useState(null);
   const [error, setError] = useState(null);
 
-  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001';
-
   const handleSubmit = async (userProfile) => {
     setStep('loading');
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/api/travel/recommendations`, {
+      const response = await fetch(`${API_URL}/api/travel/recommendations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
