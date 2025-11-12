@@ -41,6 +41,11 @@ app.use((err, req, res, next) => {
   });
 });
 
+console.log('🔍 Attempting to bind to:');
+console.log('   Port:', PORT);
+console.log('   Host: 0.0.0.0');
+console.log('   NODE_ENV:', process.env.NODE_ENV);
+
 // ⭐ CRITICAL: Bind to 0.0.0.0 for Railway
 app.listen(PORT, '0.0.0.0', () => {
   const serverUrl = process.env.RAILWAY_STATIC_URL || `http://localhost:${PORT}`;
