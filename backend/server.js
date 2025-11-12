@@ -41,14 +41,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ⭐ ADD '0.0.0.0' HERE - This is critical for Railway
+// ⭐ CRITICAL: Bind to 0.0.0.0 for Railway
 app.listen(PORT, '0.0.0.0', () => {
   const serverUrl = process.env.RAILWAY_STATIC_URL || `http://localhost:${PORT}`;
   console.log(`🚀 Server running on ${serverUrl}`);
   console.log(`📡 API endpoints available at ${serverUrl}/api`);
-  console.log(`Checking Claude API Key: ${process.env.CLAUDE_API_KEY ? 'API key is set' : 'API key is missing'}`);
-  console.log(`Amadeus credentials: {`);
-  console.log(`  clientId: '${process.env.AMADEUS_CLIENT_ID || ''}',`);
-  console.log(`  clientSecret: '${process.env.AMADEUS_CLIENT_SECRET ? '[REDACTED]' : ''}'`);
-  console.log(`}`);
+  console.log(`✅ Health check available at ${serverUrl}/api/health`);
 });
