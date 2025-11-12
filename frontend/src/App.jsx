@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Onboarding from './components/Onboarding/Onboarding';
 import Results from './components/Results/Results';
-import { API_URL } from './api';
+import { API_URL } from './api.js';
 import './App.css';
 
 function App() {
