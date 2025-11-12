@@ -10,13 +10,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-// CORS configuration: allow multiple origins via env var ALLOWED_ORIGINS (comma-separated)
-// Example: ALLOWED_ORIGINS="http://localhost:5173,https://my-frontend.vercel.app"
 const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:5173'];
 
 app.use(cors({
   origin: function(origin, callback) {
-    // allow non-browser requests like curl/postman (no origin)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf('*') !== -1) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
@@ -44,9 +41,14 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-const serverUrl = process.env.RAILWAY_STATIC_URL || `http://localhost:${PORT}`;
-console.log(`🚀 Server running on ${serverUrl}`);
-console.log(`📡 API endpoints available at ${serverUrl}/api`);
-
+// ⭐ ADD '0.0.0.0' HERE - This is critical for Railway
+app.listen(PORT, '0.0.0.0', () => {
+  const serverUrl = process.env.RAILWAY_STATIC_URL || `http://localhost:${PORT}`;
+  console.log(`🚀 Server running on ${serverUrl}`);
+  console.log(`📡 API endpoints available at ${serverUrl}/api`);
+  console.log(`Checking Claude API Key: ${process.env.CLAUDE_API_KEY ? 'API key is set' : 'API key is missing'}`);
+  console.log(`Amadeus credentials: {`);
+  console.log(`  clientId: '${process.env.AMADEUS_CLIENT_ID || ''}',`);
+  console.log(`  clientSecret: '${process.env.AMADEUS_CLIENT_SECRET ? '[REDACTED]' : ''}'`);
+  console.log(`}`);
 });
