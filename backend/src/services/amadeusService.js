@@ -52,7 +52,13 @@ export async function preScreenDestinations(destinations, originCity, userBudget
     console.log(`✅ Pre-screening: ${filtered.length}/${destinations.length} destinations have flights`);
     return filtered.slice(0, 5); // Keep top 5
   } catch (error) {
-    console.error('Amadeus pre-screening error:', error.response?.data || error.message);
+    console.error('Amadeus pre-screening error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      code: error.code,
+      description: error.description
+    });
     // Fallback: return top 5 by AI score if API fails
     return destinations.slice(0, 5);
   }
@@ -97,7 +103,14 @@ export async function searchFlightOffers(destination, slot, originCity) {
       validatingAirline: bestOffer.validatingAirlineCodes[0]
     };
   } catch (error) {
-    console.error(`Flight search error for ${destination.city}:`, error.response?.data || error.message);
+    console.error(`Flight search error for ${destination.city}:`, {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      code: error.code,
+      description: error.description,
+      iataCode: destination.iataCode
+    });
     return null;
   }
 }

@@ -10,7 +10,9 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : ['http://localhost:5173'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim().replace(/\/$/, '')) // Remove trailing slashes
+  : ['http://localhost:5173'];
 
 console.log('🌐 CORS Configuration:');
 console.log('   Allowed origins:', allowedOrigins);
