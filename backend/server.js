@@ -30,17 +30,35 @@ app.use(cors({
       return callback(null, true);
     }
     
-    // Check if origin is in allowed list
+    // Check if origin is in allowed list (exact match)
     if (allowedOrigins.indexOf(origin) !== -1) {
       console.log(`✅ Allowing CORS request from: ${origin}`);
       return callback(null, true);
     }
     
+    // Also check if origin matches any pattern (for Vercel preview deployments)
+    const originMatches = allowedOrigins.some(allowed => {
+      if (allowed.includes('*')) {
+        const pattern = allowed.replace(/\*/g, '.*');
+        const regex = new RegExp(`^${pattern}$`);
+        return regex.test(origin);
+      }
+      return false;
+    });
+    
+    if (originMatches) {
+      console.log(`✅ Allowing CORS request from: ${origin} (pattern match)`);
+      return callback(null, true);
+    }
+    
     console.warn(`❌ Blocked CORS request from origin: ${origin}`);
     console.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
+    console.warn(`   Please add ${origin} to ALLOWED_ORIGINS in Railway`);
     return callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
