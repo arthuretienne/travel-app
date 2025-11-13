@@ -80,9 +80,18 @@ app.get('/', (req, res) => {
 // Routes
 app.use('/api/travel', travelRoutes);
 
-// Health check
+// Health check - must respond immediately for Railway
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Travel AI API is running', timestamp: new Date().toISOString() });
+  res.status(200).json({ 
+    status: 'ok', 
+    message: 'Travel AI API is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Readiness check - simple and fast
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
 });
 
 // Error handling
