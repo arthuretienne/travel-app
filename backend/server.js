@@ -64,8 +64,30 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Root route for Railway health checks
+// Routes are defined after health checks
+
+// Routes
+app.use('/api/travel', travelRoutes);
+
+// Health check - must respond immediately for Railway
+app.get('/api/health', (req, res) => {
+  console.log('🏥 Health check called');
+  res.status(200).json({ 
+    status: 'ok', 
+    message: 'Travel AI API is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Readiness check - simple and fast (for Railway)
+app.get('/health', (req, res) => {
+  console.log('🏥 Simple health check called');
+  res.status(200).send('OK');
+});
+
+// Root health check (Railway might use this)
 app.get('/', (req, res) => {
+  console.log('🏥 Root endpoint called');
   res.json({ 
     status: 'ok', 
     message: 'Travel AI API is running',
@@ -75,23 +97,6 @@ app.get('/', (req, res) => {
       travel: '/api/travel/recommendations'
     }
   });
-});
-
-// Routes
-app.use('/api/travel', travelRoutes);
-
-// Health check - must respond immediately for Railway
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok', 
-    message: 'Travel AI API is running',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Readiness check - simple and fast
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
 });
 
 // Error handling
