@@ -133,7 +133,13 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on ${serverUrl}`);
   console.log(`📡 API endpoints available at ${serverUrl}/api`);
   console.log(`✅ Health check available at ${serverUrl}/api/health`);
+  console.log(`✅ Simple health check available at ${serverUrl}/health`);
   console.log(`✅ Root endpoint available at ${serverUrl}/`);
+  
+  // Keep server alive - log every 30 seconds to show server is running
+  setInterval(() => {
+    console.log('💓 Server heartbeat - still running');
+  }, 30000);
 });
 
 // Graceful shutdown handling for Railway
