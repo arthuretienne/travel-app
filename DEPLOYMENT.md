@@ -129,16 +129,33 @@ Cliquer sur "Deploy" - Vercel va automatiquement:
 
 ## 4. Configuration Clerk
 
-### 4.1 Ajouter les URLs autorisées dans Clerk
+### 4.1 Configurer les clés de production
+
+**IMPORTANT**: En production, vous DEVEZ utiliser les clés de production Clerk, pas les clés de développement.
 
 1. Aller sur https://dashboard.clerk.com
 2. Sélectionner votre application
-3. Aller dans "Settings" → "Allowed origins"
-4. Ajouter:
+3. Aller dans "API Keys"
+4. Basculer en mode **"Production"** (en haut à droite)
+5. Copier les clés de production:
+   - **Publishable Key** (commence par `pk_live_`)
+   - **Secret Key** (commence par `sk_live_`)
+
+6. **Mettre à jour les variables d'environnement**:
+   - **Vercel**: Ajouter `VITE_CLERK_PUBLISHABLE_KEY` avec la clé `pk_live_...`
+   - **Railway**: Ajouter `CLERK_SECRET_KEY` avec la clé `sk_live_...`
+
+**Note**: Si vous voyez "Clerk has been loaded with development keys" dans la console en production, c'est que vous utilisez encore les clés de développement (`pk_test_...`).
+
+### 4.2 Ajouter les URLs autorisées dans Clerk
+
+1. Dans Clerk Dashboard (en mode Production)
+2. Aller dans "Settings" → "Allowed origins"
+3. Ajouter:
    - URL Vercel: `https://your-app.vercel.app`
    - URL Railway: `https://your-backend.railway.app`
 
-### 4.2 Configurer les webhooks
+### 4.3 Configurer les webhooks
 
 1. Dans Clerk Dashboard → Webhooks
 2. Créer un nouveau webhook

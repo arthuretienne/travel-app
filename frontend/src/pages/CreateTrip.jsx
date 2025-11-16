@@ -288,6 +288,37 @@ function CreateTrip() {
 
   return (
     <div className="create-trip-page">
+      {loading && (
+        <div className="trip-loading-modal">
+          <div className="trip-loading-content">
+            <div className="trip-loading-animation">
+              <div className="plane-icon">✈️</div>
+              <div className="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+            <h2>Finding Your Perfect Trip</h2>
+            <div className="loading-steps">
+              <div className="loading-step active">
+                <div className="step-icon">🤖</div>
+                <p>Analyzing your preferences...</p>
+              </div>
+              <div className="loading-step">
+                <div className="step-icon">🌍</div>
+                <p>Searching destinations worldwide...</p>
+              </div>
+              <div className="loading-step">
+                <div className="step-icon">✈️</div>
+                <p>Finding best flight options...</p>
+              </div>
+            </div>
+            <p className="loading-tip">This usually takes 10-15 seconds</p>
+          </div>
+        </div>
+      )}
+
       <div className="create-trip-header">
         <h1>Create Your Perfect Trip</h1>
         <p>Fill in the details below to get personalized recommendations</p>

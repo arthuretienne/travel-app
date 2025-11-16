@@ -22,9 +22,10 @@ function Dashboard() {
     try {
       setLoading(true);
       const token = await getToken();
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
       // Check if user has completed onboarding
-      const prefsResponse = await fetch('http://localhost:3001/api/users/preferences', {
+      const prefsResponse = await fetch(`${API_URL}/api/users/preferences`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -41,7 +42,7 @@ function Dashboard() {
       }
 
       // Fetch saved trips
-      const tripsResponse = await fetch('http://localhost:3001/api/searches/trips/saved', {
+      const tripsResponse = await fetch(`${API_URL}/api/searches/trips/saved`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -55,6 +56,33 @@ function Dashboard() {
       setSavedTrips(tripsData.trips || []);
     } catch (err) {
       console.error('Error fetching data:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSavedTrips = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = await getToken();
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+      const tripsResponse = await fetch(`${API_URL}/api/searches/trips/saved`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!tripsResponse.ok) {
+        throw new Error('Failed to fetch saved trips');
+      }
+
+      const tripsData = await tripsResponse.json();
+      setSavedTrips(tripsData.trips || []);
+    } catch (err) {
+      console.error('Error fetching saved trips:', err);
       setError(err.message);
     } finally {
       setLoading(false);

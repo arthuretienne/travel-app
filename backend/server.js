@@ -14,7 +14,12 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'], // Support both Vite ports
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'https://travel-app-ten-rho.vercel.app', // Production frontend
+    /\.vercel\.app$/ // Allow all Vercel preview deployments
+  ],
   credentials: true
 }));
 app.use(express.json());
