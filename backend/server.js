@@ -1,167 +1,84 @@
 // backend/server.js
-import dotenv from 'dotenv';
-dotenv.config();
+// CRITICAL: Import env.js FIRST to load environment variables before anything else
+import './env.js';
 
 import express from 'express';
 import cors from 'cors';
 import travelRoutes from './src/routes/travel.js';
+import userRoutes from './src/routes/user.js';
+import searchRoutes from './src/routes/searches.js';
+import prisma from './src/db/prisma.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim().replace(/\/$/, '')) // Remove trailing slashes
-  : ['http://localhost:5173'];
-
-console.log('🌐 CORS Configuration:');
-console.log('   Allowed origins:', allowedOrigins);
-console.log('   ALLOWED_ORIGINS env:', process.env.ALLOWED_ORIGINS);
-
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      console.log('✅ Allowing request with no origin');
-      return callback(null, true);
-    }
-    
-    // Allow all origins if '*' is specified
-    if (allowedOrigins.indexOf('*') !== -1) {
-      console.log(`✅ Allowing request from ${origin} (wildcard enabled)`);
-      return callback(null, true);
-    }
-    
-    // Check if origin is in allowed list (exact match)
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      console.log(`✅ Allowing CORS request from: ${origin}`);
-      return callback(null, true);
-    }
-    
-    // Also check if origin matches any pattern (for Vercel preview deployments)
-    const originMatches = allowedOrigins.some(allowed => {
-      if (allowed.includes('*')) {
-        const pattern = allowed.replace(/\*/g, '.*');
-        const regex = new RegExp(`^${pattern}$`);
-        return regex.test(origin);
-      }
-      return false;
-    });
-    
-    if (originMatches) {
-      console.log(`✅ Allowing CORS request from: ${origin} (pattern match)`);
-      return callback(null, true);
-    }
-    
-    console.warn(`❌ Blocked CORS request from origin: ${origin}`);
-    console.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
-    console.warn(`   Please add ${origin} to ALLOWED_ORIGINS in Railway`);
-    return callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: ['http://localhost:5173', 'http://localhost:5174'], // Support both Vite ports
+  credentials: true
 }));
 app.use(express.json());
 
-// Routes are defined after health checks
-
 // Routes
 app.use('/api/travel', travelRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/searches', searchRoutes);
 
-// Health check - must respond immediately for Railway
-app.get('/api/health', (req, res) => {
-  console.log('🏥 Health check called');
-  res.status(200).json({ 
-    status: 'ok', 
-    message: 'Travel AI API is running',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Readiness check - simple and fast (for Railway)
-app.get('/health', (req, res) => {
-  console.log('🏥 Simple health check called');
-  res.status(200).send('OK');
-});
-
-// Root health check (Railway might use this)
-app.get('/', (req, res) => {
-  console.log('🏥 Root endpoint called');
-  res.json({ 
-    status: 'ok', 
-    message: 'Travel AI API is running',
-    version: '1.0.0',
-    endpoints: {
-      health: '/api/health',
-      travel: '/api/travel/recommendations'
-    }
-  });
+// Health check
+app.get('/api/health', async (req, res) => {
+  try {
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({
+      status: 'ok',
+      message: 'Travel AI API is running',
+      database: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      message: 'Service unavailable',
+      database: 'disconnected',
+      error: error.message
+    });
+  }
 });
 
 // Error handling
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error', 
-    message: err.message 
+  res.status(500).json({
+    error: 'Internal server error',
+    message: err.message
   });
 });
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  // Don't exit, let the server continue running
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Don't exit, let the server continue running
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`📡 API endpoints available at http://localhost:${PORT}/api`);
+  console.log(`✅ Database connected (Neon PostgreSQL)`);
+  console.log(`✅ Cache service ready (Upstash Redis)`);
+  console.log(`✅ Authentication ready (Clerk)`);
+  console.log('');
+  console.log('Available routes:');
+  console.log('  - POST   /api/travel/recommendations');
+  console.log('  - POST   /api/users/sync');
+  console.log('  - GET    /api/users/me');
+  console.log('  - PUT    /api/users/preferences');
+  console.log('  - POST   /api/searches');
+  console.log('  - GET    /api/searches/history');
+  console.log('  - GET    /api/searches/:id');
+  console.log('  - POST   /api/searches/trips/save');
+  console.log('  - GET    /api/searches/trips/saved');
+  console.log('  - PUT    /api/searches/trips/:id');
+  console.log('  - DELETE /api/searches/trips/:id');
+  console.log('  - GET    /api/health');
 });
-
-console.log('🔍 Server Configuration:');
-console.log('   Port:', PORT);
-console.log('   Host: 0.0.0.0');
-console.log('   NODE_ENV:', process.env.NODE_ENV);
-console.log('   RAILWAY_STATIC_URL:', process.env.RAILWAY_STATIC_URL);
-console.log('   RAILWAY_PUBLIC_DOMAIN:', process.env.RAILWAY_PUBLIC_DOMAIN);
-
-// ⭐ CRITICAL: Bind to 0.0.0.0 for Railway
-const server = app.listen(PORT, '0.0.0.0', () => {
-  const serverUrl = process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN || `http://localhost:${PORT}`;
-  console.log(`🚀 Server running on ${serverUrl}`);
-  console.log(`📡 API endpoints available at ${serverUrl}/api`);
-  console.log(`✅ Health check available at ${serverUrl}/api/health`);
-  console.log(`✅ Simple health check available at ${serverUrl}/health`);
-  console.log(`✅ Root endpoint available at ${serverUrl}/`);
-  
-  // Keep server alive - log every 30 seconds to show server is running
-  setInterval(() => {
-    console.log('💓 Server heartbeat - still running');
-  }, 30000);
-});
-
-// Graceful shutdown handling for Railway
-const gracefulShutdown = (signal) => {
-  console.log(`\n${signal} received. Starting graceful shutdown...`);
-  
-  server.close((err) => {
-    if (err) {
-      console.error('Error during server shutdown:', err);
-      process.exit(1);
-    }
-    
-    console.log('✅ Server closed successfully');
-    process.exit(0);
-  });
-  
-  // Force shutdown after 10 seconds
-  setTimeout(() => {
-    console.error('⚠️ Forcing shutdown after timeout');
-    process.exit(1);
-  }, 10000);
-};
-
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));

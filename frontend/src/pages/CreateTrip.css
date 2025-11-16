@@ -1,0 +1,718 @@
+/* Minimal Blue Design - Create Trip */
+
+.create-trip-page {
+  min-height: 100vh;
+  background: #fafbfc;
+  padding: 2rem;
+}
+
+.create-trip-header {
+  max-width: 800px;
+  margin: 0 auto 2rem;
+  text-align: center;
+}
+
+.create-trip-header h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 0.5rem;
+}
+
+.create-trip-header p {
+  font-size: 1rem;
+  color: #6b7280;
+}
+
+.create-trip-form {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 8px;
+  padding: 2.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+/* Form Sections */
+.form-section {
+  margin-bottom: 2.5rem;
+}
+
+.form-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 1rem;
+}
+
+.label-icon {
+  font-size: 1.25rem;
+}
+
+/* Budget Options */
+.budget-options,
+.style-options,
+.flight-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.option-button {
+  padding: 1rem;
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  font-weight: 400;
+}
+
+.option-button:hover {
+  border-color: #3b82f6;
+  background: #f9fafb;
+}
+
+.option-button.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1e40af;
+  font-weight: 500;
+}
+
+/* Style Buttons */
+.style-button {
+  padding: 1.25rem 1rem;
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.style-button:hover {
+  border-color: #3b82f6;
+  background: #f9fafb;
+}
+
+.style-button.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.style-icon {
+  font-size: 2rem;
+}
+
+.style-button span {
+  font-size: 0.9rem;
+  color: #374151;
+  font-weight: 400;
+}
+
+.style-button.active span {
+  color: #1e40af;
+  font-weight: 500;
+}
+
+/* Number Input */
+.number-input {
+  width: 100px;
+  padding: 0.75rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #374151;
+  transition: all 0.15s ease;
+}
+
+.number-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Select Input */
+.select-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  color: #374151;
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.select-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Months Grid */
+.months-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.5rem;
+}
+
+.month-button {
+  padding: 0.75rem;
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.month-button:hover {
+  border-color: #3b82f6;
+  background: #f9fafb;
+}
+
+.month-button.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1e40af;
+  font-weight: 500;
+}
+
+/* Activities Grid */
+.activities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.activity-button {
+  padding: 1rem;
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.activity-button:hover {
+  border-color: #3b82f6;
+  background: #f9fafb;
+}
+
+.activity-button.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.activity-icon {
+  font-size: 1.75rem;
+}
+
+.activity-button span {
+  font-size: 0.875rem;
+  color: #374151;
+  text-align: center;
+}
+
+.activity-button.active span {
+  color: #1e40af;
+  font-weight: 500;
+}
+
+/* Region Options */
+.region-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.region-button {
+  padding: 1rem;
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.region-button:hover {
+  border-color: #3b82f6;
+  background: #f9fafb;
+}
+
+.region-button.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.region-icon {
+  font-size: 1.75rem;
+}
+
+.region-button span {
+  font-size: 0.875rem;
+  color: #374151;
+  text-align: center;
+}
+
+.region-button.active span {
+  color: #1e40af;
+  font-weight: 500;
+}
+
+/* Form Section Row */
+.form-section-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.form-section-half {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Error Messages */
+.error-text {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  display: block;
+}
+
+.error-banner {
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  border-radius: 6px;
+  padding: 1rem;
+  color: #991b1b;
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn-secondary {
+  padding: 0.875rem 1.5rem;
+  background: white;
+  color: #374151;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.btn-primary {
+  padding: 0.875rem 2rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Loading State */
+.loading-container {
+  text-align: center;
+  padding: 3rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Section Titles */
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.required {
+  color: #dc2626;
+  font-weight: 600;
+  margin-left: 0.25rem;
+}
+
+/* Mandatory and Optional Sections */
+.mandatory-section {
+  margin-bottom: 2rem;
+}
+
+.optional-section {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 2px solid #e5e7eb;
+}
+
+/* Collapse Toggle */
+.collapse-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: 1.5rem;
+}
+
+.collapse-toggle:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.toggle-icon {
+  font-size: 0.875rem;
+  color: #6b7280;
+  transition: transform 0.15s ease;
+}
+
+.toggle-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.toggle-hint {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 400;
+  margin-left: auto;
+}
+
+.optional-content {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Number Controls */
+.number-control {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.number-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 1.25rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-weight: 500;
+}
+
+.number-btn:hover:not(:disabled) {
+  border-color: #3b82f6;
+  background: #f9fafb;
+  color: #3b82f6;
+}
+
+.number-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.number-input-center {
+  width: 80px;
+  padding: 0.75rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  color: #374151;
+  text-align: center;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.number-input-center:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Date Input */
+.date-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  color: #374151;
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Travelers Control */
+.travelers-control {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.share-trip-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: white;
+  border: 1.5px solid #3b82f6;
+  border-radius: 6px;
+  color: #3b82f6;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.share-trip-btn:hover {
+  background: #eff6ff;
+}
+
+/* Text Input */
+.text-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  color: #374151;
+  transition: all 0.15s ease;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.text-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Tags Container */
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  color: #1e40af;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.tag-remove {
+  background: none;
+  border: none;
+  color: #1e40af;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.tag-remove:hover {
+  color: #dc2626;
+}
+
+/* Weather Options */
+.weather-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+/* Tone Options */
+.tone-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.tone-button {
+  padding: 1rem;
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tone-button:hover {
+  border-color: #3b82f6;
+  background: #f9fafb;
+}
+
+.tone-button.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.tone-icon {
+  font-size: 1.5rem;
+}
+
+.tone-button span {
+  font-size: 0.875rem;
+  color: #374151;
+  text-align: center;
+}
+
+.tone-button.active span {
+  color: #1e40af;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .create-trip-page {
+    padding: 1rem;
+  }
+
+  .create-trip-form {
+    padding: 1.5rem;
+  }
+
+  .budget-options,
+  .style-options,
+  .flight-options,
+  .weather-options {
+    grid-template-columns: 1fr;
+  }
+
+  .months-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .activities-grid,
+  .region-options,
+  .tone-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .form-section-row {
+    grid-template-columns: 1fr;
+  }
+
+  .travelers-control {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .share-trip-btn {
+    justify-content: center;
+  }
+}

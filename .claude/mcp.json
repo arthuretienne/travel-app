@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "figma-to-code": {
+      "command": "node",
+      "args": ["./mcp/figma-to-code/dist/index.js"],
+      "env": {
+        "FIGMA_ACCESS_TOKEN": "${FIGMA_ACCESS_TOKEN}"
+      },
+      "description": "Convertit les designs Figma en composants React/React Native avec extraction des tokens de design"
+    },
+    "amadeus-optimizer": {
+      "command": "node",
+      "args": ["./mcp/amadeus-optimizer/dist/index.js"],
+      "env": {
+        "AMADEUS_API_KEY": "${AMADEUS_API_KEY}",
+        "AMADEUS_API_SECRET": "${AMADEUS_API_SECRET}",
+        "REDIS_URL": "${REDIS_URL}"
+      },
+      "description": "Optimise les appels API Amadeus avec cache intelligent, batching et gestion du rate limiting"
+    }
+  }
+}

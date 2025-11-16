@@ -1,12 +1,9 @@
 // backend/src/services/amadeusService.js
 import Amadeus from 'amadeus';
-import dotenv from 'dotenv';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
+import cache from './cacheService.js';
 
-// Get the directory name of the current module
-const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: __dirname + '/../../.env' });
+// NOTE: dotenv est déjà chargé dans server.js
+// Les variables d'environnement sont disponibles via process.env
 
 console.log('Amadeus credentials:', {
   clientId: process.env.AMADEUS_CLIENT_ID,
@@ -15,15 +12,23 @@ console.log('Amadeus credentials:', {
 
 let amadeus;
 try {
+  // Support both AMADEUS_CLIENT_ID and AMADEUS_API_KEY (for backwards compatibility)
   amadeus = new Amadeus({
-    clientId: process.env.AMADEUS_CLIENT_ID,
-    clientSecret: process.env.AMADEUS_CLIENT_SECRET,
+    clientId: process.env.AMADEUS_CLIENT_ID || process.env.AMADEUS_API_KEY,
+    clientSecret: process.env.AMADEUS_CLIENT_SECRET || process.env.AMADEUS_API_SECRET,
     hostname: 'test' // Use 'production' when ready
   });
+  console.log('✅ Amadeus client initialized successfully');
 } catch (error) {
-  console.error('Failed to initialize Amadeus client:', error);
+  console.error('❌ Failed to initialize Amadeus client:', error.message);
   // Client will be undefined, but server should still start
 }
+
+// Cache TTL constants
+const CACHE_TTL = {
+  FLIGHT_DESTINATIONS: 3600 * 24, // 24 hours
+  FLIGHT_OFFERS: 3600 * 2,        // 2 hours
+};
 
 // Pre-screening: Check which destinations have flights within budget
 export async function preScreenDestinations(destinations, originCity, userBudget) {
@@ -31,9 +36,23 @@ export async function preScreenDestinations(destinations, originCity, userBudget
     console.warn('Amadeus client not initialized, skipping pre-screening');
     return destinations.slice(0, 5);
   }
-  
+
+  // Generate cache key
+  const cacheKey = `flight_destinations:${originCity}:${Math.floor(userBudget * 0.5)}`;
+
+  // Try cache first
+  const cachedData = await cache.get(cacheKey);
+  if (cachedData) {
+    console.log('✅ Pre-screening: Cache hit for', originCity);
+    const availableDestinations = cachedData;
+    const filtered = destinations.filter(dest =>
+      availableDestinations.includes(dest.iataCode)
+    );
+    return filtered.slice(0, 5);
+  }
+
   console.log('🔍 Pre-screening destinations with Flight Inspiration API...');
-  
+
   try {
     // Flight Inspiration API - broad search
     const response = await amadeus.shopping.flightDestinations.get({
@@ -43,9 +62,13 @@ export async function preScreenDestinations(destinations, originCity, userBudget
     });
 
     const availableDestinations = response.data.map(d => d.destination);
-    
+
+    // Cache the result
+    await cache.set(cacheKey, availableDestinations, CACHE_TTL.FLIGHT_DESTINATIONS);
+    console.log('✅ Pre-screening: Cached destinations for', originCity);
+
     // Filter Claude's destinations by availability
-    const filtered = destinations.filter(dest => 
+    const filtered = destinations.filter(dest =>
       availableDestinations.includes(dest.iataCode)
     );
 
@@ -70,7 +93,17 @@ export async function searchFlightOffers(destination, slot, originCity) {
     console.warn('Amadeus client not initialized, cannot search flights');
     return null;
   }
-  
+
+  // Generate cache key
+  const cacheKey = `flight_offer:${originCity}:${destination.iataCode}:${slot.startDate}:${slot.endDate}`;
+
+  // Try cache first
+  const cachedOffer = await cache.get(cacheKey);
+  if (cachedOffer) {
+    console.log(`✅ Flight offer: Cache hit for ${destination.city}`);
+    return cachedOffer;
+  }
+
   try {
     const response = await amadeus.shopping.flightOffersSearch.get({
       originLocationCode: originCity,
@@ -87,7 +120,7 @@ export async function searchFlightOffers(destination, slot, originCity) {
     }
 
     const bestOffer = response.data[0];
-    return {
+    const flightData = {
       price: parseFloat(bestOffer.price.total),
       currency: bestOffer.price.currency,
       segments: bestOffer.itineraries[0].segments.map(seg => ({
@@ -102,6 +135,12 @@ export async function searchFlightOffers(destination, slot, originCity) {
       totalDuration: bestOffer.itineraries[0].duration,
       validatingAirline: bestOffer.validatingAirlineCodes[0]
     };
+
+    // Cache the result
+    await cache.set(cacheKey, flightData, CACHE_TTL.FLIGHT_OFFERS);
+    console.log(`✅ Flight offer: Cached for ${destination.city}`);
+
+    return flightData;
   } catch (error) {
     console.error(`Flight search error for ${destination.city}:`, {
       message: error.message,

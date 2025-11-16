@@ -4,6 +4,9 @@ import { generateDestinations } from '../services/claudeService.js';
 import { preScreenDestinations, searchFlightOffers, estimateHotelCost } from '../services/amadeusService.js';
 import { generateAffiliateLinks } from '../services/affiliateService.js';
 import { calculateFinalScore } from '../utils/scoring.js';
+import { getDestinationPhotos } from '../services/unsplashService.js';
+import { authenticateUser } from '../middleware/auth.js';
+import prisma from '../db/prisma.js';
 
 // Helper function to determine season
 function getSeason(dateStr) {
@@ -17,10 +20,41 @@ function getSeason(dateStr) {
 const router = express.Router();
 
 // Main endpoint: Generate travel recommendations
-router.post('/recommendations', async (req, res) => {
+router.post('/recommendations', authenticateUser, async (req, res) => {
   try {
     const userProfile = req.body;
     console.log('📝 Received user profile:', JSON.stringify(userProfile, null, 2));
+
+    // Fetch user's onboarding preferences from database
+    console.log('🔍 Fetching user onboarding preferences...');
+    const userPreferences = await prisma.userPreferences.findUnique({
+      where: { userId: req.user.id },
+    });
+
+    if (userPreferences) {
+      console.log('✅ Found user onboarding preferences');
+      // Merge onboarding preferences into userProfile
+      userProfile.onboardingPreferences = {
+        whyTravel: userPreferences.whyTravel,
+        mainGoal: userPreferences.mainGoal,
+        globalStyle: userPreferences.globalStyle,
+        topActivities: userPreferences.topActivities || [],
+        idealRhythm: userPreferences.idealRhythm,
+        accommodationPref: userPreferences.accommodationPref,
+        transportModes: userPreferences.transportModes || [],
+        maxTransportHours: userPreferences.maxTransportHours,
+        visaPreference: userPreferences.visaPreference,
+        mobilityNeeds: userPreferences.mobilityNeeds,
+        securityImportance: userPreferences.securityImportance,
+        crowdTolerance: userPreferences.crowdTolerance,
+        ecoSensitivity: userPreferences.ecoSensitivity,
+        culturalAdaptability: userPreferences.culturalAdaptability,
+        climateSensitivity: userPreferences.climateSensitivity,
+        preferredAirports: userPreferences.preferredAirports || [],
+      };
+    } else {
+      console.log('⚠️  No onboarding preferences found for user');
+    }
 
     // Step 1: Claude generates 10 destinations
     console.log('🤖 Step 1: Generating destinations with Claude...');
@@ -29,7 +63,9 @@ router.post('/recommendations', async (req, res) => {
 
     // Step 2: Pre-screen with Amadeus Flight Inspiration
     console.log('✈️  Step 2: Pre-screening with Amadeus...');
-    const originCity = userProfile.availability.originCity || 'CDG'; // Paris default
+    // Use preferred airport from onboarding preferences, or fallback to availability.originCity, or CDG default
+    const originCity = (userPreferences?.preferredAirports?.[0]) || userProfile.availability.originCity || 'CDG';
+    console.log(`✈️  Using origin airport: ${originCity}`);
     const preScreened = await preScreenDestinations(
       destinations,
       originCity,
@@ -37,8 +73,13 @@ router.post('/recommendations', async (req, res) => {
     );
     console.log(`✅ Pre-screened to ${preScreened.length} destinations`);
 
-    // Step 3: Detailed search for top 3
-    console.log('🔎 Step 3: Searching detailed flights for top 3...');
+    // Step 3: Get photos for top destinations
+    console.log('📸 Step 3: Fetching destination photos...');
+    const photoMap = await getDestinationPhotos(preScreened.slice(0, 5));
+    console.log(`✅ Fetched ${photoMap.size} photos`);
+
+    // Step 4: Detailed search for top 3
+    console.log('🔎 Step 4: Searching detailed flights for top 3...');
     const topThree = preScreened.slice(0, 3);
     
    const results = await Promise.all(
@@ -83,13 +124,17 @@ router.post('/recommendations', async (req, res) => {
           originCity
         );
 
+        // Get photo from map
+        const photo = photoMap.get(destination.city);
+
         return {
           destination: {
             city: destination.city,
             country: destination.country,
             iataCode: destination.iataCode,
             matchReason: destination.matchReason,
-            seasonReason: destination.seasonReason
+            seasonReason: destination.seasonReason,
+            photo: photo // Add photo to destination
           },
           slot: {
             startDate: slot.startDate,

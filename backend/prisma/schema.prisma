@@ -1,0 +1,165 @@
+// backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================================
+// USER & AUTH
+// ========================================
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  searches      Search[]
+  savedTrips    SavedTrip[]
+  preferences   UserPreferences?
+}
+
+model UserPreferences {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Onboarding metadata
+  onboardingCompleted Boolean @default(false)
+  onboardingType      String? // "short" or "long"
+
+  // Partie 1: Style & Objectif du voyage
+  whyTravel           String? // Raison de voyager
+  mainGoal            String? // But principal
+  globalStyle         String? // Style global
+  riskTolerance       Int?    // 0-100 slider
+  originalityAppetite Int?    // 0-100 slider
+  introvertExtrovert  Int?    // 0-100 slider (0=introverti, 100=extraverti)
+  plannerImprovisator String? // "planner" | "improvisator" | "balanced"
+  modernComfortAuth   Int?    // 0-100 slider (0=confort moderne, 100=authenticité)
+
+  // Partie 2: Activités préférées
+  topActivities       String[] // Top 3-5 activités
+
+  // Partie 3: Rythme et confort
+  idealRhythm         String? // Rythme idéal
+  accommodationPref   String? // Préférence hébergement
+  comfortAuthSlider   Int?    // 0-100 slider
+  stayOrMove          String? // "same_place" | "itinerant" | "roadtrip"
+  transportModes      String[] // Moyens de transport acceptés
+  transportComfort    String? // Niveau de confort transport
+  maxTransportHours   Int?    // Durée max transport
+  materialComfort     Int?    // 0-100 importance confort matériel
+
+  // Partie 4: Contraintes pratiques
+  visaPreference      String? // Préférence visa
+  avoidCountries      String[] // Pays à éviter
+  mobilityNeeds       String? // PMR, etc
+  mobilityDetails     String? // Détails sur les besoins de mobilité
+  securityImportance  Int?    // 0-100
+  crowdTolerance      Int?    // 0-100
+  ecoSensitivity      Int?    // 0-100
+  culturalAdaptability Int?   // 0-100
+  climateSensitivity  String? // Sensibilité climatique
+
+  // Partie 5: Dispos et patterns
+  tripsPerYear        Int?    // Fréquence voyages/an
+  departureFlexibility String? // weekend, weekday, flexible
+  calendarConnected   Boolean @default(false)
+  calendarType        String? // google, outlook, manual
+  annualLeaveDays     Int?    // Congés annuels
+  takenLeaveDays      Int?    // Congés déjà pris
+  avgTripDuration     Int?    // Durée moyenne souhaitée (jours)
+  preferredAirports   String[] // Villes de départ préférées
+
+  // Legacy fields (keep for backward compatibility)
+  budget            Int?
+  style             String?
+  preferredMonths   String[]
+  activities        String[]
+  maxFlightHours    Int?
+  destinationPref   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ========================================
+// SEARCHES & RECOMMENDATIONS
+// ========================================
+
+model Search {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  searchParams Json
+
+  createdAt DateTime @default(now())
+
+  recommendations Recommendation[]
+}
+
+model Recommendation {
+  id       String @id @default(cuid())
+  searchId String
+  search   Search @relation(fields: [searchId], references: [id], onDelete: Cascade)
+
+  city        String
+  country     String
+  iataCode    String
+
+  startDate   DateTime
+  endDate     DateTime
+  duration    Int
+
+  flightPrice Float
+  hotelPrice  Float
+  totalPrice  Float
+  currency    String @default("EUR")
+
+  score         Float
+  matchReason   String
+  seasonReason  String
+
+  photoUrl      String?
+  photoCredit   String?
+
+  fullData    Json
+
+  createdAt   DateTime @default(now())
+}
+
+// ========================================
+// SAVED TRIPS
+// ========================================
+
+model SavedTrip {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  city        String
+  country     String
+  startDate   DateTime
+  endDate     DateTime
+
+  status      String @default("wishlist")
+
+  notes       String?
+
+  tripData    Json
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

@@ -1,80 +1,126 @@
 // frontend/src/App.jsx
-import { useState } from 'react';
-import Onboarding from './components/Onboarding/Onboarding';
-import Results from './components/Results/Results';
-import LoadingState from './components/Loading/LoadingState';
-import { API_URL } from './api.js';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-react';
+
+// Pages
+import Landing from './pages/Landing';
+import Onboarding from './pages/Onboarding';
+import Dashboard from './pages/Dashboard';
+import CreateTrip from './pages/CreateTrip';
+import Results from './pages/Results';
+import Account from './pages/Account';
+
+// Layout
+import AppLayout from './components/Layout/AppLayout';
+
 import './App.css';
 
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!PUBLISHABLE_KEY) {
+  console.warn('Missing Clerk Publishable Key - Auth features will be disabled');
+}
+
+// Protected Route wrapper
+function ProtectedRoute({ children }) {
+  return (
+    <>
+      <SignedIn>
+        <AppLayout>{children}</AppLayout>
+      </SignedIn>
+      <SignedOut>
+        <Navigate to="/" replace />
+      </SignedOut>
+    </>
+  );
+}
+
+// App content with routing
+function AppContent() {
+  return (
+    <Router>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Landing />} />
+
+        {/* Onboarding Route - Semi-Protected */}
+        <Route
+          path="/onboarding"
+          element={
+            <>
+              <SignedIn>
+                <Onboarding />
+              </SignedIn>
+              <SignedOut>
+                <Navigate to="/" replace />
+              </SignedOut>
+            </>
+          }
+        />
+
+        {/* Protected Routes */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/create-trip"
+          element={
+            <ProtectedRoute>
+              <CreateTrip />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/results/:searchId"
+          element={
+            <ProtectedRoute>
+              <Results />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/results"
+          element={
+            <ProtectedRoute>
+              <Results />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <ProtectedRoute>
+              <Account />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Catch all - redirect to landing */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
+  );
+}
+
 function App() {
-  const [step, setStep] = useState('onboarding'); // 'onboarding' | 'loading' | 'results'
-  const [recommendations, setRecommendations] = useState(null);
-  const [error, setError] = useState(null);
-
-  const handleSubmit = async (userProfile) => {
-    setStep('loading');
-    setError(null);
-
-    try {
-      const response = await fetch(`${API_URL}/api/travel/recommendations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userProfile),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setRecommendations(data.recommendations);
-        setStep('results');
-      } else {
-        throw new Error(data.error || 'Failed to get recommendations');
-      }
-    } catch (err) {
-      console.error('Error:', err);
-      setError(err.message);
-      setStep('onboarding');
-    }
-  };
-
-  const handleReset = () => {
-    setStep('onboarding');
-    setRecommendations(null);
-    setError(null);
-  };
+  if (!PUBLISHABLE_KEY) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        <h1>Configuration Error</h1>
+        <p>Missing Clerk Publishable Key. Please add VITE_CLERK_PUBLISHABLE_KEY to your .env file.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>🌍 Travel AI</h1>
-        <p>Your personal AI travel advisor</p>
-      </header>
-
-      <main className="app-main">
-        {error && (
-          <div className="error-banner">
-            <strong>Error:</strong> {error}
-          </div>
-        )}
-
-        {step === 'onboarding' && (
-          <Onboarding onSubmit={handleSubmit} />
-        )}
-
-        {step === 'loading' && (
-          <LoadingState />
-        )}
-
-        {step === 'results' && recommendations && (
-          <Results 
-            recommendations={recommendations}
-            onReset={handleReset}
-          />
-        )}
-      </main>
-    </div>
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      <AppContent />
+    </ClerkProvider>
   );
 }
 

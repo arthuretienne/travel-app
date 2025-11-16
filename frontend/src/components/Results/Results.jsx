@@ -12,8 +12,12 @@ function Results({ recommendations, onReset }) {
     return parseFloat(num.toFixed(2));
   };
 
-  const getDestinationImage = (city, country) => {
-    // Use Unsplash API for destination images
+  const getDestinationImage = (photo, city, country) => {
+    // Use photo from backend if available, otherwise fallback to Unsplash
+    if (photo && photo.url) {
+      return photo.url;
+    }
+    // Fallback to Unsplash API
     const query = encodeURIComponent(`${city} ${country} travel`);
     return `https://source.unsplash.com/800x400/?${query}`;
   };
@@ -42,9 +46,9 @@ function Results({ recommendations, onReset }) {
           <div key={index} className="trip-card-modern">
             {/* Destination Image */}
             <div className="destination-image-container">
-              <img 
-                src={getDestinationImage(trip.destination.city, trip.destination.country)}
-                alt={`${trip.destination.city}, ${trip.destination.country}`}
+              <img
+                src={getDestinationImage(trip.destination.photo, trip.destination.city, trip.destination.country)}
+                alt={trip.destination.photo?.alt || `${trip.destination.city}, ${trip.destination.country}`}
                 className="destination-image"
                 onError={(e) => {
                   // Fallback to a placeholder if image fails to load
@@ -52,6 +56,20 @@ function Results({ recommendations, onReset }) {
                 }}
               />
               <div className="image-overlay"></div>
+              {/* Photo Credit */}
+              {trip.destination.photo && trip.destination.photo.photographer && (
+                <div className="photo-credit">
+                  Photo by{' '}
+                  <a
+                    href={trip.destination.photo.photographer.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {trip.destination.photo.photographer.name}
+                  </a>
+                  {' '}on Unsplash
+                </div>
+              )}
               {/* Rank Badge */}
               <div className="rank-badge" style={{ background: index === 0 ? '#fbbf24' : index === 1 ? '#9ca3af' : '#cd7f32' }}>
                 {index === 0 ? '🏆' : `#${index + 1}`}

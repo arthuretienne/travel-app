@@ -1,12 +1,8 @@
 // backend/src/services/claudeService.js
 import Anthropic from '@anthropic-ai/sdk';
-import dotenv from 'dotenv';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
 
-// Get the directory name of the current module
-const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: __dirname + '/../../.env' });
+// NOTE: dotenv est déjà chargé dans server.js
+// Les variables d'environnement sont disponibles via process.env
 
 console.log('Checking Claude API Key:', process.env.ANTHROPIC_API_KEY ? 'API key is set' : 'API key is missing');
 
@@ -47,7 +43,7 @@ export async function generateDestinations(userProfile) {
 }
 
 function buildPrompt(profile) {
-  const { basic, preferences, constraints, availability } = profile;
+  const { basic, preferences, constraints, availability, onboardingPreferences } = profile;
   
   // Calculate time horizon dates
   const today = new Date();
@@ -86,6 +82,45 @@ function buildPrompt(profile) {
   };
   const tripDays = durationMap[availability.idealDuration] || 7;
   
+  // Build onboarding preferences section
+  let onboardingSection = '';
+  if (onboardingPreferences) {
+    const activitiesList = onboardingPreferences.topActivities?.length > 0
+      ? onboardingPreferences.topActivities.join(', ')
+      : 'Not specified';
+
+    const airportsList = onboardingPreferences.preferredAirports?.length > 0
+      ? onboardingPreferences.preferredAirports.join(', ')
+      : 'CDG (default)';
+
+    onboardingSection = `
+
+🎯 PERSONAL TRAVEL PROFILE (from onboarding - USE THIS FOR ULTRA-PERSONALIZATION):
+Why they travel: ${onboardingPreferences.whyTravel || 'Not specified'}
+Main goal: ${onboardingPreferences.mainGoal || 'Not specified'}
+Global style: ${onboardingPreferences.globalStyle || 'Not specified'}
+Preferred activities: ${activitiesList}
+Ideal rhythm: ${onboardingPreferences.idealRhythm || 'Not specified'}
+Accommodation preference: ${onboardingPreferences.accommodationPref || 'Not specified'}
+Visa preference: ${onboardingPreferences.visaPreference || 'Not specified'}
+Mobility needs: ${onboardingPreferences.mobilityNeeds || 'None'}
+Security importance: ${onboardingPreferences.securityImportance || 'Medium'}
+Crowd tolerance: ${onboardingPreferences.crowdTolerance || 'Medium'}
+Eco sensitivity: ${onboardingPreferences.ecoSensitivity || 'Medium'}
+Cultural adaptability: ${onboardingPreferences.culturalAdaptability || 'Medium'}
+Climate sensitivity: ${onboardingPreferences.climateSensitivity || 'Medium'}
+Preferred departure airports: ${airportsList}
+
+⚡ CRITICAL: Use these personal preferences as PRIMARY factors for destination selection!
+- Align destinations with their "why they travel" motivation
+- Match their main goal (e.g., if "Culture et patrimoine" → prioritize historical cities)
+- Respect their global style (e.g., "Routard" → budget-friendly, authentic experiences)
+- Include activities from their preferred list
+- Match the ideal rhythm (intense/balanced/relaxed/spontaneous)
+- Consider visa preferences (avoid complex visa requirements if they prefer visa-free)
+- Respect mobility needs, security concerns, and crowd tolerance`;
+  }
+
   return `You are a travel recommendation AI. Based on this user profile, generate EXACTLY 10 diverse travel destinations WITH their optimal travel dates.
 
 USER PROFILE:
@@ -108,7 +143,7 @@ Languages: ${constraints.languages}
 Security: ${constraints.security}
 Visa: ${constraints.visa}
 Mobility: ${constraints.mobility}
-Travelers: ${constraints.travelers}
+Travelers: ${constraints.travelers}${onboardingSection}
 
 TRAVEL PLANNING WINDOW:
 Planning horizon: ${monthsAhead} months (from ${startDateStr} to ${endDateStr})

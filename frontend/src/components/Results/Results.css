@@ -107,6 +107,29 @@
   pointer-events: none;
 }
 
+/* Photo Credit */
+.photo-credit {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  font-size: 0.75rem;
+  color: white;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+}
+
+.photo-credit a {
+  color: white;
+  text-decoration: underline;
+}
+
+.photo-credit a:hover {
+  opacity: 0.8;
+}
+
 /* Rank Badge */
 .rank-badge {
   position: absolute;
