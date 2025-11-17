@@ -120,20 +120,41 @@ export async function searchFlightOffers(destination, slot, originCity) {
     }
 
     const bestOffer = response.data[0];
+
+    // Extract outbound flight (first itinerary)
+    const outboundSegments = bestOffer.itineraries[0].segments.map(seg => ({
+      departure: seg.departure.iataCode,
+      arrival: seg.arrival.iataCode,
+      departureTime: seg.departure.at,
+      arrivalTime: seg.arrival.at,
+      carrier: seg.carrierCode,
+      flightNumber: seg.number,
+      duration: seg.duration,
+      aircraft: seg.aircraft?.code
+    }));
+
+    // Extract return flight (second itinerary if exists)
+    const returnSegments = bestOffer.itineraries[1] ? bestOffer.itineraries[1].segments.map(seg => ({
+      departure: seg.departure.iataCode,
+      arrival: seg.arrival.iataCode,
+      departureTime: seg.departure.at,
+      arrivalTime: seg.arrival.at,
+      carrier: seg.carrierCode,
+      flightNumber: seg.number,
+      duration: seg.duration,
+      aircraft: seg.aircraft?.code
+    })) : null;
+
     const flightData = {
       price: parseFloat(bestOffer.price.total),
       currency: bestOffer.price.currency,
-      segments: bestOffer.itineraries[0].segments.map(seg => ({
-        departure: seg.departure.iataCode,
-        arrival: seg.arrival.iataCode,
-        departureTime: seg.departure.at,
-        arrivalTime: seg.arrival.at,
-        carrier: seg.carrierCode,
-        flightNumber: seg.number,
-        duration: seg.duration
-      })),
+      segments: outboundSegments,
+      returnSegments: returnSegments,
       totalDuration: bestOffer.itineraries[0].duration,
-      validatingAirline: bestOffer.validatingAirlineCodes[0]
+      returnDuration: bestOffer.itineraries[1]?.duration,
+      validatingAirline: bestOffer.validatingAirlineCodes[0],
+      cabinClass: bestOffer.travelerPricings?.[0]?.fareDetailsBySegment?.[0]?.cabin || 'ECONOMY',
+      numberOfBookableSeats: bestOffer.numberOfBookableSeats
     };
 
     // Cache the result
@@ -180,6 +201,122 @@ export function estimateHotelCost(destination, slot, style) {
 
   const baseRate = baseRates[style] || 80;
   const multiplier = priceMultipliers[destination.popularityScore] || 1.0;
-  
+
   return Math.round(baseRate * multiplier * nights);
+}
+
+// Search for actual hotels using Amadeus Hotel API
+export async function searchHotels(destination, slot, userPreferences) {
+  if (!amadeus) {
+    console.warn('Amadeus client not initialized, cannot search hotels');
+    return null;
+  }
+
+  try {
+    // Step 1: Search hotels by city code
+    const cityCode = destination.iataCode;
+
+    // Generate cache key
+    const cacheKey = `hotels:${cityCode}:${slot.startDate}:${slot.endDate}:${userPreferences.style}`;
+
+    // Try cache first
+    const cachedHotels = await cache.get(cacheKey);
+    if (cachedHotels) {
+      console.log(`✅ Hotels: Cache hit for ${destination.city}`);
+      return cachedHotels;
+    }
+
+    console.log(`🏨 Searching hotels in ${destination.city}...`);
+
+    // Search for hotels by city
+    const hotelsResponse = await amadeus.referenceData.locations.hotels.byCity.get({
+      cityCode: cityCode
+    });
+
+    if (!hotelsResponse.data || hotelsResponse.data.length === 0) {
+      console.log(`⚠️  No hotels found for ${destination.city}`);
+      return null;
+    }
+
+    // Get hotel IDs (limit to top 20)
+    const hotelIds = hotelsResponse.data.slice(0, 20).map(hotel => hotel.hotelId);
+
+    // Step 2: Get hotel offers with pricing
+    const offersResponse = await amadeus.shopping.hotelOffersSearch.get({
+      hotelIds: hotelIds.join(','),
+      checkInDate: slot.startDate,
+      checkOutDate: slot.endDate,
+      adults: 1,
+      roomQuantity: 1,
+      currency: 'EUR',
+      bestRateOnly: true
+    });
+
+    if (!offersResponse.data || offersResponse.data.length === 0) {
+      console.log(`⚠️  No hotel offers found for ${destination.city}`);
+      return null;
+    }
+
+    // Sort by rating and price
+    const topHotels = offersResponse.data
+      .filter(hotel => hotel.offers && hotel.offers.length > 0)
+      .map(hotel => {
+        const bestOffer = hotel.offers[0];
+        return {
+          hotelId: hotel.hotel.hotelId,
+          name: hotel.hotel.name,
+          rating: hotel.hotel.rating || 3,
+          address: hotel.hotel.address,
+          contact: hotel.hotel.contact,
+          price: {
+            total: parseFloat(bestOffer.price.total),
+            currency: bestOffer.price.currency,
+            perNight: parseFloat(bestOffer.price.total) / slot.duration
+          },
+          room: {
+            type: bestOffer.room?.type || 'Standard Room',
+            description: bestOffer.room?.typeEstimated?.category || 'Room',
+            beds: bestOffer.room?.typeEstimated?.beds || 1,
+            bedType: bestOffer.room?.typeEstimated?.bedType || 'DOUBLE'
+          },
+          amenities: hotel.hotel.amenities || [],
+          bookingUrl: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotel.hotel.name + ' ' + destination.city)}`,
+          checkInDate: slot.startDate,
+          checkOutDate: slot.endDate
+        };
+      })
+      .sort((a, b) => {
+        // Sort by rating first, then by price
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        return a.price.total - b.price.total;
+      })
+      .slice(0, 5); // Top 5 hotels
+
+    const hotelData = {
+      destination: destination.city,
+      checkIn: slot.startDate,
+      checkOut: slot.endDate,
+      nights: slot.duration - 1,
+      hotels: topHotels,
+      averagePrice: topHotels.length > 0
+        ? Math.round(topHotels.reduce((sum, h) => sum + h.price.total, 0) / topHotels.length)
+        : estimateHotelCost(destination, slot, userPreferences.style)
+    };
+
+    // Cache the result
+    await cache.set(cacheKey, hotelData, CACHE_TTL.FLIGHT_OFFERS);
+    console.log(`✅ Hotels: Cached for ${destination.city}`);
+
+    return hotelData;
+  } catch (error) {
+    console.error(`Hotel search error for ${destination.city}:`, {
+      message: error.message,
+      status: error.response?.status,
+      code: error.code,
+      description: error.description
+    });
+
+    // Fallback to estimation if API fails
+    return null;
+  }
 }

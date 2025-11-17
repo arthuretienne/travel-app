@@ -275,20 +275,80 @@ function Results() {
                 </div>
               </div>
 
-              {/* Flight Info */}
-              <div className="flight-info-compact">
-                <div className="flight-route">
-                  <span className="airport">{trip.flightDetails.outbound.departure}</span>
-                  <div className="flight-line">
-                    <span className="flight-icon">✈️</span>
-                    <span className="flight-duration">{trip.flightDetails.duration}</span>
+              {/* Enhanced Flight Info */}
+              <div className="flight-info-enhanced">
+                <div className="flight-section">
+                  <div className="flight-label">Outbound Flight</div>
+                  <div className="flight-route">
+                    <div className="flight-time-point">
+                      <div className="flight-time">{new Date(trip.flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                      <div className="flight-airport">{trip.flightDetails.outbound.segments[0]?.departure}</div>
+                    </div>
+                    <div className="flight-line">
+                      <span className="flight-icon">✈️</span>
+                      <span className="flight-duration">{trip.flightDetails.outbound.duration}</span>
+                      {trip.flightDetails.outbound.stops > 0 && (
+                        <span className="flight-stops">{trip.flightDetails.outbound.stops} stop{trip.flightDetails.outbound.stops > 1 ? 's' : ''}</span>
+                      )}
+                    </div>
+                    <div className="flight-time-point">
+                      <div className="flight-time">{new Date(trip.flightDetails.outbound.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                      <div className="flight-airport">{trip.flightDetails.outbound.segments[trip.flightDetails.outbound.segments.length - 1]?.arrival}</div>
+                    </div>
                   </div>
-                  <span className="airport">{trip.flightDetails.outbound.arrival}</span>
                 </div>
+
+                {trip.flightDetails.return && (
+                  <div className="flight-section">
+                    <div className="flight-label">Return Flight</div>
+                    <div className="flight-route">
+                      <div className="flight-time-point">
+                        <div className="flight-time">{new Date(trip.flightDetails.return.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div className="flight-airport">{trip.flightDetails.return.segments[0]?.departure}</div>
+                      </div>
+                      <div className="flight-line">
+                        <span className="flight-icon">✈️</span>
+                        <span className="flight-duration">{trip.flightDetails.return.duration}</span>
+                        {trip.flightDetails.return.stops > 0 && (
+                          <span className="flight-stops">{trip.flightDetails.return.stops} stop{trip.flightDetails.return.stops > 1 ? 's' : ''}</span>
+                        )}
+                      </div>
+                      <div className="flight-time-point">
+                        <div className="flight-time">{new Date(trip.flightDetails.return.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div className="flight-airport">{trip.flightDetails.return.segments[trip.flightDetails.return.segments.length - 1]?.arrival}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="airline-info">
-                  {trip.flightDetails.airline} • Departure {new Date(trip.flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  {trip.flightDetails.airline} • {trip.flightDetails.cabinClass} • €{trip.flightDetails.totalPrice}
                 </div>
               </div>
+
+              {/* Hotel Options */}
+              {trip.hotelOptions && trip.hotelOptions.hotels && trip.hotelOptions.hotels.length > 0 && (
+                <div className="hotel-options">
+                  <h4 className="hotel-section-title">Recommended Hotels ({trip.hotelOptions.nights} nights)</h4>
+                  <div className="hotel-list">
+                    {trip.hotelOptions.hotels.slice(0, 3).map((hotel, hotelIndex) => (
+                      <div key={hotelIndex} className="hotel-card">
+                        <div className="hotel-info">
+                          <div className="hotel-name">{hotel.name}</div>
+                          <div className="hotel-rating">{'⭐'.repeat(hotel.rating)}</div>
+                        </div>
+                        <div className="hotel-pricing">
+                          <div className="hotel-price">€{Math.round(hotel.price.total)}</div>
+                          <div className="hotel-per-night">€{Math.round(hotel.price.perNight)}/night</div>
+                        </div>
+                        <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="hotel-book-btn">
+                          View on Booking.com
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="trip-actions">

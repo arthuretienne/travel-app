@@ -763,3 +763,180 @@
     padding-right: 1.5rem;
   }
 }
+
+/* Enhanced Flight Info */
+.flight-info-enhanced {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.flight-section {
+  margin-bottom: 1.5rem;
+}
+
+.flight-section:last-of-type {
+  margin-bottom: 0.5rem;
+}
+
+.flight-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+}
+
+.flight-route {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.flight-time-point {
+  text-align: center;
+  min-width: 80px;
+}
+
+.flight-time {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 0.25rem;
+}
+
+.flight-airport {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.flight-line {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  position: relative;
+}
+
+.flight-line::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #d1d5db;
+  z-index: 0;
+}
+
+.flight-icon {
+  font-size: 1.25rem;
+  background: white;
+  padding: 0 0.5rem;
+  z-index: 1;
+}
+
+.flight-duration,
+.flight-stops {
+  font-size: 0.75rem;
+  color: #6b7280;
+  background: white;
+  padding: 0 0.5rem;
+  z-index: 1;
+}
+
+.airline-info {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #6b7280;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Hotel Options */
+.hotel-options {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.hotel-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 1rem;
+}
+
+.hotel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.hotel-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.15s ease;
+}
+
+.hotel-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.hotel-info {
+  flex: 1;
+}
+
+.hotel-name {
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.hotel-rating {
+  font-size: 0.75rem;
+}
+
+.hotel-pricing {
+  text-align: right;
+  margin-right: 1rem;
+}
+
+.hotel-price {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #3b82f6;
+}
+
+.hotel-per-night {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.hotel-book-btn {
+  background: #3b82f6;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.hotel-book-btn:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}

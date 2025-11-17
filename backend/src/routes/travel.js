@@ -1,7 +1,7 @@
 // backend/src/routes/travel.js
 import express from 'express';
 import { generateDestinations } from '../services/claudeService.js';
-import { preScreenDestinations, searchFlightOffers, estimateHotelCost } from '../services/amadeusService.js';
+import { preScreenDestinations, searchFlightOffers, estimateHotelCost, searchHotels } from '../services/amadeusService.js';
 import { generateAffiliateLinks } from '../services/affiliateService.js';
 import { calculateFinalScore } from '../utils/scoring.js';
 import { getDestinationPhotos } from '../services/unsplashService.js';
@@ -93,15 +93,19 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
     };
         // Get flight offers
         const flightOffer = await searchFlightOffers(destination, slot, originCity);
-        
+
         if (!flightOffer) {
           console.log(`⚠️  No flights found for ${destination.city}`);
           return null;
         }
 
-        // Estimate hotel cost
-        const hotelCost = estimateHotelCost(destination, slot, userProfile.basic.style);
-        
+        // Search for real hotels with Amadeus API
+        console.log(`🏨 Searching hotels for ${destination.city}...`);
+        const hotelSearch = await searchHotels(destination, slot, userProfile.basic);
+
+        // Use real hotel price if available, otherwise estimate
+        const hotelCost = hotelSearch?.averagePrice || estimateHotelCost(destination, slot, userProfile.basic.style);
+
         // Calculate activities budget
         const activitiesBudget = Math.round(
           userProfile.basic.budget * (userProfile.preferences.activitiesBudget / 100)
@@ -151,10 +155,33 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
             currency: 'EUR'
           },
           flightDetails: {
-            outbound: flightOffer.segments[0],
-            duration: flightOffer.totalDuration,
-            airline: flightOffer.validatingAirline
+            outbound: {
+              segments: flightOffer.segments || [],
+              departureTime: flightOffer.segments?.[0]?.departureTime,
+              arrivalTime: flightOffer.segments?.[flightOffer.segments.length - 1]?.arrivalTime,
+              duration: flightOffer.totalDuration,
+              stops: flightOffer.segments ? flightOffer.segments.length - 1 : 0
+            },
+            return: flightOffer.returnSegments ? {
+              segments: flightOffer.returnSegments || [],
+              departureTime: flightOffer.returnSegments?.[0]?.departureTime,
+              arrivalTime: flightOffer.returnSegments?.[flightOffer.returnSegments.length - 1]?.arrivalTime,
+              duration: flightOffer.returnDuration,
+              stops: flightOffer.returnSegments ? flightOffer.returnSegments.length - 1 : 0
+            } : null,
+            totalPrice: Math.round(flightOffer.price),
+            pricePerPerson: Math.round(flightOffer.price),
+            airline: flightOffer.validatingAirline,
+            cabinClass: flightOffer.cabinClass || 'ECONOMY'
           },
+          hotelOptions: hotelSearch ? {
+            destination: hotelSearch.destination,
+            checkIn: hotelSearch.checkIn,
+            checkOut: hotelSearch.checkOut,
+            nights: hotelSearch.nights,
+            hotels: hotelSearch.hotels,
+            averagePrice: hotelSearch.averagePrice
+          } : null,
           score: score,
           links: affiliateLinks
         };
