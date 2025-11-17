@@ -14,11 +14,10 @@ console.log('📁 Loading .env from:', envPath);
 const envResult = dotenv.config({ path: envPath });
 
 if (envResult.error) {
-  console.error('❌ Failed to load .env file:', envResult.error);
-  process.exit(1);
+  console.warn('⚠️  No .env file found (this is normal in production - using environment variables from Railway)');
+} else {
+  console.log('✅ .env file loaded successfully');
 }
-
-console.log('✅ .env file loaded successfully');
 console.log('🔑 Environment variables:');
 console.log('  - ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? '✅ SET' : '❌ MISSING');
 console.log('  - AMADEUS_CLIENT_ID:', process.env.AMADEUS_CLIENT_ID ? '✅ SET' : '❌ MISSING');
