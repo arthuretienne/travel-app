@@ -8,10 +8,13 @@ import prisma from '../db/prisma.js';
  */
 export async function authenticateUser(req, res, next) {
   try {
+    console.log(`🔐 Auth middleware called for: ${req.method} ${req.path}`);
+
     // Extract Bearer token from Authorization header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ Auth failed: Missing or invalid authorization header');
       return res.status(401).json({
         error: 'Unauthorized',
         message: 'Missing or invalid authorization header'
@@ -19,9 +22,11 @@ export async function authenticateUser(req, res, next) {
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    console.log('🔑 Token received, verifying with Clerk...');
 
     // Verify token with Clerk
     const sessionClaims = await clerkClient.verifyToken(token);
+    console.log('✅ Token verified successfully');
 
     if (!sessionClaims || !sessionClaims.sub) {
       return res.status(401).json({
@@ -62,12 +67,15 @@ export async function authenticateUser(req, res, next) {
 
     // Attach user to request
     req.user = user;
+    console.log(`✅ Auth successful for user: ${user.email}`);
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error('❌ Authentication error:', error.message);
+    console.error('Error details:', error);
     return res.status(401).json({
       error: 'Unauthorized',
-      message: 'Authentication failed'
+      message: 'Authentication failed',
+      details: error.message
     });
   }
 }

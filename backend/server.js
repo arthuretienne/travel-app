@@ -38,6 +38,13 @@ app.get('/api/health', async (req, res) => {
       status: 'ok',
       message: 'Travel AI API is running',
       database: 'connected',
+      environment: {
+        clerkSecretKey: process.env.CLERK_SECRET_KEY ? '✅ SET' : '❌ MISSING',
+        anthropicApiKey: process.env.ANTHROPIC_API_KEY ? '✅ SET' : '❌ MISSING',
+        amadeusClientId: process.env.AMADEUS_CLIENT_ID ? '✅ SET' : '❌ MISSING',
+        amadeusClientSecret: process.env.AMADEUS_CLIENT_SECRET ? '✅ SET' : '❌ MISSING',
+        databaseUrl: process.env.DATABASE_URL ? '✅ SET' : '❌ MISSING',
+      },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
