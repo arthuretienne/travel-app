@@ -1,6 +1,7 @@
 // backend/src/services/amadeusService.js
 import Amadeus from 'amadeus';
 import cache from './cacheService.js';
+import { calculateRealHotelCost } from '../data/realHotelPrices.js';
 
 // NOTE: dotenv est déjà chargé dans server.js
 // Les variables d'environnement sont disponibles via process.env
@@ -24,10 +25,11 @@ try {
   // Client will be undefined, but server should still start
 }
 
-// Cache TTL constants
+// Cache TTL constants - Optimized to reduce API calls drastically
 const CACHE_TTL = {
-  FLIGHT_DESTINATIONS: 3600 * 24, // 24 hours
-  FLIGHT_OFFERS: 3600 * 2,        // 2 hours
+  FLIGHT_DESTINATIONS: 3600 * 24 * 7, // 7 days (flight routes don't change often)
+  FLIGHT_OFFERS: 3600 * 12,           // 12 hours (prices stable within day)
+  HOTELS: 3600 * 24 * 3,              // 3 days (hotel availability relatively stable)
 };
 
 // Pre-screening: Check which destinations have flights within budget
@@ -304,7 +306,7 @@ export async function searchHotels(destination, slot, userPreferences) {
     };
 
     // Cache the result
-    await cache.set(cacheKey, hotelData, CACHE_TTL.FLIGHT_OFFERS);
+    await cache.set(cacheKey, hotelData, CACHE_TTL.HOTELS);
     console.log(`✅ Hotels: Cached for ${destination.city}`);
 
     return hotelData;
@@ -319,4 +321,46 @@ export async function searchHotels(destination, slot, userPreferences) {
     // Fallback to estimation if API fails
     return null;
   }
+}
+
+// IMPROVED: Get hotel cost with robust fallback chain
+export async function getHotelCostWithFallbacks(destination, slot, userPreferences) {
+  // Level 1: Try Amadeus Hotel API (preferred)
+  const hotelSearch = await searchHotels(destination, slot, userPreferences);
+  if (hotelSearch) {
+    console.log(`✅ Hotel pricing: Amadeus API for ${destination.city}`);
+    return {
+      cost: hotelSearch.averagePrice,
+      source: 'amadeus_api',
+      confidence: 'high',
+      hotels: hotelSearch.hotels
+    };
+  }
+
+  // Level 2: Use real price database (highly accurate)
+  const realPriceData = calculateRealHotelCost(
+    destination.city,
+    slot.duration,
+    userPreferences.style,
+    slot.startDate
+  );
+
+  if (realPriceData) {
+    console.log(`✅ Hotel pricing: Real data for ${destination.city} (${realPriceData.source})`);
+    return {
+      cost: realPriceData.total,
+      source: 'real_market_data',
+      confidence: 'high',
+      priceDetails: realPriceData
+    };
+  }
+
+  // Level 3: Fallback to enhanced estimation (last resort)
+  const estimatedCost = estimateHotelCost(destination, slot, userPreferences.style);
+  console.log(`⚠️  Hotel pricing: Estimation for ${destination.city}`);
+  return {
+    cost: estimatedCost,
+    source: 'estimation',
+    confidence: 'medium'
+  };
 }

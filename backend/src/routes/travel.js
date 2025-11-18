@@ -1,11 +1,12 @@
 // backend/src/routes/travel.js
 import express from 'express';
 import { generateDestinations } from '../services/claudeService.js';
-import { preScreenDestinations, searchFlightOffers, estimateHotelCost, searchHotels } from '../services/amadeusService.js';
+import { preScreenDestinations, searchFlightOffers, getHotelCostWithFallbacks } from '../services/amadeusService.js';
 import { generateAffiliateLinks } from '../services/affiliateService.js';
 import { calculateFinalScore } from '../utils/scoring.js';
 import { getDestinationPhotos } from '../services/unsplashService.js';
 import { authenticateUser } from '../middleware/auth.js';
+import { filterByBudget, validateCostData, preFilterByEstimatedCost } from '../utils/budgetFilter.js';
 import prisma from '../db/prisma.js';
 
 // Helper function to determine season
@@ -58,8 +59,17 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
 
     // Step 1: Claude generates 10 destinations
     console.log('🤖 Step 1: Generating destinations with Claude...');
-    const destinations = await generateDestinations(userProfile);
-    console.log(`✅ Generated ${destinations.length} destinations`);
+    const allDestinations = await generateDestinations(userProfile);
+    console.log(`✅ Generated ${allDestinations.length} destinations`);
+
+    // Step 1.5: Pre-filter by estimated cost (BEFORE expensive API calls)
+    console.log('⚡ Step 1.5: Pre-filtering by estimated budget...');
+    const destinations = preFilterByEstimatedCost(
+      allDestinations,
+      userProfile.basic.budget,
+      userProfile.basic.maxFlightHours
+    );
+    console.log(`✅ Pre-filtered to ${destinations.length} destinations within estimated budget`);
 
     // Step 2: Pre-screen with Amadeus Flight Inspiration
     console.log('✈️  Step 2: Pre-screening with Amadeus...');
@@ -99,12 +109,15 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
           return null;
         }
 
-        // Search for real hotels with Amadeus API
+        // IMPROVED: Get hotel cost with robust fallback chain
         console.log(`🏨 Searching hotels for ${destination.city}...`);
-        const hotelSearch = await searchHotels(destination, slot, userProfile.basic);
-
-        // Use real hotel price if available, otherwise estimate
-        const hotelCost = hotelSearch?.averagePrice || estimateHotelCost(destination, slot, userProfile.basic.style);
+        const hotelResult = await getHotelCostWithFallbacks(destination, slot, userProfile.basic);
+        const hotelCost = hotelResult.cost;
+        const hotelSearch = hotelResult.hotels ? {
+          hotels: hotelResult.hotels,
+          averagePrice: hotelResult.cost,
+          source: hotelResult.source
+        } : null;
 
         // Calculate activities budget
         const activitiesBudget = Math.round(
@@ -188,12 +201,19 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
       })
     );
 
-    // Filter out nulls and sort by score
-    const validResults = results
-      .filter(r => r !== null)
-      .sort((a, b) => b.score.total - a.score.total);
+    // Filter out nulls
+    let validResults = results.filter(r => r !== null);
 
-    console.log(`✅ Returning ${validResults.length} recommendations`);
+    // CRITICAL: Filter by budget (remove anything > 110% of budget)
+    validResults = filterByBudget(validResults, userProfile.basic.budget, 0.10);
+
+    // Validate cost data quality
+    validResults = validResults.filter(r => validateCostData(r));
+
+    // Sort by score
+    validResults.sort((a, b) => b.score.total - a.score.total);
+
+    console.log(`✅ Returning ${validResults.length} budget-appropriate recommendations`);
 
     res.json({
       success: true,
