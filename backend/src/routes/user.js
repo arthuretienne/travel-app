@@ -133,6 +133,53 @@ router.get('/preferences', authenticateUser, async (req, res) => {
 });
 
 /**
+ * GET /api/users/preferences/debug
+ * Debug endpoint to see raw preferences data
+ * Protected route
+ */
+router.get('/preferences/debug', authenticateUser, async (req, res) => {
+  try {
+    const preferences = await prisma.userPreferences.findUnique({
+      where: { userId: req.user.id },
+    });
+
+    const summary = {
+      hasPreferences: !!preferences,
+      onboardingCompleted: preferences?.onboardingCompleted || false,
+      onboardingType: preferences?.onboardingType || 'none',
+      fieldsPopulated: preferences ? {
+        style: {
+          whyTravel: !!preferences.whyTravel,
+          mainGoal: !!preferences.mainGoal,
+          globalStyle: !!preferences.globalStyle,
+        },
+        activities: {
+          topActivities: preferences.topActivities?.length || 0,
+        },
+        comfort: {
+          idealRhythm: !!preferences.idealRhythm,
+          accommodationPref: !!preferences.accommodationPref,
+        },
+        availability: {
+          tripsPerYear: !!preferences.tripsPerYear,
+          preferredAirports: preferences.preferredAirports?.length || 0,
+        }
+      } : null,
+      rawData: preferences
+    };
+
+    console.log('🔍 Debug preferences for:', req.user.email, summary);
+    res.json({ success: true, ...summary });
+  } catch (error) {
+    console.error('Debug preferences error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+/**
  * PUT /api/users/preferences
  * Met à jour les préférences utilisateur
  * Protected route
