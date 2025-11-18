@@ -36,13 +36,55 @@ router.get('/intelligent', authenticateUser, async (req, res) => {
       });
     }
 
+    const today = new Date();
+
+    // Check for cached periods that are still valid
+    const cachedPeriods = await prisma.optimalPeriod.findMany({
+      where: {
+        userId: req.user.id,
+        expiresAt: { gte: today }
+      },
+      orderBy: {
+        confidence: 'desc'
+      }
+    });
+
+    const cachedShort = cachedPeriods.filter(p => p.type === 'short');
+    const cachedLong = cachedPeriods.filter(p => p.type === 'long');
+
+    // If we have valid cached data, return it
+    if (cachedShort.length > 0 && cachedLong.length > 0) {
+      console.log('✅ Using cached optimal periods');
+
+      const leaveDaysInfo = userPreferences.annualLeaveDays && userPreferences.takenLeaveDays !== null
+        ? calculateAvailableLeaveDays(userPreferences)
+        : null;
+
+      return res.json({
+        success: true,
+        data: {
+          short: cachedShort.map(formatCachedPeriod),
+          long: cachedLong.map(formatCachedPeriod),
+          leaveDaysInfo,
+          metadata: {
+            tripDuration: userPreferences.avgTripDuration || 7,
+            hasCalendar: userPreferences.calendarConnected || false,
+            generatedAt: cachedShort[0]?.generatedAt.toISOString(),
+            fromCache: true
+          }
+        }
+      });
+    }
+
+    // No valid cache, generate new recommendations
+    console.log('🔄 Generating fresh optimal periods');
+
     // Calculate leave days info
     const leaveDaysInfo = userPreferences.annualLeaveDays && userPreferences.takenLeaveDays !== null
       ? calculateAvailableLeaveDays(userPreferences)
       : null;
 
     const tripDuration = userPreferences.avgTripDuration || 7;
-    const today = new Date();
 
     // SHORT TERM: Next 30 days
     const shortTermPeriods = generateShortTermSuggestions(
@@ -60,18 +102,25 @@ router.get('/intelligent', authenticateUser, async (req, res) => {
       leaveDaysInfo
     );
 
-    console.log(`✅ Generated ${shortTermPeriods.length} short-term + ${longTermPeriods.length} long-term suggestions`);
+    // Cache the new periods (expires in 24 hours)
+    const expiresAt = new Date(today);
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
+    await cachePeriods(req.user.id, shortTermPeriods, longTermPeriods, expiresAt);
+
+    console.log(`✅ Generated and cached ${shortTermPeriods.length} short-term + ${longTermPeriods.length} long-term suggestions`);
 
     res.json({
       success: true,
       data: {
-        shortTerm: shortTermPeriods,
-        longTerm: longTermPeriods,
+        short: shortTermPeriods,
+        long: longTermPeriods,
         leaveDaysInfo,
         metadata: {
           tripDuration,
           hasCalendar: userPreferences.calendarConnected || false,
-          generatedAt: new Date().toISOString()
+          generatedAt: new Date().toISOString(),
+          fromCache: false
         }
       }
     });
@@ -398,6 +447,97 @@ function getWeatherScore(season, userPreferences) {
   }
 
   return score;
+}
+
+/**
+ * Cache optimal periods in database
+ */
+async function cachePeriods(userId, shortTermPeriods, longTermPeriods, expiresAt) {
+  try {
+    // Delete old cached periods for this user
+    await prisma.optimalPeriod.deleteMany({
+      where: { userId }
+    });
+
+    // Cache short-term periods
+    if (shortTermPeriods && shortTermPeriods.length > 0) {
+      await prisma.optimalPeriod.createMany({
+        data: shortTermPeriods.map(period => ({
+          userId,
+          type: 'short',
+          startDate: new Date(period.startDate),
+          endDate: new Date(period.endDate),
+          duration: period.duration,
+          title: period.title,
+          reason: period.reason,
+          savings: period.savings,
+          confidence: period.confidence,
+          priceMultiplier: period.priceMultiplier,
+          leaveDaysRequired: period.leaveDaysRequired,
+          canAfford: period.canAfford,
+          season: period.season || null,
+          events: period.events || [],
+          tags: period.tags || [],
+          weatherScore: period.weatherScore || null,
+          expiresAt
+        }))
+      });
+    }
+
+    // Cache long-term periods
+    if (longTermPeriods && longTermPeriods.length > 0) {
+      await prisma.optimalPeriod.createMany({
+        data: longTermPeriods.map(period => ({
+          userId,
+          type: 'long',
+          startDate: new Date(period.startDate),
+          endDate: new Date(period.endDate),
+          duration: period.duration,
+          title: period.title,
+          reason: period.reason,
+          savings: period.savings,
+          confidence: period.confidence,
+          priceMultiplier: period.priceMultiplier,
+          leaveDaysRequired: period.leaveDaysRequired,
+          canAfford: period.canAfford,
+          season: period.season || null,
+          events: period.events || [],
+          tags: period.tags || [],
+          weatherScore: period.weatherScore || null,
+          expiresAt
+        }))
+      });
+    }
+
+    console.log('💾 Cached optimal periods successfully');
+  } catch (error) {
+    console.error('❌ Error caching optimal periods:', error);
+    // Non-fatal error, continue
+  }
+}
+
+/**
+ * Format cached period for API response
+ */
+function formatCachedPeriod(cached) {
+  return {
+    id: cached.id,
+    startDate: cached.startDate.toISOString().split('T')[0],
+    endDate: cached.endDate.toISOString().split('T')[0],
+    duration: cached.duration,
+    title: cached.title,
+    reason: cached.reason,
+    savings: cached.savings,
+    confidence: cached.confidence,
+    priceMultiplier: cached.priceMultiplier,
+    leaveDaysRequired: cached.leaveDaysRequired,
+    canAfford: cached.canAfford,
+    season: cached.season,
+    events: cached.events,
+    tags: cached.tags,
+    weatherScore: cached.weatherScore,
+    type: cached.type
+  };
 }
 
 export default router;

@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { IntelligentDatePicker } from '../components/IntelligentDatePicker';
 import './CreateTrip.css';
 
 const TRAVEL_VIBES = [
@@ -59,8 +58,6 @@ function CreateTrip() {
   const [loading, setLoading] = useState(false);
   const [loadingPreferences, setLoadingPreferences] = useState(true);
   const [showOptionalFilters, setShowOptionalFilters] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(true);
-  const [selectedSmartPeriod, setSelectedSmartPeriod] = useState(null);
 
   // Mandatory fields
   const [formData, setFormData] = useState({
@@ -101,23 +98,6 @@ function CreateTrip() {
       }
     }
   }, [formData.startDate, formData.duration]);
-
-  // Handler for when user selects a smart period
-  const handleSelectSmartPeriod = (period) => {
-    console.log('📅 Selected smart period:', period);
-    setSelectedSmartPeriod(period);
-    setFormData(prev => ({
-      ...prev,
-      startDate: period.startDate,
-      endDate: period.endDate,
-      duration: period.duration,
-    }));
-    setShowDatePicker(false);
-    // Scroll to form
-    setTimeout(() => {
-      document.querySelector('.trip-form-container')?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-  };
 
   const loadUserPreferences = async () => {
     try {
@@ -345,42 +325,7 @@ function CreateTrip() {
         <p>Fill in the details below to get personalized recommendations</p>
       </div>
 
-      {/* INTELLIGENT DATE PICKER */}
-      {showDatePicker && (
-        <div className="intelligent-picker-section">
-          <IntelligentDatePicker onSelectPeriod={handleSelectSmartPeriod} />
-          <div className="picker-actions">
-            <button
-              type="button"
-              className="skip-picker-button"
-              onClick={() => setShowDatePicker(false)}
-            >
-              Choisir mes dates manuellement
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!showDatePicker && selectedSmartPeriod && (
-        <div className="selected-period-banner">
-          <div className="banner-content">
-            <span className="icon">✨</span>
-            <div className="text">
-              <strong>Période sélectionnée :</strong> {selectedSmartPeriod.title} ({new Date(selectedSmartPeriod.startDate).toLocaleDateString('fr-FR')} - {new Date(selectedSmartPeriod.endDate).toLocaleDateString('fr-FR')})
-              <span className="savings-badge">💰 {selectedSmartPeriod.savings} d'économies</span>
-            </div>
-            <button
-              type="button"
-              className="change-dates-button"
-              onClick={() => setShowDatePicker(true)}
-            >
-              Changer les dates
-            </button>
-          </div>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="create-trip-form trip-form-container">
+      <form onSubmit={handleSubmit} className="create-trip-form">
         {/* MANDATORY FIELDS */}
         <div className="mandatory-section">
           <h2 className="section-title">Essential Details</h2>

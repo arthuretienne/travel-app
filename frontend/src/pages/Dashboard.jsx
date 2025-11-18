@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
+import { OptimalPeriodsWidget } from '../components/OptimalPeriodsWidget';
 import './Dashboard.css';
 
 function Dashboard() {
@@ -140,6 +141,9 @@ function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Optimal Periods Widget */}
+      <OptimalPeriodsWidget />
 
       {/* Saved Trips Section */}
       <div className="trips-section">

@@ -28,6 +28,7 @@ model User {
   savedTrips    SavedTrip[]
   preferences   UserPreferences?
   subscription  Subscription?
+  optimalPeriods OptimalPeriod[]
 }
 
 model UserPreferences {
@@ -166,6 +167,49 @@ model SavedTrip {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ========================================
+// OPTIMAL TRAVEL PERIODS (AI-GENERATED)
+// ========================================
+
+model OptimalPeriod {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Period type
+  type String // "short" or "long"
+
+  // Date range
+  startDate DateTime
+  endDate   DateTime
+  duration  Int
+
+  // Recommendation details
+  title              String
+  reason             String
+  savings            String // e.g., "30%"
+  confidence         Int    // 0-100
+  priceMultiplier    Float  // e.g., 0.70 for 30% savings
+  leaveDaysRequired  Int
+  canAfford          Boolean @default(true)
+
+  // Additional metadata
+  season       String?   // spring, summer, autumn, winter
+  events       String[]  // Cultural events during this period
+  tags         String[]  // prix-bas, météo-idéale, etc.
+  weatherScore Int?      // 0-100
+
+  // Timestamps
+  generatedAt DateTime @default(now())
+  expiresAt   DateTime // When this recommendation becomes stale
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, type])
+  @@index([userId, expiresAt])
 }
 
 // ========================================
