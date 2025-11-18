@@ -7,11 +7,12 @@
  */
 export const OFF_PEAK_PERIODS = {
   europe: [
-    { start: '2025-01-07', end: '2025-02-14', reason: 'Post-holidays winter', discount: 0.7 }, // 30% cheaper
-    { start: '2025-03-01', end: '2025-03-31', reason: 'Early spring shoulder', discount: 0.85 },
-    { start: '2025-05-01', end: '2025-05-31', reason: 'Late spring before summer', discount: 0.9 },
-    { start: '2025-09-15', end: '2025-10-31', reason: 'Autumn shoulder season', discount: 0.85 },
-    { start: '2025-11-01', end: '2025-12-15', reason: 'Pre-Christmas low season', discount: 0.75 },
+    // Current/upcoming periods (Nov 2025 - Dec 2026)
+    { start: '2025-11-19', end: '2025-12-18', reason: 'Pre-Christmas low season', discount: 0.75 }, // 25% cheaper
+    { start: '2026-01-07', end: '2026-02-14', reason: 'Post-holidays winter', discount: 0.7 }, // 30% cheaper
+    { start: '2026-03-01', end: '2026-03-31', reason: 'Early spring shoulder', discount: 0.85 }, // 15% cheaper
+    { start: '2026-05-01', end: '2026-05-31', reason: 'Late spring before summer', discount: 0.9 }, // 10% cheaper
+    { start: '2026-09-15', end: '2026-10-31', reason: 'Autumn shoulder season', discount: 0.85 }, // 15% cheaper
   ]
 };
 
@@ -20,11 +21,12 @@ export const OFF_PEAK_PERIODS = {
  */
 export const PEAK_PERIODS = {
   europe: [
-    { start: '2024-12-20', end: '2025-01-06', reason: 'Christmas & New Year', premium: 1.5 }, // 50% more expensive
-    { start: '2025-02-15', end: '2025-03-02', reason: 'Winter school holidays', premium: 1.3 },
-    { start: '2025-04-12', end: '2025-04-28', reason: 'Easter holidays', premium: 1.4 },
-    { start: '2025-07-01', end: '2025-08-31', reason: 'Summer peak season', premium: 1.4 },
-    { start: '2025-12-20', end: '2026-01-06', reason: 'Christmas & New Year', premium: 1.5 },
+    // Current/upcoming peak periods
+    { start: '2025-12-19', end: '2026-01-06', reason: 'Christmas & New Year', premium: 1.5 }, // 50% more expensive
+    { start: '2026-02-15', end: '2026-03-02', reason: 'Winter school holidays', premium: 1.3 },
+    { start: '2026-04-12', end: '2026-04-28', reason: 'Easter holidays', premium: 1.4 },
+    { start: '2026-07-01', end: '2026-08-31', reason: 'Summer peak season', premium: 1.4 },
+    { start: '2026-12-20', end: '2027-01-06', reason: 'Christmas & New Year', premium: 1.5 },
   ]
 };
 
@@ -33,12 +35,12 @@ export const PEAK_PERIODS = {
  * These are expensive travel periods in France
  */
 export const FRENCH_SCHOOL_HOLIDAYS = {
-  '2025': [
-    { name: 'Hiver', start: '2025-02-22', end: '2025-03-10', zone: 'C' },
-    { name: 'Printemps', start: '2025-04-19', end: '2025-05-05', zone: 'C' },
-    { name: 'Été', start: '2025-07-05', end: '2025-09-01', zone: 'all' },
-    { name: 'Toussaint', start: '2025-10-18', end: '2025-11-03', zone: 'all' },
-    { name: 'Noël', start: '2025-12-20', end: '2026-01-05', zone: 'all' },
+  '2025-2026': [
+    { name: 'Noël 2025', start: '2025-12-20', end: '2026-01-05', zone: 'all' },
+    { name: 'Hiver', start: '2026-02-21', end: '2026-03-09', zone: 'C' },
+    { name: 'Printemps', start: '2026-04-18', end: '2026-05-04', zone: 'C' },
+    { name: 'Été', start: '2026-07-04', end: '2026-09-01', zone: 'all' },
+    { name: 'Toussaint', start: '2026-10-17', end: '2026-11-02', zone: 'all' },
   ]
 };
 
