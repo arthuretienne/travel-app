@@ -74,9 +74,22 @@ function Account() {
     topActivities: [],
     idealRhythm: '',
 
-    // Availability
+    // Comfort & Transport
+    accommodationPref: '',
+    stayOrMove: '',
+    transportModes: [],
+    maxTransportHours: null,
+
+    // Budget & Practical
+    budget: null,
+    avoidCountries: [],
+
+    // Availability & Leave Days
     tripsPerYear: null,
     departureFlexibility: '',
+    annualLeaveDays: null,
+    takenLeaveDays: null,
+    avgTripDuration: null,
     calendarConnected: false,
     calendarType: '',
     preferredAirports: []
@@ -109,8 +122,17 @@ function Account() {
             globalStyle: data.preferences.globalStyle || '',
             topActivities: data.preferences.topActivities || [],
             idealRhythm: data.preferences.idealRhythm || '',
+            accommodationPref: data.preferences.accommodationPref || '',
+            stayOrMove: data.preferences.stayOrMove || '',
+            transportModes: data.preferences.transportModes || [],
+            maxTransportHours: data.preferences.maxTransportHours || null,
+            budget: data.preferences.budget || null,
+            avoidCountries: data.preferences.avoidCountries || [],
             tripsPerYear: data.preferences.tripsPerYear || null,
             departureFlexibility: data.preferences.departureFlexibility || '',
+            annualLeaveDays: data.preferences.annualLeaveDays || null,
+            takenLeaveDays: data.preferences.takenLeaveDays || null,
+            avgTripDuration: data.preferences.avgTripDuration || null,
             calendarConnected: data.preferences.calendarConnected || false,
             calendarType: data.preferences.calendarType || '',
             preferredAirports: data.preferences.preferredAirports || []
@@ -371,14 +393,79 @@ function Account() {
               </div>
 
               <div className="form-section">
-                <h3>Calendrier Google/Outlook</h3>
+                <h3>📊 Jours de congés</h3>
+                <p className="helper-text">
+                  Nous utilisons ces informations pour optimiser vos dates de voyage et maximiser vos économies
+                </p>
+                <div className="leave-days-grid">
+                  <div className="input-group">
+                    <label>Congés annuels (jours)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="60"
+                      value={formData.annualLeaveDays || ''}
+                      onChange={(e) => handleChange('annualLeaveDays', parseInt(e.target.value) || null)}
+                      placeholder="25"
+                    />
+                    <span className="input-hint">Ex: RTT + congés payés</span>
+                  </div>
+                  <div className="input-group">
+                    <label>Congés déjà pris cette année</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="60"
+                      value={formData.takenLeaveDays || ''}
+                      onChange={(e) => handleChange('takenLeaveDays', parseInt(e.target.value) || null)}
+                      placeholder="10"
+                    />
+                    <span className="input-hint">Pour calculer vos jours restants</span>
+                  </div>
+                </div>
+                {formData.annualLeaveDays && formData.takenLeaveDays !== null && (
+                  <div className="leave-summary">
+                    <p>
+                      ✅ Il vous reste <strong>{formData.annualLeaveDays - formData.takenLeaveDays} jours</strong> de congés
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="form-section">
+                <h3>Durée moyenne souhaitée</h3>
+                <div className="options-grid">
+                  {[
+                    { value: 3, label: '3-4 jours (weekend)' },
+                    { value: 7, label: '7 jours (semaine)' },
+                    { value: 10, label: '10-14 jours' },
+                    { value: 21, label: '21+ jours' },
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      className={`option-button ${formData.avgTripDuration === option.value ? 'selected' : ''}`}
+                      onClick={() => handleChange('avgTripDuration', option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-section">
+                <h3>📅 Calendrier Google/Outlook</h3>
                 <div className="calendar-connect">
-                  <button className="connect-button">
+                  <button className="connect-button" disabled>
                     📅 Connecter Google Calendar
                   </button>
                   <p className="helper-text">
-                    Nous analysons votre calendrier pour trouver les meilleures dates automatiquement
+                    Bientôt disponible : Nous analyserons votre calendrier pour trouver les meilleures dates automatiquement
                   </p>
+                  {formData.calendarConnected && (
+                    <div className="connected-badge">
+                      ✅ Calendrier connecté
+                    </div>
+                  )}
                 </div>
               </div>
 

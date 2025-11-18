@@ -7,6 +7,7 @@ import { calculateFinalScore } from '../utils/scoring.js';
 import { getDestinationPhotos } from '../services/unsplashService.js';
 import { authenticateUser } from '../middleware/auth.js';
 import { filterByBudget, validateCostData, preFilterByEstimatedCost } from '../utils/budgetFilter.js';
+import { applyTemporalPricing, generateSmartDateSuggestions, calculateAvailableLeaveDays } from '../utils/temporalOptimization.js';
 import prisma from '../db/prisma.js';
 
 // Helper function to determine season
@@ -70,6 +71,27 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
       userProfile.basic.maxFlightHours
     );
     console.log(`✅ Pre-filtered to ${destinations.length} destinations within estimated budget`);
+
+    // Step 1.75: Temporal optimization - suggest best dates
+    console.log('📅 Step 1.75: Analyzing optimal travel dates...');
+    let temporalSuggestions = null;
+    let leaveDaysInfo = null;
+
+    if (userPreferences) {
+      // Calculate available leave days
+      if (userPreferences.annualLeaveDays && userPreferences.takenLeaveDays !== null) {
+        leaveDaysInfo = calculateAvailableLeaveDays(userPreferences);
+        console.log(`📊 Leave days: ${leaveDaysInfo.remaining}/${leaveDaysInfo.total} remaining`);
+      }
+
+      // Generate smart date suggestions
+      temporalSuggestions = generateSmartDateSuggestions(userProfile);
+      console.log(`✅ Generated ${temporalSuggestions.length} optimal date suggestions`);
+
+      if (temporalSuggestions.length > 0) {
+        console.log(`💡 Best period: ${temporalSuggestions[0].reason || temporalSuggestions[0].strategy}`);
+      }
+    }
 
     // Step 2: Pre-screen with Amadeus Flight Inspiration
     console.log('✈️  Step 2: Pre-screening with Amadeus...');
@@ -218,6 +240,13 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
     res.json({
       success: true,
       recommendations: validResults,
+      temporalOptimization: temporalSuggestions ? {
+        suggestedDates: temporalSuggestions,
+        leaveDaysInfo: leaveDaysInfo,
+        message: temporalSuggestions.length > 0
+          ? `💡 Nous avons trouvé ${temporalSuggestions.length} périodes optimales pour voyager et économiser !`
+          : null
+      } : null,
       metadata: {
         totalGenerated: destinations.length,
         preScreened: preScreened.length,
