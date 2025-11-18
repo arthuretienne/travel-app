@@ -435,6 +435,25 @@
   border-radius: 20px;
   font-size: 0.9rem;
   font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.disconnect-button {
+  padding: 0.5rem 1.5rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 0.5rem;
+}
+
+.disconnect-button:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
 }
 
 @media (max-width: 768px) {

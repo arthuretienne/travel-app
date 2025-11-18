@@ -7,6 +7,7 @@ import cors from 'cors';
 import travelRoutes from './src/routes/travel.js';
 import userRoutes from './src/routes/user.js';
 import searchRoutes from './src/routes/searches.js';
+import calendarRoutes from './src/routes/calendar.js';
 import prisma from './src/db/prisma.js';
 
 const app = express();
@@ -28,6 +29,7 @@ app.use(express.json());
 app.use('/api/travel', travelRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/searches', searchRoutes);
+app.use('/api/calendar', calendarRoutes);
 
 // Health check
 app.get('/api/health', async (req, res) => {
@@ -92,5 +94,10 @@ app.listen(PORT, () => {
   console.log('  - GET    /api/searches/trips/saved');
   console.log('  - PUT    /api/searches/trips/:id');
   console.log('  - DELETE /api/searches/trips/:id');
+  console.log('  - GET    /api/calendar/oauth/authorize');
+  console.log('  - GET    /api/calendar/oauth/callback');
+  console.log('  - GET    /api/calendar/status');
+  console.log('  - POST   /api/calendar/disconnect');
+  console.log('  - GET    /api/calendar/suggestions');
   console.log('  - GET    /api/health');
 });

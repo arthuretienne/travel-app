@@ -78,6 +78,9 @@ model UserPreferences {
   departureFlexibility String? // weekend, weekday, flexible
   calendarConnected   Boolean @default(false)
   calendarType        String? // google, outlook, manual
+  calendarAccessToken String? // OAuth access token (encrypted in production)
+  calendarRefreshToken String? // OAuth refresh token (encrypted in production)
+  calendarTokenExpiry DateTime? // Token expiry timestamp
   annualLeaveDays     Int?    // Congés annuels
   takenLeaveDays      Int?    // Congés déjà pris
   avgTripDuration     Int?    // Durée moyenne souhaitée (jours)

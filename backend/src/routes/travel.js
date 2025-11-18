@@ -76,6 +76,7 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
     console.log('📅 Step 1.75: Analyzing optimal travel dates...');
     let temporalSuggestions = null;
     let leaveDaysInfo = null;
+    let calendarSuggestions = null;
 
     if (userPreferences) {
       // Calculate available leave days
@@ -84,12 +85,41 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
         console.log(`📊 Leave days: ${leaveDaysInfo.remaining}/${leaveDaysInfo.total} remaining`);
       }
 
-      // Generate smart date suggestions
-      temporalSuggestions = generateSmartDateSuggestions(userProfile);
-      console.log(`✅ Generated ${temporalSuggestions.length} optimal date suggestions`);
+      // If calendar is connected, get calendar-based suggestions
+      if (userPreferences.calendarConnected && userPreferences.calendarAccessToken) {
+        console.log('📅 Using Google Calendar for date suggestions...');
+        try {
+          const { suggestTravelDatesFromCalendar, refreshAccessToken } = await import('../services/googleCalendarService.js');
 
-      if (temporalSuggestions.length > 0) {
-        console.log(`💡 Best period: ${temporalSuggestions[0].reason || temporalSuggestions[0].strategy}`);
+          let accessToken = userPreferences.calendarAccessToken;
+
+          // Refresh token if expired
+          if (userPreferences.calendarTokenExpiry && new Date(userPreferences.calendarTokenExpiry) < new Date()) {
+            console.log('🔄 Refreshing expired access token...');
+            accessToken = await refreshAccessToken(userPreferences.calendarRefreshToken);
+          }
+
+          const tripDuration = userProfile.availability?.duration || userPreferences.avgTripDuration || 7;
+          calendarSuggestions = await suggestTravelDatesFromCalendar(
+            accessToken,
+            userPreferences.calendarRefreshToken,
+            tripDuration
+          );
+          console.log(`✅ Generated ${calendarSuggestions.length} calendar-based suggestions`);
+        } catch (error) {
+          console.error('⚠️  Calendar suggestions failed:', error);
+          // Fall back to standard temporal optimization
+        }
+      }
+
+      // Generate smart date suggestions (manual mode or fallback)
+      if (!calendarSuggestions) {
+        temporalSuggestions = generateSmartDateSuggestions(userProfile);
+        console.log(`✅ Generated ${temporalSuggestions.length} optimal date suggestions`);
+
+        if (temporalSuggestions.length > 0) {
+          console.log(`💡 Best period: ${temporalSuggestions[0].reason || temporalSuggestions[0].strategy}`);
+        }
       }
     }
 
@@ -240,17 +270,21 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
     res.json({
       success: true,
       recommendations: validResults,
-      temporalOptimization: temporalSuggestions ? {
-        suggestedDates: temporalSuggestions,
+      temporalOptimization: (temporalSuggestions || calendarSuggestions) ? {
+        suggestedDates: calendarSuggestions || temporalSuggestions,
         leaveDaysInfo: leaveDaysInfo,
-        message: temporalSuggestions.length > 0
-          ? `💡 Nous avons trouvé ${temporalSuggestions.length} périodes optimales pour voyager et économiser !`
-          : null
+        source: calendarSuggestions ? 'google_calendar' : 'manual_optimization',
+        message: calendarSuggestions
+          ? `📅 Nous avons analysé votre calendrier et trouvé ${calendarSuggestions.length} périodes idéales pour voyager !`
+          : temporalSuggestions?.length > 0
+            ? `💡 Nous avons trouvé ${temporalSuggestions.length} périodes optimales pour voyager et économiser !`
+            : null
       } : null,
       metadata: {
         totalGenerated: destinations.length,
         preScreened: preScreened.length,
         finalResults: validResults.length,
+        calendarIntegrated: !!calendarSuggestions,
         processingTime: new Date().toISOString()
       }
     });

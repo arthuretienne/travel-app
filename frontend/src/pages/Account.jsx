@@ -65,6 +65,8 @@ function Account() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('profile'); // profile, preferences, availability
+  const [connectingCalendar, setConnectingCalendar] = useState(false);
+  const [calendarStatus, setCalendarStatus] = useState(null);
 
   const [formData, setFormData] = useState({
     // Style & Objectif
@@ -98,8 +100,52 @@ function Account() {
   useEffect(() => {
     if (user) {
       fetchPreferences();
+      checkCalendarStatus();
+      handleOAuthCallback();
     }
   }, [user]);
+
+  // Check calendar connection status
+  const checkCalendarStatus = async () => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const token = await getToken();
+
+      const response = await fetch(`${API_URL}/api/calendar/status`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCalendarStatus(data);
+      }
+    } catch (error) {
+      console.error('Error checking calendar status:', error);
+    }
+  };
+
+  // Handle OAuth callback from Google
+  const handleOAuthCallback = () => {
+    const params = new URLSearchParams(window.location.search);
+    const calendarSuccess = params.get('calendar_success');
+    const calendarError = params.get('calendar_error');
+
+    if (calendarSuccess === 'true') {
+      alert('✅ Calendrier Google connecté avec succès!');
+      fetchPreferences();
+      checkCalendarStatus();
+      // Clean URL
+      window.history.replaceState({}, '', '/account');
+    }
+
+    if (calendarError) {
+      alert(`❌ Erreur lors de la connexion: ${calendarError}`);
+      // Clean URL
+      window.history.replaceState({}, '', '/account');
+    }
+  };
 
   const fetchPreferences = async () => {
     try {
@@ -184,6 +230,63 @@ function Account() {
       alert('Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Connect Google Calendar
+  const handleConnectCalendar = async () => {
+    try {
+      setConnectingCalendar(true);
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const token = await getToken();
+
+      const response = await fetch(`${API_URL}/api/calendar/oauth/authorize`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Redirect to Google OAuth
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error('Failed to get authorization URL');
+      }
+    } catch (error) {
+      console.error('Error connecting calendar:', error);
+      alert('Erreur lors de la connexion au calendrier');
+      setConnectingCalendar(false);
+    }
+  };
+
+  // Disconnect calendar
+  const handleDisconnectCalendar = async () => {
+    if (!confirm('Êtes-vous sûr de vouloir déconnecter votre calendrier Google ?')) {
+      return;
+    }
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const token = await getToken();
+
+      const response = await fetch(`${API_URL}/api/calendar/disconnect`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        alert('✅ Calendrier déconnecté avec succès');
+        fetchPreferences();
+        checkCalendarStatus();
+      } else {
+        throw new Error('Failed to disconnect calendar');
+      }
+    } catch (error) {
+      console.error('Error disconnecting calendar:', error);
+      alert('Erreur lors de la déconnexion');
     }
   };
 
@@ -453,18 +556,36 @@ function Account() {
               </div>
 
               <div className="form-section">
-                <h3>📅 Calendrier Google/Outlook</h3>
+                <h3>📅 Calendrier Google</h3>
                 <div className="calendar-connect">
-                  <button className="connect-button" disabled>
-                    📅 Connecter Google Calendar
-                  </button>
-                  <p className="helper-text">
-                    Bientôt disponible : Nous analyserons votre calendrier pour trouver les meilleures dates automatiquement
-                  </p>
-                  {formData.calendarConnected && (
-                    <div className="connected-badge">
-                      ✅ Calendrier connecté
-                    </div>
+                  {calendarStatus?.connected ? (
+                    <>
+                      <div className="connected-badge">
+                        ✅ Calendrier Google connecté
+                      </div>
+                      <p className="helper-text">
+                        Nous analysons automatiquement vos disponibilités pour vous proposer les meilleures dates de voyage
+                      </p>
+                      <button
+                        className="disconnect-button"
+                        onClick={handleDisconnectCalendar}
+                      >
+                        Déconnecter
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="connect-button"
+                        onClick={handleConnectCalendar}
+                        disabled={connectingCalendar}
+                      >
+                        {connectingCalendar ? 'Connexion...' : '📅 Connecter Google Calendar'}
+                      </button>
+                      <p className="helper-text">
+                        Connectez votre calendrier pour que nous trouvions automatiquement les meilleures périodes de voyage selon vos disponibilités
+                      </p>
+                    </>
                   )}
                 </div>
               </div>
