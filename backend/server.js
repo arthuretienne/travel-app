@@ -8,6 +8,7 @@ import travelRoutes from './src/routes/travel.js';
 import userRoutes from './src/routes/user.js';
 import searchRoutes from './src/routes/searches.js';
 import calendarRoutes from './src/routes/calendar.js';
+import datesRoutes from './src/routes/dates.js';
 import prisma from './src/db/prisma.js';
 
 const app = express();
@@ -30,6 +31,7 @@ app.use('/api/travel', travelRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/searches', searchRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api/dates', datesRoutes);
 
 // Health check
 app.get('/api/health', async (req, res) => {
