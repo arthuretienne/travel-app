@@ -77,12 +77,55 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
     let temporalSuggestions = null;
     let leaveDaysInfo = null;
     let calendarSuggestions = null;
+    let cachedOptimalPeriods = null;
 
     if (userPreferences) {
       // Calculate available leave days
       if (userPreferences.annualLeaveDays && userPreferences.takenLeaveDays !== null) {
         leaveDaysInfo = calculateAvailableLeaveDays(userPreferences);
         console.log(`📊 Leave days: ${leaveDaysInfo.remaining}/${leaveDaysInfo.total} remaining`);
+      }
+
+      // Check if user provided specific dates in their request
+      const hasUserProvidedDates = userProfile.availability?.startDate && userProfile.availability?.endDate;
+
+      // If user didn't provide dates, check for cached optimal periods
+      if (!hasUserProvidedDates) {
+        console.log('🔍 User did not specify dates, checking for cached optimal periods...');
+        const today = new Date();
+        cachedOptimalPeriods = await prisma.optimalPeriod.findMany({
+          where: {
+            userId: req.user.id,
+            expiresAt: { gte: today }
+          },
+          orderBy: {
+            confidence: 'desc'
+          }
+        });
+
+        if (cachedOptimalPeriods && cachedOptimalPeriods.length > 0) {
+          console.log(`✅ Found ${cachedOptimalPeriods.length} cached optimal periods, will use silently`);
+          // Separate by type for later use
+          const shortTermCached = cachedOptimalPeriods.filter(p => p.type === 'short');
+          const longTermCached = cachedOptimalPeriods.filter(p => p.type === 'long');
+
+          // Use the best period based on trip duration
+          const tripDuration = userProfile.availability?.duration || userPreferences.avgTripDuration || 7;
+          const bestPeriod = tripDuration <= 4
+            ? (shortTermCached[0] || longTermCached[0])
+            : (longTermCached[0] || shortTermCached[0]);
+
+          if (bestPeriod) {
+            console.log(`🎯 Using cached optimal period: ${bestPeriod.title} (${bestPeriod.startDate.toISOString().split('T')[0]} - ${bestPeriod.endDate.toISOString().split('T')[0]})`);
+            // Inject dates into userProfile so Claude uses them
+            userProfile.availability = userProfile.availability || {};
+            userProfile.availability.startDate = bestPeriod.startDate.toISOString().split('T')[0];
+            userProfile.availability.endDate = bestPeriod.endDate.toISOString().split('T')[0];
+            userProfile.availability.duration = bestPeriod.duration;
+          }
+        } else {
+          console.log('⚠️  No cached optimal periods found');
+        }
       }
 
       // If calendar is connected, get calendar-based suggestions
