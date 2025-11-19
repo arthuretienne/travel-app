@@ -1,6 +1,8 @@
 // frontend/src/components/OptimalPeriodsWidget.jsx
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 import './OptimalPeriodsWidget.css';
 
 export function OptimalPeriodsWidget() {
@@ -94,6 +96,76 @@ export function OptimalPeriodsWidget() {
   const shortTermPeriod = periods.short && periods.short.length > 0 ? periods.short[0] : null;
   const longTermPeriod = periods.long && periods.long.length > 0 ? periods.long[0] : null;
 
+  // Helper to check if a date is in a period
+  const isDateInPeriod = (date, period) => {
+    if (!period) return false;
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    const start = new Date(period.startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(period.endDate);
+    end.setHours(0, 0, 0, 0);
+    return checkDate >= start && checkDate <= end;
+  };
+
+  // Helper to get start date of period
+  const getPeriodStartDate = (period) => {
+    return period ? new Date(period.startDate) : null;
+  };
+
+  // Helper to get end date of period
+  const getPeriodEndDate = (period) => {
+    return period ? new Date(period.endDate) : null;
+  };
+
+  // Tile class name for short-term calendar
+  const getTileClassNameShort = ({ date }) => {
+    if (!shortTermPeriod) return '';
+    if (isDateInPeriod(date, shortTermPeriod)) {
+      const start = new Date(shortTermPeriod.startDate);
+      const end = new Date(shortTermPeriod.endDate);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+      const checkDate = new Date(date);
+      checkDate.setHours(0, 0, 0, 0);
+
+      if (checkDate.getTime() === start.getTime() && checkDate.getTime() === end.getTime()) {
+        return 'optimal-period-single';
+      } else if (checkDate.getTime() === start.getTime()) {
+        return 'optimal-period-start';
+      } else if (checkDate.getTime() === end.getTime()) {
+        return 'optimal-period-end';
+      } else {
+        return 'optimal-period-middle';
+      }
+    }
+    return '';
+  };
+
+  // Tile class name for long-term calendar
+  const getTileClassNameLong = ({ date }) => {
+    if (!longTermPeriod) return '';
+    if (isDateInPeriod(date, longTermPeriod)) {
+      const start = new Date(longTermPeriod.startDate);
+      const end = new Date(longTermPeriod.endDate);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+      const checkDate = new Date(date);
+      checkDate.setHours(0, 0, 0, 0);
+
+      if (checkDate.getTime() === start.getTime() && checkDate.getTime() === end.getTime()) {
+        return 'optimal-period-single';
+      } else if (checkDate.getTime() === start.getTime()) {
+        return 'optimal-period-start';
+      } else if (checkDate.getTime() === end.getTime()) {
+        return 'optimal-period-end';
+      } else {
+        return 'optimal-period-middle';
+      }
+    }
+    return '';
+  };
+
   return (
     <div className="optimal-periods-widget">
       <div className="widget-header">
@@ -108,6 +180,18 @@ export function OptimalPeriodsWidget() {
             <div className="period-badge">
               <span className="badge-icon">🚀</span>
               <span className="badge-text">Short Term</span>
+            </div>
+
+            {/* Mini Calendar for short-term */}
+            <div className="mini-calendar-container">
+              <Calendar
+                value={getPeriodStartDate(shortTermPeriod)}
+                tileClassName={getTileClassNameShort}
+                locale="en-US"
+                minDetail="month"
+                showNavigation={false}
+                showNeighboringMonth={false}
+              />
             </div>
 
             <div className="period-content">
@@ -169,6 +253,18 @@ export function OptimalPeriodsWidget() {
             <div className="period-badge">
               <span className="badge-icon">🎯</span>
               <span className="badge-text">Long Term</span>
+            </div>
+
+            {/* Mini Calendar for long-term */}
+            <div className="mini-calendar-container">
+              <Calendar
+                value={getPeriodStartDate(longTermPeriod)}
+                tileClassName={getTileClassNameLong}
+                locale="en-US"
+                minDetail="month"
+                showNavigation={false}
+                showNeighboringMonth={false}
+              />
             </div>
 
             <div className="period-content">

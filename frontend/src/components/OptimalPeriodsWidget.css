@@ -88,7 +88,7 @@
   border-radius: 20px;
   font-size: 0.875rem;
   font-weight: 600;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .short-term .period-badge {
@@ -103,6 +103,119 @@
 
 .badge-icon {
   font-size: 1.125rem;
+}
+
+/* Mini Calendar Container */
+.mini-calendar-container {
+  margin-bottom: 1.5rem;
+}
+
+.mini-calendar-container .react-calendar {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  background: #fafbfc;
+  padding: 0.75rem;
+  font-family: inherit;
+}
+
+.mini-calendar-container .react-calendar__navigation {
+  display: none;
+}
+
+.mini-calendar-container .react-calendar__month-view__weekdays {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.mini-calendar-container .react-calendar__month-view__weekdays__weekday {
+  padding: 0.5rem 0;
+  text-align: center;
+}
+
+.mini-calendar-container .react-calendar__month-view__weekdays__weekday abbr {
+  text-decoration: none;
+}
+
+.mini-calendar-container .react-calendar__tile {
+  padding: 0.75rem 0.25rem;
+  font-size: 0.875rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  color: #4b5563;
+}
+
+.mini-calendar-container .react-calendar__tile:enabled:hover {
+  background: #f3f4f6;
+}
+
+.mini-calendar-container .react-calendar__tile--now {
+  background: #eff6ff;
+  color: #1e40af;
+  font-weight: 600;
+}
+
+.mini-calendar-container .react-calendar__tile--now:enabled:hover {
+  background: #dbeafe;
+}
+
+/* Optimal Period Highlighting */
+.mini-calendar-container .react-calendar__tile.optimal-period-single {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+  color: white !important;
+  font-weight: 700;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+}
+
+.mini-calendar-container .react-calendar__tile.optimal-period-start {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+  color: white !important;
+  font-weight: 700;
+  border-radius: 8px 0 0 8px;
+  position: relative;
+}
+
+.mini-calendar-container .react-calendar__tile.optimal-period-middle {
+  background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+  color: #92400e !important;
+  font-weight: 600;
+  border-radius: 0;
+}
+
+.mini-calendar-container .react-calendar__tile.optimal-period-end {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+  color: white !important;
+  font-weight: 700;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Long-term specific colors */
+.period-block.long-term .mini-calendar-container .react-calendar__tile.optimal-period-single {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.period-block.long-term .mini-calendar-container .react-calendar__tile.optimal-period-start {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+}
+
+.period-block.long-term .mini-calendar-container .react-calendar__tile.optimal-period-middle {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0) !important;
+  color: #065f46 !important;
+}
+
+.period-block.long-term .mini-calendar-container .react-calendar__tile.optimal-period-end {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+}
+
+/* Neighboring month dates */
+.mini-calendar-container .react-calendar__month-view__days__day--neighboringMonth {
+  color: #d1d5db;
 }
 
 /* Period Content */
@@ -289,5 +402,10 @@
 
   .countdown {
     align-self: flex-start;
+  }
+
+  .mini-calendar-container .react-calendar__tile {
+    padding: 0.5rem 0.25rem;
+    font-size: 0.75rem;
   }
 }
