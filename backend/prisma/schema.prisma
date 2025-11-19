@@ -29,6 +29,16 @@ model User {
   preferences   UserPreferences?
   subscription  Subscription?
   optimalPeriods OptimalPeriod[]
+
+  // Collaborative trips
+  createdTrips     CollaborativeTrip[] @relation("CreatedTrips")
+  tripMemberships  TripMember[]
+  invitationsSent  TripInvitation[]
+  proposedDestinations ProposedDestination[]
+  votes            TripVote[]
+  messages         TripMessage[]
+  friendships      Friendship[] @relation("UserFriendships")
+  friendOf         Friendship[] @relation("FriendOf")
 }
 
 model UserPreferences {
@@ -165,6 +175,13 @@ model SavedTrip {
 
   tripData    Json
 
+  // Link to collaborative trip if converted
+  collaborativeTripId String?
+  collaborativeTrip   CollaborativeTrip? @relation(fields: [collaborativeTripId], references: [id], onDelete: SetNull)
+
+  // Can be proposed in group trips
+  proposedIn ProposedDestination[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -210,6 +227,225 @@ model OptimalPeriod {
 
   @@index([userId, type])
   @@index([userId, expiresAt])
+}
+
+// ========================================
+// COLLABORATIVE TRIPS
+// ========================================
+
+model CollaborativeTrip {
+  id        String   @id @default(cuid())
+  creatorId String
+  creator   User     @relation("CreatedTrips", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  // Trip metadata
+  name           String
+  coverImageUrl  String?
+
+  // Origin - converted from solo trip or created from scratch
+  originSavedTripId String?
+  convertedSavedTrips SavedTrip[]
+
+  // Status workflow
+  status String // "draft" | "inviting" | "voting" | "destination_selected" | "booking" | "confirmed" | "cancelled"
+
+  // Voting deadline
+  voteDeadline DateTime?
+
+  // Final validated data (after vote)
+  finalDestination   Json?
+  finalStartDate     DateTime?
+  finalEndDate       DateTime?
+  finalDuration      Int?
+  finalBudgetPerPerson Float?
+
+  // Settings
+  maxMembers      Int @default(8)
+  requireAllVotes Boolean @default(false)
+
+  // Relations
+  members       TripMember[]
+  invitations   TripInvitation[]
+  votes         TripVote[]
+  messages      TripMessage[]
+  proposedTrips ProposedDestination[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([creatorId])
+  @@index([status])
+}
+
+model TripMember {
+  id     String @id @default(cuid())
+  tripId String
+  trip   CollaborativeTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Guest info (if no account)
+  guestEmail String?
+  guestName  String?
+
+  // Role
+  role String // "organizer" | "member" | "guest"
+
+  // Booking status
+  hasBookedFlight  Boolean @default(false)
+  hasBookedHotel   Boolean @default(false)
+  bookingConfirmed Boolean @default(false)
+
+  // Preferences for matching
+  availableDates   Json?
+  budgetRange      Json?
+  preferredActivities String[]
+
+  joinedAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@unique([tripId, userId])
+  @@unique([tripId, guestEmail])
+  @@index([tripId])
+  @@index([userId])
+}
+
+model TripInvitation {
+  id     String @id @default(cuid())
+  tripId String
+  trip   CollaborativeTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  // Invitee
+  email      String
+  invitedBy  String
+  inviter    User   @relation(fields: [invitedBy], references: [id], onDelete: Cascade)
+
+  // Secure token
+  token  String @unique @default(cuid())
+
+  // Status
+  status String // "pending" | "accepted" | "declined" | "expired"
+
+  // Metadata
+  message String?
+  expiresAt DateTime
+  respondedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([tripId])
+  @@index([email])
+  @@index([token])
+}
+
+model ProposedDestination {
+  id     String @id @default(cuid())
+  tripId String
+  trip   CollaborativeTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  // Link to saved trip
+  savedTripId String?
+  savedTrip   SavedTrip? @relation(fields: [savedTripId], references: [id], onDelete: SetNull)
+
+  // Proposed by
+  proposedBy String
+  proposer   User   @relation(fields: [proposedBy], references: [id], onDelete: Cascade)
+
+  // Destination data
+  city    String
+  country String
+
+  startDate DateTime
+  endDate   DateTime
+  duration  Int
+
+  // Pricing
+  estimatedCostPerPerson Float
+  currency String @default("EUR")
+
+  // Match score with group
+  groupMatchScore Float?
+
+  // Full trip data
+  tripData Json
+
+  // Votes for this destination
+  votes TripVote[]
+
+  createdAt DateTime @default(now())
+
+  @@index([tripId])
+  @@index([proposedBy])
+}
+
+model TripVote {
+  id     String @id @default(cuid())
+  tripId String
+  trip   CollaborativeTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  userId String
+  voter  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Vote ranking
+  destinationId String
+  destination   ProposedDestination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  rank Int // 1 = preferred, 2 = 2nd choice, etc.
+
+  // Vote details
+  comment String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tripId, userId, destinationId])
+  @@index([tripId])
+  @@index([userId])
+}
+
+model TripMessage {
+  id     String @id @default(cuid())
+  tripId String
+  trip   CollaborativeTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  authorId String?
+  author   User?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  // Guest author
+  guestName String?
+
+  content String
+  type    String @default("message") // "message" | "system" | "vote_update"
+
+  createdAt DateTime @default(now())
+
+  @@index([tripId, createdAt])
+}
+
+// ========================================
+// FRIENDS SYSTEM
+// ========================================
+
+model Friendship {
+  id String @id @default(cuid())
+
+  userId   String
+  user     User   @relation("UserFriendships", fields: [userId], references: [id], onDelete: Cascade)
+
+  friendId String
+  friend   User   @relation("FriendOf", fields: [friendId], references: [id], onDelete: Cascade)
+
+  status String // "pending" | "accepted" | "declined" | "blocked"
+
+  requestedBy String // userId who initiated
+
+  createdAt DateTime @default(now())
+  acceptedAt DateTime?
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
 }
 
 // ========================================
