@@ -96,6 +96,13 @@ export function OptimalPeriodsWidget() {
   const shortTermPeriod = periods.short && periods.short.length > 0 ? periods.short[0] : null;
   const longTermPeriod = periods.long && periods.long.length > 0 ? periods.long[0] : null;
 
+  console.log('🔍 Periods data:', {
+    hasShort: !!shortTermPeriod,
+    hasLong: !!longTermPeriod,
+    shortCount: periods.short?.length || 0,
+    longCount: periods.long?.length || 0
+  });
+
   // Helper to check if a date is in a period
   const isDateInPeriod = (date, period) => {
     if (!period) return false;
@@ -191,6 +198,7 @@ export function OptimalPeriodsWidget() {
                 minDetail="month"
                 showNavigation={false}
                 showNeighboringMonth={false}
+                tileDisabled={() => true}
               />
             </div>
 
@@ -264,6 +272,7 @@ export function OptimalPeriodsWidget() {
                 minDetail="month"
                 showNavigation={false}
                 showNeighboringMonth={false}
+                tileDisabled={() => true}
               />
             </div>
 
