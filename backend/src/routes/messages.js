@@ -1,7 +1,7 @@
 // backend/src/routes/messages.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { requireAuth } from '@clerk/express';
+import { authenticateUser } from '../middleware/auth.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -14,20 +14,11 @@ const prisma = new PrismaClient();
  * GET /api/trips/:tripId/messages
  * Get messages for a trip
  */
-router.get('/:tripId/messages', requireAuth(), async (req, res) => {
+router.get('/:tripId/messages', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId } = req.params;
     const { limit = 50, before } = req.query;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find trip and check membership
     const trip = await prisma.collaborativeTrip.findUnique({
@@ -100,9 +91,9 @@ router.get('/:tripId/messages', requireAuth(), async (req, res) => {
  * POST /api/trips/:tripId/messages
  * Send a message to the trip chat
  */
-router.post('/:tripId/messages', requireAuth(), async (req, res) => {
+router.post('/:tripId/messages', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId } = req.params;
     const { content, type = 'message' } = req.body;
 
@@ -113,15 +104,6 @@ router.post('/:tripId/messages', requireAuth(), async (req, res) => {
 
     if (content.length > 5000) {
       return res.status(400).json({ error: 'Message is too long (max 5000 characters)' });
-    }
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
     }
 
     // Find trip and check membership
@@ -190,19 +172,10 @@ router.post('/:tripId/messages', requireAuth(), async (req, res) => {
  * DELETE /api/trips/:tripId/messages/:messageId
  * Delete a message (author or trip creator only)
  */
-router.delete('/:tripId/messages/:messageId', requireAuth(), async (req, res) => {
+router.delete('/:tripId/messages/:messageId', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId, messageId } = req.params;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find message
     const message = await prisma.tripMessage.findUnique({
@@ -253,19 +226,10 @@ router.delete('/:tripId/messages/:messageId', requireAuth(), async (req, res) =>
  * PATCH /api/trips/:tripId/messages/:messageId/seen
  * Mark messages as seen (update lastSeenAt for member)
  */
-router.patch('/:tripId/messages/seen', requireAuth(), async (req, res) => {
+router.patch('/:tripId/messages/seen', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId } = req.params;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Update member's lastSeenAt
     await prisma.tripMember.updateMany({

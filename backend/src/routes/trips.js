@@ -1,7 +1,7 @@
 // backend/src/routes/trips.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { requireAuth } from '@clerk/express';
+import { authenticateUser } from '../middleware/auth.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -15,18 +15,9 @@ const prisma = new PrismaClient();
  * List all collaborative trips for the authenticated user
  * Returns: created trips, trips where user is a member, and pending invitations
  */
-router.get('/', requireAuth(), async (req, res) => {
+router.get('/', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = req.user; // Already authenticated by middleware
 
     // Get trips where user is creator
     const createdTrips = await prisma.collaborativeTrip.findMany({
@@ -188,19 +179,10 @@ router.get('/', requireAuth(), async (req, res) => {
  * GET /api/trips/:id
  * Get detailed information about a specific collaborative trip
  */
-router.get('/:id', requireAuth(), async (req, res) => {
+router.get('/:id', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { id } = req.params;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Get trip with full details
     const trip = await prisma.collaborativeTrip.findUnique({
@@ -369,23 +351,14 @@ router.get('/:id', requireAuth(), async (req, res) => {
  * POST /api/trips
  * Create a new collaborative trip from scratch
  */
-router.post('/', requireAuth(), async (req, res) => {
+router.post('/', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { name, coverImageUrl, maxMembers, requireAllVotes } = req.body;
 
     // Validate required fields
     if (!name || name.trim().length === 0) {
       return res.status(400).json({ error: 'Trip name is required' });
-    }
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
     }
 
     // Create trip
@@ -444,20 +417,11 @@ router.post('/', requireAuth(), async (req, res) => {
  * POST /api/trips/from-saved/:savedTripId
  * Convert a saved solo trip into a collaborative trip
  */
-router.post('/from-saved/:savedTripId', requireAuth(), async (req, res) => {
+router.post('/from-saved/:savedTripId', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { savedTripId } = req.params;
     const { name, coverImageUrl, maxMembers, requireAllVotes } = req.body;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find the saved trip
     const savedTrip = await prisma.savedTrip.findUnique({
@@ -567,20 +531,11 @@ router.post('/from-saved/:savedTripId', requireAuth(), async (req, res) => {
  * PATCH /api/trips/:id
  * Update trip settings (name, cover image, max members, etc.)
  */
-router.patch('/:id', requireAuth(), async (req, res) => {
+router.patch('/:id', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { id } = req.params;
     const { name, coverImageUrl, maxMembers, requireAllVotes, status, voteDeadline } = req.body;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find trip
     const trip = await prisma.collaborativeTrip.findUnique({
@@ -649,19 +604,10 @@ router.patch('/:id', requireAuth(), async (req, res) => {
  * DELETE /api/trips/:id
  * Delete a collaborative trip (creator only)
  */
-router.delete('/:id', requireAuth(), async (req, res) => {
+router.delete('/:id', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { id } = req.params;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find trip
     const trip = await prisma.collaborativeTrip.findUnique({

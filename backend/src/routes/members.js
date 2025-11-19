@@ -1,7 +1,7 @@
 // backend/src/routes/members.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { requireAuth } from '@clerk/express';
+import { authenticateUser } from '../middleware/auth.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -14,24 +14,15 @@ const prisma = new PrismaClient();
  * PATCH /api/trips/:tripId/members/:memberId/role
  * Update a member's role (creator only)
  */
-router.patch('/:tripId/members/:memberId/role', requireAuth(), async (req, res) => {
+router.patch('/:tripId/members/:memberId/role', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId, memberId } = req.params;
     const { role } = req.body;
 
     // Validate role
     if (!['member', 'organizer', 'guest'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
-    }
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
     }
 
     // Find trip
@@ -84,19 +75,10 @@ router.patch('/:tripId/members/:memberId/role', requireAuth(), async (req, res) 
  * DELETE /api/trips/:tripId/members/:memberId
  * Remove a member from the trip (creator or self)
  */
-router.delete('/:tripId/members/:memberId', requireAuth(), async (req, res) => {
+router.delete('/:tripId/members/:memberId', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId, memberId } = req.params;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find member
     const member = await prisma.tripMember.findUnique({
@@ -159,20 +141,11 @@ router.delete('/:tripId/members/:memberId', requireAuth(), async (req, res) => {
  * PATCH /api/trips/:tripId/members/:memberId/booking
  * Update member's booking status
  */
-router.patch('/:tripId/members/:memberId/booking', requireAuth(), async (req, res) => {
+router.patch('/:tripId/members/:memberId/booking', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId, memberId } = req.params;
     const { hasBookedFlight, hasBookedHotel, bookingConfirmed } = req.body;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find member
     const member = await prisma.tripMember.findUnique({
@@ -248,20 +221,11 @@ router.patch('/:tripId/members/:memberId/booking', requireAuth(), async (req, re
  * PATCH /api/trips/:tripId/members/:memberId/preferences
  * Update member's trip preferences (dates, budget, activities)
  */
-router.patch('/:tripId/members/:memberId/preferences', requireAuth(), async (req, res) => {
+router.patch('/:tripId/members/:memberId/preferences', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId, memberId } = req.params;
     const { availableDates, budgetRange, preferredActivities } = req.body;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find member
     const member = await prisma.tripMember.findUnique({

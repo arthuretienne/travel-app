@@ -1,7 +1,7 @@
 // backend/src/routes/invitations.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { requireAuth } from '@clerk/express';
+import { authenticateUser } from '../middleware/auth.js';
 import crypto from 'crypto';
 
 const router = express.Router();
@@ -15,24 +15,15 @@ const prisma = new PrismaClient();
  * POST /api/trips/:tripId/invitations
  * Send invitations to join a trip
  */
-router.post('/:tripId/invitations', requireAuth(), async (req, res) => {
+router.post('/:tripId/invitations', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId } = req.params;
     const { emails, message } = req.body;
 
     // Validate emails
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
       return res.status(400).json({ error: 'At least one email is required' });
-    }
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
     }
 
     // Find trip
@@ -328,19 +319,10 @@ router.post('/:token/decline', async (req, res) => {
  * DELETE /api/trips/:tripId/invitations/:invitationId
  * Cancel an invitation (creator/organizer only)
  */
-router.delete('/:tripId/invitations/:invitationId', requireAuth(), async (req, res) => {
+router.delete('/:tripId/invitations/:invitationId', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId, invitationId } = req.params;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find trip
     const trip = await prisma.collaborativeTrip.findUnique({

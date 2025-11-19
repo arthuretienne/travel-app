@@ -1,7 +1,7 @@
 // backend/src/routes/voting.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { requireAuth } from '@clerk/express';
+import { authenticateUser } from '../middleware/auth.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -14,20 +14,11 @@ const prisma = new PrismaClient();
  * POST /api/trips/:tripId/destinations
  * Propose a destination for voting
  */
-router.post('/:tripId/destinations', requireAuth(), async (req, res) => {
+router.post('/:tripId/destinations', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId } = req.params;
     const { savedTripId, city, country, startDate, endDate, estimatedCostPerPerson, tripData } = req.body;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find trip
     const trip = await prisma.collaborativeTrip.findUnique({
@@ -131,19 +122,10 @@ router.post('/:tripId/destinations', requireAuth(), async (req, res) => {
  * DELETE /api/trips/:tripId/destinations/:destinationId
  * Remove a proposed destination (proposer only, before voting starts)
  */
-router.delete('/:tripId/destinations/:destinationId', requireAuth(), async (req, res) => {
+router.delete('/:tripId/destinations/:destinationId', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId, destinationId } = req.params;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find proposed destination
     const destination = await prisma.proposedDestination.findUnique({
@@ -195,24 +177,15 @@ router.delete('/:tripId/destinations/:destinationId', requireAuth(), async (req,
  * Submit or update votes for destinations
  * Body: { votes: [{ destinationId, rank }] }
  */
-router.post('/:tripId/vote', requireAuth(), async (req, res) => {
+router.post('/:tripId/vote', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId } = req.params;
     const { votes, comment } = req.body;
 
     // Validate votes
     if (!votes || !Array.isArray(votes) || votes.length === 0) {
       return res.status(400).json({ error: 'At least one vote is required' });
-    }
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
     }
 
     // Find trip
@@ -311,19 +284,10 @@ router.post('/:tripId/vote', requireAuth(), async (req, res) => {
  * GET /api/trips/:tripId/voting-results
  * Calculate voting results using score-based algorithm
  */
-router.get('/:tripId/voting-results', requireAuth(), async (req, res) => {
+router.get('/:tripId/voting-results', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId } = req.params;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find trip
     const trip = await prisma.collaborativeTrip.findUnique({
@@ -439,20 +403,11 @@ router.get('/:tripId/voting-results', requireAuth(), async (req, res) => {
  * POST /api/trips/:tripId/finalize-vote
  * Finalize voting and select winning destination (creator only)
  */
-router.post('/:tripId/finalize-vote', requireAuth(), async (req, res) => {
+router.post('/:tripId/finalize-vote', authenticateUser, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const user = req.user; // Already authenticated by middleware
     const { tripId } = req.params;
     const { destinationId } = req.body;
-
-    // Find user in database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Find trip
     const trip = await prisma.collaborativeTrip.findUnique({
