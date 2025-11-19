@@ -9,6 +9,11 @@ import userRoutes from './src/routes/user.js';
 import searchRoutes from './src/routes/searches.js';
 import calendarRoutes from './src/routes/calendar.js';
 import datesRoutes from './src/routes/dates.js';
+import tripsRoutes from './src/routes/trips.js';
+import invitationsRoutes from './src/routes/invitations.js';
+import votingRoutes from './src/routes/voting.js';
+import messagesRoutes from './src/routes/messages.js';
+import membersRoutes from './src/routes/members.js';
 import prisma from './src/db/prisma.js';
 
 const app = express();
@@ -32,6 +37,13 @@ app.use('/api/users', userRoutes);
 app.use('/api/searches', searchRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/dates', datesRoutes);
+
+// Collaborative trips routes
+app.use('/api/trips', tripsRoutes);
+app.use('/api/trips', votingRoutes);
+app.use('/api/trips', messagesRoutes);
+app.use('/api/trips', membersRoutes);
+app.use('/api/invitations', invitationsRoutes);
 
 // Health check
 app.get('/api/health', async (req, res) => {
@@ -101,5 +113,24 @@ app.listen(PORT, () => {
   console.log('  - GET    /api/calendar/status');
   console.log('  - POST   /api/calendar/disconnect');
   console.log('  - GET    /api/calendar/suggestions');
+  console.log('  - GET    /api/dates/intelligent');
+  console.log('');
+  console.log('Collaborative Trips:');
+  console.log('  - GET    /api/trips');
+  console.log('  - POST   /api/trips');
+  console.log('  - GET    /api/trips/:id');
+  console.log('  - PATCH  /api/trips/:id');
+  console.log('  - DELETE /api/trips/:id');
+  console.log('  - POST   /api/trips/from-saved/:savedTripId');
+  console.log('  - POST   /api/trips/:tripId/invitations');
+  console.log('  - POST   /api/invitations/:token/accept');
+  console.log('  - POST   /api/invitations/:token/decline');
+  console.log('  - POST   /api/trips/:tripId/destinations');
+  console.log('  - POST   /api/trips/:tripId/vote');
+  console.log('  - GET    /api/trips/:tripId/voting-results');
+  console.log('  - POST   /api/trips/:tripId/finalize-vote');
+  console.log('  - GET    /api/trips/:tripId/messages');
+  console.log('  - POST   /api/trips/:tripId/messages');
+  console.log('');
   console.log('  - GET    /api/health');
 });
