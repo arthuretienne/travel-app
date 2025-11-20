@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { OptimalPeriodsWidget } from '../components/OptimalPeriodsWidget';
-import './Dashboard.css';
+import { Plane, Globe, Target, AlertTriangle, Map, Calendar, Clock, DollarSign, Plus, ArrowRight } from 'lucide-react';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -104,130 +104,156 @@ function Dashboard() {
   };
 
   return (
-    <div className="dashboard-page">
-      <div className="dashboard-header">
-        <div className="welcome-section">
-          <h1>Welcome back, {user?.firstName || 'Traveler'}!</h1>
-          <p>Ready to plan your next adventure?</p>
+    <div className="min-h-screen bg-surface-subtle p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-text-main mb-1">Welcome back, {user?.firstName || 'Traveler'}!</h1>
+            <p className="text-text-secondary">Ready to plan your next adventure?</p>
+          </div>
+          <button
+            className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all"
+            onClick={handleCreateTrip}
+          >
+            <Plus size={20} />
+            Create a New Trip
+          </button>
         </div>
-        <button className="btn-create-trip" onClick={handleCreateTrip}>
-          + Create a New Trip
-        </button>
-      </div>
 
-      {/* Quick Stats */}
-      <div className="stats-section">
-        <div className="stat-card">
-          <div className="stat-icon">✈️</div>
-          <div className="stat-content">
-            <div className="stat-number">{savedTrips.length}</div>
-            <div className="stat-label">Saved Trips</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🌍</div>
-          <div className="stat-content">
-            <div className="stat-number">{new Set(savedTrips.map(t => t.destination?.country)).size}</div>
-            <div className="stat-label">Countries</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🎯</div>
-          <div className="stat-content">
-            <div className="stat-number">
-              {savedTrips.length > 0 ? Math.round(savedTrips.reduce((acc, t) => acc + (t.score?.total || 0), 0) / savedTrips.length) : 0}
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-2xl shadow-card border border-gray-100 flex items-center gap-4 transition-transform hover:-translate-y-1">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+              <Plane size={28} />
             </div>
-            <div className="stat-label">Avg. Match Score</div>
+            <div>
+              <div className="text-2xl font-bold text-text-main leading-none mb-1">{savedTrips.length}</div>
+              <div className="text-sm font-medium text-text-secondary">Saved Trips</div>
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-2xl shadow-card border border-gray-100 flex items-center gap-4 transition-transform hover:-translate-y-1">
+            <div className="p-3 bg-green-50 text-green-600 rounded-xl">
+              <Globe size={28} />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-text-main leading-none mb-1">{new Set(savedTrips.map(t => t.destination?.country)).size}</div>
+              <div className="text-sm font-medium text-text-secondary">Countries</div>
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-2xl shadow-card border border-gray-100 flex items-center gap-4 transition-transform hover:-translate-y-1">
+            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+              <Target size={28} />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-text-main leading-none mb-1">
+                {savedTrips.length > 0 ? Math.round(savedTrips.reduce((acc, t) => acc + (t.score?.total || 0), 0) / savedTrips.length) : 0}%
+              </div>
+              <div className="text-sm font-medium text-text-secondary">Avg. Match Score</div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Optimal Periods Widget */}
-      <OptimalPeriodsWidget />
+        {/* Optimal Periods Widget */}
+        <OptimalPeriodsWidget />
 
-      {/* Saved Trips Section */}
-      <div className="trips-section">
-        <h2 className="section-title">My Saved Trips</h2>
+        {/* Saved Trips Section */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold text-text-main mb-6">My Saved Trips</h2>
 
-        {loading ? (
-          <div className="loading-state">
-            <div className="spinner"></div>
-            <p>Loading your trips...</p>
-          </div>
-        ) : error ? (
-          <div className="error-state">
-            <div className="error-icon">⚠️</div>
-            <p>Failed to load trips: {error}</p>
-            <button className="btn-retry" onClick={fetchSavedTrips}>Retry</button>
-          </div>
-        ) : savedTrips.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">🗺️</div>
-            <h3>No saved trips yet</h3>
-            <p>Start by creating your first trip recommendation</p>
-            <button className="btn-empty-cta" onClick={handleCreateTrip}>
-              Create Your First Trip
-            </button>
-          </div>
-        ) : (
-          <div className="trips-grid">
-            {savedTrips.map((trip, index) => (
-              <div key={trip.searchId || index} className="trip-card">
-                <div className="trip-card-header">
-                  <div className="destination-info">
-                    <h3>{trip.destination?.city || 'Unknown'}</h3>
-                    <p className="country">{trip.destination?.country || 'Unknown'}</p>
-                  </div>
-                  <div className="match-badge">
-                    {trip.score?.total ? `${Math.round(trip.score.total)}%` : 'N/A'}
-                  </div>
-                </div>
-
-                <div className="trip-card-body">
-                  <div className="trip-detail">
-                    <span className="detail-icon">📅</span>
-                    <span className="detail-text">
-                      {trip.slot?.startDate ? formatDate(trip.slot.startDate) : 'Date TBD'}
-                    </span>
-                  </div>
-                  <div className="trip-detail">
-                    <span className="detail-icon">⏱️</span>
-                    <span className="detail-text">{trip.slot?.duration || 0} days</span>
-                  </div>
-                  <div className="trip-detail">
-                    <span className="detail-icon">💰</span>
-                    <span className="detail-text">
-                      {trip.pricing?.total ? `€${Math.round(trip.pricing.total)}` : 'Price TBD'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="trip-card-footer">
-                  <button
-                    className="btn-view-trip"
-                    onClick={() => handleViewTrip(trip.searchId)}
-                  >
-                    View Details
-                  </button>
-                </div>
+          {loading ? (
+            <div className="bg-white rounded-3xl shadow-card p-12 text-center border border-gray-100">
+              <div className="w-10 h-10 border-3 border-gray-200 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-text-secondary">Loading your trips...</p>
+            </div>
+          ) : error ? (
+            <div className="bg-white rounded-3xl shadow-card p-12 text-center border border-gray-100">
+              <div className="inline-flex p-4 bg-red-50 text-red-500 rounded-full mb-4">
+                <AlertTriangle size={32} />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <p className="text-red-500 mb-6">Failed to load trips: {error}</p>
+              <button
+                className="px-6 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
+                onClick={fetchSavedTrips}
+              >
+                Retry
+              </button>
+            </div>
+          ) : savedTrips.length === 0 ? (
+            <div className="bg-white rounded-3xl shadow-card p-16 text-center border border-gray-100">
+              <div className="inline-flex p-6 bg-gray-50 text-gray-400 rounded-full mb-6">
+                <Map size={48} />
+              </div>
+              <h3 className="text-xl font-bold text-text-main mb-2">No saved trips yet</h3>
+              <p className="text-text-secondary mb-8">Start by creating your first trip recommendation</p>
+              <button
+                className="px-8 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all"
+                onClick={handleCreateTrip}
+              >
+                Create Your First Trip
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {savedTrips.map((trip, index) => (
+                <div key={trip.searchId || index} className="bg-white rounded-2xl overflow-hidden shadow-card border border-gray-100 hover:shadow-xl hover:border-primary/30 transition-all group">
+                  <div className="bg-primary p-6 text-white flex justify-between items-start">
+                    <div>
+                      <h3 className="text-xl font-bold mb-1">{trip.destination?.city || 'Unknown'}</h3>
+                      <p className="text-white/90 text-sm">{trip.destination?.country || 'Unknown'}</p>
+                    </div>
+                    <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg font-bold text-sm">
+                      {trip.score?.total ? `${Math.round(trip.score.total)}%` : 'N/A'}
+                    </div>
+                  </div>
 
-      {/* CTA Section */}
-      {savedTrips.length > 0 && (
-        <div className="dashboard-cta">
-          <div className="cta-content">
-            <h3>Looking for more adventures?</h3>
-            <p>Create a new trip and discover your next destination</p>
-            <button className="btn-cta-secondary" onClick={handleCreateTrip}>
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center gap-3 text-text-secondary">
+                      <Calendar size={18} className="text-gray-400" />
+                      <span className="font-medium text-text-main">
+                        {trip.slot?.startDate ? formatDate(trip.slot.startDate) : 'Date TBD'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-text-secondary">
+                      <Clock size={18} className="text-gray-400" />
+                      <span className="font-medium text-text-main">{trip.slot?.duration || 0} days</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-text-secondary">
+                      <DollarSign size={18} className="text-gray-400" />
+                      <span className="font-medium text-text-main">
+                        {trip.pricing?.total ? `€${Math.round(trip.pricing.total)}` : 'Price TBD'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-6 pt-0 border-t border-gray-50 mt-2">
+                    <button
+                      className="w-full py-3 mt-4 bg-primary text-white font-medium rounded-xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 shadow-lg shadow-primary/20 hover:bg-primary-hover"
+                      onClick={() => handleViewTrip(trip.searchId)}
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* CTA Section */}
+        {savedTrips.length > 0 && (
+          <div className="bg-surface-subtle rounded-3xl p-12 text-center border border-blue-100">
+            <h3 className="text-2xl font-bold text-text-main mb-3">Looking for more adventures?</h3>
+            <p className="text-text-secondary mb-8">Create a new trip and discover your next destination</p>
+            <button
+              className="px-8 py-3 bg-white text-primary font-semibold rounded-xl border border-primary hover:bg-primary hover:text-white transition-all"
+              onClick={handleCreateTrip}
+            >
               Plan Another Trip
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

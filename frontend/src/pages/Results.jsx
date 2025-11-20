@@ -2,7 +2,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import './Results.css';
+import {
+  AlertTriangle, Trophy, Calendar, Lightbulb, CloudSun, Plane,
+  Building, Ticket, Save, BarChart, Frown, ArrowLeft, Search,
+  ExternalLink, Clock, MapPin, Star, Check, X
+} from 'lucide-react';
 
 function Results() {
   const { searchId } = useParams();
@@ -113,19 +117,19 @@ function Results() {
   };
 
   const getScoreColor = (score) => {
-    if (score >= 90) return '#10b981';
-    if (score >= 80) return '#3b82f6';
-    if (score >= 70) return '#f59e0b';
-    return '#ef4444';
+    if (score >= 90) return 'text-emerald-500 border-emerald-500 bg-emerald-50';
+    if (score >= 80) return 'text-blue-500 border-blue-500 bg-blue-50';
+    if (score >= 70) return 'text-amber-500 border-amber-500 bg-amber-50';
+    return 'text-red-500 border-red-500 bg-red-50';
   };
 
   if (loading) {
     return (
-      <div className="results-page">
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <h2>Finding your perfect trips...</h2>
-          <p>Analyzing your profile and searching thousands of flights</p>
+      <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 border-4 border-gray-200 border-t-primary rounded-full animate-spin mx-auto mb-6"></div>
+          <h2 className="text-2xl font-bold text-text-main mb-2">Finding your perfect trips...</h2>
+          <p className="text-text-secondary">Analyzing your profile and searching thousands of flights to find the best matches.</p>
         </div>
       </div>
     );
@@ -133,16 +137,24 @@ function Results() {
 
   if (error) {
     return (
-      <div className="results-page">
-        <div className="error-container">
-          <div className="error-icon">⚠️</div>
-          <h2>Oops! Something went wrong</h2>
-          <p>{error}</p>
-          <div className="error-actions">
-            <button className="btn-secondary" onClick={handleBackToDashboard}>
+      <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 md:p-12 max-w-lg w-full text-center shadow-card border border-gray-100">
+          <div className="inline-flex p-4 bg-red-50 text-red-500 rounded-full mb-6">
+            <AlertTriangle size={48} />
+          </div>
+          <h2 className="text-2xl font-bold text-text-main mb-2">Oops! Something went wrong</h2>
+          <p className="text-text-secondary mb-8">{error}</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              className="px-6 py-3 bg-white text-text-secondary font-medium rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+              onClick={handleBackToDashboard}
+            >
               Back to Dashboard
             </button>
-            <button className="btn-primary" onClick={handleNewSearch}>
+            <button
+              className="px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
+              onClick={handleNewSearch}
+            >
               Try New Search
             </button>
           </div>
@@ -152,318 +164,321 @@ function Results() {
   }
 
   return (
-    <div className="results-page">
-      <div className="results-header">
-        <div className="header-content">
-          <h1>Your Perfect Trips</h1>
-          <p>We found <strong>{recommendations.length} amazing destinations</strong> tailored just for you</p>
+    <div className="min-h-screen bg-surface-subtle p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+          <div>
+            <h1 className="text-3xl font-bold text-text-main mb-2">Your Perfect Trips</h1>
+            <p className="text-text-secondary">
+              We found <strong className="text-primary">{recommendations.length} amazing destinations</strong> tailored just for you
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-white text-text-secondary font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              onClick={handleBackToDashboard}
+            >
+              <ArrowLeft size={18} />
+              Dashboard
+            </button>
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
+              onClick={handleNewSearch}
+            >
+              <Search size={18} />
+              New Search
+            </button>
+          </div>
         </div>
-        <div className="header-actions">
-          <button className="btn-secondary" onClick={handleBackToDashboard}>
-            Back to Dashboard
-          </button>
-          <button className="btn-primary" onClick={handleNewSearch}>
-            New Search
-          </button>
-        </div>
-      </div>
 
-      <div className="trips-list">
-        {recommendations.map((trip, index) => (
-          <div key={index} className="trip-card-modern">
-            {/* Destination Image */}
-            <div className="destination-image-container">
-              <img
-                src={getDestinationImage(trip.destination.photo, trip.destination.city, trip.destination.country)}
-                alt={trip.destination.photo?.alt || `${trip.destination.city}, ${trip.destination.country}`}
-                className="destination-image"
-                onError={(e) => {
-                  e.target.src = `https://source.unsplash.com/800x400/?${encodeURIComponent(trip.destination.city)}`;
-                }}
-              />
-              <div className="image-overlay"></div>
-              {trip.destination.photo && trip.destination.photo.photographer && (
-                <div className="photo-credit">
-                  Photo by{' '}
-                  <a
-                    href={trip.destination.photo.photographer.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {trip.destination.photo.photographer.name}
-                  </a>
-                  {' '}on Unsplash
-                </div>
-              )}
-              <div className="rank-badge" style={{ background: index === 0 ? '#fbbf24' : index === 1 ? '#9ca3af' : '#cd7f32' }}>
-                {index === 0 ? '🏆' : `#${index + 1}`}
-              </div>
-            </div>
+        <div className="space-y-8">
+          {recommendations.map((trip, index) => (
+            <div key={index} className="bg-white rounded-3xl overflow-hidden shadow-card border border-gray-100 hover:border-primary/30 transition-all group">
+              <div className="flex flex-col lg:flex-row">
+                {/* Destination Image */}
+                <div className="lg:w-1/3 relative h-64 lg:h-auto overflow-hidden">
+                  <img
+                    src={getDestinationImage(trip.destination.photo, trip.destination.city, trip.destination.country)}
+                    alt={trip.destination.photo?.alt || `${trip.destination.city}, ${trip.destination.country}`}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    onError={(e) => {
+                      e.target.src = `https://source.unsplash.com/800x400/?${encodeURIComponent(trip.destination.city)}`;
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent lg:bg-gradient-to-r"></div>
 
-            {/* Main Content */}
-            <div className="trip-main">
-              {/* Destination Header */}
-              <div className="destination-header">
-                <div className="destination-info">
-                  <h3 className="destination-name">
-                    {trip.destination.city}
-                    <span className="destination-country">{trip.destination.country}</span>
-                  </h3>
-                  <div className="trip-dates-badge">
-                    📅 {formatDate(trip.slot.startDate)} - {formatDate(trip.slot.endDate)}
-                    <span className="trip-duration">• {trip.slot.duration} days</span>
+                  {/* Rank Badge */}
+                  <div className={`absolute top-4 left-4 px-3 py-1 rounded-full text-sm font-bold text-white shadow-sm flex items-center gap-1 ${index === 0 ? 'bg-amber-400' : index === 1 ? 'bg-gray-400' : 'bg-orange-400'
+                    }`}>
+                    {index === 0 ? <Trophy size={14} /> : <span>#{index + 1}</span>}
+                    {index === 0 ? 'Top Match' : 'Great Choice'}
                   </div>
-                </div>
-                <div className="match-score" style={{ borderColor: getScoreColor(trip.score.total) }}>
-                  <div className="score-number" style={{ color: getScoreColor(trip.score.total) }}>
-                    {formatNumber(trip.score.total)}
-                  </div>
-                  <div className="score-label">match</div>
-                </div>
-              </div>
 
-              {/* Why This Trip */}
-              <div className="why-section">
-                <div className="why-card">
-                  <div className="why-icon">💡</div>
-                  <div className="why-content">
-                    <strong>Why this destination?</strong>
-                    <p>{trip.destination.matchReason}</p>
-                  </div>
-                </div>
-                <div className="why-card">
-                  <div className="why-icon">🌤️</div>
-                  <div className="why-content">
-                    <strong>Why now?</strong>
-                    <p>{trip.destination.seasonReason}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Price Overview */}
-              <div className="price-overview">
-                <div className="price-main">
-                  <div className="price-label">Total Trip Cost</div>
-                  <div className="price-value">€{formatNumber(trip.pricing.total)}</div>
-                  {trip.pricing.remaining >= 0 ? (
-                    <div className="price-remaining positive">
-                      €{formatNumber(trip.pricing.remaining)} under budget ✓
-                    </div>
-                  ) : (
-                    <div className="price-remaining negative">
-                      €{formatNumber(Math.abs(trip.pricing.remaining))} over budget
+                  {trip.destination.photo && trip.destination.photo.photographer && (
+                    <div className="absolute bottom-2 right-2 text-[10px] text-white/70 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
+                      Photo by <a href={trip.destination.photo.photographer.link} target="_blank" rel="noopener noreferrer" className="hover:text-white underline">{trip.destination.photo.photographer.name}</a> on Unsplash
                     </div>
                   )}
                 </div>
 
-                <div className="price-breakdown-compact">
-                  <div className="price-item">
-                    <span className="price-icon">✈️</span>
-                    <span className="price-label">Flight</span>
-                    <span className="price-amount">€{formatNumber(trip.pricing.flight)}</span>
-                  </div>
-                  <div className="price-item">
-                    <span className="price-icon">🏨</span>
-                    <span className="price-label">Hotel ({trip.slot.duration - 1}n)</span>
-                    <span className="price-amount">€{formatNumber(trip.pricing.hotel)}</span>
-                  </div>
-                  <div className="price-item">
-                    <span className="price-icon">🎭</span>
-                    <span className="price-label">Activities</span>
-                    <span className="price-amount">€{formatNumber(trip.pricing.activities)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Enhanced Flight Info */}
-              <div className="flight-info-enhanced">
-                <div className="flight-section">
-                  <div className="flight-label">Outbound Flight</div>
-                  <div className="flight-route">
-                    <div className="flight-time-point">
-                      <div className="flight-time">{new Date(trip.flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                      <div className="flight-airport">{trip.flightDetails.outbound.segments[0]?.departure}</div>
+                {/* Main Content */}
+                <div className="lg:w-2/3 p-6 md:p-8 flex flex-col">
+                  {/* Destination Header */}
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
+                    <div>
+                      <h3 className="text-2xl md:text-3xl font-bold text-text-main flex items-baseline gap-3 mb-2">
+                        {trip.destination.city}
+                        <span className="text-lg md:text-xl font-normal text-text-secondary">{trip.destination.country}</span>
+                      </h3>
+                      <div className="flex items-center gap-2 text-sm font-medium text-text-secondary bg-gray-50 px-3 py-1.5 rounded-lg w-fit">
+                        <Calendar size={16} className="text-primary" />
+                        {formatDate(trip.slot.startDate)} - {formatDate(trip.slot.endDate)}
+                        <span className="text-gray-300">|</span>
+                        <Clock size={16} className="text-primary" />
+                        {trip.slot.duration} days
+                      </div>
                     </div>
-                    <div className="flight-line">
-                      <span className="flight-icon">✈️</span>
-                      <span className="flight-duration">{trip.flightDetails.outbound.duration}</span>
-                      {trip.flightDetails.outbound.stops > 0 && (
-                        <span className="flight-stops">{trip.flightDetails.outbound.stops} stop{trip.flightDetails.outbound.stops > 1 ? 's' : ''}</span>
+
+                    <div className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 ${getScoreColor(trip.score.total)}`}>
+                      <div className="text-2xl font-bold leading-none">
+                        {formatNumber(trip.score.total)}
+                      </div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">match</div>
+                    </div>
+                  </div>
+
+                  {/* Why This Trip */}
+                  <div className="grid md:grid-cols-2 gap-4 mb-6">
+                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                      <div className="flex items-center gap-2 mb-2 text-blue-700 font-semibold text-sm">
+                        <Lightbulb size={16} />
+                        Why this destination?
+                      </div>
+                      <p className="text-sm text-text-secondary leading-relaxed">{trip.destination.matchReason}</p>
+                    </div>
+                    <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                      <div className="flex items-center gap-2 mb-2 text-amber-700 font-semibold text-sm">
+                        <CloudSun size={16} />
+                        Why now?
+                      </div>
+                      <p className="text-sm text-text-secondary leading-relaxed">{trip.destination.seasonReason}</p>
+                    </div>
+                  </div>
+
+                  {/* Price Overview */}
+                  <div className="bg-gray-50 rounded-2xl p-5 mb-6 border border-gray-100">
+                    <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4 mb-4 pb-4 border-b border-gray-200">
+                      <div>
+                        <div className="text-sm text-text-secondary mb-1">Total Trip Cost</div>
+                        <div className="text-2xl font-bold text-text-main">€{formatNumber(trip.pricing.total)}</div>
+                      </div>
+                      {trip.pricing.remaining >= 0 ? (
+                        <div className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm font-medium flex items-center gap-1">
+                          <Check size={14} />
+                          €{formatNumber(trip.pricing.remaining)} under budget
+                        </div>
+                      ) : (
+                        <div className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium flex items-center gap-1">
+                          <AlertTriangle size={14} />
+                          €{formatNumber(Math.abs(trip.pricing.remaining))} over budget
+                        </div>
                       )}
                     </div>
-                    <div className="flight-time-point">
-                      <div className="flight-time">{new Date(trip.flightDetails.outbound.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                      <div className="flight-airport">{trip.flightDetails.outbound.segments[trip.flightDetails.outbound.segments.length - 1]?.arrival}</div>
-                    </div>
-                  </div>
-                </div>
 
-                {trip.flightDetails.return && (
-                  <div className="flight-section">
-                    <div className="flight-label">Return Flight</div>
-                    <div className="flight-route">
-                      <div className="flight-time-point">
-                        <div className="flight-time">{new Date(trip.flightDetails.return.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                        <div className="flight-airport">{trip.flightDetails.return.segments[0]?.departure}</div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div className="flex flex-col items-center p-2 bg-white rounded-lg border border-gray-100">
+                        <Plane size={16} className="text-blue-500 mb-1" />
+                        <span className="text-text-secondary text-xs">Flight</span>
+                        <span className="font-semibold">€{formatNumber(trip.pricing.flight)}</span>
                       </div>
-                      <div className="flight-line">
-                        <span className="flight-icon">✈️</span>
-                        <span className="flight-duration">{trip.flightDetails.return.duration}</span>
-                        {trip.flightDetails.return.stops > 0 && (
-                          <span className="flight-stops">{trip.flightDetails.return.stops} stop{trip.flightDetails.return.stops > 1 ? 's' : ''}</span>
-                        )}
+                      <div className="flex flex-col items-center p-2 bg-white rounded-lg border border-gray-100">
+                        <Building size={16} className="text-purple-500 mb-1" />
+                        <span className="text-text-secondary text-xs">Hotel</span>
+                        <span className="font-semibold">€{formatNumber(trip.pricing.hotel)}</span>
                       </div>
-                      <div className="flight-time-point">
-                        <div className="flight-time">{new Date(trip.flightDetails.return.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                        <div className="flight-airport">{trip.flightDetails.return.segments[trip.flightDetails.return.segments.length - 1]?.arrival}</div>
+                      <div className="flex flex-col items-center p-2 bg-white rounded-lg border border-gray-100">
+                        <Ticket size={16} className="text-pink-500 mb-1" />
+                        <span className="text-text-secondary text-xs">Activities</span>
+                        <span className="font-semibold">€{formatNumber(trip.pricing.activities)}</span>
                       </div>
                     </div>
                   </div>
-                )}
 
-                <div className="airline-info">
-                  {trip.flightDetails.airline} • {trip.flightDetails.cabinClass} • €{trip.flightDetails.totalPrice}
-                </div>
-              </div>
-
-              {/* Hotel Options */}
-              {trip.hotelOptions && trip.hotelOptions.hotels && trip.hotelOptions.hotels.length > 0 && (
-                <div className="hotel-options">
-                  <h4 className="hotel-section-title">Recommended Hotels ({trip.hotelOptions.nights} nights)</h4>
-                  <div className="hotel-list">
-                    {trip.hotelOptions.hotels.slice(0, 3).map((hotel, hotelIndex) => (
-                      <div key={hotelIndex} className="hotel-card">
-                        <div className="hotel-info">
-                          <div className="hotel-name">{hotel.name}</div>
-                          <div className="hotel-rating">{'⭐'.repeat(hotel.rating)}</div>
+                  {/* Enhanced Flight Info */}
+                  <div className="mb-6 space-y-3">
+                    <div className="flex items-center gap-4 text-sm">
+                      <div className="w-20 font-medium text-text-secondary">Outbound</div>
+                      <div className="flex-1 flex items-center gap-3">
+                        <div className="font-mono font-semibold">{new Date(trip.flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div className="flex-1 flex items-center gap-2">
+                          <div className="h-[1px] bg-gray-300 flex-1"></div>
+                          <div className="text-xs text-text-secondary flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full">
+                            <Plane size={10} className="rotate-90" />
+                            {trip.flightDetails.outbound.duration}
+                          </div>
+                          <div className="h-[1px] bg-gray-300 flex-1"></div>
                         </div>
-                        <div className="hotel-pricing">
-                          <div className="hotel-price">€{Math.round(hotel.price.total)}</div>
-                          <div className="hotel-per-night">€{Math.round(hotel.price.perNight)}/night</div>
-                        </div>
-                        <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="hotel-book-btn">
-                          View on Booking.com
-                        </a>
+                        <div className="font-mono font-semibold">{new Date(trip.flightDetails.outbound.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
-                    ))}
+                    </div>
+
+                    {trip.flightDetails.return && (
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="w-20 font-medium text-text-secondary">Return</div>
+                        <div className="flex-1 flex items-center gap-3">
+                          <div className="font-mono font-semibold">{new Date(trip.flightDetails.return.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                          <div className="flex-1 flex items-center gap-2">
+                            <div className="h-[1px] bg-gray-300 flex-1"></div>
+                            <div className="text-xs text-text-secondary flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full">
+                              <Plane size={10} className="-rotate-90" />
+                              {trip.flightDetails.return.duration}
+                            </div>
+                            <div className="h-[1px] bg-gray-300 flex-1"></div>
+                          </div>
+                          <div className="font-mono font-semibold">{new Date(trip.flightDetails.return.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-xs text-text-secondary pt-2 border-t border-gray-100 flex justify-between">
+                      <span>{trip.flightDetails.airline} • {trip.flightDetails.cabinClass}</span>
+                      <span className="font-medium">€{trip.flightDetails.totalPrice}</span>
+                    </div>
+                  </div>
+
+                  {/* Hotel Options */}
+                  {trip.hotelOptions && trip.hotelOptions.hotels && trip.hotelOptions.hotels.length > 0 && (
+                    <div className="mb-8">
+                      <h4 className="text-sm font-bold text-text-main mb-3 uppercase tracking-wider">Recommended Hotels</h4>
+                      <div className="space-y-3">
+                        {trip.hotelOptions.hotels.slice(0, 3).map((hotel, hotelIndex) => (
+                          <div key={hotelIndex} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl hover:border-primary/30 transition-colors">
+                            <div>
+                              <div className="font-medium text-text-main">{hotel.name}</div>
+                              <div className="flex text-yellow-400 text-xs mt-0.5">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star key={i} size={10} fill={i < hotel.rating ? "currentColor" : "none"} className={i < hotel.rating ? "" : "text-gray-300"} />
+                                ))}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-text-main">€{Math.round(hotel.price.total)}</div>
+                              <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center justify-end gap-1">
+                                View <ExternalLink size={10} />
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3 mt-auto pt-6 border-t border-gray-100">
+                    <button
+                      className="flex-1 py-3 px-4 bg-white border border-gray-200 text-text-main font-medium rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      onClick={() => handleSaveTrip(index)}
+                      disabled={savingTripId === index}
+                    >
+                      <Save size={18} className={savingTripId === index ? "animate-pulse" : ""} />
+                      {savingTripId === index ? 'Saving...' : 'Save Trip'}
+                    </button>
+                    <a
+                      href={trip.links.skyscanner}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-3 px-4 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                    >
+                      <Plane size={18} />
+                      Book Flights
+                    </a>
+                    <a
+                      href={trip.links.booking}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-3 px-4 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+                    >
+                      <Building size={18} />
+                      Book Hotels
+                    </a>
                   </div>
                 </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="trip-actions">
-                <button
-                  className="action-button save"
-                  onClick={() => handleSaveTrip(index)}
-                  disabled={savingTripId === index}
-                >
-                  <span className="button-icon">💾</span>
-                  <span className="button-text">
-                    <strong>{savingTripId === index ? 'Saving...' : 'Save Trip'}</strong>
-                  </span>
-                </button>
-                <a
-                  href={trip.links.skyscanner}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="action-button primary"
-                >
-                  <span className="button-icon">✈️</span>
-                  <span className="button-text">
-                    <strong>Book Flights</strong>
-                    <small>via Skyscanner</small>
-                  </span>
-                </a>
-                <a
-                  href={trip.links.booking}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="action-button secondary"
-                >
-                  <span className="button-icon">🏨</span>
-                  <span className="button-text">
-                    <strong>Book Hotels</strong>
-                    <small>via Booking.com</small>
-                  </span>
-                </a>
               </div>
+
+              {/* Collapsible Details */}
+              <details className="group/details border-t border-gray-100 bg-gray-50/50">
+                <summary className="flex items-center justify-center gap-2 p-4 cursor-pointer text-sm font-medium text-text-secondary hover:text-primary transition-colors list-none">
+                  <BarChart size={16} />
+                  View detailed scoring breakdown
+                  <span className="group-open/details:rotate-180 transition-transform">
+                    <ArrowLeft size={14} className="-rotate-90" />
+                  </span>
+                </summary>
+                <div className="p-6 pt-0 border-t border-gray-100/50">
+                  <div className="max-w-2xl mx-auto pt-6">
+                    <h4 className="text-sm font-bold text-text-main mb-4">Scoring Breakdown</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-text-secondary">AI Match (40%)</span>
+                          <span className="font-bold">{formatNumber(trip.score.breakdown.aiMatch)}pts</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-primary rounded-full" style={{ width: `${formatNumber(trip.score.breakdown.aiMatch)}%` }}></div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-text-secondary">Price Value (30%)</span>
+                          <span className="font-bold">{formatNumber(trip.score.breakdown.price)}pts</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-green-500 rounded-full" style={{ width: `${formatNumber(trip.score.breakdown.price)}%` }}></div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-text-secondary">Originality (20%)</span>
+                          <span className="font-bold">{formatNumber(trip.score.breakdown.originality)}pts</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-purple-500 rounded-full" style={{ width: `${formatNumber(trip.score.breakdown.originality)}%` }}></div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-text-secondary">Availability (10%)</span>
+                          <span className="font-bold">{formatNumber(trip.score.breakdown.availability)}pts</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-amber-500 rounded-full" style={{ width: `${formatNumber(trip.score.breakdown.availability)}%` }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </details>
             </div>
-
-            {/* Collapsible Details */}
-            <details className="trip-details">
-              <summary className="details-toggle">
-                📊 View detailed scoring
-              </summary>
-              <div className="details-content">
-                <div className="score-breakdown-detailed">
-                  <h4>How we scored this trip:</h4>
-                  <div className="score-bars">
-                    <div className="score-bar-item">
-                      <div className="score-bar-header">
-                        <span>AI Match (40%)</span>
-                        <strong>{formatNumber(trip.score.breakdown.aiMatch)}pts</strong>
-                      </div>
-                      <div className="score-bar-fill-container">
-                        <div
-                          className="score-bar-fill"
-                          style={{ width: `${formatNumber(trip.score.breakdown.aiMatch)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className="score-bar-item">
-                      <div className="score-bar-header">
-                        <span>Price Value (30%)</span>
-                        <strong>{formatNumber(trip.score.breakdown.price)}pts</strong>
-                      </div>
-                      <div className="score-bar-fill-container">
-                        <div
-                          className="score-bar-fill"
-                          style={{ width: `${formatNumber(trip.score.breakdown.price)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className="score-bar-item">
-                      <div className="score-bar-header">
-                        <span>Originality (20%)</span>
-                        <strong>{formatNumber(trip.score.breakdown.originality)}pts</strong>
-                      </div>
-                      <div className="score-bar-fill-container">
-                        <div
-                          className="score-bar-fill"
-                          style={{ width: `${formatNumber(trip.score.breakdown.originality)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className="score-bar-item">
-                      <div className="score-bar-header">
-                        <span>Availability (10%)</span>
-                        <strong>{formatNumber(trip.score.breakdown.availability)}pts</strong>
-                      </div>
-                      <div className="score-bar-fill-container">
-                        <div
-                          className="score-bar-fill"
-                          style={{ width: `${formatNumber(trip.score.breakdown.availability)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </details>
-          </div>
-        ))}
-      </div>
-
-      {recommendations.length === 0 && (
-        <div className="no-results">
-          <div className="no-results-icon">😔</div>
-          <h3>No trips found</h3>
-          <p>Try adjusting your preferences or budget</p>
-          <button className="btn-primary" onClick={handleNewSearch}>
-            Try New Search
-          </button>
+          ))}
         </div>
-      )}
+
+        {recommendations.length === 0 && (
+          <div className="bg-white rounded-3xl p-16 text-center shadow-card border border-gray-100">
+            <div className="inline-flex p-6 bg-gray-50 text-gray-400 rounded-full mb-6">
+              <Frown size={48} />
+            </div>
+            <h3 className="text-xl font-bold text-text-main mb-2">No trips found</h3>
+            <p className="text-text-secondary mb-8">Try adjusting your preferences or budget to find more options.</p>
+            <button
+              className="px-8 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all"
+              onClick={handleNewSearch}
+            >
+              Try New Search
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

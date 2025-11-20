@@ -2,14 +2,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import './CreateTrip.css';
+import {
+  Mountain, Landmark, Palmtree, Building2, Utensils,
+  Sun, CloudSun, Snowflake, Globe, Footprints, Palette,
+  Martini, Waves, Sparkles, ShoppingBag, Smile, Briefcase,
+  Glasses, DollarSign, Clock, Calendar, Users, Plus,
+  Thermometer, Target, Ban, Plane, Bot, ChevronDown, ChevronRight,
+  X, Loader2
+} from 'lucide-react';
 
 const TRAVEL_VIBES = [
-  { label: 'Adventure & Nature', value: 'adventure', icon: '🏔️' },
-  { label: 'Culture & History', value: 'cultural', icon: '🏛️' },
-  { label: 'Beach & Relaxation', value: 'relaxation', icon: '🏖️' },
-  { label: 'Urban & Shopping', value: 'urban', icon: '🏙️' },
-  { label: 'Food & Gastronomy', value: 'food', icon: '🍽️' },
+  { label: 'Adventure & Nature', value: 'adventure', icon: Mountain },
+  { label: 'Culture & History', value: 'cultural', icon: Landmark },
+  { label: 'Beach & Relaxation', value: 'relaxation', icon: Palmtree },
+  { label: 'Urban & Shopping', value: 'urban', icon: Building2 },
+  { label: 'Food & Gastronomy', value: 'food', icon: Utensils },
 ];
 
 const BUDGET_PRESETS = [
@@ -20,21 +27,21 @@ const BUDGET_PRESETS = [
 ];
 
 const WEATHER_OPTIONS = [
-  { label: 'Hot', value: 'hot', icon: '☀️' },
-  { label: 'Mild', value: 'mild', icon: '⛅' },
-  { label: 'Cold', value: 'cold', icon: '❄️' },
-  { label: 'Any', value: 'any', icon: '🌍' },
+  { label: 'Hot', value: 'hot', icon: Sun },
+  { label: 'Mild', value: 'mild', icon: CloudSun },
+  { label: 'Cold', value: 'cold', icon: Snowflake },
+  { label: 'Any', value: 'any', icon: Globe },
 ];
 
 const MUST_HAVE_ACTIVITIES = [
-  { label: 'Hiking', value: 'hiking', icon: '🥾' },
-  { label: 'Museums', value: 'museums', icon: '🎨' },
-  { label: 'Beach', value: 'beach', icon: '🏖️' },
-  { label: 'Nightlife', value: 'nightlife', icon: '🍸' },
-  { label: 'Adventure Sports', value: 'sports', icon: '🏄' },
-  { label: 'Wellness', value: 'wellness', icon: '💆' },
-  { label: 'Shopping', value: 'shopping', icon: '🛍️' },
-  { label: 'Food Tours', value: 'food', icon: '🍽️' },
+  { label: 'Hiking', value: 'hiking', icon: Footprints },
+  { label: 'Museums', value: 'museums', icon: Palette },
+  { label: 'Beach', value: 'beach', icon: Palmtree },
+  { label: 'Nightlife', value: 'nightlife', icon: Martini },
+  { label: 'Adventure Sports', value: 'sports', icon: Waves },
+  { label: 'Wellness', value: 'wellness', icon: Sparkles },
+  { label: 'Shopping', value: 'shopping', icon: ShoppingBag },
+  { label: 'Food Tours', value: 'food', icon: Utensils },
 ];
 
 const FLIGHT_DURATION_OPTIONS = [
@@ -45,10 +52,10 @@ const FLIGHT_DURATION_OPTIONS = [
 ];
 
 const CHATBOT_TONES = [
-  { label: 'Friendly', value: 'friendly', icon: '😊' },
-  { label: 'Professional', value: 'professional', icon: '💼' },
-  { label: 'Casual', value: 'casual', icon: '😎' },
-  { label: 'Inspiring', value: 'inspiring', icon: '✨' },
+  { label: 'Friendly', value: 'friendly', icon: Smile },
+  { label: 'Professional', value: 'professional', icon: Briefcase },
+  { label: 'Casual', value: 'casual', icon: Glasses },
+  { label: 'Inspiring', value: 'inspiring', icon: Sparkles },
 ];
 
 function CreateTrip() {
@@ -169,14 +176,10 @@ function CreateTrip() {
   const validate = () => {
     const newErrors = {};
 
-    // Budget is now OPTIONAL - no validation needed
-
     if (!formData.duration || formData.duration < 1 || formData.duration > 30) {
       newErrors.duration = 'Duration must be between 1 and 30 days';
     }
 
-    // Dates are now OPTIONAL - no validation needed
-    // But if both are provided, validate the relationship
     if (formData.startDate && formData.endDate) {
       const start = new Date(formData.startDate);
       const end = new Date(formData.endDate);
@@ -212,7 +215,7 @@ function CreateTrip() {
       // Transform data to match backend expectations
       const payload = {
         basic: {
-          budget: formData.budget || 1500, // Default budget if not specified
+          budget: formData.budget || 1500,
           style: formData.travelVibe,
           activities: formData.mustHaves.length > 0 ? formData.mustHaves : ['cultural', 'nature'],
           maxFlightHours: formData.maxFlightDuration,
@@ -241,8 +244,8 @@ function CreateTrip() {
           idealDuration: `${formData.duration}-jours`,
           flexibleDates: true,
           preferredMonths: [],
-          originCity: 'CDG', // Default to Paris CDG
-          professionalStatus: 'salaried', // Default
+          originCity: 'CDG',
+          professionalStatus: 'salaried',
           departureFlexibility: 'peu-importe',
         },
         chatbotPreferences: {
@@ -263,7 +266,6 @@ function CreateTrip() {
       const data = await response.json();
 
       if (data.success && data.recommendations) {
-        // Navigate to results page with recommendations
         navigate('/results', { state: { recommendations: data.recommendations } });
       } else {
         throw new Error(data.error || 'Failed to get recommendations');
@@ -278,71 +280,76 @@ function CreateTrip() {
 
   if (loadingPreferences) {
     return (
-      <div className="create-trip-page">
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Loading your preferences...</p>
+      <div className="min-h-screen bg-surface-subtle flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-gray-200 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading your preferences...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="create-trip-page">
+    <div className="min-h-screen bg-surface-subtle p-4 md:p-8">
       {loading && (
-        <div className="trip-loading-modal">
-          <div className="trip-loading-content">
-            <div className="trip-loading-animation">
-              <div className="plane-icon">✈️</div>
-              <div className="loading-dots">
-                <span></span>
-                <span></span>
-                <span></span>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl p-12 max-w-lg w-[90%] text-center shadow-2xl animate-slide-up">
+            <div className="mb-8 relative h-20 flex items-center justify-center">
+              <Plane size={48} className="text-primary animate-bounce" />
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-2">
+                <div className="w-2 h-2 bg-primary rounded-full animate-ping"></div>
+                <div className="w-2 h-2 bg-primary rounded-full animate-ping delay-100"></div>
+                <div className="w-2 h-2 bg-primary rounded-full animate-ping delay-200"></div>
               </div>
             </div>
-            <h2>Finding Your Perfect Trip</h2>
-            <div className="loading-steps">
-              <div className="loading-step active">
-                <div className="step-icon">🤖</div>
+            <h2 className="text-2xl font-bold text-text-main mb-6">Finding Your Perfect Trip</h2>
+            <div className="space-y-4 text-left max-w-xs mx-auto mb-6">
+              <div className="flex items-center gap-3 text-text-secondary">
+                <Bot size={20} className="text-primary" />
                 <p>Analyzing your preferences...</p>
               </div>
-              <div className="loading-step">
-                <div className="step-icon">🌍</div>
+              <div className="flex items-center gap-3 text-text-secondary">
+                <Globe size={20} className="text-green-500" />
                 <p>Searching destinations worldwide...</p>
               </div>
-              <div className="loading-step">
-                <div className="step-icon">✈️</div>
+              <div className="flex items-center gap-3 text-text-secondary">
+                <Plane size={20} className="text-blue-500" />
                 <p>Finding best flight options...</p>
               </div>
             </div>
-            <p className="loading-tip">This usually takes 10-15 seconds</p>
+            <p className="text-sm text-text-secondary italic">This usually takes 10-15 seconds</p>
           </div>
         </div>
       )}
 
-      <div className="create-trip-header">
-        <h1>Create Your Perfect Trip</h1>
-        <p>Fill in the details below to get personalized recommendations</p>
+      <div className="max-w-4xl mx-auto text-center mb-8">
+        <h1 className="text-3xl md:text-4xl font-bold text-text-main mb-2">Create Your Perfect Trip</h1>
+        <p className="text-text-secondary">Fill in the details below to get personalized recommendations</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="create-trip-form">
+      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white rounded-3xl shadow-card border border-gray-100 p-6 md:p-10">
         {/* MANDATORY FIELDS */}
-        <div className="mandatory-section">
-          <h2 className="section-title">Essential Details</h2>
+        <div className="space-y-10">
+          <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+            <h2 className="text-xl font-bold text-text-main">Essential Details</h2>
+          </div>
 
           {/* Budget */}
-          <div className="form-section">
-            <label className="section-label">
-              <span className="label-icon">💰</span>
+          <div>
+            <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+              <DollarSign size={20} className="text-primary" />
               Budget per person
             </label>
-            {errors.budget && <p className="error-text">{errors.budget}</p>}
-            <div className="budget-options">
+            {errors.budget && <p className="text-red-500 text-sm mb-2">{errors.budget}</p>}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {BUDGET_PRESETS.map(option => (
                 <button
                   key={option.value}
                   type="button"
-                  className={`option-button ${formData.budget === option.value ? 'active' : ''}`}
+                  className={`p-4 rounded-xl border transition-all ${formData.budget === option.value
+                      ? 'bg-primary-light border-primary text-primary font-medium ring-2 ring-primary/20'
+                      : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50 hover:bg-gray-50'
+                    }`}
                   onClick={() => handleChange('budget', option.value)}
                 >
                   {option.label}
@@ -352,16 +359,16 @@ function CreateTrip() {
           </div>
 
           {/* Duration */}
-          <div className="form-section">
-            <label className="section-label">
-              <span className="label-icon">⏱️</span>
-              Duration (days) <span className="required">*</span>
+          <div>
+            <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+              <Clock size={20} className="text-primary" />
+              Duration (days) <span className="text-red-500">*</span>
             </label>
-            {errors.duration && <p className="error-text">{errors.duration}</p>}
-            <div className="number-control">
+            {errors.duration && <p className="text-red-500 text-sm mb-2">{errors.duration}</p>}
+            <div className="flex items-center gap-4">
               <button
                 type="button"
-                className="number-btn"
+                className="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => handleChange('duration', Math.max(1, formData.duration - 1))}
                 disabled={formData.duration <= 1}
               >
@@ -373,11 +380,11 @@ function CreateTrip() {
                 max="30"
                 value={formData.duration}
                 onChange={(e) => handleChange('duration', parseInt(e.target.value) || 1)}
-                className="number-input-center"
+                className="w-20 p-3 text-center text-lg font-medium border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
               <button
                 type="button"
-                className="number-btn"
+                className="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => handleChange('duration', Math.min(30, formData.duration + 1))}
                 disabled={formData.duration >= 30}
               >
@@ -387,54 +394,54 @@ function CreateTrip() {
           </div>
 
           {/* Dates */}
-          <div className="form-section-row">
-            <div className="form-section-half">
-              <label className="section-label">
-                <span className="label-icon">📅</span>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+                <Calendar size={20} className="text-primary" />
                 Start Date
               </label>
-              {errors.startDate && <p className="error-text">{errors.startDate}</p>}
+              {errors.startDate && <p className="text-red-500 text-sm mb-2">{errors.startDate}</p>}
               <input
                 type="date"
                 value={formData.startDate}
                 onChange={(e) => handleChange('startDate', e.target.value)}
-                className="date-input"
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 min={new Date().toISOString().split('T')[0]}
               />
             </div>
 
-            <div className="form-section-half">
-              <label className="section-label">
-                <span className="label-icon">📅</span>
+            <div>
+              <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+                <Calendar size={20} className="text-primary" />
                 End Date
               </label>
-              {errors.endDate && <p className="error-text">{errors.endDate}</p>}
+              {errors.endDate && <p className="text-red-500 text-sm mb-2">{errors.endDate}</p>}
               <input
                 type="date"
                 value={formData.endDate}
                 onChange={(e) => handleChange('endDate', e.target.value)}
-                className="date-input"
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 min={formData.startDate || new Date().toISOString().split('T')[0]}
               />
             </div>
           </div>
 
-          <p style={{ marginTop: '-8px', marginBottom: '20px', fontSize: '0.9rem', color: '#6b7280', fontStyle: 'italic' }}>
-            💡 Laissez vide pour que nous trouvions automatiquement les meilleures dates selon vos disponibilités
+          <p className="text-sm text-text-secondary italic bg-blue-50 p-3 rounded-lg border border-blue-100">
+            💡 Leave dates empty to let AI find the best time for you based on your preferences.
           </p>
 
           {/* Travelers */}
-          <div className="form-section">
-            <label className="section-label">
-              <span className="label-icon">👥</span>
-              Number of Travelers <span className="required">*</span>
+          <div>
+            <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+              <Users size={20} className="text-primary" />
+              Number of Travelers <span className="text-red-500">*</span>
             </label>
-            {errors.travelers && <p className="error-text">{errors.travelers}</p>}
-            <div className="travelers-control">
-              <div className="number-control">
+            {errors.travelers && <p className="text-red-500 text-sm mb-2">{errors.travelers}</p>}
+            <div className="flex flex-wrap items-center gap-6">
+              <div className="flex items-center gap-4">
                 <button
                   type="button"
-                  className="number-btn"
+                  className="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => handleChange('travelers', Math.max(1, formData.travelers - 1))}
                   disabled={formData.travelers <= 1}
                 >
@@ -446,11 +453,11 @@ function CreateTrip() {
                   max="20"
                   value={formData.travelers}
                   onChange={(e) => handleChange('travelers', parseInt(e.target.value) || 1)}
-                  className="number-input-center"
+                  className="w-20 p-3 text-center text-lg font-medium border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
                 <button
                   type="button"
-                  className="number-btn"
+                  className="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => handleChange('travelers', Math.min(20, formData.travelers + 1))}
                   disabled={formData.travelers >= 20}
                 >
@@ -459,32 +466,35 @@ function CreateTrip() {
               </div>
               <button
                 type="button"
-                className="share-trip-btn"
+                className="flex items-center gap-2 px-4 py-3 bg-white border border-primary text-primary rounded-xl font-medium hover:bg-primary-light transition-colors"
                 onClick={() => alert('Share trip feature coming soon!')}
               >
-                <span className="label-icon">➕</span>
+                <Plus size={18} />
                 Share trip / Add friend
               </button>
             </div>
           </div>
 
           {/* Travel Vibe */}
-          <div className="form-section">
-            <label className="section-label">
-              <span className="label-icon">✨</span>
-              Travel Vibe <span className="required">*</span>
+          <div>
+            <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+              <Sparkles size={20} className="text-primary" />
+              Travel Vibe <span className="text-red-500">*</span>
             </label>
-            {errors.travelVibe && <p className="error-text">{errors.travelVibe}</p>}
-            <div className="style-options">
+            {errors.travelVibe && <p className="text-red-500 text-sm mb-2">{errors.travelVibe}</p>}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
               {TRAVEL_VIBES.map(option => (
                 <button
                   key={option.value}
                   type="button"
-                  className={`style-button ${formData.travelVibe === option.value ? 'active' : ''}`}
+                  className={`p-4 rounded-xl border transition-all flex flex-col items-center gap-2 ${formData.travelVibe === option.value
+                      ? 'bg-primary-light border-primary text-primary font-medium ring-2 ring-primary/20'
+                      : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50 hover:bg-gray-50'
+                    }`}
                   onClick={() => handleChange('travelVibe', option.value)}
                 >
-                  <span className="style-icon">{option.icon}</span>
-                  <span>{option.label}</span>
+                  <option.icon size={24} />
+                  <span className="text-sm text-center">{option.label}</span>
                 </button>
               ))}
             </div>
@@ -492,34 +502,39 @@ function CreateTrip() {
         </div>
 
         {/* OPTIONAL FILTERS - Collapsible */}
-        <div className="optional-section">
+        <div className="mt-10 pt-8 border-t border-gray-100">
           <button
             type="button"
-            className="collapse-toggle"
+            className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors"
             onClick={() => setShowOptionalFilters(!showOptionalFilters)}
           >
-            <span className="toggle-icon">{showOptionalFilters ? '▼' : '▶'}</span>
-            <span className="toggle-text">Optional Filters</span>
-            <span className="toggle-hint">(Advanced preferences)</span>
+            <div className="flex items-center gap-3">
+              {showOptionalFilters ? <ChevronDown size={20} className="text-text-secondary" /> : <ChevronRight size={20} className="text-text-secondary" />}
+              <span className="font-semibold text-text-main">Optional Filters</span>
+            </div>
+            <span className="text-sm text-text-secondary">(Advanced preferences)</span>
           </button>
 
           {showOptionalFilters && (
-            <div className="optional-content">
+            <div className="mt-6 space-y-10 animate-slide-down">
               {/* Preferred Weather */}
-              <div className="form-section">
-                <label className="section-label">
-                  <span className="label-icon">🌡️</span>
+              <div>
+                <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+                  <Thermometer size={20} className="text-primary" />
                   Preferred Weather
                 </label>
-                <div className="weather-options">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {WEATHER_OPTIONS.map(option => (
                     <button
                       key={option.value}
                       type="button"
-                      className={`option-button ${formData.preferredWeather === option.value ? 'active' : ''}`}
+                      className={`p-3 rounded-xl border transition-all flex items-center justify-center gap-2 ${formData.preferredWeather === option.value
+                          ? 'bg-primary-light border-primary text-primary font-medium'
+                          : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50 hover:bg-gray-50'
+                        }`}
                       onClick={() => handleChange('preferredWeather', option.value)}
                     >
-                      <span className="label-icon">{option.icon}</span>
+                      <option.icon size={18} />
                       {option.label}
                     </button>
                   ))}
@@ -527,49 +542,52 @@ function CreateTrip() {
               </div>
 
               {/* Must Haves */}
-              <div className="form-section">
-                <label className="section-label">
-                  <span className="label-icon">🎯</span>
+              <div>
+                <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+                  <Target size={20} className="text-primary" />
                   Must-Have Activities
                 </label>
-                <div className="activities-grid">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {MUST_HAVE_ACTIVITIES.map(option => (
                     <button
                       key={option.value}
                       type="button"
-                      className={`activity-button ${formData.mustHaves.includes(option.value) ? 'active' : ''}`}
+                      className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-2 ${formData.mustHaves.includes(option.value)
+                          ? 'bg-primary-light border-primary text-primary font-medium'
+                          : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50 hover:bg-gray-50'
+                        }`}
                       onClick={() => toggleMustHave(option.value)}
                     >
-                      <span className="activity-icon">{option.icon}</span>
-                      <span>{option.label}</span>
+                      <option.icon size={24} />
+                      <span className="text-sm text-center">{option.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Avoid List */}
-              <div className="form-section">
-                <label className="section-label">
-                  <span className="label-icon">🚫</span>
+              <div>
+                <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+                  <Ban size={20} className="text-primary" />
                   Places to Avoid
                 </label>
                 <input
                   type="text"
                   placeholder="Type a country or city and press Enter"
                   onKeyDown={addToAvoidList}
-                  className="text-input"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 mb-3"
                 />
                 {formData.avoidList.length > 0 && (
-                  <div className="tags-container">
+                  <div className="flex flex-wrap gap-2">
                     {formData.avoidList.map((item, index) => (
-                      <span key={index} className="tag">
+                      <span key={index} className="inline-flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-100 text-red-600 rounded-lg text-sm font-medium">
                         {item}
                         <button
                           type="button"
-                          className="tag-remove"
+                          className="hover:text-red-800"
                           onClick={() => removeFromAvoidList(item)}
                         >
-                          ×
+                          <X size={14} />
                         </button>
                       </span>
                     ))}
@@ -578,17 +596,20 @@ function CreateTrip() {
               </div>
 
               {/* Max Flight Duration */}
-              <div className="form-section">
-                <label className="section-label">
-                  <span className="label-icon">✈️</span>
+              <div>
+                <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+                  <Plane size={20} className="text-primary" />
                   Maximum Flight Duration
                 </label>
-                <div className="flight-options">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {FLIGHT_DURATION_OPTIONS.map(option => (
                     <button
                       key={option.value}
                       type="button"
-                      className={`option-button ${formData.maxFlightDuration === option.value ? 'active' : ''}`}
+                      className={`p-3 rounded-xl border transition-all ${formData.maxFlightDuration === option.value
+                          ? 'bg-primary-light border-primary text-primary font-medium'
+                          : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50 hover:bg-gray-50'
+                        }`}
                       onClick={() => handleChange('maxFlightDuration', option.value)}
                     >
                       {option.label}
@@ -598,21 +619,24 @@ function CreateTrip() {
               </div>
 
               {/* Chatbot Tone */}
-              <div className="form-section">
-                <label className="section-label">
-                  <span className="label-icon">🤖</span>
+              <div>
+                <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+                  <Bot size={20} className="text-primary" />
                   AI Assistant Tone
                 </label>
-                <div className="tone-options">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {CHATBOT_TONES.map(option => (
                     <button
                       key={option.value}
                       type="button"
-                      className={`tone-button ${formData.chatbotTone === option.value ? 'active' : ''}`}
+                      className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-2 ${formData.chatbotTone === option.value
+                          ? 'bg-primary-light border-primary text-primary font-medium'
+                          : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50 hover:bg-gray-50'
+                        }`}
                       onClick={() => handleChange('chatbotTone', option.value)}
                     >
-                      <span className="tone-icon">{option.icon}</span>
-                      <span>{option.label}</span>
+                      <option.icon size={24} />
+                      <span className="text-sm text-center">{option.label}</span>
                     </button>
                   ))}
                 </div>
@@ -623,16 +647,16 @@ function CreateTrip() {
 
         {/* Error Message */}
         {errors.submit && (
-          <div className="error-banner">
+          <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm">
             <strong>Error:</strong> {errors.submit}
           </div>
         )}
 
         {/* Submit Button */}
-        <div className="form-actions">
+        <div className="mt-10 pt-8 border-t border-gray-100 flex justify-end gap-4">
           <button
             type="button"
-            className="btn-secondary"
+            className="px-6 py-3 bg-white text-text-secondary font-medium rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
             onClick={() => navigate('/dashboard')}
             disabled={loading}
           >
@@ -640,10 +664,17 @@ function CreateTrip() {
           </button>
           <button
             type="submit"
-            className="btn-primary"
+            className="px-8 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
             disabled={loading}
           >
-            {loading ? 'Finding Your Perfect Trip...' : 'Find My Perfect Trip'}
+            {loading ? (
+              <>
+                <Loader2 size={20} className="animate-spin" />
+                Finding Your Perfect Trip...
+              </>
+            ) : (
+              'Find My Perfect Trip'
+            )}
           </button>
         </div>
       </form>

@@ -1,61 +1,77 @@
 @import "tailwindcss";
 
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color: #2c3e50;
-  background-color: #f5f5f5;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@theme {
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-light: #EFF6FF;
+
+  --color-surface: #FFFFFF;
+  --color-surface-subtle: #F9FAFB;
+  --color-surface-hover: #F3F4F6;
+
+  --color-text-main: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-light: #9CA3AF;
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
+  --font-sans: Inter, system-ui, sans-serif;
+
+  --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-a {
-  font-weight: 500;
-  color: #3498db;
-  text-decoration: none;
+@layer base {
+  :root {
+    font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    color: var(--color-text-main);
+    background-color: var(--color-surface-subtle);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-surface-subtle text-text-main antialiased min-h-screen;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-semibold tracking-tight text-text-main;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl;
+  }
+
+  button {
+    @apply font-medium transition-all duration-200 active:scale-95;
+  }
 }
 
-a:hover {
-  color: #2980b9;
-  text-decoration: underline;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  color: #2c3e50;
-  background-color: #f5f5f5;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-h1 {
-  font-size: 2.5em;
-  line-height: 1.2;
-  color: #2c3e50;
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-200 rounded-full;
 }
 
-button {
-  border-radius: 4px;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #3498db;
-  color: white;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-button:hover {
-  background-color: #2980b9;
-}
-
-button:focus,
-button:focus-visible {
-  outline: 3px solid rgba(52, 152, 219, 0.5);
-  outline-offset: 2px;
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-300;
 }

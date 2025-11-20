@@ -13,8 +13,6 @@ import Account from './pages/Account';
 // Layout
 import AppLayout from './components/Layout/AppLayout';
 
-import './App.css';
-
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!PUBLISHABLE_KEY) {
@@ -110,9 +108,11 @@ function AppContent() {
 function App() {
   if (!PUBLISHABLE_KEY) {
     return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <h1>Configuration Error</h1>
-        <p>Missing Clerk Publishable Key. Please add VITE_CLERK_PUBLISHABLE_KEY to your .env file.</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md text-center border border-red-100">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Configuration Error</h1>
+          <p className="text-gray-600">Missing Clerk Publishable Key. Please add VITE_CLERK_PUBLISHABLE_KEY to your .env file.</p>
+        </div>
       </div>
     );
   }

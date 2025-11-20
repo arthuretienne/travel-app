@@ -1,8 +1,8 @@
 // frontend/src/pages/Onboarding.jsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import './Onboarding.css';
+import { Zap, Target, Check, Calendar, MapPin, Globe, Clock, Shield, Users, Heart, Activity, Sun, Moon, Coffee, Briefcase, Plane } from 'lucide-react';
 
 // Constants
 const TRAVEL_REASONS = [
@@ -327,42 +327,91 @@ function Onboarding() {
     }
   };
 
+  // Helper for option buttons
+  const OptionButton = ({ selected, onClick, children, className = '' }) => (
+    <button
+      onClick={onClick}
+      className={`w-full p-4 text-left rounded-2xl border transition-all duration-200 flex items-center justify-between group ${selected
+        ? 'bg-primary-light border-primary text-primary ring-1 ring-primary'
+        : 'bg-white border-gray-200 text-text-main hover:border-primary/50 hover:bg-gray-50'
+        } ${className}`}
+    >
+      <span className="font-medium">{children}</span>
+      {selected && <Check size={18} className="text-primary" />}
+    </button>
+  );
+
+  // Helper for slider
+  const Slider = ({ value, onChange, min = 0, max = 100, leftLabel, rightLabel, centerLabel }) => (
+    <div className="py-4">
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={value}
+        onChange={onChange}
+        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+      />
+      <div className="flex justify-between mt-2 text-sm text-text-secondary font-medium">
+        <span>{leftLabel}</span>
+        {centerLabel && <span className="text-primary font-bold">{centerLabel}</span>}
+        <span>{rightLabel}</span>
+      </div>
+    </div>
+  );
+
   // Onboarding type selection screen
   if (!onboardingType) {
     return (
-      <div className="onboarding-container">
-        <div className="onboarding-type-selection">
-          <h1>Bienvenue sur Travel AI !</h1>
-          <p className="subtitle">
+      <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-6">
+        <div className="max-w-4xl w-full text-center">
+          <h1 className="text-4xl font-bold mb-4 text-text-main">Bienvenue sur Travel AI !</h1>
+          <p className="text-xl text-text-secondary mb-12 max-w-2xl mx-auto">
             Pour vous proposer les meilleures recommandations de voyage, nous avons besoin d'en savoir plus sur vos préférences.
           </p>
 
-          <div className="type-cards">
-            <div className="type-card" onClick={() => {
-              setOnboardingType('short');
-              setFormData(prev => ({ ...prev, onboardingType: 'short' }));
-            }}>
-              <div className="type-icon">⚡</div>
-              <h3>Onboarding Rapide</h3>
-              <p className="type-duration">~9 questions • 3-5 minutes</p>
-              <p className="type-description">
+          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+            <div
+              onClick={() => {
+                setOnboardingType('short');
+                setFormData(prev => ({ ...prev, onboardingType: 'short' }));
+              }}
+              className="bg-white p-8 rounded-3xl border border-gray-200 hover:border-primary hover:shadow-xl transition-all cursor-pointer group text-left relative overflow-hidden"
+            >
+              <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Zap size={28} />
+              </div>
+              <h3 className="text-2xl font-bold mb-2 text-text-main">Onboarding Rapide</h3>
+              <p className="text-sm font-medium text-text-secondary mb-4">~9 questions • 3-5 minutes</p>
+              <p className="text-text-secondary mb-8 leading-relaxed">
                 Les questions essentielles pour commencer. Vous pourrez compléter votre profil plus tard.
               </p>
-              <button className="type-button primary">Commencer rapidement</button>
+              <button className="w-full py-3 bg-surface-subtle text-text-main font-semibold rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
+                Commencer rapidement
+              </button>
             </div>
 
-            <div className="type-card recommended" onClick={() => {
-              setOnboardingType('long');
-              setFormData(prev => ({ ...prev, onboardingType: 'long' }));
-            }}>
-              <div className="recommended-badge">Recommandé</div>
-              <div className="type-icon">🎯</div>
-              <h3>Onboarding Complet</h3>
-              <p className="type-duration">~30 questions • 10-15 minutes</p>
-              <p className="type-description">
+            <div
+              onClick={() => {
+                setOnboardingType('long');
+                setFormData(prev => ({ ...prev, onboardingType: 'long' }));
+              }}
+              className="bg-white p-8 rounded-3xl border-2 border-primary shadow-soft cursor-pointer group text-left relative overflow-hidden"
+            >
+              <div className="absolute top-4 right-4 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">
+                Recommandé
+              </div>
+              <div className="w-14 h-14 bg-primary-light text-primary rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Target size={28} />
+              </div>
+              <h3 className="text-2xl font-bold mb-2 text-text-main">Onboarding Complet</h3>
+              <p className="text-sm font-medium text-text-secondary mb-4">~30 questions • 10-15 minutes</p>
+              <p className="text-text-secondary mb-8 leading-relaxed">
                 Des recommandations ultra-personnalisées basées sur un profil détaillé de vos préférences.
               </p>
-              <button className="type-button primary">Obtenir les meilleurs résultats</button>
+              <button className="w-full py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-colors">
+                Obtenir les meilleurs résultats
+              </button>
             </div>
           </div>
         </div>
@@ -373,203 +422,232 @@ function Onboarding() {
   // Short onboarding - one page
   if (onboardingType === 'short') {
     return (
-      <div className="onboarding-container">
-        <div className="onboarding-content short">
-          <div className="onboarding-header">
-            <h1>Parlez-nous de vous</h1>
-            <p>9 questions rapides pour des recommandations personnalisées</p>
+      <div className="min-h-screen bg-surface-subtle py-12 px-4">
+        <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-card p-8 md:p-12">
+          <div className="text-center mb-12">
+            <h1 className="text-3xl font-bold mb-2 text-text-main">Parlez-nous de vous</h1>
+            <p className="text-text-secondary">9 questions rapides pour des recommandations personnalisées</p>
           </div>
 
-          <div className="form-section">
-            <h3>1. Pourquoi aimez-vous voyager ?</h3>
-            <div className="options-grid">
-              {TRAVEL_REASONS.map(reason => (
-                <button
-                  key={reason}
-                  className={`option-button ${formData.whyTravel === reason ? 'selected' : ''}`}
-                  onClick={() => handleChange('whyTravel', reason)}
-                >
-                  {reason}
-                </button>
-              ))}
-            </div>
-            {errors.whyTravel && <span className="error">{errors.whyTravel}</span>}
-          </div>
-
-          <div className="form-section">
-            <h3>2. Votre but principal en voyage ?</h3>
-            <div className="options-grid">
-              {MAIN_GOALS.map(goal => (
-                <button
-                  key={goal}
-                  className={`option-button ${formData.mainGoal === goal ? 'selected' : ''}`}
-                  onClick={() => handleChange('mainGoal', goal)}
-                >
-                  {goal}
-                </button>
-              ))}
-            </div>
-            {errors.mainGoal && <span className="error">{errors.mainGoal}</span>}
-          </div>
-
-          <div className="form-section">
-            <h3>3. Votre style de voyage ?</h3>
-            <div className="options-grid">
-              {GLOBAL_STYLES.map(style => (
-                <button
-                  key={style.value}
-                  className={`option-button ${formData.globalStyle === style.value ? 'selected' : ''}`}
-                  onClick={() => handleChange('globalStyle', style.value)}
-                >
-                  {style.label}
-                </button>
-              ))}
-            </div>
-            {errors.globalStyle && <span className="error">{errors.globalStyle}</span>}
-          </div>
-
-          <div className="form-section">
-            <h3>4. Sélectionnez vos 3-5 activités favorites</h3>
-            <div className="activities-grid">
-              {ACTIVITIES.map(activity => (
-                <button
-                  key={activity}
-                  className={`activity-button ${formData.topActivities.includes(activity) ? 'selected' : ''}`}
-                  onClick={() => toggleArrayItem('topActivities', activity)}
-                  disabled={!formData.topActivities.includes(activity) && formData.topActivities.length >= 5}
-                >
-                  {activity}
-                </button>
-              ))}
-            </div>
-            <p className="helper-text">{formData.topActivities.length}/5 sélectionnées (minimum 3)</p>
-            {errors.topActivities && <span className="error">{errors.topActivities}</span>}
-          </div>
-
-          <div className="form-section">
-            <h3>5. Rythme idéal de voyage ?</h3>
-            <div className="options-grid">
-              {RHYTHM_OPTIONS.map(rhythm => (
-                <button
-                  key={rhythm.value}
-                  className={`option-button ${formData.idealRhythm === rhythm.value ? 'selected' : ''}`}
-                  onClick={() => handleChange('idealRhythm', rhythm.value)}
-                >
-                  {rhythm.label}
-                </button>
-              ))}
-            </div>
-            {errors.idealRhythm && <span className="error">{errors.idealRhythm}</span>}
-          </div>
-
-          <div className="form-section">
-            <h3>6. Combien de fois voyagez-vous par an ?</h3>
-            <div className="options-grid">
-              {[
-                { value: 1, label: '1 fois par an' },
-                { value: 2, label: '2-3 fois par an' },
-                { value: 4, label: '4-6 fois par an' },
-                { value: 7, label: '7+ fois par an' },
-              ].map(option => (
-                <button
-                  key={option.value}
-                  className={`option-button ${formData.tripsPerYear === option.value ? 'selected' : ''}`}
-                  onClick={() => handleChange('tripsPerYear', option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            {errors.tripsPerYear && <span className="error">{errors.tripsPerYear}</span>}
-          </div>
-
-          <div className="form-section">
-            <h3>7. Vos disponibilités de départ</h3>
-            <div className="options-grid">
-              {DEPARTURE_FLEXIBILITY.map(option => (
-                <button
-                  key={option.value}
-                  className={`option-button ${formData.departureFlexibility === option.value ? 'selected' : ''}`}
-                  onClick={() => handleChange('departureFlexibility', option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            {errors.departureFlexibility && <span className="error">{errors.departureFlexibility}</span>}
-          </div>
-
-          <div className="form-section">
-            <h3>8. Connecter votre calendrier (Google, Outlook) ?</h3>
-            <p className="helper-text">Cela nous permettra de vous suggérer les meilleurs moments pour voyager</p>
-            <div className="options-grid">
-              <button
-                className={`option-button ${formData.calendarConnected === true ? 'selected' : ''}`}
-                onClick={() => {
-                  handleChange('calendarConnected', true);
-                  if (formData.calendarType === '') {
-                    handleChange('calendarType', 'google');
-                  }
-                }}
-              >
-                Oui, connecter mon calendrier
-              </button>
-              <button
-                className={`option-button ${formData.calendarConnected === false ? 'selected' : ''}`}
-                onClick={() => {
-                  handleChange('calendarConnected', false);
-                  handleChange('calendarType', 'manual');
-                }}
-              >
-                Non, saisie manuelle
-              </button>
-            </div>
-
-            {formData.calendarConnected && (
-              <div className="sub-section">
-                <label>Type de calendrier</label>
-                <div className="options-grid">
-                  <button
-                    className={`option-button ${formData.calendarType === 'google' ? 'selected' : ''}`}
-                    onClick={() => handleChange('calendarType', 'google')}
+          <div className="space-y-12">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Heart size={20} className="text-primary" /> 1. Pourquoi aimez-vous voyager ?
+              </h3>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {TRAVEL_REASONS.map(reason => (
+                  <OptionButton
+                    key={reason}
+                    selected={formData.whyTravel === reason}
+                    onClick={() => handleChange('whyTravel', reason)}
                   >
-                    Google Calendar
-                  </button>
-                  <button
-                    className={`option-button ${formData.calendarType === 'outlook' ? 'selected' : ''}`}
-                    onClick={() => handleChange('calendarType', 'outlook')}
-                  >
-                    Outlook Calendar
-                  </button>
-                </div>
+                    {reason}
+                  </OptionButton>
+                ))}
               </div>
-            )}
-          </div>
-
-          <div className="form-section">
-            <h3>9. Vos aéroports/villes de départ</h3>
-            <div className="airports-grid">
-              {AIRPORTS.map(airport => (
-                <button
-                  key={airport.code}
-                  className={`airport-button ${formData.preferredAirports.includes(airport.code) ? 'selected' : ''}`}
-                  onClick={() => toggleArrayItem('preferredAirports', airport.code)}
-                >
-                  {airport.name}
-                </button>
-              ))}
+              {errors.whyTravel && <span className="text-red-500 text-sm">{errors.whyTravel}</span>}
             </div>
-            {errors.preferredAirports && <span className="error">{errors.preferredAirports}</span>}
-          </div>
 
-          <div className="form-actions">
-            <button
-              className="submit-button"
-              onClick={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? 'Enregistrement...' : 'Terminer'}
-            </button>
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Target size={20} className="text-primary" /> 2. Votre but principal en voyage ?
+              </h3>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {MAIN_GOALS.map(goal => (
+                  <OptionButton
+                    key={goal}
+                    selected={formData.mainGoal === goal}
+                    onClick={() => handleChange('mainGoal', goal)}
+                  >
+                    {goal}
+                  </OptionButton>
+                ))}
+              </div>
+              {errors.mainGoal && <span className="text-red-500 text-sm">{errors.mainGoal}</span>}
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Globe size={20} className="text-primary" /> 3. Votre style de voyage ?
+              </h3>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {GLOBAL_STYLES.map(style => (
+                  <OptionButton
+                    key={style.value}
+                    selected={formData.globalStyle === style.value}
+                    onClick={() => handleChange('globalStyle', style.value)}
+                  >
+                    {style.label}
+                  </OptionButton>
+                ))}
+              </div>
+              {errors.globalStyle && <span className="text-red-500 text-sm">{errors.globalStyle}</span>}
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Activity size={20} className="text-primary" /> 4. Sélectionnez vos 3-5 activités favorites
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {ACTIVITIES.map(activity => (
+                  <button
+                    key={activity}
+                    className={`p-3 text-sm font-medium rounded-xl border transition-all ${formData.topActivities.includes(activity)
+                      ? 'bg-primary-light border-primary text-primary'
+                      : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
+                      } ${!formData.topActivities.includes(activity) && formData.topActivities.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => toggleArrayItem('topActivities', activity)}
+                    disabled={!formData.topActivities.includes(activity) && formData.topActivities.length >= 5}
+                  >
+                    {activity}
+                  </button>
+                ))}
+              </div>
+              <p className="text-sm text-text-secondary text-right">{formData.topActivities.length}/5 sélectionnées</p>
+              {errors.topActivities && <span className="text-red-500 text-sm">{errors.topActivities}</span>}
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Clock size={20} className="text-primary" /> 5. Rythme idéal de voyage ?
+              </h3>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {RHYTHM_OPTIONS.map(rhythm => (
+                  <OptionButton
+                    key={rhythm.value}
+                    selected={formData.idealRhythm === rhythm.value}
+                    onClick={() => handleChange('idealRhythm', rhythm.value)}
+                    className="text-sm"
+                  >
+                    {rhythm.label}
+                  </OptionButton>
+                ))}
+              </div>
+              {errors.idealRhythm && <span className="text-red-500 text-sm">{errors.idealRhythm}</span>}
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Plane size={20} className="text-primary" /> 6. Combien de fois voyagez-vous par an ?
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { value: 1, label: '1 fois' },
+                  { value: 2, label: '2-3 fois' },
+                  { value: 4, label: '4-6 fois' },
+                  { value: 7, label: '7+ fois' },
+                ].map(option => (
+                  <OptionButton
+                    key={option.value}
+                    selected={formData.tripsPerYear === option.value}
+                    onClick={() => handleChange('tripsPerYear', option.value)}
+                    className="justify-center text-center"
+                  >
+                    {option.label}
+                  </OptionButton>
+                ))}
+              </div>
+              {errors.tripsPerYear && <span className="text-red-500 text-sm">{errors.tripsPerYear}</span>}
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Calendar size={20} className="text-primary" /> 7. Vos disponibilités de départ
+              </h3>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {DEPARTURE_FLEXIBILITY.map(option => (
+                  <OptionButton
+                    key={option.value}
+                    selected={formData.departureFlexibility === option.value}
+                    onClick={() => handleChange('departureFlexibility', option.value)}
+                    className="text-sm"
+                  >
+                    {option.label}
+                  </OptionButton>
+                ))}
+              </div>
+              {errors.departureFlexibility && <span className="text-red-500 text-sm">{errors.departureFlexibility}</span>}
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Calendar size={20} className="text-primary" /> 8. Connecter votre calendrier ?
+              </h3>
+              <p className="text-sm text-text-secondary">Cela nous permettra de vous suggérer les meilleurs moments pour voyager</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <OptionButton
+                  selected={formData.calendarConnected === true}
+                  onClick={() => {
+                    handleChange('calendarConnected', true);
+                    if (formData.calendarType === '') {
+                      handleChange('calendarType', 'google');
+                    }
+                  }}
+                >
+                  Oui, connecter mon calendrier
+                </OptionButton>
+                <OptionButton
+                  selected={formData.calendarConnected === false}
+                  onClick={() => {
+                    handleChange('calendarConnected', false);
+                    handleChange('calendarType', 'manual');
+                  }}
+                >
+                  Non, saisie manuelle
+                </OptionButton>
+              </div>
+
+              {formData.calendarConnected && (
+                <div className="p-4 bg-surface-subtle rounded-2xl border border-gray-200 mt-4">
+                  <label className="text-sm font-medium mb-3 block">Type de calendrier</label>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <OptionButton
+                      selected={formData.calendarType === 'google'}
+                      onClick={() => handleChange('calendarType', 'google')}
+                    >
+                      Google Calendar
+                    </OptionButton>
+                    <OptionButton
+                      selected={formData.calendarType === 'outlook'}
+                      onClick={() => handleChange('calendarType', 'outlook')}
+                    >
+                      Outlook Calendar
+                    </OptionButton>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <MapPin size={20} className="text-primary" /> 9. Vos aéroports/villes de départ
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {AIRPORTS.map(airport => (
+                  <button
+                    key={airport.code}
+                    className={`p-3 text-sm font-medium rounded-xl border transition-all ${formData.preferredAirports.includes(airport.code)
+                      ? 'bg-primary-light border-primary text-primary'
+                      : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
+                      }`}
+                    onClick={() => toggleArrayItem('preferredAirports', airport.code)}
+                  >
+                    {airport.name}
+                  </button>
+                ))}
+              </div>
+              {errors.preferredAirports && <span className="text-red-500 text-sm">{errors.preferredAirports}</span>}
+            </div>
+
+            <div className="pt-8 border-t border-gray-100">
+              <button
+                className="w-full py-4 bg-primary text-white text-lg font-bold rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? 'Enregistrement...' : 'Terminer'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -578,163 +656,130 @@ function Onboarding() {
 
   // Long onboarding - multi-part
   const renderPart0 = () => (
-    <div className="form-content">
-      <h2>Partie 1 : Style & Objectif du voyage</h2>
+    <div className="space-y-8 animate-fade-in">
+      <h2 className="text-2xl font-bold text-text-main mb-6">Partie 1 : Style & Objectif du voyage</h2>
 
-      <div className="form-section">
-        <label>Pourquoi aimez-vous voyager ?</label>
-        <div className="options-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Pourquoi aimez-vous voyager ?</label>
+        <div className="grid sm:grid-cols-2 gap-3">
           {TRAVEL_REASONS.map(reason => (
-            <button
+            <OptionButton
               key={reason}
-              className={`option-button ${formData.whyTravel === reason ? 'selected' : ''}`}
+              selected={formData.whyTravel === reason}
               onClick={() => handleChange('whyTravel', reason)}
             >
               {reason}
-            </button>
+            </OptionButton>
           ))}
         </div>
-        {errors.whyTravel && <span className="error">{errors.whyTravel}</span>}
+        {errors.whyTravel && <span className="text-red-500 text-sm">{errors.whyTravel}</span>}
       </div>
 
-      <div className="form-section">
-        <label>Votre but principal en voyage ?</label>
-        <div className="options-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Votre but principal en voyage ?</label>
+        <div className="grid sm:grid-cols-2 gap-3">
           {MAIN_GOALS.map(goal => (
-            <button
+            <OptionButton
               key={goal}
-              className={`option-button ${formData.mainGoal === goal ? 'selected' : ''}`}
+              selected={formData.mainGoal === goal}
               onClick={() => handleChange('mainGoal', goal)}
             >
               {goal}
-            </button>
+            </OptionButton>
           ))}
         </div>
-        {errors.mainGoal && <span className="error">{errors.mainGoal}</span>}
+        {errors.mainGoal && <span className="text-red-500 text-sm">{errors.mainGoal}</span>}
       </div>
 
-      <div className="form-section">
-        <label>Style global de voyage</label>
-        <div className="options-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Style global de voyage</label>
+        <div className="grid sm:grid-cols-2 gap-3">
           {GLOBAL_STYLES.map(style => (
-            <button
+            <OptionButton
               key={style.value}
-              className={`option-button ${formData.globalStyle === style.value ? 'selected' : ''}`}
+              selected={formData.globalStyle === style.value}
               onClick={() => handleChange('globalStyle', style.value)}
             >
               {style.label}
-            </button>
+            </OptionButton>
           ))}
         </div>
-        {errors.globalStyle && <span className="error">{errors.globalStyle}</span>}
+        {errors.globalStyle && <span className="text-red-500 text-sm">{errors.globalStyle}</span>}
       </div>
 
-      <div className="form-section">
-        <label>Tolérance au risque et à l'imprévu</label>
-        <input
-          type="range"
-          min="0"
-          max="100"
+      <div className="space-y-6 pt-4">
+        <Slider
+          leftLabel="Prudent"
+          rightLabel="Aventureux"
+          centerLabel={`${formData.riskTolerance}%`}
           value={formData.riskTolerance}
           onChange={(e) => handleChange('riskTolerance', parseInt(e.target.value))}
-          className="slider"
         />
-        <div className="slider-labels">
-          <span>Prudent</span>
-          <span className="slider-value">{formData.riskTolerance}%</span>
-          <span>Aventureux</span>
-        </div>
-      </div>
-
-      <div className="form-section">
-        <label>Appétence pour l'originalité</label>
-        <input
-          type="range"
-          min="0"
-          max="100"
+        <Slider
+          leftLabel="Classique"
+          rightLabel="Original"
+          centerLabel={`${formData.originalityAppetite}%`}
           value={formData.originalityAppetite}
           onChange={(e) => handleChange('originalityAppetite', parseInt(e.target.value))}
-          className="slider"
         />
-        <div className="slider-labels">
-          <span>Classique</span>
-          <span className="slider-value">{formData.originalityAppetite}%</span>
-          <span>Original</span>
-        </div>
-      </div>
-
-      <div className="form-section">
-        <label>Introverti ou extraverti ?</label>
-        <input
-          type="range"
-          min="0"
-          max="100"
+        <Slider
+          leftLabel="Introverti"
+          rightLabel="Extraverti"
+          centerLabel={`${formData.introvertExtrovert}%`}
           value={formData.introvertExtrovert}
           onChange={(e) => handleChange('introvertExtrovert', parseInt(e.target.value))}
-          className="slider"
         />
-        <div className="slider-labels">
-          <span>Introverti</span>
-          <span className="slider-value">{formData.introvertExtrovert}%</span>
-          <span>Extraverti</span>
-        </div>
       </div>
 
-      <div className="form-section">
-        <label>Vous préférez planifier ou improviser ?</label>
-        <div className="options-grid">
-          <button
-            className={`option-button ${formData.plannerImprovisator === 'planner' ? 'selected' : ''}`}
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Vous préférez planifier ou improviser ?</label>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <OptionButton
+            selected={formData.plannerImprovisator === 'planner'}
             onClick={() => handleChange('plannerImprovisator', 'planner')}
           >
-            Planifier à l'avance
-          </button>
-          <button
-            className={`option-button ${formData.plannerImprovisator === 'balanced' ? 'selected' : ''}`}
+            Planifier
+          </OptionButton>
+          <OptionButton
+            selected={formData.plannerImprovisator === 'balanced'}
             onClick={() => handleChange('plannerImprovisator', 'balanced')}
           >
-            Un peu des deux
-          </button>
-          <button
-            className={`option-button ${formData.plannerImprovisator === 'improvisator' ? 'selected' : ''}`}
+            Équilibré
+          </OptionButton>
+          <OptionButton
+            selected={formData.plannerImprovisator === 'improvisator'}
             onClick={() => handleChange('plannerImprovisator', 'improvisator')}
           >
-            Improviser sur place
-          </button>
+            Improviser
+          </OptionButton>
         </div>
       </div>
 
-      <div className="form-section">
-        <label>Confort moderne vs Expérience authentique</label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={formData.modernComfortAuth}
-          onChange={(e) => handleChange('modernComfortAuth', parseInt(e.target.value))}
-          className="slider"
-        />
-        <div className="slider-labels">
-          <span>Confort moderne</span>
-          <span className="slider-value">{formData.modernComfortAuth}%</span>
-          <span>Authenticité locale</span>
-        </div>
-      </div>
+      <Slider
+        leftLabel="Confort moderne"
+        rightLabel="Authenticité locale"
+        centerLabel={`${formData.modernComfortAuth}%`}
+        value={formData.modernComfortAuth}
+        onChange={(e) => handleChange('modernComfortAuth', parseInt(e.target.value))}
+      />
     </div>
   );
 
   const renderPart1 = () => (
-    <div className="form-content">
-      <h2>Partie 2 : Activités préférées</h2>
+    <div className="space-y-8 animate-fade-in">
+      <h2 className="text-2xl font-bold text-text-main mb-6">Partie 2 : Activités préférées</h2>
 
-      <div className="form-section">
-        <label>Sélectionnez vos top 3-5 activités favorites</label>
-        <p className="helper-text">Ces informations nous aideront à personnaliser vos recommandations</p>
-        <div className="activities-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Sélectionnez vos top 3-5 activités favorites</label>
+        <p className="text-sm text-text-secondary">Ces informations nous aideront à personnaliser vos recommandations</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {ACTIVITIES.map(activity => (
             <button
               key={activity}
-              className={`activity-button ${formData.topActivities.includes(activity) ? 'selected' : ''}`}
+              className={`p-4 text-sm font-medium rounded-xl border transition-all ${formData.topActivities.includes(activity)
+                ? 'bg-primary-light border-primary text-primary'
+                : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
+                } ${!formData.topActivities.includes(activity) && formData.topActivities.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={() => toggleArrayItem('topActivities', activity)}
               disabled={!formData.topActivities.includes(activity) && formData.topActivities.length >= 5}
             >
@@ -742,199 +787,189 @@ function Onboarding() {
             </button>
           ))}
         </div>
-        <p className="helper-text">{formData.topActivities.length}/5 sélectionnées (minimum 3)</p>
-        {errors.topActivities && <span className="error">{errors.topActivities}</span>}
+        <p className="text-sm text-text-secondary text-right">{formData.topActivities.length}/5 sélectionnées</p>
+        {errors.topActivities && <span className="text-red-500 text-sm">{errors.topActivities}</span>}
       </div>
     </div>
   );
 
   const renderPart2 = () => (
-    <div className="form-content">
-      <h2>Partie 3 : Rythme et confort</h2>
+    <div className="space-y-8 animate-fade-in">
+      <h2 className="text-2xl font-bold text-text-main mb-6">Partie 3 : Rythme et confort</h2>
 
-      <div className="form-section">
-        <label>Rythme idéal de voyage</label>
-        <div className="options-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Rythme idéal de voyage</label>
+        <div className="grid sm:grid-cols-3 gap-3">
           {RHYTHM_OPTIONS.map(rhythm => (
-            <button
+            <OptionButton
               key={rhythm.value}
-              className={`option-button ${formData.idealRhythm === rhythm.value ? 'selected' : ''}`}
+              selected={formData.idealRhythm === rhythm.value}
               onClick={() => handleChange('idealRhythm', rhythm.value)}
+              className="text-sm"
             >
               {rhythm.label}
-            </button>
+            </OptionButton>
           ))}
         </div>
-        {errors.idealRhythm && <span className="error">{errors.idealRhythm}</span>}
+        {errors.idealRhythm && <span className="text-red-500 text-sm">{errors.idealRhythm}</span>}
       </div>
 
-      <div className="form-section">
-        <label>Préférence d'hébergement</label>
-        <div className="options-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Préférence d'hébergement</label>
+        <div className="grid sm:grid-cols-2 gap-3">
           {ACCOMMODATION_OPTIONS.map(acc => (
-            <button
+            <OptionButton
               key={acc.value}
-              className={`option-button ${formData.accommodationPref === acc.value ? 'selected' : ''}`}
+              selected={formData.accommodationPref === acc.value}
               onClick={() => handleChange('accommodationPref', acc.value)}
             >
               {acc.label}
-            </button>
+            </OptionButton>
           ))}
         </div>
-        {errors.accommodationPref && <span className="error">{errors.accommodationPref}</span>}
+        {errors.accommodationPref && <span className="text-red-500 text-sm">{errors.accommodationPref}</span>}
       </div>
 
-      <div className="form-section">
-        <label>Confort vs Authenticité</label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={formData.comfortAuthSlider}
-          onChange={(e) => handleChange('comfortAuthSlider', parseInt(e.target.value))}
-          className="slider"
-        />
-        <div className="slider-labels">
-          <span>Confort</span>
-          <span className="slider-value">{formData.comfortAuthSlider}%</span>
-          <span>Authenticité</span>
-        </div>
-      </div>
+      <Slider
+        leftLabel="Confort"
+        rightLabel="Authenticité"
+        centerLabel={`${formData.comfortAuthSlider}%`}
+        value={formData.comfortAuthSlider}
+        onChange={(e) => handleChange('comfortAuthSlider', parseInt(e.target.value))}
+      />
 
-      <div className="form-section">
-        <label>Préférence de séjour</label>
-        <div className="options-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Préférence de séjour</label>
+        <div className="grid sm:grid-cols-3 gap-3">
           {STAY_OPTIONS.map(stay => (
-            <button
+            <OptionButton
               key={stay.value}
-              className={`option-button ${formData.stayOrMove === stay.value ? 'selected' : ''}`}
+              selected={formData.stayOrMove === stay.value}
               onClick={() => handleChange('stayOrMove', stay.value)}
+              className="text-sm"
             >
               {stay.label}
-            </button>
+            </OptionButton>
           ))}
         </div>
-        {errors.stayOrMove && <span className="error">{errors.stayOrMove}</span>}
+        {errors.stayOrMove && <span className="text-red-500 text-sm">{errors.stayOrMove}</span>}
       </div>
 
-      <div className="form-section">
-        <label>Moyens de transport acceptés</label>
-        <div className="transport-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Moyens de transport acceptés</label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {TRANSPORT_MODES.map(mode => (
             <button
               key={mode}
-              className={`transport-button ${formData.transportModes.includes(mode) ? 'selected' : ''}`}
+              className={`p-3 text-sm font-medium rounded-xl border transition-all ${formData.transportModes.includes(mode)
+                ? 'bg-primary-light border-primary text-primary'
+                : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
+                }`}
               onClick={() => toggleArrayItem('transportModes', mode)}
             >
               {mode}
             </button>
           ))}
         </div>
-        {errors.transportModes && <span className="error">{errors.transportModes}</span>}
+        {errors.transportModes && <span className="text-red-500 text-sm">{errors.transportModes}</span>}
       </div>
 
-      <div className="form-section">
-        <label>Confort de transport</label>
-        <div className="options-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Confort de transport</label>
+        <div className="grid sm:grid-cols-2 gap-3">
           {TRANSPORT_COMFORT.map(comfort => (
-            <button
+            <OptionButton
               key={comfort.value}
-              className={`option-button ${formData.transportComfort === comfort.value ? 'selected' : ''}`}
+              selected={formData.transportComfort === comfort.value}
               onClick={() => handleChange('transportComfort', comfort.value)}
             >
               {comfort.label}
-            </button>
+            </OptionButton>
           ))}
         </div>
       </div>
 
-      <div className="form-section">
-        <label>Durée maximale de transport acceptable (heures)</label>
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Durée maximale de transport (heures)</label>
         <input
           type="number"
           min="1"
           max="24"
           value={formData.maxTransportHours}
           onChange={(e) => handleChange('maxTransportHours', parseInt(e.target.value))}
-          className="number-input"
+          className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
         />
       </div>
 
-      <div className="form-section">
-        <label>Importance du confort matériel</label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={formData.materialComfort}
-          onChange={(e) => handleChange('materialComfort', parseInt(e.target.value))}
-          className="slider"
-        />
-        <div className="slider-labels">
-          <span>Peu important</span>
-          <span className="slider-value">{formData.materialComfort}%</span>
-          <span>Très important</span>
-        </div>
-      </div>
+      <Slider
+        leftLabel="Peu important"
+        rightLabel="Très important"
+        centerLabel={`${formData.materialComfort}%`}
+        value={formData.materialComfort}
+        onChange={(e) => handleChange('materialComfort', parseInt(e.target.value))}
+      />
     </div>
   );
 
   const renderPart3 = () => (
-    <div className="form-content">
-      <h2>Partie 4 : Contraintes pratiques</h2>
+    <div className="space-y-8 animate-fade-in">
+      <h2 className="text-2xl font-bold text-text-main mb-6">Partie 4 : Contraintes pratiques</h2>
 
-      <div className="form-section">
-        <label>Préférence visa</label>
-        <div className="options-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Préférence visa</label>
+        <div className="grid sm:grid-cols-3 gap-3">
           {VISA_PREFERENCES.map(visa => (
-            <button
+            <OptionButton
               key={visa.value}
-              className={`option-button ${formData.visaPreference === visa.value ? 'selected' : ''}`}
+              selected={formData.visaPreference === visa.value}
               onClick={() => handleChange('visaPreference', visa.value)}
+              className="text-sm"
             >
               {visa.label}
-            </button>
+            </OptionButton>
           ))}
         </div>
-        {errors.visaPreference && <span className="error">{errors.visaPreference}</span>}
+        {errors.visaPreference && <span className="text-red-500 text-sm">{errors.visaPreference}</span>}
       </div>
 
-      <div className="form-section">
-        <label>Pays à éviter (optionnel)</label>
-        <div className="country-input-group">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Pays à éviter (optionnel)</label>
+        <div className="flex gap-2">
           <input
             type="text"
             value={countryInput}
             onChange={(e) => setCountryInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAddCountry()}
             placeholder="Entrez un pays..."
-            className="text-input"
+            className="flex-1 p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
           />
-          <button onClick={handleAddCountry} className="add-button">Ajouter</button>
+          <button onClick={handleAddCountry} className="px-6 bg-text-main text-white font-medium rounded-xl hover:bg-black transition-colors">
+            Ajouter
+          </button>
         </div>
         {formData.avoidCountries.length > 0 && (
-          <div className="tags">
+          <div className="flex flex-wrap gap-2 mt-2">
             {formData.avoidCountries.map(country => (
-              <span key={country} className="tag">
+              <span key={country} className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-text-main rounded-lg text-sm">
                 {country}
-                <button onClick={() => removeCountry(country)} className="tag-remove">×</button>
+                <button onClick={() => removeCountry(country)} className="hover:text-red-500">×</button>
               </span>
             ))}
           </div>
         )}
       </div>
 
-      <div className="form-section">
-        <label>Besoins de mobilité</label>
-        <div className="options-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Besoins de mobilité</label>
+        <div className="grid sm:grid-cols-2 gap-3">
           {MOBILITY_OPTIONS.map(mobility => (
-            <button
+            <OptionButton
               key={mobility.value}
-              className={`option-button ${formData.mobilityNeeds === mobility.value ? 'selected' : ''}`}
+              selected={formData.mobilityNeeds === mobility.value}
               onClick={() => handleChange('mobilityNeeds', mobility.value)}
             >
               {mobility.label}
-            </button>
+            </OptionButton>
           ))}
         </div>
         {formData.mobilityNeeds === 'other' && (
@@ -943,90 +978,54 @@ function Onboarding() {
             value={formData.mobilityDetails}
             onChange={(e) => handleChange('mobilityDetails', e.target.value)}
             placeholder="Précisez vos besoins..."
-            className="text-input"
+            className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all mt-2"
           />
         )}
       </div>
 
-      <div className="form-section">
-        <label>Importance de la sécurité</label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={formData.securityImportance}
-          onChange={(e) => handleChange('securityImportance', parseInt(e.target.value))}
-          className="slider"
-        />
-        <div className="slider-labels">
-          <span>Peu important</span>
-          <span className="slider-value">{formData.securityImportance}%</span>
-          <span>Très important</span>
-        </div>
-      </div>
+      <Slider
+        leftLabel="Sécurité peu importante"
+        rightLabel="Très importante"
+        centerLabel={`${formData.securityImportance}%`}
+        value={formData.securityImportance}
+        onChange={(e) => handleChange('securityImportance', parseInt(e.target.value))}
+      />
 
-      <div className="form-section">
-        <label>Tolérance aux foules</label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={formData.crowdTolerance}
-          onChange={(e) => handleChange('crowdTolerance', parseInt(e.target.value))}
-          className="slider"
-        />
-        <div className="slider-labels">
-          <span>J'évite les foules</span>
-          <span className="slider-value">{formData.crowdTolerance}%</span>
-          <span>Peu importe</span>
-        </div>
-      </div>
+      <Slider
+        leftLabel="J'évite les foules"
+        rightLabel="Peu importe"
+        centerLabel={`${formData.crowdTolerance}%`}
+        value={formData.crowdTolerance}
+        onChange={(e) => handleChange('crowdTolerance', parseInt(e.target.value))}
+      />
 
-      <div className="form-section">
-        <label>Sensibilité écologique</label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={formData.ecoSensitivity}
-          onChange={(e) => handleChange('ecoSensitivity', parseInt(e.target.value))}
-          className="slider"
-        />
-        <div className="slider-labels">
-          <span>Peu important</span>
-          <span className="slider-value">{formData.ecoSensitivity}%</span>
-          <span>Très important</span>
-        </div>
-      </div>
+      <Slider
+        leftLabel="Écologie peu importante"
+        rightLabel="Très importante"
+        centerLabel={`${formData.ecoSensitivity}%`}
+        value={formData.ecoSensitivity}
+        onChange={(e) => handleChange('ecoSensitivity', parseInt(e.target.value))}
+      />
 
-      <div className="form-section">
-        <label>Adaptabilité culturelle</label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={formData.culturalAdaptability}
-          onChange={(e) => handleChange('culturalAdaptability', parseInt(e.target.value))}
-          className="slider"
-        />
-        <div className="slider-labels">
-          <span>Moins à l'aise</span>
-          <span className="slider-value">{formData.culturalAdaptability}%</span>
-          <span>Très à l'aise</span>
-        </div>
-      </div>
+      <Slider
+        leftLabel="Adaptabilité faible"
+        rightLabel="Très à l'aise"
+        centerLabel={`${formData.culturalAdaptability}%`}
+        value={formData.culturalAdaptability}
+        onChange={(e) => handleChange('culturalAdaptability', parseInt(e.target.value))}
+      />
 
-      <div className="form-section">
-        <label>Sensibilité climatique</label>
-        <div className="options-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Sensibilité climatique</label>
+        <div className="grid sm:grid-cols-2 gap-3">
           {CLIMATE_SENSITIVITY.map(climate => (
-            <button
+            <OptionButton
               key={climate.value}
-              className={`option-button ${formData.climateSensitivity === climate.value ? 'selected' : ''}`}
+              selected={formData.climateSensitivity === climate.value}
               onClick={() => handleChange('climateSensitivity', climate.value)}
             >
               {climate.label}
-            </button>
+            </OptionButton>
           ))}
         </div>
       </div>
@@ -1034,98 +1033,106 @@ function Onboarding() {
   );
 
   const renderPart4 = () => (
-    <div className="form-content">
-      <h2>Partie 5 : Disponibilités et patterns de voyage</h2>
+    <div className="space-y-8 animate-fade-in">
+      <h2 className="text-2xl font-bold text-text-main mb-6">Partie 5 : Disponibilités et patterns</h2>
 
-      <div className="form-section">
-        <label>Fréquence moyenne de voyages par an</label>
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Fréquence moyenne de voyages par an</label>
         <input
           type="number"
           min="1"
           max="20"
           value={formData.tripsPerYear}
           onChange={(e) => handleChange('tripsPerYear', parseInt(e.target.value))}
-          className="number-input"
+          className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
         />
       </div>
 
-      <div className="form-section">
-        <label>Flexibilité de départ</label>
-        <div className="options-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Flexibilité de départ</label>
+        <div className="grid sm:grid-cols-3 gap-3">
           {DEPARTURE_FLEXIBILITY.map(flex => (
-            <button
+            <OptionButton
               key={flex.value}
-              className={`option-button ${formData.departureFlexibility === flex.value ? 'selected' : ''}`}
+              selected={formData.departureFlexibility === flex.value}
               onClick={() => handleChange('departureFlexibility', flex.value)}
+              className="text-sm"
             >
               {flex.label}
-            </button>
+            </OptionButton>
           ))}
         </div>
       </div>
 
-      <div className="form-section">
-        <label>Congés annuels (jours)</label>
-        <input
-          type="number"
-          min="0"
-          max="60"
-          value={formData.annualLeaveDays}
-          onChange={(e) => handleChange('annualLeaveDays', parseInt(e.target.value))}
-          className="number-input"
-        />
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label className="block font-medium text-text-main">Congés annuels (jours)</label>
+          <input
+            type="number"
+            min="0"
+            max="60"
+            value={formData.annualLeaveDays}
+            onChange={(e) => handleChange('annualLeaveDays', parseInt(e.target.value))}
+            className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="block font-medium text-text-main">Congés déjà pris</label>
+          <input
+            type="number"
+            min="0"
+            max={formData.annualLeaveDays}
+            value={formData.takenLeaveDays}
+            onChange={(e) => handleChange('takenLeaveDays', parseInt(e.target.value))}
+            className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+          />
+        </div>
       </div>
 
-      <div className="form-section">
-        <label>Congés déjà pris cette année (jours)</label>
-        <input
-          type="number"
-          min="0"
-          max={formData.annualLeaveDays}
-          value={formData.takenLeaveDays}
-          onChange={(e) => handleChange('takenLeaveDays', parseInt(e.target.value))}
-          className="number-input"
-        />
-      </div>
-
-      <div className="form-section">
-        <label>Durée moyenne de voyage souhaitée (jours)</label>
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Durée moyenne de voyage souhaitée (jours)</label>
         <input
           type="number"
           min="1"
           max="90"
           value={formData.avgTripDuration}
           onChange={(e) => handleChange('avgTripDuration', parseInt(e.target.value))}
-          className="number-input"
+          className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
         />
       </div>
 
-      <div className="form-section">
-        <label>Aéroports / Villes de départ préférées</label>
-        <div className="airports-grid">
+      <div className="space-y-4">
+        <label className="block font-medium text-text-main">Aéroports / Villes de départ préférées</label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {AIRPORTS.map(airport => (
             <button
               key={airport.code}
-              className={`airport-button ${formData.preferredAirports.includes(airport.code) ? 'selected' : ''}`}
+              className={`p-3 text-sm font-medium rounded-xl border transition-all ${formData.preferredAirports.includes(airport.code)
+                ? 'bg-primary-light border-primary text-primary'
+                : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
+                }`}
               onClick={() => toggleArrayItem('preferredAirports', airport.code)}
             >
               {airport.name}
             </button>
           ))}
         </div>
-        {errors.preferredAirports && <span className="error">{errors.preferredAirports}</span>}
+        {errors.preferredAirports && <span className="text-red-500 text-sm">{errors.preferredAirports}</span>}
       </div>
     </div>
   );
 
   return (
-    <div className="onboarding-container">
-      <div className="onboarding-content long">
-        <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${((currentPart + 1) / 5) * 100}%` }}></div>
+    <div className="min-h-screen bg-surface-subtle py-12 px-4">
+      <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-card p-8 md:p-12">
+        <div className="w-full h-2 bg-gray-100 rounded-full mb-8 overflow-hidden">
+          <div
+            className="h-full bg-primary transition-all duration-500 ease-out"
+            style={{ width: `${((currentPart + 1) / 5) * 100}%` }}
+          ></div>
         </div>
 
-        <div className="progress-text">
+        <div className="text-center text-sm font-medium text-text-secondary mb-8">
           Partie {currentPart + 1} sur 5
         </div>
 
@@ -1135,20 +1142,26 @@ function Onboarding() {
         {currentPart === 3 && renderPart3()}
         {currentPart === 4 && renderPart4()}
 
-        <div className="form-actions">
+        <div className="flex justify-between gap-4 mt-12 pt-8 border-t border-gray-100">
           {currentPart > 0 && (
-            <button className="nav-button secondary" onClick={handlePrevious}>
+            <button
+              className="px-8 py-4 bg-white border border-gray-200 text-text-main font-semibold rounded-2xl hover:bg-gray-50 transition-colors"
+              onClick={handlePrevious}
+            >
               Précédent
             </button>
           )}
 
           {currentPart < 4 ? (
-            <button className="nav-button primary" onClick={handleNext}>
+            <button
+              className="flex-1 px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all ml-auto"
+              onClick={handleNext}
+            >
               Suivant
             </button>
           ) : (
             <button
-              className="submit-button"
+              className="flex-1 px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all ml-auto disabled:opacity-50"
               onClick={handleSubmit}
               disabled={loading}
             >
