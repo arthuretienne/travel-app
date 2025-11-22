@@ -11,6 +11,7 @@ import Results from './pages/Results';
 import Account from './pages/Account';
 import Trips from './pages/Trips';
 import CreateCollaborativeTrip from './pages/CreateCollaborativeTrip';
+import TripDetail from './pages/TripDetail';
 
 // Layout
 import AppLayout from './components/Layout/AppLayout';
@@ -112,6 +113,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <CreateCollaborativeTrip />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:id"
+          element={
+            <ProtectedRoute>
+              <TripDetail />
             </ProtectedRoute>
           }
         />
