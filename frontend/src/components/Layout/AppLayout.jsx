@@ -1,7 +1,7 @@
 // frontend/src/components/Layout/AppLayout.jsx
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserButton, useUser } from '@clerk/clerk-react';
-import { LayoutDashboard, PlusCircle, User, Plane, Users } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, User, Plane } from 'lucide-react';
 
 function AppLayout({ children }) {
   const navigate = useNavigate();
@@ -48,16 +48,6 @@ function AppLayout({ children }) {
               >
                 <PlusCircle size={18} />
                 Create Trip
-              </button>
-              <button
-                className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${location.pathname.startsWith('/trips')
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
-                  }`}
-                onClick={() => navigate('/trips')}
-              >
-                <Users size={18} />
-                Group Trips
               </button>
               <button
                 className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${isActive('/account')
@@ -114,14 +104,6 @@ function AppLayout({ children }) {
           >
             <PlusCircle size={20} />
             <span className="text-[10px] font-medium">New Trip</span>
-          </button>
-          <button
-            className={`flex flex-col items-center justify-center w-full h-full gap-1 ${location.pathname.startsWith('/trips') ? 'text-primary' : 'text-gray-400'
-              }`}
-            onClick={() => navigate('/trips')}
-          >
-            <Users size={20} />
-            <span className="text-[10px] font-medium">Groups</span>
           </button>
           <button
             className={`flex flex-col items-center justify-center w-full h-full gap-1 ${isActive('/account') ? 'text-primary' : 'text-gray-400'

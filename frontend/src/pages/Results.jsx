@@ -1,7 +1,7 @@
 // frontend/src/pages/Results.jsx
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import {
   AlertTriangle, Trophy, Calendar, Lightbulb, CloudSun, Plane,
   Building, Ticket, Save, BarChart, Frown, ArrowLeft, Search,
@@ -13,6 +13,7 @@ function Results() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,7 +36,7 @@ function Results() {
   const fetchRecommendations = async () => {
     try {
       setLoading(true);
-      const token = await user?.getToken();
+      const token = await getToken();
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
       const response = await fetch(`${API_URL}/api/searches/${searchId}`, {
@@ -63,7 +64,7 @@ function Results() {
     setSavingTripId(tripIndex);
 
     try {
-      const token = await user?.getToken();
+      const token = await getToken();
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
       const response = await fetch(`${API_URL}/api/searches/trips/save`, {
