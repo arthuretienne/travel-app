@@ -54,7 +54,7 @@ function Dashboard() {
       }
 
       const tripsData = await tripsResponse.json();
-      setSavedTrips(tripsData.trips || []);
+      setSavedTrips(tripsData.savedTrips || []);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err.message);
@@ -81,7 +81,7 @@ function Dashboard() {
       }
 
       const tripsData = await tripsResponse.json();
-      setSavedTrips(tripsData.trips || []);
+      setSavedTrips(tripsData.savedTrips || []);
     } catch (err) {
       console.error('Error fetching saved trips:', err);
       setError(err.message);
@@ -137,7 +137,7 @@ function Dashboard() {
               <Globe size={28} />
             </div>
             <div>
-              <div className="text-2xl font-bold text-text-main leading-none mb-1">{new Set(savedTrips.map(t => t.destination?.country)).size}</div>
+              <div className="text-2xl font-bold text-text-main leading-none mb-1">{new Set(savedTrips.map(t => t.country)).size}</div>
               <div className="text-sm font-medium text-text-secondary">Countries</div>
             </div>
           </div>
@@ -147,7 +147,7 @@ function Dashboard() {
             </div>
             <div>
               <div className="text-2xl font-bold text-text-main leading-none mb-1">
-                {savedTrips.length > 0 ? Math.round(savedTrips.reduce((acc, t) => acc + (t.score?.total || 0), 0) / savedTrips.length) : 0}%
+                {savedTrips.length > 0 ? Math.round(savedTrips.reduce((acc, t) => acc + (t.tripData?.score?.total || 0), 0) / savedTrips.length) : 0}%
               </div>
               <div className="text-sm font-medium text-text-secondary">Avg. Match Score</div>
             </div>
@@ -196,14 +196,14 @@ function Dashboard() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {savedTrips.map((trip, index) => (
-                <div key={trip.searchId || index} className="bg-white rounded-2xl overflow-hidden shadow-card border border-gray-100 hover:shadow-xl hover:border-primary/30 transition-all group">
+                <div key={trip.id || index} className="bg-white rounded-2xl overflow-hidden shadow-card border border-gray-100 hover:shadow-xl hover:border-primary/30 transition-all group">
                   <div className="bg-primary p-6 text-white flex justify-between items-start">
                     <div>
-                      <h3 className="text-xl font-bold mb-1">{trip.destination?.city || 'Unknown'}</h3>
-                      <p className="text-white/90 text-sm">{trip.destination?.country || 'Unknown'}</p>
+                      <h3 className="text-xl font-bold mb-1">{trip.city || 'Unknown'}</h3>
+                      <p className="text-white/90 text-sm">{trip.country || 'Unknown'}</p>
                     </div>
                     <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg font-bold text-sm">
-                      {trip.score?.total ? `${Math.round(trip.score.total)}%` : 'N/A'}
+                      {trip.tripData?.score?.total ? `${Math.round(trip.tripData.score.total)}%` : 'N/A'}
                     </div>
                   </div>
 
@@ -211,17 +211,21 @@ function Dashboard() {
                     <div className="flex items-center gap-3 text-text-secondary">
                       <Calendar size={18} className="text-gray-400" />
                       <span className="font-medium text-text-main">
-                        {trip.slot?.startDate ? formatDate(trip.slot.startDate) : 'Date TBD'}
+                        {trip.startDate ? formatDate(trip.startDate) : 'Date TBD'}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-text-secondary">
                       <Clock size={18} className="text-gray-400" />
-                      <span className="font-medium text-text-main">{trip.slot?.duration || 0} days</span>
+                      <span className="font-medium text-text-main">
+                        {trip.startDate && trip.endDate
+                          ? Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))
+                          : 0} days
+                      </span>
                     </div>
                     <div className="flex items-center gap-3 text-text-secondary">
                       <DollarSign size={18} className="text-gray-400" />
                       <span className="font-medium text-text-main">
-                        {trip.pricing?.total ? `€${Math.round(trip.pricing.total)}` : 'Price TBD'}
+                        {trip.tripData?.pricing?.total ? `€${Math.round(trip.tripData.pricing.total)}` : 'Price TBD'}
                       </span>
                     </div>
                   </div>
@@ -229,7 +233,7 @@ function Dashboard() {
                   <div className="p-6 pt-0 border-t border-gray-50 mt-2">
                     <button
                       className="w-full py-3 mt-4 bg-primary text-white font-medium rounded-xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 shadow-lg shadow-primary/20 hover:bg-primary-hover"
-                      onClick={() => handleViewTrip(trip.searchId)}
+                      onClick={() => navigate(`/trips`)}
                     >
                       View Details
                     </button>

@@ -73,7 +73,10 @@ function Results() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          searchId,
+          city: trip.destination?.city || trip.city,
+          country: trip.destination?.country || trip.country,
+          startDate: trip.slot?.startDate,
+          endDate: trip.slot?.endDate,
           tripData: trip,
         }),
       });
