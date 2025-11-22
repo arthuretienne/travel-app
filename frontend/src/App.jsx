@@ -9,8 +9,6 @@ import Dashboard from './pages/Dashboard';
 import CreateTrip from './pages/CreateTrip';
 import Results from './pages/Results';
 import Account from './pages/Account';
-import Trips from './pages/Trips';
-import CreateCollaborativeTrip from './pages/CreateCollaborativeTrip';
 import TripDetail from './pages/TripDetail';
 
 // Layout
@@ -97,22 +95,6 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Account />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/trips"
-          element={
-            <ProtectedRoute>
-              <Trips />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/trips/new"
-          element={
-            <ProtectedRoute>
-              <CreateCollaborativeTrip />
             </ProtectedRoute>
           }
         />

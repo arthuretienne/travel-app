@@ -81,9 +81,17 @@ function CreateTrip() {
     avoidList: [],
     maxFlightDuration: 6,
     chatbotTone: 'friendly',
+
+    // Group trip fields
+    isGroupTrip: false,
+    tripName: '',
+    inviteEmails: [],
+    maxMembers: 8,
+    requireAllVotes: false,
   });
 
   const [errors, setErrors] = useState({});
+  const [currentEmail, setCurrentEmail] = useState('');
 
   // Load user preferences on mount
   useEffect(() => {
@@ -173,6 +181,46 @@ function CreateTrip() {
     }));
   };
 
+  const addInviteEmail = (e) => {
+    if (e.key === 'Enter' && currentEmail.trim()) {
+      e.preventDefault();
+      const email = currentEmail.trim().toLowerCase();
+
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setErrors(prev => ({ ...prev, inviteEmail: 'Invalid email format' }));
+        return;
+      }
+
+      // Check for duplicates
+      if (formData.inviteEmails.includes(email)) {
+        setErrors(prev => ({ ...prev, inviteEmail: 'Email already added' }));
+        return;
+      }
+
+      // Check for self-invite
+      if (user?.primaryEmailAddress?.emailAddress === email) {
+        setErrors(prev => ({ ...prev, inviteEmail: 'Cannot invite yourself' }));
+        return;
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        inviteEmails: [...prev.inviteEmails, email]
+      }));
+      setCurrentEmail('');
+      setErrors(prev => ({ ...prev, inviteEmail: null }));
+    }
+  };
+
+  const removeInviteEmail = (email) => {
+    setFormData(prev => ({
+      ...prev,
+      inviteEmails: prev.inviteEmails.filter(e => e !== email)
+    }));
+  };
+
   const validate = () => {
     const newErrors = {};
 
@@ -196,6 +244,13 @@ function CreateTrip() {
       newErrors.travelVibe = 'Please select a travel vibe';
     }
 
+    // Group trip validation
+    if (formData.isGroupTrip) {
+      if (!formData.tripName || formData.tripName.trim().length === 0) {
+        newErrors.tripName = 'Trip name is required for group trips';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -211,64 +266,107 @@ function CreateTrip() {
 
     try {
       const token = await getToken();
-
-      // Transform data to match backend expectations
-      const payload = {
-        basic: {
-          budget: formData.budget || 1500,
-          style: formData.travelVibe,
-          activities: formData.mustHaves.length > 0 ? formData.mustHaves : ['cultural', 'nature'],
-          maxFlightHours: formData.maxFlightDuration,
-          destinationPreference: 'any',
-          travelers: formData.travelers,
-        },
-        preferences: {
-          climate: formData.preferredWeather,
-          accommodation: 'hotel',
-          pace: 'moderate',
-          gastronomy: 'important',
-          natureVsCity: 50,
-          nightlife: formData.mustHaves.includes('nightlife') ? 'important' : 'optional',
-          activitiesBudget: 20,
-        },
-        constraints: {
-          budget: formData.budget || 1500,
-          maxFlightHours: formData.maxFlightDuration,
-          avoidCountries: formData.avoidList,
-        },
-        availability: {
-          startDate: formData.startDate || undefined,
-          endDate: formData.endDate || undefined,
-          duration: formData.duration,
-          timeHorizon: '6-mois',
-          idealDuration: `${formData.duration}-jours`,
-          flexibleDates: true,
-          preferredMonths: [],
-          originCity: 'CDG',
-          professionalStatus: 'salaried',
-          departureFlexibility: 'peu-importe',
-        },
-        chatbotPreferences: {
-          tone: formData.chatbotTone,
-        },
-      };
-
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${API_URL}/api/travel/recommendations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
 
-      const data = await response.json();
+      // If group trip, create collaborative trip first
+      if (formData.isGroupTrip) {
+        const groupTripPayload = {
+          name: formData.tripName,
+          maxMembers: formData.maxMembers,
+          requireAllVotes: formData.requireAllVotes,
+        };
 
-      if (data.success && data.recommendations) {
-        navigate('/results', { state: { recommendations: data.recommendations } });
+        const groupResponse = await fetch(`${API_URL}/api/trips`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(groupTripPayload),
+        });
+
+        if (!groupResponse.ok) {
+          const errorData = await groupResponse.json();
+          throw new Error(errorData.error || 'Failed to create group trip');
+        }
+
+        const groupData = await groupResponse.json();
+        const tripId = groupData.data.id;
+
+        // Send invitations if any emails were provided
+        if (formData.inviteEmails.length > 0) {
+          await fetch(`${API_URL}/api/trips/${tripId}/invitations`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              emails: formData.inviteEmails,
+            }),
+          });
+        }
+
+        // Navigate to the trip detail page
+        navigate(`/trips/${tripId}`);
       } else {
-        throw new Error(data.error || 'Failed to get recommendations');
+        // Solo trip - get recommendations as before
+        const payload = {
+          basic: {
+            budget: formData.budget || 1500,
+            style: formData.travelVibe,
+            activities: formData.mustHaves.length > 0 ? formData.mustHaves : ['cultural', 'nature'],
+            maxFlightHours: formData.maxFlightDuration,
+            destinationPreference: 'any',
+            travelers: formData.travelers,
+          },
+          preferences: {
+            climate: formData.preferredWeather,
+            accommodation: 'hotel',
+            pace: 'moderate',
+            gastronomy: 'important',
+            natureVsCity: 50,
+            nightlife: formData.mustHaves.includes('nightlife') ? 'important' : 'optional',
+            activitiesBudget: 20,
+          },
+          constraints: {
+            budget: formData.budget || 1500,
+            maxFlightHours: formData.maxFlightDuration,
+            avoidCountries: formData.avoidList,
+          },
+          availability: {
+            startDate: formData.startDate || undefined,
+            endDate: formData.endDate || undefined,
+            duration: formData.duration,
+            timeHorizon: '6-mois',
+            idealDuration: `${formData.duration}-jours`,
+            flexibleDates: true,
+            preferredMonths: [],
+            originCity: 'CDG',
+            professionalStatus: 'salaried',
+            departureFlexibility: 'peu-importe',
+          },
+          chatbotPreferences: {
+            tone: formData.chatbotTone,
+          },
+        };
+
+        const response = await fetch(`${API_URL}/api/travel/recommendations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.recommendations) {
+          navigate('/results', { state: { recommendations: data.recommendations } });
+        } else {
+          throw new Error(data.error || 'Failed to get recommendations');
+        }
       }
     } catch (error) {
       console.error('Error:', error);
@@ -328,6 +426,133 @@ function CreateTrip() {
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white rounded-3xl shadow-card border border-gray-100 p-6 md:p-10">
+        {/* TRIP TYPE TOGGLE */}
+        <div className="mb-8 pb-8 border-b border-gray-200">
+          <label className="flex items-start gap-4 cursor-pointer group">
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={formData.isGroupTrip}
+                onChange={(e) => handleChange('isGroupTrip', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-14 h-7 bg-gray-200 rounded-full peer-checked:bg-primary transition-colors"></div>
+              <div className="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-7 shadow-sm"></div>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <Users size={20} className={formData.isGroupTrip ? 'text-primary' : 'text-gray-400'} />
+                <span className="font-semibold text-text-main">
+                  {formData.isGroupTrip ? 'Group Trip' : 'Solo Trip'}
+                </span>
+              </div>
+              <p className="text-sm text-text-secondary">
+                {formData.isGroupTrip
+                  ? 'Create a collaborative trip and invite friends to help plan together'
+                  : 'Plan a personal trip and get AI-powered destination recommendations'}
+              </p>
+            </div>
+          </label>
+
+          {/* GROUP TRIP FIELDS */}
+          {formData.isGroupTrip && (
+            <div className="mt-6 space-y-6 pl-18 animate-slide-down">
+              {/* Trip Name */}
+              <div>
+                <label className="block text-sm font-medium text-text-main mb-2">
+                  Trip Name <span className="text-red-500">*</span>
+                </label>
+                {errors.tripName && <p className="text-red-500 text-sm mb-2">{errors.tripName}</p>}
+                <input
+                  type="text"
+                  value={formData.tripName}
+                  onChange={(e) => handleChange('tripName', e.target.value)}
+                  placeholder="e.g., Summer Adventure 2025"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              {/* Invite Friends */}
+              <div>
+                <label className="block text-sm font-medium text-text-main mb-2">
+                  Invite Friends (Optional)
+                </label>
+                <p className="text-xs text-text-secondary mb-3">
+                  You can invite friends now or later from the trip page
+                </p>
+                {errors.inviteEmail && <p className="text-red-500 text-sm mb-2">{errors.inviteEmail}</p>}
+                <input
+                  type="email"
+                  value={currentEmail}
+                  onChange={(e) => setCurrentEmail(e.target.value)}
+                  onKeyDown={addInviteEmail}
+                  placeholder="Enter email and press Enter"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+                {formData.inviteEmails.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {formData.inviteEmails.map((email, index) => (
+                      <span key={index} className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm font-medium">
+                        {email}
+                        <button
+                          type="button"
+                          className="hover:text-blue-900"
+                          onClick={() => removeInviteEmail(email)}
+                        >
+                          <X size={14} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Group Settings */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Max Members */}
+                <div>
+                  <label className="block text-sm font-medium text-text-main mb-2">
+                    Maximum Members
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="2"
+                      max="20"
+                      value={formData.maxMembers}
+                      onChange={(e) => handleChange('maxMembers', parseInt(e.target.value))}
+                      className="flex-1"
+                    />
+                    <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg min-w-[60px] justify-center">
+                      <span className="font-medium text-gray-900">{formData.maxMembers}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Require All Votes */}
+                <div>
+                  <label className="flex items-start gap-3 cursor-pointer pt-6">
+                    <input
+                      type="checkbox"
+                      checked={formData.requireAllVotes}
+                      onChange={(e) => handleChange('requireAllVotes', e.target.checked)}
+                      className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-text-main">
+                        Require all votes
+                      </span>
+                      <p className="text-xs text-text-secondary mt-1">
+                        Everyone must vote before finalizing
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* MANDATORY FIELDS */}
         <div className="space-y-10">
           <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
@@ -670,10 +895,10 @@ function CreateTrip() {
             {loading ? (
               <>
                 <Loader2 size={20} className="animate-spin" />
-                Finding Your Perfect Trip...
+                {formData.isGroupTrip ? 'Creating Group Trip...' : 'Finding Your Perfect Trip...'}
               </>
             ) : (
-              'Find My Perfect Trip'
+              formData.isGroupTrip ? 'Create Group Trip' : 'Find My Perfect Trip'
             )}
           </button>
         </div>
