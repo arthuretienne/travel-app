@@ -9,6 +9,8 @@ import Dashboard from './pages/Dashboard';
 import CreateTrip from './pages/CreateTrip';
 import Results from './pages/Results';
 import Account from './pages/Account';
+import Trips from './pages/Trips';
+import CreateCollaborativeTrip from './pages/CreateCollaborativeTrip';
 
 // Layout
 import AppLayout from './components/Layout/AppLayout';
@@ -94,6 +96,22 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Account />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips"
+          element={
+            <ProtectedRoute>
+              <Trips />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/new"
+          element={
+            <ProtectedRoute>
+              <CreateCollaborativeTrip />
             </ProtectedRoute>
           }
         />
