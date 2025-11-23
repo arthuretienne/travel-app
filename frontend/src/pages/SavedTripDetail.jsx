@@ -21,6 +21,9 @@ import {
   Mail,
   Send,
   Building,
+  CheckSquare,
+  Square,
+  Star,
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -40,6 +43,12 @@ export default function SavedTripDetail() {
   const [currentEmail, setCurrentEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState(null);
+  const [bookingChecklist, setBookingChecklist] = useState({
+    flight: false,
+    transportAlternatives: {},
+    hotels: {},
+    activities: {},
+  });
 
   useEffect(() => {
     fetchTripDetails();
@@ -192,6 +201,24 @@ export default function SavedTripDetail() {
       console.error('Error deleting trip:', err);
       alert('Failed to delete trip');
     }
+  };
+
+  const toggleBookingItem = (category, itemId = null) => {
+    setBookingChecklist(prev => {
+      if (itemId === null) {
+        // Toggle simple boolean (flight)
+        return { ...prev, [category]: !prev[category] };
+      } else {
+        // Toggle nested object (hotels, activities, transportAlternatives)
+        return {
+          ...prev,
+          [category]: {
+            ...prev[category],
+            [itemId]: !prev[category][itemId],
+          },
+        };
+      }
+    });
   };
 
   if (loading) {
@@ -471,13 +498,23 @@ export default function SavedTripDetail() {
               {trip.tripData?.flightDetails && (
                 <div className="mb-4 p-4 bg-gray-50 rounded-xl">
                   <div className="flex items-center gap-2 mb-2">
+                    <button
+                      onClick={() => toggleBookingItem('flight')}
+                      className="flex-shrink-0 hover:scale-110 transition-transform"
+                    >
+                      {bookingChecklist.flight ? (
+                        <CheckSquare size={18} className="text-green-600" />
+                      ) : (
+                        <Square size={18} className="text-gray-400" />
+                      )}
+                    </button>
                     <Plane size={16} className="text-blue-600" />
                     <span className="font-semibold text-sm">Flight</span>
                     {trip.tripData.flightDetails.isEstimate && (
                       <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">Estimated</span>
                     )}
                   </div>
-                  <div className="text-xs text-gray-600 space-y-1">
+                  <div className="text-xs text-gray-600 space-y-1 ml-7">
                     <div>{trip.tripData.flightDetails.airline || 'TBD'}</div>
                     <div className="font-bold text-lg text-gray-900">€{trip.tripData.flightDetails.totalPrice}</div>
                     {trip.tripData.flightDetails.outbound?.duration && (
@@ -488,7 +525,7 @@ export default function SavedTripDetail() {
                     href={`https://www.skyscanner.com/transport/flights/${encodeURIComponent(trip.city.toLowerCase())}/`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-3 w-full py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                    className="mt-3 w-full py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 ml-0"
                   >
                     Book Flight
                     <ExternalLink size={14} />
@@ -502,12 +539,22 @@ export default function SavedTripDetail() {
                   <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Alternatives</div>
                   {trip.tripData.transportAlternatives.map((alt, idx) => (
                     <div key={idx} className="p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">{alt.operator}</span>
+                      <div className="flex items-center gap-2 mb-1">
+                        <button
+                          onClick={() => toggleBookingItem('transportAlternatives', idx)}
+                          className="flex-shrink-0 hover:scale-110 transition-transform"
+                        >
+                          {bookingChecklist.transportAlternatives[idx] ? (
+                            <CheckSquare size={16} className="text-green-600" />
+                          ) : (
+                            <Square size={16} className="text-gray-400" />
+                          )}
+                        </button>
+                        <span className="text-sm font-medium flex-1">{alt.operator}</span>
                         {alt.isEstimate && <span className="text-xs text-gray-500">Estimé</span>}
                       </div>
-                      <div className="text-lg font-bold text-gray-900">€{alt.price}</div>
-                      {alt.duration && <div className="text-xs text-gray-500">{Math.round(alt.duration / 60)}h</div>}
+                      <div className="text-lg font-bold text-gray-900 ml-6">€{alt.price}</div>
+                      {alt.duration && <div className="text-xs text-gray-500 ml-6">{Math.round(alt.duration / 60)}h</div>}
                       <a
                         href={alt.bookingUrl || 'https://www.trainline.com'}
                         target="_blank"
@@ -534,17 +581,29 @@ export default function SavedTripDetail() {
                 <div className="space-y-3">
                   {trip.tripData.hotelOptions.hotels.slice(0, 3).map((hotel, idx) => (
                     <div key={idx} className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                      <div className="font-semibold text-sm text-gray-900 mb-1">{hotel.name}</div>
-                      <div className="flex items-center gap-1 mb-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <button
+                          onClick={() => toggleBookingItem('hotels', idx)}
+                          className="flex-shrink-0 hover:scale-110 transition-transform"
+                        >
+                          {bookingChecklist.hotels[idx] ? (
+                            <CheckSquare size={18} className="text-green-600" />
+                          ) : (
+                            <Square size={18} className="text-gray-400" />
+                          )}
+                        </button>
+                        <div className="font-semibold text-sm text-gray-900 flex-1">{hotel.name}</div>
+                      </div>
+                      <div className="flex items-center gap-1 mb-2 ml-7">
                         {[...Array(Math.round(hotel.rating || 3))].map((_, i) => (
                           <Star key={i} size={12} className="text-yellow-500 fill-yellow-500" />
                         ))}
                         <span className="text-xs text-gray-500 ml-1">{hotel.rating || 'N/A'}</span>
                       </div>
-                      <div className="text-xs text-gray-600 mb-1">
+                      <div className="text-xs text-gray-600 mb-1 ml-7">
                         €{Math.round(hotel.pricePerNight)}/night × {trip.tripData.hotelOptions.nights} nights
                       </div>
-                      <div className="text-lg font-bold text-gray-900 mb-3">
+                      <div className="text-lg font-bold text-gray-900 mb-3 ml-7">
                         €{Math.round(hotel.pricePerNight * trip.tripData.hotelOptions.nights)}
                       </div>
                       <a
@@ -586,15 +645,27 @@ export default function SavedTripDetail() {
                 <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                   {trip.tripData.suggestedActivities.map((activity, idx) => (
                     <div key={idx} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="font-semibold text-sm text-gray-900 mb-1">{activity.name}</div>
-                      <p className="text-xs text-gray-600 mb-2">{activity.description}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <button
+                          onClick={() => toggleBookingItem('activities', idx)}
+                          className="flex-shrink-0 hover:scale-110 transition-transform"
+                        >
+                          {bookingChecklist.activities[idx] ? (
+                            <CheckSquare size={16} className="text-green-600" />
+                          ) : (
+                            <Square size={16} className="text-gray-400" />
+                          )}
+                        </button>
+                        <div className="font-semibold text-sm text-gray-900 flex-1">{activity.name}</div>
+                      </div>
+                      <p className="text-xs text-gray-600 mb-2 ml-6">{activity.description}</p>
+                      <div className="flex items-center justify-between text-xs text-gray-500 mb-2 ml-6">
                         <span>{activity.duration}</span>
                         <span className="font-semibold text-gray-900">
                           {activity.estimatedPrice === 0 ? 'FREE' : `€${activity.estimatedPrice}`}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 ml-6">
                         <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">{activity.category}</span>
                         <span className="text-xs text-gray-500">{activity.when}</span>
                       </div>

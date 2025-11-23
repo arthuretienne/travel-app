@@ -23,6 +23,12 @@ import {
   Mail,
   Send,
   Trash2,
+  CheckSquare,
+  Square,
+  Star,
+  Hotel,
+  ExternalLink,
+  Bell,
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -992,184 +998,293 @@ function VotingSection({ trip, fetchTripDetails }) {
 
 // Booking Checklist Section - When destination is confirmed
 function BookingChecklistSection({ trip }) {
-  const [expandedSections, setExpandedSections] = useState({
-    transport: true,
-    accommodation: false,
-    activities: false,
+  const [bookingChecklist, setBookingChecklist] = useState({
+    flight: false,
+    transportAlternatives: {},
+    hotels: {},
+    activities: {},
   });
 
-  const toggleSection = (section) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  const toggleBookingItem = (category, itemId = null) => {
+    setBookingChecklist(prev => {
+      if (itemId === null) {
+        return { ...prev, [category]: !prev[category] };
+      } else {
+        return {
+          ...prev,
+          [category]: {
+            ...prev[category],
+            [itemId]: !prev[category][itemId],
+          },
+        };
+      }
+    });
   };
 
-  const checklistItems = {
-    transport: [
-      { id: 1, label: 'Paris → Lisbon', sublabel: 'Book flights', status: 'pending' },
-      { id: 2, label: 'Lisbon → Paris', sublabel: 'Book return flights', status: 'pending' },
-    ],
-    accommodation: [
-      { id: 3, label: 'Airbnb Lisbon', sublabel: 'Book accommodation', status: 'approved' },
-    ],
-    activities: [
-      { id: 4, label: 'Sailing trip', sublabel: 'Book tickets', status: 'pending' },
-      { id: 5, label: 'Surfing', sublabel: 'Book tickets', status: 'pending' },
-      { id: 6, label: 'Pool day', sublabel: null, status: 'completed' },
-      { id: 7, label: 'Festival', sublabel: null, status: 'completed' },
-    ],
-  };
-
-  const getStatusIcon = (status) => {
-    if (status === 'completed') {
-      return <CheckCircle2 className="w-5 h-5 text-green-600" />;
-    }
-    if (status === 'in-progress') {
-      return (
-        <div className="w-5 h-5 rounded-full border-2 border-blue-600 flex items-center justify-center">
-          <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-        </div>
-      );
-    }
-    return <Circle className="w-5 h-5 text-gray-300" />;
-  };
-
-  const getStatusBadge = (status) => {
-    if (status === 'in-progress') {
-      return (
-        <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-          In Progress
-        </span>
-      );
-    }
-    if (status === 'approved') {
-      return (
-        <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-          Approved
-        </span>
-      );
-    }
-    return null;
-  };
+  // Get trip data from finalDestination
+  const tripData = trip.finalDestination || {};
+  const city = tripData.city || 'Unknown';
+  const country = tripData.country || 'Unknown';
 
   return (
-    <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-      <h2 className="text-lg font-bold text-text-main mb-6">To-do list :</h2>
+    <>
+      {/* Group-specific features */}
+      <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-text-main">Booking Progress</h2>
+          <button className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 font-medium rounded-lg hover:bg-amber-200 transition-colors">
+            <Bell size={18} />
+            Remind Friends to Book
+          </button>
+        </div>
 
-      {/* Transport Section */}
-      <div className="mb-6">
-        <button
-          onClick={() => toggleSection('transport')}
-          className="w-full flex items-center justify-between mb-3"
-        >
-          <div className="flex items-center gap-2">
-            <Plane className="w-5 h-5 text-text-secondary" />
-            <span className="font-semibold text-text-main">Transport</span>
-          </div>
-          {expandedSections.transport ? (
-            <ChevronDown className="w-5 h-5 text-text-secondary" />
-          ) : (
-            <ChevronRight className="w-5 h-5 text-text-secondary" />
-          )}
-        </button>
-
-        {expandedSections.transport && (
-          <div className="space-y-3 ml-7">
-            {checklistItems.transport.map((item) => (
-              <div key={item.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {getStatusIcon(item.status)}
-                  <div>
-                    <p className="font-medium text-text-main">{item.label}</p>
-                    {item.sublabel && (
-                      <button className="text-sm text-primary hover:underline">
-                        {item.sublabel} →
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {getStatusBadge(item.status)}
+        {/* Members Booking Status */}
+        <div className="space-y-2">
+          <p className="text-sm text-text-secondary mb-3">Track who has completed their bookings:</p>
+          {trip.members?.map((member) => (
+            <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <img
+                  src={member.user?.imageUrl || `https://ui-avatars.com/api/?name=${member.user?.firstName}`}
+                  alt={member.user?.firstName}
+                  className="w-8 h-8 rounded-full"
+                />
+                <span className="font-medium text-text-main">
+                  {member.user?.firstName} {member.user?.lastName}
+                </span>
               </div>
-            ))}
-          </div>
-        )}
+              <div className="flex items-center gap-2">
+                {member.hasBookedFlight && (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">✈️ Flight</span>
+                )}
+                {member.hasBookedHotel && (
+                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">🏨 Hotel</span>
+                )}
+                {member.bookingConfirmed && (
+                  <CheckCircle2 size={18} className="text-green-600" />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Accommodation Section */}
-      <div className="mb-6">
-        <button
-          onClick={() => toggleSection('accommodation')}
-          className="w-full flex items-center justify-between mb-3"
-        >
-          <div className="flex items-center gap-2">
-            <Home className="w-5 h-5 text-text-secondary" />
-            <span className="font-semibold text-text-main">Accommodation</span>
-          </div>
-          {expandedSections.accommodation ? (
-            <ChevronDown className="w-5 h-5 text-text-secondary" />
-          ) : (
-            <ChevronRight className="w-5 h-5 text-text-secondary" />
-          )}
-        </button>
+      {/* Book Your Trip - 3 Column Layout */}
+      <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 border-b border-gray-100">
+          <h2 className="text-xl font-bold text-text-main mb-1">Book Your Trip</h2>
+          <p className="text-sm text-text-secondary">Everything you need to make your journey perfect</p>
+        </div>
 
-        {expandedSections.accommodation && (
-          <div className="space-y-3 ml-7">
-            {checklistItems.accommodation.map((item) => (
-              <div key={item.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {getStatusIcon(item.status)}
-                  <div>
-                    <p className="font-medium text-text-main">{item.label}</p>
-                    {item.sublabel && (
-                      <button className="text-sm text-primary hover:underline">
-                        {item.sublabel} →
-                      </button>
+        <div className="grid lg:grid-cols-3 gap-0">
+          {/* Transport Column */}
+          <div className="p-6 border-b lg:border-b-0 lg:border-r border-gray-100">
+            <div className="flex items-center gap-2 mb-4">
+              <Plane className="text-blue-600" size={20} />
+              <h3 className="font-bold text-gray-900">Transport</h3>
+            </div>
+
+            {/* Flight Details */}
+            {tripData.flightDetails ? (
+              <div className="mb-4 p-4 bg-gray-50 rounded-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    onClick={() => toggleBookingItem('flight')}
+                    className="flex-shrink-0 hover:scale-110 transition-transform"
+                  >
+                    {bookingChecklist.flight ? (
+                      <CheckSquare size={18} className="text-green-600" />
+                    ) : (
+                      <Square size={18} className="text-gray-400" />
                     )}
-                  </div>
+                  </button>
+                  <Plane size={16} className="text-blue-600" />
+                  <span className="font-semibold text-sm">Flight</span>
                 </div>
-                {getStatusBadge(item.status)}
+                <div className="text-xs text-gray-600 space-y-1 ml-7">
+                  <div>{tripData.flightDetails.airline || 'TBD'}</div>
+                  <div className="font-bold text-lg text-gray-900">€{tripData.flightDetails.totalPrice}</div>
+                </div>
+                <a
+                  href={`https://www.skyscanner.com/transport/flights/${encodeURIComponent(city.toLowerCase())}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 w-full py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  Book Flight
+                  <ExternalLink size={14} />
+                </a>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Plane size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No flight details available</p>
+              </div>
+            )}
 
-      {/* Activities Section */}
-      <div>
-        <button
-          onClick={() => toggleSection('activities')}
-          className="w-full flex items-center justify-between mb-3"
-        >
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-text-secondary" />
-            <span className="font-semibold text-text-main">Activities</span>
-          </div>
-          {expandedSections.activities ? (
-            <ChevronDown className="w-5 h-5 text-text-secondary" />
-          ) : (
-            <ChevronRight className="w-5 h-5 text-text-secondary" />
-          )}
-        </button>
-
-        {expandedSections.activities && (
-          <div className="space-y-3 ml-7">
-            {checklistItems.activities.map((item) => (
-              <div key={item.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {getStatusIcon(item.status)}
-                  <div>
-                    <p className="font-medium text-text-main">{item.label}</p>
-                    {item.sublabel && (
-                      <button className="text-sm text-primary hover:underline">
-                        {item.sublabel} →
+            {/* Alternative Transport */}
+            {tripData.transportAlternatives && tripData.transportAlternatives.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Alternatives</div>
+                {tripData.transportAlternatives.map((alt, idx) => (
+                  <div key={idx} className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <button
+                        onClick={() => toggleBookingItem('transportAlternatives', idx)}
+                        className="flex-shrink-0 hover:scale-110 transition-transform"
+                      >
+                        {bookingChecklist.transportAlternatives[idx] ? (
+                          <CheckSquare size={16} className="text-green-600" />
+                        ) : (
+                          <Square size={16} className="text-gray-400" />
+                        )}
                       </button>
-                    )}
+                      <span className="text-sm font-medium flex-1">{alt.operator}</span>
+                    </div>
+                    <div className="text-lg font-bold text-gray-900 ml-6">€{alt.price}</div>
+                    <a
+                      href={alt.bookingUrl || 'https://www.trainline.com'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 w-full py-1.5 px-3 bg-gray-200 text-gray-800 text-xs font-medium rounded hover:bg-gray-300 transition-colors flex items-center justify-center gap-1"
+                    >
+                      Book {alt.type}
+                      <ExternalLink size={12} />
+                    </a>
                   </div>
-                </div>
-                {getStatusBadge(item.status)}
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
+
+          {/* Accommodation Column */}
+          <div className="p-6 border-b lg:border-b-0 lg:border-r border-gray-100">
+            <div className="flex items-center gap-2 mb-4">
+              <Hotel className="text-green-600" size={20} />
+              <h3 className="font-bold text-gray-900">Accommodation</h3>
+            </div>
+
+            {tripData.hotelOptions?.hotels && tripData.hotelOptions.hotels.length > 0 ? (
+              <div className="space-y-3">
+                {tripData.hotelOptions.hotels.slice(0, 3).map((hotel, idx) => (
+                  <div key={idx} className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-2 mb-1">
+                      <button
+                        onClick={() => toggleBookingItem('hotels', idx)}
+                        className="flex-shrink-0 hover:scale-110 transition-transform"
+                      >
+                        {bookingChecklist.hotels[idx] ? (
+                          <CheckSquare size={18} className="text-green-600" />
+                        ) : (
+                          <Square size={18} className="text-gray-400" />
+                        )}
+                      </button>
+                      <div className="font-semibold text-sm text-gray-900 flex-1">{hotel.name}</div>
+                    </div>
+                    <div className="flex items-center gap-1 mb-2 ml-7">
+                      {[...Array(Math.round(hotel.rating || 3))].map((_, i) => (
+                        <Star key={i} size={12} className="text-yellow-500 fill-yellow-500" />
+                      ))}
+                      <span className="text-xs text-gray-500 ml-1">{hotel.rating || 'N/A'}</span>
+                    </div>
+                    <div className="text-xs text-gray-600 mb-1 ml-7">
+                      €{Math.round(hotel.pricePerNight)}/night × {tripData.hotelOptions.nights} nights
+                    </div>
+                    <div className="text-lg font-bold text-gray-900 mb-3 ml-7">
+                      €{Math.round(hotel.pricePerNight * tripData.hotelOptions.nights)}
+                    </div>
+                    <a
+                      href={hotel.url || `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2 px-4 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      Book Hotel
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Hotel size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No hotels loaded</p>
+                <a
+                  href={`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city + ', ' + country)}${trip.finalStartDate ? `&checkin=${trip.finalStartDate}` : ''}${trip.finalEndDate ? `&checkout=${trip.finalEndDate}` : ''}&group_adults=${trip.members?.length || 1}&no_rooms=1`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-block py-2 px-4 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Search on Booking.com
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* Activities Column */}
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="text-purple-600" size={20} />
+              <h3 className="font-bold text-gray-900">Activities</h3>
+            </div>
+
+            {tripData.suggestedActivities && tripData.suggestedActivities.length > 0 ? (
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                {tripData.suggestedActivities.map((activity, idx) => (
+                  <div key={idx} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-2 mb-1">
+                      <button
+                        onClick={() => toggleBookingItem('activities', idx)}
+                        className="flex-shrink-0 hover:scale-110 transition-transform"
+                      >
+                        {bookingChecklist.activities[idx] ? (
+                          <CheckSquare size={16} className="text-green-600" />
+                        ) : (
+                          <Square size={16} className="text-gray-400" />
+                        )}
+                      </button>
+                      <div className="font-semibold text-sm text-gray-900 flex-1">{activity.name}</div>
+                    </div>
+                    <p className="text-xs text-gray-600 mb-2 ml-6">{activity.description}</p>
+                    <div className="flex items-center justify-between text-xs text-gray-500 mb-2 ml-6">
+                      <span>{activity.duration}</span>
+                      <span className="font-semibold text-gray-900">
+                        {activity.estimatedPrice === 0 ? 'FREE' : `€${activity.estimatedPrice}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 ml-6">
+                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">{activity.category}</span>
+                      <span className="text-xs text-gray-500">{activity.when}</span>
+                    </div>
+                  </div>
+                ))}
+                <a
+                  href={`https://www.getyourguide.com/s/?q=${encodeURIComponent(city)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 w-full py-2 px-4 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  Book Activities
+                  <ExternalLink size={14} />
+                </a>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Sparkles size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No activities suggested</p>
+                <a
+                  href={`https://www.google.com/travel/things-to-do?q=${encodeURIComponent(city + ' things to do')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-block py-2 px-4 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Discover Activities
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
