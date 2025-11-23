@@ -2,6 +2,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateUser } from '../middleware/auth.js';
+import { checkLimit, incrementUsage, requireFeature } from '../middleware/checkSubscription.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -348,10 +349,179 @@ router.get('/:id', authenticateUser, async (req, res) => {
 });
 
 /**
+ * GET /api/trips/:id/group-preferences
+ * Get aggregated preferences from all members of the trip
+ */
+router.get('/:id/group-preferences', authenticateUser, async (req, res) => {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+
+    // Get trip with members
+    const trip = await prisma.collaborativeTrip.findUnique({
+      where: { id },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!trip) {
+      return res.status(404).json({ error: 'Trip not found' });
+    }
+
+    // Check access
+    const isMember = trip.members.some((m) => m.userId === user.id);
+    const isCreator = trip.creatorId === user.id;
+
+    if (!isMember && !isCreator) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Get all member user IDs (filter out null for guest members)
+    const memberUserIds = trip.members
+      .map((m) => m.userId)
+      .filter((id) => id !== null);
+    if (isCreator && !memberUserIds.includes(user.id)) {
+      memberUserIds.push(user.id);
+    }
+
+    // Fetch preferences for all members (only registered users have preferences)
+    const userPreferences = await prisma.userPreferences.findMany({
+      where: {
+        userId: {
+          in: memberUserIds,
+        },
+      },
+    });
+
+    // Calculate availability aggregation
+    const availability = calculateGroupAvailability(userPreferences);
+
+    // Handle case where no preferences exist yet
+    const hasPreferences = userPreferences.length > 0;
+
+    // Aggregate preferences
+    const aggregated = {
+      memberCount: memberUserIds.length,
+      budget: hasPreferences ? {
+        min: Math.min(...userPreferences.map(p => p.budget || 1500)),
+        max: Math.max(...userPreferences.map(p => p.budget || 1500)),
+        average: Math.round(userPreferences.reduce((sum, p) => sum + (p.budget || 1500), 0) / userPreferences.length),
+      } : {
+        min: 1500,
+        max: 1500,
+        average: 1500,
+      },
+      travelStyles: hasPreferences ? getMostCommon(userPreferences.map(p => p.travelStyle)) : ['cultural'],
+      activities: hasPreferences ? getMostCommon(userPreferences.flatMap(p => p.activities || [])) : [],
+      maxFlightHours: hasPreferences ? Math.min(...userPreferences.map(p => p.maxFlightHours || 12)) : 12,
+      defaultTravelers: trip.members.length + 1, // Members + creator
+      availability,
+    };
+
+    res.json({
+      success: true,
+      data: aggregated,
+    });
+  } catch (error) {
+    console.error('Error aggregating group preferences:', error);
+    res.status(500).json({ error: 'Failed to aggregate preferences' });
+  }
+});
+
+// Helper function to get most common items
+function getMostCommon(arr) {
+  if (!arr || arr.length === 0) return [];
+
+  const counts = {};
+  arr.forEach(item => {
+    counts[item] = (counts[item] || 0) + 1;
+  });
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([item]) => item);
+}
+
+// Helper function to calculate group availability
+function calculateGroupAvailability(userPreferences) {
+  // Count how many people have calendar connected
+  const calendarsConnected = userPreferences.filter(p => p.calendarConnected).length;
+  const totalMembers = userPreferences.length;
+
+  // Calculate average trip duration preference
+  const avgTripDurations = userPreferences.filter(p => p.avgTripDuration).map(p => p.avgTripDuration);
+  const recommendedDuration = avgTripDurations.length > 0
+    ? Math.round(avgTripDurations.reduce((sum, d) => sum + d, 0) / avgTripDurations.length)
+    : 7;
+
+  // Calculate minimum available leave days (most restrictive)
+  const leaveDaysData = userPreferences.filter(p => p.annualLeaveDays && p.takenLeaveDays !== null);
+  const minAvailableDays = leaveDaysData.length > 0
+    ? Math.min(...leaveDaysData.map(p => (p.annualLeaveDays || 25) - (p.takenLeaveDays || 0)))
+    : null;
+
+  // Get most common departure flexibility
+  const flexibilityPrefs = userPreferences.filter(p => p.departureFlexibility).map(p => p.departureFlexibility);
+  const mostCommonFlexibility = flexibilityPrefs.length > 0
+    ? getMostCommon(flexibilityPrefs)[0]
+    : 'flexible';
+
+  // Get most common preferred months (if any)
+  const allPreferredMonths = userPreferences.flatMap(p => p.preferredMonths || []);
+  const commonMonths = getMostCommon(allPreferredMonths).slice(0, 3);
+
+  // Determine availability status
+  let availabilityStatus;
+  let availabilityMessage;
+
+  if (calendarsConnected === totalMembers) {
+    availabilityStatus = 'all_connected';
+    availabilityMessage = 'All members have calendar connected - optimal scheduling possible';
+  } else if (calendarsConnected > 0) {
+    availabilityStatus = 'partial_connected';
+    availabilityMessage = `${calendarsConnected}/${totalMembers} members have calendar connected`;
+  } else {
+    availabilityStatus = 'manual';
+    availabilityMessage = 'Manual scheduling - members will coordinate dates during voting';
+  }
+
+  return {
+    calendarsConnected,
+    totalMembers,
+    availabilityStatus,
+    availabilityMessage,
+    recommendedDuration,
+    minAvailableLeaveDays: minAvailableDays,
+    departureFlexibility: mostCommonFlexibility,
+    preferredMonths: commonMonths,
+    // Flag to indicate if AI can suggest optimal dates
+    canSuggestDates: calendarsConnected >= Math.ceil(totalMembers / 2) || minAvailableDays !== null,
+  };
+}
+
+/**
  * POST /api/trips
  * Create a new collaborative trip from scratch
+ * Requires collaborative voting feature and checks group trip limits
  */
-router.post('/', authenticateUser, async (req, res) => {
+router.post('/',
+  authenticateUser,
+  requireFeature('collaborativeVoting'),
+  checkLimit('maxGroupTrips', 'groupTripsCreated'),
+  incrementUsage('groupTripsCreated'),
+  async (req, res) => {
   try {
     const user = req.user; // Already authenticated by middleware
     const { name, coverImageUrl, maxMembers, requireAllVotes } = req.body;
@@ -416,8 +586,14 @@ router.post('/', authenticateUser, async (req, res) => {
 /**
  * POST /api/trips/from-saved/:savedTripId
  * Convert a saved solo trip into a collaborative trip
+ * Requires collaborative voting feature and checks group trip limits
  */
-router.post('/from-saved/:savedTripId', authenticateUser, async (req, res) => {
+router.post('/from-saved/:savedTripId',
+  authenticateUser,
+  requireFeature('collaborativeVoting'),
+  checkLimit('maxGroupTrips', 'groupTripsCreated'),
+  incrementUsage('groupTripsCreated'),
+  async (req, res) => {
   try {
     const user = req.user; // Already authenticated by middleware
     const { savedTripId } = req.params;

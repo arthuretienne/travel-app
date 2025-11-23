@@ -174,7 +174,9 @@ function Dashboard() {
         </div>
 
         {/* Optimal Periods Widget */}
-        <OptimalPeriodsWidget />
+        <div className="mb-12">
+          <OptimalPeriodsWidget />
+        </div>
 
         {/* All Trips Section */}
         <div className="mb-12">
@@ -288,7 +290,7 @@ function Dashboard() {
                         <div className="p-6 pt-0 border-t border-gray-50 mt-2">
                           <button
                             className="w-full py-3 mt-4 bg-primary text-white font-medium rounded-xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 shadow-lg shadow-primary/20 hover:bg-primary-hover"
-                            onClick={() => navigate(`/dashboard`)}
+                            onClick={() => navigate(`/saved-trips/${trip.id}`)}
                           >
                             View Details
                           </button>

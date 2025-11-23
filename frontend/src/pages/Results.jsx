@@ -18,6 +18,10 @@ function Results() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [savingTripId, setSavingTripId] = useState(null);
+  const [proposingTripId, setProposingTripId] = useState(null);
+
+  // Check if we're proposing for a group trip
+  const forGroupTrip = location.state?.forGroupTrip;
 
   useEffect(() => {
     // If recommendations are passed via state, use them directly
@@ -59,9 +63,9 @@ function Results() {
     }
   };
 
-  const handleSaveTrip = async (tripIndex) => {
+  const handleSaveTrip = async (tripIndex, silent = false) => {
     const trip = recommendations[tripIndex];
-    setSavingTripId(tripIndex);
+    if (!silent) setSavingTripId(tripIndex);
 
     try {
       const token = await getToken();
@@ -86,12 +90,68 @@ function Results() {
         throw new Error('Failed to save trip');
       }
 
-      alert('Trip saved successfully!');
+      if (!silent) {
+        alert('Trip saved successfully!');
+      }
+      return true;
     } catch (err) {
       console.error('Error saving trip:', err);
-      alert('Failed to save trip. Please try again.');
+      if (!silent) {
+        alert('Failed to save trip. Please try again.');
+      }
+      return false;
     } finally {
-      setSavingTripId(null);
+      if (!silent) setSavingTripId(null);
+    }
+  };
+
+  const handleAffiliateClick = async (tripIndex, linkType, url) => {
+    // Auto-save trip silently before navigating
+    await handleSaveTrip(tripIndex, true);
+
+    // Track click (could send to analytics later)
+    console.log(`Affiliate click tracked: ${linkType} for trip ${tripIndex}`);
+
+    // Navigate to affiliate link
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleProposeToGroup = async (tripIndex) => {
+    const trip = recommendations[tripIndex];
+    setProposingTripId(tripIndex);
+
+    try {
+      const token = await getToken();
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+      const response = await fetch(`${API_URL}/api/trips/${forGroupTrip}/destinations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          city: trip.destination?.city || trip.city,
+          country: trip.destination?.country || trip.country,
+          startDate: trip.slot?.startDate,
+          endDate: trip.slot?.endDate,
+          estimatedCostPerPerson: trip.pricing?.total || 0,
+          tripData: trip,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to propose destination');
+      }
+
+      alert('Destination proposed successfully!');
+      navigate(`/trips/${forGroupTrip}`);
+    } catch (err) {
+      console.error('Error proposing destination:', err);
+      alert(err.message || 'Failed to propose destination. Please try again.');
+    } finally {
+      setProposingTripId(null);
     }
   };
 
@@ -173,26 +233,49 @@ function Results() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
           <div>
-            <h1 className="text-3xl font-bold text-text-main mb-2">Your Perfect Trips</h1>
-            <p className="text-text-secondary">
-              We found <strong className="text-primary">{recommendations.length} amazing destinations</strong> tailored just for you
-            </p>
+            {forGroupTrip ? (
+              <>
+                <h1 className="text-3xl font-bold text-text-main mb-2">Propose a Destination</h1>
+                <p className="text-text-secondary">
+                  We found <strong className="text-primary">{recommendations.length} amazing destinations</strong> based on your group's preferences. Choose one to propose to the group!
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold text-text-main mb-2">Your Perfect Trips</h1>
+                <p className="text-text-secondary">
+                  We found <strong className="text-primary">{recommendations.length} amazing destinations</strong> tailored just for you
+                </p>
+              </>
+            )}
           </div>
           <div className="flex gap-3">
-            <button
-              className="flex items-center gap-2 px-4 py-2 bg-white text-text-secondary font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-              onClick={handleBackToDashboard}
-            >
-              <ArrowLeft size={18} />
-              Dashboard
-            </button>
-            <button
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
-              onClick={handleNewSearch}
-            >
-              <Search size={18} />
-              New Search
-            </button>
+            {forGroupTrip ? (
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-white text-text-secondary font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                onClick={() => navigate(`/trips/${forGroupTrip}`)}
+              >
+                <ArrowLeft size={18} />
+                Back to Trip
+              </button>
+            ) : (
+              <>
+                <button
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-text-secondary font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                  onClick={handleBackToDashboard}
+                >
+                  <ArrowLeft size={18} />
+                  Dashboard
+                </button>
+                <button
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
+                  onClick={handleNewSearch}
+                >
+                  <Search size={18} />
+                  New Search
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -368,9 +451,12 @@ function Results() {
                             </div>
                             <div className="text-right">
                               <div className="font-bold text-text-main">€{Math.round(hotel.price.total)}</div>
-                              <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => handleAffiliateClick(index, 'booking_hotel', hotel.bookingUrl)}
+                                className="text-xs text-primary hover:underline flex items-center justify-end gap-1"
+                              >
                                 View <ExternalLink size={10} />
-                              </a>
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -380,32 +466,39 @@ function Results() {
 
                   {/* Action Buttons */}
                   <div className="flex flex-col sm:flex-row gap-3 mt-auto pt-6 border-t border-gray-100">
+                    {forGroupTrip ? (
+                      <button
+                        className="flex-1 py-3 px-4 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50"
+                        onClick={() => handleProposeToGroup(index)}
+                        disabled={proposingTripId === index}
+                      >
+                        <Users size={18} className={proposingTripId === index ? "animate-pulse" : ""} />
+                        {proposingTripId === index ? 'Proposing...' : 'Propose to Group'}
+                      </button>
+                    ) : (
+                      <button
+                        className="flex-1 py-3 px-4 bg-white border border-gray-200 text-text-main font-medium rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        onClick={() => handleSaveTrip(index)}
+                        disabled={savingTripId === index}
+                      >
+                        <Save size={18} className={savingTripId === index ? "animate-pulse" : ""} />
+                        {savingTripId === index ? 'Saving...' : 'Save Trip'}
+                      </button>
+                    )}
                     <button
-                      className="flex-1 py-3 px-4 bg-white border border-gray-200 text-text-main font-medium rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                      onClick={() => handleSaveTrip(index)}
-                      disabled={savingTripId === index}
-                    >
-                      <Save size={18} className={savingTripId === index ? "animate-pulse" : ""} />
-                      {savingTripId === index ? 'Saving...' : 'Save Trip'}
-                    </button>
-                    <a
-                      href={trip.links.skyscanner}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      onClick={() => handleAffiliateClick(index, 'skyscanner', trip.links.skyscanner)}
                       className="flex-1 py-3 px-4 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
                     >
                       <Plane size={18} />
                       Book Flights
-                    </a>
-                    <a
-                      href={trip.links.booking}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    </button>
+                    <button
+                      onClick={() => handleAffiliateClick(index, 'booking', trip.links.booking)}
                       className="flex-1 py-3 px-4 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
                     >
                       <Building size={18} />
                       Book Hotels
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>

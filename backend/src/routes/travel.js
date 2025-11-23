@@ -2,10 +2,14 @@
 import express from 'express';
 import { generateDestinations } from '../services/claudeService.js';
 import { preScreenDestinations, searchFlightOffers, getHotelCostWithFallbacks } from '../services/amadeusService.js';
+import { getHotelCostWithBooking } from '../services/bookingService.js';
+import { searchFlixBus } from '../services/flixbusService.js';
 import { generateAffiliateLinks } from '../services/affiliateService.js';
 import { calculateFinalScore } from '../utils/scoring.js';
 import { getDestinationPhotos } from '../services/unsplashService.js';
 import { authenticateUser } from '../middleware/auth.js';
+import { strictLimiter } from '../middleware/rateLimiter.js';
+import { checkLimit, incrementUsage } from '../middleware/checkSubscription.js';
 import { filterByBudget, validateCostData, preFilterByEstimatedCost } from '../utils/budgetFilter.js';
 import { applyTemporalPricing, generateSmartDateSuggestions, calculateAvailableLeaveDays } from '../utils/temporalOptimization.js';
 import prisma from '../db/prisma.js';
@@ -22,7 +26,14 @@ function getSeason(dateStr) {
 const router = express.Router();
 
 // Main endpoint: Generate travel recommendations
-router.post('/recommendations', authenticateUser, async (req, res) => {
+// Apply strict rate limiting (10 req/15min) for expensive Claude AI calls
+// Check usage limits and increment counter on success
+router.post('/recommendations',
+  strictLimiter,
+  authenticateUser,
+  checkLimit('maxSearchesPerMonth', 'searchesThisMonth'),
+  incrementUsage('searchesThisMonth'),
+  async (req, res) => {
   try {
     const userProfile = req.body;
     console.log('📝 Received user profile:', JSON.stringify(userProfile, null, 2));
@@ -58,9 +69,16 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
       console.log('⚠️  No onboarding preferences found for user');
     }
 
+    // Step 1: Determine origin city (needed for Claude prompt)
+    const originCity = (userPreferences?.preferredAirports?.[0]) || userProfile.availability?.originCity || 'CDG';
+    console.log(`✈️  User's origin city: ${originCity}`);
+
     // Step 1: Claude generates 10 destinations
     console.log('🤖 Step 1: Generating destinations with Claude...');
-    const allDestinations = await generateDestinations(userProfile);
+    const userName = req.user.firstName
+      ? `${req.user.firstName} ${req.user.lastName || ''}`.trim()
+      : req.user.email;
+    const allDestinations = await generateDestinations(userProfile, req.user.id, userName, originCity);
     console.log(`✅ Generated ${allDestinations.length} destinations`);
 
     // Step 1.5: Pre-filter by estimated cost (BEFORE expensive API calls)
@@ -168,27 +186,37 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
 
     // Step 2: Pre-screen with Amadeus Flight Inspiration
     console.log('✈️  Step 2: Pre-screening with Amadeus...');
-    // Use preferred airport from onboarding preferences, or fallback to availability.originCity, or CDG default
-    const originCity = (userPreferences?.preferredAirports?.[0]) || userProfile.availability.originCity || 'CDG';
-    console.log(`✈️  Using origin airport: ${originCity}`);
-    const preScreened = await preScreenDestinations(
+    let preScreened = await preScreenDestinations(
       destinations,
       originCity,
       userProfile.basic.budget
     );
     console.log(`✅ Pre-screened to ${preScreened.length} destinations`);
 
+    // CRITICAL FALLBACK: If no destinations have flights, keep ALL destinations
+    // We'll try alternative transport methods (train, bus, estimation)
+    if (preScreened.length === 0) {
+      console.warn('⚠️  Pre-screening returned 0 results - keeping ALL destinations for fallback transport search');
+      preScreened = destinations.slice(0, 10); // Keep all 10 Claude destinations
+    } else if (preScreened.length < 3) {
+      // If less than 3, add more from original list to ensure variety
+      console.warn(`⚠️  Only ${preScreened.length} destinations pre-screened - adding more for variety`);
+      const remaining = destinations.filter(d => !preScreened.find(p => p.iataCode === d.iataCode));
+      preScreened = [...preScreened, ...remaining].slice(0, 10);
+    }
+
     // Step 3: Get photos for top destinations
     console.log('📸 Step 3: Fetching destination photos...');
     const photoMap = await getDestinationPhotos(preScreened.slice(0, 5));
     console.log(`✅ Fetched ${photoMap.size} photos`);
 
-    // Step 4: Detailed search for top 3
-    console.log('🔎 Step 4: Searching detailed flights for top 3...');
-    const topThree = preScreened.slice(0, 3);
-    
+    // Step 4: Detailed search for top destinations
+    console.log('🔎 Step 4: Searching detailed flights and alternatives...');
+    // Try to get at least 5 destinations to ensure we return minimum 3 after filtering
+    const topDestinations = preScreened.slice(0, 5);
+
    const results = await Promise.all(
-  topThree.map(async (destination) => {
+  topDestinations.map(async (destination) => {
     // Use AI-generated dates instead of user slots
     const slot = {
       startDate: destination.startDate,
@@ -197,21 +225,107 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
       season: getSeason(destination.startDate)
     };
         // Get flight offers
-        const flightOffer = await searchFlightOffers(destination, slot, originCity);
+        let flightOffer = await searchFlightOffers(destination, slot, originCity);
 
+        // FALLBACK: If no flight found, create estimated transport cost
         if (!flightOffer) {
-          console.log(`⚠️  No flights found for ${destination.city}`);
-          return null;
+          console.log(`⚠️  No flights found for ${destination.city} - using estimated transport cost`);
+
+          // Estimate transport cost based on distance/budget
+          const estimatedFlightCost = destination.estimatedBudget
+            ? Math.round(destination.estimatedBudget * 0.4) // 40% of estimated budget for transport
+            : Math.round(userProfile.basic.budget * 0.3); // Or 30% of user budget
+
+          // Create a placeholder flight offer with estimated cost
+          flightOffer = {
+            price: estimatedFlightCost,
+            segments: [],
+            totalDuration: 'Unknown',
+            validatingAirline: 'TBD',
+            cabinClass: 'ECONOMY',
+            isEstimate: true, // Flag to indicate this is not real flight data
+            transportNote: 'Vol non disponible - coût estimé (train/bus possible)'
+          };
         }
 
-        // IMPROVED: Get hotel cost with robust fallback chain
+        // Search for alternative transport (FlixBus/Train)
+        console.log(`🚌 Searching alternative transport for ${destination.city}...`);
+        let transportAlternatives = [];
+
+        // Try FlixBus for European destinations
+        try {
+          const flixbusResults = await searchFlixBus({
+            fromCity: originCity,
+            toCity: destination.city,
+            date: slot.startDate,
+            adults: 1,
+          });
+
+          if (flixbusResults && flixbusResults.length > 0) {
+            // Get cheapest FlixBus option
+            const cheapestBus = flixbusResults.reduce((min, curr) =>
+              curr.price.amount < min.price.amount ? curr : min
+            );
+
+            transportAlternatives.push({
+              type: 'bus',
+              operator: 'FlixBus',
+              price: cheapestBus.price.amount,
+              currency: cheapestBus.price.currency,
+              duration: cheapestBus.duration,
+              departure: cheapestBus.departure.time,
+              arrival: cheapestBus.arrival.time,
+              transfers: cheapestBus.transfers,
+              bookingUrl: cheapestBus.bookingUrl,
+              isEstimate: false,
+            });
+            console.log(`✅ Found FlixBus: €${cheapestBus.price.amount} (${cheapestBus.duration}min)`);
+          }
+        } catch (error) {
+          console.log(`⚠️  FlixBus search failed for ${destination.city}:`, error.message);
+        }
+
+        // Estimate train cost (no API available)
+        // TODO: Create trainPrices.js database with historical prices
+        const estimatedTrainCost = Math.round(flightOffer.price * 0.6); // Trains typically 60% of flight cost
+        transportAlternatives.push({
+          type: 'train',
+          operator: 'SNCF/DB/Trenitalia',
+          price: estimatedTrainCost,
+          currency: 'EUR',
+          duration: null,
+          isEstimate: true,
+          note: 'Prix estimé - Vérifiez sur le site officiel',
+          bookingUrl: 'https://www.trainline.com',
+        });
+
+        // IMPROVED: Get hotel cost with Booking.com (primary) -> Amadeus (fallback)
         console.log(`🏨 Searching hotels for ${destination.city}...`);
-        const hotelResult = await getHotelCostWithFallbacks(destination, slot, userProfile.basic);
+
+        // Try Booking.com first (better data)
+        let hotelResult = await getHotelCostWithBooking({
+          cityName: destination.city,
+          checkInDate: slot.startDate,
+          checkOutDate: slot.endDate,
+          adults: 1,
+          style: userProfile.basic.style,
+        });
+
+        // Fallback to Amadeus if Booking.com fails
+        if (!hotelResult || !hotelResult.hotels) {
+          console.log(`⚠️  Booking.com unavailable for ${destination.city}, trying Amadeus...`);
+          hotelResult = await getHotelCostWithFallbacks(destination, slot, userProfile.basic);
+        }
+
         const hotelCost = hotelResult.cost;
         const hotelSearch = hotelResult.hotels ? {
           hotels: hotelResult.hotels,
           averagePrice: hotelResult.cost,
-          source: hotelResult.source
+          source: hotelResult.source,
+          destination: destination.city,
+          checkIn: slot.startDate,
+          checkOut: slot.endDate,
+          nights: slot.duration - 1,
         } : null;
 
         // Calculate activities budget
@@ -280,7 +394,9 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
             totalPrice: Math.round(flightOffer.price),
             pricePerPerson: Math.round(flightOffer.price),
             airline: flightOffer.validatingAirline,
-            cabinClass: flightOffer.cabinClass || 'ECONOMY'
+            cabinClass: flightOffer.cabinClass || 'ECONOMY',
+            isEstimate: flightOffer.isEstimate || false,
+            transportNote: flightOffer.transportNote || null
           },
           hotelOptions: hotelSearch ? {
             destination: hotelSearch.destination,
@@ -290,25 +406,38 @@ router.post('/recommendations', authenticateUser, async (req, res) => {
             hotels: hotelSearch.hotels,
             averagePrice: hotelSearch.averagePrice
           } : null,
+          transportAlternatives: transportAlternatives,
+          suggestedActivities: destination.suggestedActivities || [],
           score: score,
           links: affiliateLinks
         };
       })
     );
 
-    // Filter out nulls
+    // Filter out nulls (though now we shouldn't have any)
     let validResults = results.filter(r => r !== null);
 
     // CRITICAL: Filter by budget (remove anything > 110% of budget)
-    validResults = filterByBudget(validResults, userProfile.basic.budget, 0.10);
+    const budgetFiltered = filterByBudget(validResults, userProfile.basic.budget, 0.10);
 
     // Validate cost data quality
-    validResults = validResults.filter(r => validateCostData(r));
+    const qualityFiltered = budgetFiltered.filter(r => validateCostData(r));
+
+    // CRITICAL GUARANTEE: Always return at least 3 results
+    // If budget/quality filtering removed too many, relax constraints
+    if (qualityFiltered.length < 3 && validResults.length >= 3) {
+      console.warn(`⚠️  Only ${qualityFiltered.length} results after filtering - relaxing budget constraint to guarantee 3 results`);
+      // Take top 3 by score from unfiltered results
+      validResults.sort((a, b) => b.score.total - a.score.total);
+      validResults = validResults.slice(0, 3);
+    } else {
+      validResults = qualityFiltered;
+    }
 
     // Sort by score
     validResults.sort((a, b) => b.score.total - a.score.total);
 
-    console.log(`✅ Returning ${validResults.length} budget-appropriate recommendations`);
+    console.log(`✅ Returning ${validResults.length} budget-appropriate recommendations (guaranteed minimum 3)`);
 
     res.json({
       success: true,

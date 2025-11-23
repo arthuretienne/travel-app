@@ -1,5 +1,6 @@
 // backend/src/services/claudeService.js
 import Anthropic from '@anthropic-ai/sdk';
+import { logger } from './logger.js';
 
 // NOTE: dotenv est déjà chargé dans server.js
 // Les variables d'environnement sont disponibles via process.env
@@ -16,34 +17,119 @@ try {
   // Client will be undefined, but server should still start
 }
 
-export async function generateDestinations(userProfile) {
+export async function generateDestinations(userProfile, userId = null, userName = null, originCity = 'CDG') {
   if (!client) {
     throw new Error('Claude client not initialized. Please check ANTHROPIC_API_KEY environment variable.');
   }
-  
-  const prompt = buildPrompt(userProfile);
+
+  const startTime = Date.now();
+  const prompt = buildPrompt(userProfile, originCity);
+
+  // Log user profile being used
+  logger.logUserAction({
+    userId: userId || userProfile.userId || 'unknown',
+    userName: userName || userProfile.userName || 'Unknown User',
+    action: 'Generate AI Destinations',
+    details: {
+      budget: userProfile.basic?.budget,
+      style: userProfile.basic?.style,
+      activities: userProfile.basic?.activities,
+      timeHorizon: userProfile.availability?.timeHorizon,
+      hasOnboardingPrefs: !!userProfile.onboardingPreferences,
+    }
+  });
 
   try {
+    logger.logClaudeAPI({
+      operation: 'Generate Destinations - Request',
+      input: prompt,
+      tokensUsed: null,
+      duration: null,
+    });
+
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4000,
-      temperature: 0.7,
+      temperature: 1.0, // Increased for maximum creativity and diversity
       messages: [{
         role: 'user',
         content: prompt
       }]
     });
 
+    const duration = Date.now() - startTime;
     const response = message.content[0].text;
-    return parseDestinations(response);
+
+    logger.logClaudeAPI({
+      operation: 'Generate Destinations - Response',
+      input: null,
+      output: response,
+      tokensUsed: {
+        input: message.usage?.input_tokens,
+        output: message.usage?.output_tokens,
+        total: message.usage?.input_tokens + message.usage?.output_tokens,
+      },
+      duration,
+    });
+
+    const destinations = parseDestinations(response);
+
+    logger.logRecommendation({
+      step: 'Destinations Generated',
+      tripId: userProfile.tripId || 'N/A',
+      groupPreferences: {
+        memberCount: 1,
+        budget: {
+          min: userProfile.basic?.budget || 0,
+          max: userProfile.basic?.budget || 0,
+          average: userProfile.basic?.budget || 0,
+        },
+        climate: userProfile.preferences?.climate ? [userProfile.preferences.climate] : [],
+        activities: userProfile.basic?.activities || [],
+        availability: {
+          recommendedDuration: userProfile.availability?.duration || 7,
+          minAvailableLeaveDays: null,
+          departureFlexibility: userProfile.availability?.departureFlexibility,
+          preferredMonths: userProfile.availability?.preferredMonths || [],
+        },
+        dietaryRestrictions: [],
+        accessibility: userProfile.onboardingPreferences?.mobilityNeeds ? [userProfile.onboardingPreferences.mobilityNeeds] : [],
+      },
+      aiPrompt: prompt,
+      aiResponse: response,
+      destinations,
+      duration,
+    });
+
+    return destinations;
   } catch (error) {
+    const duration = Date.now() - startTime;
     console.error('Claude API Error:', error);
+
+    logger.logClaudeAPI({
+      operation: 'Generate Destinations - Error',
+      input: prompt,
+      output: null,
+      error: error.message || error,
+      tokensUsed: null,
+      duration,
+    });
+
     throw new Error(`Claude generation failed: ${error.message}`);
   }
 }
 
-function buildPrompt(profile) {
+function buildPrompt(profile, originCity = 'CDG') {
   const { basic, preferences, constraints, availability, onboardingPreferences } = profile;
+
+  // Determine origin city name from IATA code for better readability
+  const originCityMap = {
+    'CDG': 'Paris', 'ORY': 'Paris', 'BVA': 'Paris',
+    'LYS': 'Lyon', 'MRS': 'Marseille', 'NCE': 'Nice',
+    'TLS': 'Toulouse', 'BOD': 'Bordeaux', 'NTE': 'Nantes',
+    'BSL': 'Basel/Mulhouse', 'LIL': 'Lille', 'MPL': 'Montpellier'
+  };
+  const originCityName = originCityMap[originCity] || originCity;
   
   // Calculate time horizon dates
   const today = new Date();
@@ -121,7 +207,37 @@ Preferred departure airports: ${airportsList}
 - Respect mobility needs, security concerns, and crowd tolerance`;
   }
 
-  return `You are a travel recommendation AI. Based on this user profile, generate EXACTLY 10 diverse travel destinations WITH their optimal travel dates.
+  // Generate a unique seed based on user's unique combination of preferences
+  const userSeed = `${basic.style}_${basic.destinationPreference}_${preferences.natureVsCity}_${onboardingPreferences?.whyTravel || 'explore'}_${onboardingPreferences?.mainGoal || 'discover'}`.replace(/\s/g, '');
+
+  return `You are an EXPERT travel curator specializing in ULTRA-PERSONALIZED, OFF-THE-BEATEN-PATH recommendations.
+
+🌍 CORE MISSION: Generate 10 UNIQUE destinations that are TAILOR-MADE for THIS SPECIFIC USER.
+- Every user is different → Every recommendation list MUST be radically different
+- AVOID suggesting the same 20 popular European cities to everyone
+- The world has 195 countries and thousands of incredible destinations → USE THEM ALL!
+
+🎯 PERSONALIZATION SEED: "${userSeed}"
+↳ This unique combination means this user should get COMPLETELY DIFFERENT recommendations than others.
+
+🚫 FORBIDDEN: Never suggest the same top-10 tourist traps to everyone:
+- If budget is low → Don't default to "Prague, Budapest, Krakow, Porto" every time
+- If beach → Don't always say "Barcelona, Lisbon, Athens, Nice"
+- If culture → Don't repeat "Rome, Paris, Vienna, Prague"
+- THINK DEEPER! There are hundreds of hidden gems that match their profile BETTER than the obvious choices.
+
+✨ DIVERSITY RULES (MANDATORY):
+1. Geographic diversity: Max 2 destinations from the same country, Max 3 from the same region
+2. Experience diversity: Mix at least 4 different types (beach, mountains, city, nature, island, desert, etc.)
+3. Popularity diversity: Include at least 3 destinations with popularityScore < 5 (hidden gems)
+4. Cultural diversity: Different languages, cuisines, architectures, histories
+5. Climate diversity: Don't suggest 10 warm beach destinations - vary the experiences!
+
+🎨 ULTRA-PERSONALIZATION STRATEGY:
+- Read EVERY detail of their onboarding preferences (why they travel, main goal, ideal rhythm)
+- Their "why travel" motivation is THE KEY to unique recommendations
+- Their top activities list should drive 80% of your choices
+- Their global style (Routard vs Luxe vs Aventurier) changes EVERYTHING
 
 USER PROFILE:
 Budget: €${basic.budget}
@@ -152,6 +268,46 @@ Ideal trip duration: ${tripDays} days
 Departure flexibility: ${availability.departureFlexibility}
 ${preferredMonthsText}
 
+🚨 CRITICAL TRANSPORT ACCESSIBILITY CONSTRAINT 🚨
+You MUST ONLY suggest destinations that are ACTUALLY REACHABLE from ${originCityName} (${originCity}) within the budget and flight time constraints.
+
+MANDATORY FLIGHT CONNECTIVITY RULES:
+1. For destinations under €${basic.budget} budget:
+   - PRIORITIZE cities with direct flights or 1-stop connections from ${originCityName}
+   - Focus on routes served by LOW-COST carriers: Ryanair, EasyJet, Transavia, Vueling, Wizz Air, Volotea
+   - Verify the route actually exists year-round (check ${originCity} airport connections)
+   - Avoid suggesting remote islands or exotic locations unless budget > €1500
+
+2. For European destinations (under 1500km from ${originCityName}):
+   - Consider TRAIN alternatives: Eurostar, TGV, ICE depending on origin city
+   - Consider BUS alternatives: FlixBus, BlaBlaBus serve most European capitals
+   - These alternatives can be CHEAPER than flights and should be suggested when relevant
+
+3. For long-haul destinations (>5h flight from ${originCity}):
+   - ONLY suggest if budget > €1000
+   - Ensure major international airport with regular ${originCity} connections
+   - Check if budget can cover both flights AND local expenses
+
+4. IATA codes MUST be real airport codes that:
+   - Actually have flights from ${originCity}
+   - Are served by at least 2 airlines
+   - Have year-round connectivity (not seasonal-only routes)
+
+5. Smart destination selection based on budget:
+   - Budget €300-600: Focus on Eastern Europe, Balkans, Morocco, Portugal (cheap flights + low costs)
+   - Budget €600-1000: Add Western Europe, Scandinavia, Greece, Tunisia
+   - Budget €1000-1500: Consider Canary Islands, Madeira, Iceland, Jordan
+   - Budget >€1500: Long-haul options (Morocco, Egypt, Senegal, Georgia)
+
+6. If you're unsure about flight availability from ${originCityName}:
+   - Choose MAJOR tourist hubs with good connectivity: London, Barcelona, Rome, Athens, Lisbon, Amsterdam, Berlin, Prague, Budapest
+   - These cities typically have multiple daily flights from major European airports
+
+FALLBACK STRATEGY:
+- If a perfect match requires expensive/rare flights, suggest a nearby alternative city with better connectivity
+- Consider the user's origin city when suggesting alternatives
+- Example: Instead of "Santorini" (expensive + seasonal), suggest "Athens" (daily flights) + ferry option
+
 CRITICAL INSTRUCTIONS:
 1. For EACH destination, YOU MUST generate the OPTIMAL travel dates
 2. Dates must be in format YYYY-MM-DD (e.g., "2025-06-15")
@@ -163,13 +319,42 @@ CRITICAL INSTRUCTIONS:
    - Local festivals or events (if relevant to activities)
    - Budget implications (peak season = higher prices)
    - User's preferred months (if specified)
-6. Generate varied destinations (don't suggest 10 beach destinations)
-7. Mix popular and off-beaten locations based on "${basic.destinationPreference}" preference
+6. Generate RADICALLY VARIED destinations that THIS USER has probably never heard of
+7. Prioritize ORIGINALITY based on "${basic.destinationPreference}":
+   - "Peu connu": 70% hidden gems (popularityScore < 5)
+   - "Équilibré": 50% hidden gems, 50% known
+   - "Populaire": 30% hidden gems, 70% known
 8. Ensure trips don't overlap in dates
+
+💡 INSPIRATION - HIDDEN GEMS BY CATEGORY (use these as examples, not exhaustive):
+Budget Beach Escapes: Albanian Riviera (Ksamil), Romania (Constanta), Bulgaria (Sozopol), Tunisia (Djerba), Croatia (Vis Island)
+Culture Off-Path: Georgia (Tbilisi), Armenia (Yerevan), Albania (Berat), North Macedonia (Ohrid), Bosnia (Mostar), Moldova (Chișinău)
+Nature Adventures: Azores (Portugal), Faroe Islands, Slovenia (Triglav), Albania (Theth), Madeira, Corsica wild trails
+Mountain Retreats: Dolomites (Italy - NOT Cortina), Tatra Mountains (Poland/Slovakia), Picos de Europa (Spain), Rila (Bulgaria)
+Island Gems: Crete villages (not Heraklion), Sardinia interior, Malta (Gozo), Sicily (Ragusa), Canary Islands (La Palma)
+City Discoveries: Plovdiv, Gdansk, Tallinn, Riga, Brno, Cluj-Napoca, Sarajevo, Kotor, Funchal
+Desert/Unique: Jordan (Wadi Rum), Morocco (Sahara), Lanzarote, Tunisia (Matmata), Egypt (Siwa Oasis)
 9. Respect departure flexibility:
    - "semaine" = prefer weekday departures (Monday-Thursday)
    - "weekend" = prefer weekend departures (Friday-Sunday)
    - "peu-importe" = any day is fine
+
+🎯 STRUCTURED ACTIVITIES GENERATION (MANDATORY):
+For each destination, generate 5-8 concrete, bookable activities that:
+1. MATCH user's top activities preferences (${onboardingPreferences.topActivities?.join(', ') || 'various activities'})
+2. Are REALISTIC and actually available in that destination
+3. Cover different times of day (morning, afternoon, evening)
+4. Mix FREE activities (parks, walking tours) and PAID activities (museums, excursions)
+5. Include SPECIFIC names (not generic "visit museum" → "Louvre Museum Tour")
+6. Price activities realistically (€5-150 range depending on type)
+7. Categories: Culture, Nature, Food, Adventure, Relaxation, Nightlife
+8. Examples:
+   - Culture: "Guided walking tour of Old Town" (Half-day, €25, Morning)
+   - Nature: "Hike to scenic viewpoint" (2h, €0, Morning/Afternoon)
+   - Food: "Traditional cooking class" (3h, €60, Afternoon)
+   - Adventure: "Paragliding experience" (2h, €120, Morning)
+   - Relaxation: "Spa and thermal baths" (Half-day, €40, Anytime)
+   - Nightlife: "Rooftop bar with city views" (2h, €20, Evening)
 
 OUTPUT FORMAT (JSON only, no markdown, no code blocks):
 {
@@ -183,7 +368,17 @@ OUTPUT FORMAT (JSON only, no markdown, no code blocks):
       "matchReason": "Why this destination matches the profile (max 100 chars)",
       "seasonReason": "Why these specific dates/season are ideal (max 80 chars)",
       "estimatedBudget": 800,
-      "popularityScore": 7
+      "popularityScore": 7,
+      "suggestedActivities": [
+        {
+          "name": "Activity name",
+          "description": "Brief description (max 100 chars)",
+          "duration": "2h" | "Half-day" | "Full-day",
+          "estimatedPrice": 25,
+          "category": "Culture" | "Nature" | "Food" | "Adventure" | "Relaxation" | "Nightlife",
+          "when": "Morning" | "Afternoon" | "Evening" | "Anytime"
+        }
+      ]
     }
   ]
 }
@@ -194,7 +389,25 @@ IMPORTANT RULES:
 - estimatedBudget should fit within user's total budget of €${basic.budget}
 - seasonReason should explain why THESE SPECIFIC DATES are perfect (not just "good weather")
 - Dates must be realistic and within the planning window
-- Return ONLY valid JSON, absolutely no markdown formatting or code blocks`;
+- suggestedActivities: MUST include 5-8 specific, realistic activities matching user's top activities preferences
+- Activity prices should be realistic (FREE for parks/viewpoints, €5-50 for museums, €50-150 for experiences)
+- Activity duration: "2h", "3h", "Half-day", "Full-day"
+- Activity when: "Morning", "Afternoon", "Evening", "Anytime"
+- Return ONLY valid JSON, absolutely no markdown formatting or code blocks
+
+🔥 FINAL CHECKLIST BEFORE SUBMITTING YOUR 10 RECOMMENDATIONS:
+✅ Did I read their "why they travel" and choose destinations that fulfill that motivation?
+✅ Did I match their "main goal" (e.g., Culture → historical cities, Nature → national parks)?
+✅ Did I respect their "global style" (Routard → authentic/cheap, Luxe → upscale, Aventurier → wild)?
+✅ Did I include activities from their TOP ACTIVITIES list?
+✅ Did I generate 5-8 SPECIFIC activities for EACH destination (not generic suggestions)?
+✅ Are my activities REALISTIC and actually available in these destinations?
+✅ Did I vary the experiences (not 10 similar cities)?
+✅ Did I include at least 3 hidden gems (popularityScore < 5)?
+✅ Are these 10 destinations UNIQUE to THIS USER (not generic recommendations)?
+✅ Would another user with different preferences get a COMPLETELY DIFFERENT list?
+
+If you answered NO to any of these → START OVER and think deeper! 🎯`;
 }
 
 function parseDestinations(response) {

@@ -5,7 +5,7 @@ import { useUser, useAuth } from '@clerk/clerk-react';
 import {
   User, Settings, Calendar, CheckCircle, XCircle,
   LogOut, Save, Globe, Briefcase, Heart, MapPin,
-  Clock, Plane, Shield, AlertCircle
+  Clock, Plane, Shield, AlertCircle, CreditCard, Loader2
 } from 'lucide-react';
 
 // Import constants from Onboarding
@@ -68,9 +68,11 @@ function Account() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile'); // profile, preferences, availability
+  const [activeTab, setActiveTab] = useState('profile'); // profile, preferences, availability, subscription
   const [connectingCalendar, setConnectingCalendar] = useState(false);
   const [calendarStatus, setCalendarStatus] = useState(null);
+  const [subscription, setSubscription] = useState(null);
+  const [loadingBillingPortal, setLoadingBillingPortal] = useState(false);
 
   const [formData, setFormData] = useState({
     // Style & Objectif
@@ -105,9 +107,56 @@ function Account() {
     if (user) {
       fetchPreferences();
       checkCalendarStatus();
+      fetchSubscription();
       handleOAuthCallback();
     }
   }, [user]);
+
+  const fetchSubscription = async () => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const token = await getToken();
+
+      const response = await fetch(`${API_URL}/api/billing/subscription`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSubscription(data);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+    }
+  };
+
+  const handleManageBilling = async () => {
+    try {
+      setLoadingBillingPortal(true);
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const token = await getToken();
+
+      const response = await fetch(`${API_URL}/api/billing/portal`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        window.location.href = data.url;
+      } else {
+        throw new Error('Failed to create billing portal session');
+      }
+    } catch (error) {
+      console.error('Error opening billing portal:', error);
+      alert('Failed to open billing portal. Please try again.');
+      setLoadingBillingPortal(false);
+    }
+  };
 
   // Check calendar connection status
   const checkCalendarStatus = async () => {
@@ -347,6 +396,17 @@ function Account() {
             <Calendar size={18} />
             Disponibilités
             {activeTab === 'availability' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>}
+          </button>
+          <button
+            className={`flex-1 py-4 px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'subscription'
+                ? 'text-primary bg-white'
+                : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
+              }`}
+            onClick={() => setActiveTab('subscription')}
+          >
+            <CreditCard size={18} />
+            Abonnement
+            {activeTab === 'subscription' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>}
           </button>
         </div>
 
@@ -718,6 +778,151 @@ function Account() {
                   )}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Subscription Tab */}
+          {activeTab === 'subscription' && (
+            <div className="max-w-3xl mx-auto space-y-6">
+              {subscription ? (
+                <>
+                  <div className="bg-gradient-to-br from-primary/5 to-purple-50 p-8 rounded-2xl border-2 border-primary/20">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-2xl font-bold text-text-main mb-1">
+                          Plan {subscription.subscription.plan}
+                        </h3>
+                        <p className="text-text-secondary">
+                          {subscription.subscription.status === 'active' ? 'Actif' : subscription.subscription.status}
+                        </p>
+                      </div>
+                      <div className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                        {subscription.planDetails.price === 0 ? 'Gratuit' : `€${subscription.planDetails.price}/${subscription.planDetails.interval}`}
+                      </div>
+                    </div>
+
+                    {/* Usage Stats */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                      <div className="bg-white p-4 rounded-xl border border-gray-200">
+                        <p className="text-sm text-text-secondary mb-1">Recherches ce mois</p>
+                        <p className="text-2xl font-bold text-text-main">
+                          {subscription.subscription.searchesThisMonth}
+                          <span className="text-sm font-normal text-text-secondary">
+                            {subscription.planDetails.features.maxSearchesPerMonth === -1
+                              ? ' / Illimité'
+                              : ` / ${subscription.planDetails.features.maxSearchesPerMonth}`}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="bg-white p-4 rounded-xl border border-gray-200">
+                        <p className="text-sm text-text-secondary mb-1">Voyages de groupe créés</p>
+                        <p className="text-2xl font-bold text-text-main">
+                          {subscription.subscription.groupTripsCreated}
+                          <span className="text-sm font-normal text-text-secondary">
+                            {subscription.planDetails.features.maxGroupTrips === -1
+                              ? ' / Illimité'
+                              : ` / ${subscription.planDetails.features.maxGroupTrips}`}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Billing Info */}
+                    {subscription.subscription.stripeCurrentPeriodEnd && (
+                      <div className="bg-white/50 backdrop-blur p-4 rounded-xl border border-white/20">
+                        <p className="text-sm text-text-secondary">
+                          {subscription.subscription.cancelAtPeriodEnd
+                            ? 'Votre abonnement se termine le'
+                            : 'Prochaine facturation le'}
+                        </p>
+                        <p className="text-lg font-semibold text-text-main">
+                          {new Date(subscription.subscription.stripeCurrentPeriodEnd).toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Features List */}
+                  <div className="bg-white p-6 rounded-2xl border border-gray-200">
+                    <h4 className="font-semibold text-text-main mb-4">Fonctionnalités incluses:</h4>
+                    <ul className="space-y-3">
+                      {Object.entries(subscription.planDetails.features).map(([key, value]) => {
+                        const labels = {
+                          maxSearchesPerMonth: 'Recherches AI par mois',
+                          maxGroupTrips: 'Voyages de groupe',
+                          maxMembersPerTrip: 'Membres par voyage',
+                          aiRecommendations: 'Recommandations AI',
+                          flightSearch: 'Recherche de vols',
+                          hotelSearch: 'Recherche d\'hôtels',
+                          collaborativeVoting: 'Vote collaboratif',
+                          prioritySupport: 'Support prioritaire',
+                        };
+
+                        const displayValue = value === -1 ? 'Illimité' : value === true ? 'Inclus' : value === false ? 'Non inclus' : value;
+                        const isAvailable = value !== false;
+
+                        return (
+                          <li key={key} className="flex items-center gap-3">
+                            {isAvailable ? (
+                              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                            ) : (
+                              <XCircle className="w-5 h-5 text-gray-300 flex-shrink-0" />
+                            )}
+                            <span className={isAvailable ? 'text-text-secondary' : 'text-gray-400 line-through'}>
+                              {labels[key] || key}: <strong>{displayValue}</strong>
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {subscription.subscription.plan === 'FREE' ? (
+                      <button
+                        onClick={() => navigate('/pricing')}
+                        className="flex-1 py-4 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all"
+                      >
+                        Passer à un plan payant
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleManageBilling}
+                        disabled={loadingBillingPortal}
+                        className="flex-1 py-4 bg-white border-2 border-gray-200 text-text-main font-semibold rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {loadingBillingPortal ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Chargement...
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="w-5 h-5" />
+                            Gérer mon abonnement
+                          </>
+                        )}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => navigate('/pricing')}
+                      className="flex-1 py-4 bg-white border-2 border-primary text-primary font-semibold rounded-xl hover:bg-primary/5 transition-all"
+                    >
+                      Voir tous les plans
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
+                  <p className="text-text-secondary">Chargement de votre abonnement...</p>
+                </div>
+              )}
             </div>
           )}
         </div>

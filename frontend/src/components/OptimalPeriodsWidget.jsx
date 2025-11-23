@@ -1,6 +1,7 @@
 // frontend/src/components/OptimalPeriodsWidget.jsx
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar as CalendarIcon,
   Rocket,
@@ -45,6 +46,7 @@ const MOCK_PERIODS = {
 
 export function OptimalPeriodsWidget() {
   const { getToken } = useAuth();
+  const navigate = useNavigate();
   const [periods, setPeriods] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('short'); // 'short' | 'long'
@@ -97,6 +99,20 @@ export function OptimalPeriodsWidget() {
   }, [getToken]);
 
   const currentPeriod = periods?.[view]?.[0];
+
+  const handlePlanTrip = () => {
+    if (!currentPeriod) return;
+
+    // Navigate to create-trip page with pre-filled dates
+    navigate('/create-trip', {
+      state: {
+        prefilledDates: {
+          startDate: currentPeriod.startDate,
+          endDate: currentPeriod.endDate,
+        }
+      }
+    });
+  };
 
   // Helper to generate calendar days
   const generateCalendarDays = (startDateStr) => {
@@ -303,7 +319,10 @@ export function OptimalPeriodsWidget() {
                 )}
               </div>
 
-              <button className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-gray-200">
+              <button
+                onClick={handlePlanTrip}
+                className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-gray-200"
+              >
                 Plan Trip for These Dates
                 <ArrowRight size={18} />
               </button>

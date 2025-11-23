@@ -9,7 +9,10 @@ import Dashboard from './pages/Dashboard';
 import CreateTrip from './pages/CreateTrip';
 import Results from './pages/Results';
 import Account from './pages/Account';
+import Pricing from './pages/Pricing';
 import TripDetail from './pages/TripDetail';
+import SavedTripDetail from './pages/SavedTripDetail';
+import AcceptInvitation from './pages/AcceptInvitation';
 
 // Layout
 import AppLayout from './components/Layout/AppLayout';
@@ -99,6 +102,14 @@ function AppContent() {
           }
         />
         <Route
+          path="/pricing"
+          element={
+            <ProtectedRoute>
+              <Pricing />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/trips/:id"
           element={
             <ProtectedRoute>
@@ -106,6 +117,17 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/saved-trips/:id"
+          element={
+            <ProtectedRoute>
+              <SavedTripDetail />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Public invitation acceptance - no auth required */}
+        <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
 
         {/* Catch all - redirect to landing */}
         <Route path="*" element={<Navigate to="/" replace />} />

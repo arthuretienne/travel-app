@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { Zap, Target, Check, Calendar, MapPin, Globe, Clock, Shield, Users, Heart, Activity, Sun, Moon, Coffee, Briefcase, Plane } from 'lucide-react';
+import AirportAutocomplete from '../components/AirportAutocomplete';
 
 // Constants
 const TRAVEL_REASONS = [
@@ -103,16 +104,7 @@ const DEPARTURE_FLEXIBILITY = [
   { value: 'flexible', label: 'Totalement flexible' },
 ];
 
-const AIRPORTS = [
-  { name: 'Paris', code: 'PAR' },
-  { name: 'Lyon', code: 'LYS' },
-  { name: 'Marseille', code: 'MRS' },
-  { name: 'Nice', code: 'NCE' },
-  { name: 'Toulouse', code: 'TLS' },
-  { name: 'Bordeaux', code: 'BOD' },
-  { name: 'Nantes', code: 'NTE' },
-  { name: 'Strasbourg', code: 'SXB' },
-];
+// Airports now imported from ../data/airports.js via AirportAutocomplete component
 
 const CLIMATE_SENSITIVITY = [
   { value: 'none', label: 'Peu importe' },
@@ -298,6 +290,14 @@ function Onboarding() {
         }
       }
 
+      // Transform preferredAirports from objects to codes before sending
+      const dataToSend = {
+        ...formData,
+        preferredAirports: formData.preferredAirports.map(airport => airport.code),
+        onboardingCompleted: true,
+        onboardingType,
+      };
+
       // Save preferences with authentication token
       const response = await fetch(`${API_URL}/api/users/preferences`, {
         method: 'PUT',
@@ -305,11 +305,7 @@ function Onboarding() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...formData,
-          onboardingCompleted: true,
-          onboardingType,
-        }),
+        body: JSON.stringify(dataToSend),
       });
 
       if (!response.ok) {
@@ -619,24 +615,20 @@ function Onboarding() {
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <MapPin size={20} className="text-primary" /> 9. Vos aéroports/villes de départ
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {AIRPORTS.map(airport => (
-                  <button
-                    key={airport.code}
-                    className={`p-3 text-sm font-medium rounded-xl border transition-all ${formData.preferredAirports.includes(airport.code)
-                      ? 'bg-primary-light border-primary text-primary'
-                      : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
-                      }`}
-                    onClick={() => toggleArrayItem('preferredAirports', airport.code)}
-                  >
-                    {airport.name}
-                  </button>
-                ))}
-              </div>
-              {errors.preferredAirports && <span className="text-red-500 text-sm">{errors.preferredAirports}</span>}
+              <AirportAutocomplete
+                selectedAirports={formData.preferredAirports}
+                onChange={(airports) => {
+                  setFormData({ ...formData, preferredAirports: airports });
+                  if (errors.preferredAirports && airports.length > 0) {
+                    setErrors({ ...errors, preferredAirports: null });
+                  }
+                }}
+                maxSelection={3}
+                label="9. Aéroports/Villes de départ préférées"
+                placeholder="Ex: Paris, Lyon, Marseille..."
+                helperText="Choisissez jusqu'à 3 aéroports de départ. Nous optimiserons vos recommandations en fonction de votre ville."
+                error={errors.preferredAirports}
+              />
             </div>
 
             <div className="pt-8 border-t border-gray-100">

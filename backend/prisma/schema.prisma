@@ -123,6 +123,9 @@ model Search {
   createdAt DateTime @default(now())
 
   recommendations Recommendation[]
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model Recommendation {
@@ -184,6 +187,10 @@ model SavedTrip {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 // ========================================
@@ -464,17 +471,22 @@ model Subscription {
   stripeCurrentPeriodEnd DateTime?
 
   // Plan details
-  plan   String @default("free") // "free", "pro", "premium"
-  status String @default("active") // "active", "canceled", "past_due"
+  plan   String @default("FREE") // "FREE", "EXPLORER", "WANDERER"
+  status String @default("active") // "active", "canceled", "past_due", "trialing"
 
-  // Usage limits
+  // Usage tracking
   searchesThisMonth Int @default(0)
-  searchLimit       Int @default(3) // free=3, pro=20, premium=unlimited(-1)
+  groupTripsCreated Int @default(0)
 
   // Billing
   lastBillingDate DateTime?
   nextBillingDate DateTime?
+  cancelAtPeriodEnd Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
 }

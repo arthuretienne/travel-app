@@ -2,7 +2,10 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateUser } from '../middleware/auth.js';
+import { emailLimiter } from '../middleware/rateLimiter.js';
 import crypto from 'crypto';
+import { sendTripInvitation } from '../services/emailService.js';
+import { logger } from '../services/logger.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -14,12 +17,25 @@ const prisma = new PrismaClient();
 /**
  * POST /api/trips/:tripId/invitations
  * Send invitations to join a trip
+ * Rate limited: 3 emails per hour
  */
-router.post('/:tripId/invitations', authenticateUser, async (req, res) => {
+router.post('/:tripId/invitations', emailLimiter, authenticateUser, async (req, res) => {
   try {
     const user = req.user; // Already authenticated by middleware
     const { tripId } = req.params;
     const { emails, message } = req.body;
+
+    // Log user action
+    logger.logUserAction({
+      userId: user.id,
+      userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+      action: 'Send Trip Invitations',
+      details: {
+        tripId,
+        emailCount: emails?.length || 0,
+        hasCustomMessage: !!message
+      }
+    });
 
     // Validate emails
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
@@ -77,6 +93,19 @@ router.post('/:tripId/invitations', authenticateUser, async (req, res) => {
         continue;
       }
 
+      // In development, allow self-invitation for testing (Resend sandbox requires verified emails)
+      const isDevelopment = process.env.NODE_ENV !== 'production';
+      const isSelfInvite = trimmedEmail === user.email.toLowerCase();
+
+      if (isSelfInvite) {
+        if (isDevelopment) {
+          console.log('🧪 DEV MODE: Allowing self-invitation for testing (Resend sandbox)');
+        } else {
+          errors.push({ email: trimmedEmail, reason: 'Cannot invite yourself' });
+          continue;
+        }
+      }
+
       // Check if user is already a member
       const isAlreadyMember = trip.members.some(
         (m) => m.user?.email === trimmedEmail || m.guestEmail === trimmedEmail
@@ -129,8 +158,32 @@ router.post('/:tripId/invitations', authenticateUser, async (req, res) => {
 
         createdInvitations.push(invitation);
 
-        // TODO: Send email notification via SendGrid
-        console.log(`📧 TODO: Send invitation email to ${trimmedEmail}`);
+        // Send invitation email
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const acceptUrl = `${frontendUrl}/accept-invitation/${invitation.token}`;
+
+        const inviterName = user.firstName
+          ? `${user.firstName} ${user.lastName || ''}`.trim()
+          : user.email;
+
+        const emailResult = await sendTripInvitation({
+          to: trimmedEmail,
+          tripName: trip.name,
+          inviterName,
+          acceptUrl,
+          message: message || null,
+        });
+
+        // Log email result
+        logger.logEmail({
+          type: 'Trip Invitation',
+          recipient: trimmedEmail,
+          status: emailResult.success ? 'success' : 'failed',
+          error: emailResult.error || null,
+          emailId: emailResult.data?.id || null,
+        });
+
+        console.log(`📧 Invitation email sent to ${trimmedEmail}`);
       } catch (error) {
         console.error(`Error creating invitation for ${trimmedEmail}:`, error);
         errors.push({ email: trimmedEmail, reason: 'Failed to create invitation' });
@@ -151,6 +204,60 @@ router.post('/:tripId/invitations', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Error sending invitations:', error);
     res.status(500).json({ error: 'Failed to send invitations' });
+  }
+});
+
+/**
+ * GET /api/invitations/:token/details
+ * Get invitation details (public endpoint - no auth required)
+ */
+router.get('/:token/details', async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // Find invitation
+    const invitation = await prisma.tripInvitation.findUnique({
+      where: { token },
+      include: {
+        inviter: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            imageUrl: true,
+          },
+        },
+        trip: {
+          select: {
+            id: true,
+            name: true,
+            coverImageUrl: true,
+          },
+        },
+      },
+    });
+
+    if (!invitation) {
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+
+    // Check if invitation is still valid
+    if (invitation.status !== 'pending') {
+      return res.status(400).json({ error: `Invitation already ${invitation.status}` });
+    }
+
+    if (new Date() > invitation.expiresAt) {
+      return res.status(400).json({ error: 'Invitation has expired' });
+    }
+
+    res.json({
+      success: true,
+      data: invitation,
+    });
+  } catch (error) {
+    console.error('Error fetching invitation details:', error);
+    res.status(500).json({ error: 'Failed to fetch invitation details' });
   }
 });
 
@@ -259,6 +366,28 @@ router.post('/:token/accept', async (req, res) => {
           : `${guestName} joined the trip`,
         type: 'system',
       },
+    });
+
+    // Log user action and workflow
+    logger.logUserAction({
+      userId: existingUser?.id || 'guest',
+      userName: existingUser?.firstName || guestName,
+      action: 'Accept Trip Invitation',
+      details: {
+        tripId: invitation.tripId,
+        tripName: invitation.trip.name,
+        isGuest: !existingUser,
+        email: invitation.email
+      }
+    });
+
+    logger.logWorkflow({
+      tripId: invitation.tripId,
+      tripName: invitation.trip.name,
+      fromState: 'invited',
+      toState: 'member',
+      triggeredBy: existingUser?.email || guestName,
+      memberCount: invitation.trip.members.length + 1
     });
 
     res.json({

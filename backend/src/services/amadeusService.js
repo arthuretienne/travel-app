@@ -2,6 +2,7 @@
 import Amadeus from 'amadeus';
 import cache from './cacheService.js';
 import { calculateRealHotelCost } from '../data/realHotelPrices.js';
+import { logger } from './logger.js';
 
 // NOTE: dotenv est déjà chargé dans server.js
 // Les variables d'environnement sont disponibles via process.env
@@ -34,6 +35,8 @@ const CACHE_TTL = {
 
 // Pre-screening: Check which destinations have flights within budget
 export async function preScreenDestinations(destinations, originCity, userBudget) {
+  const startTime = Date.now();
+
   if (!amadeus) {
     console.warn('Amadeus client not initialized, skipping pre-screening');
     return destinations.slice(0, 5);
@@ -56,6 +59,16 @@ export async function preScreenDestinations(destinations, originCity, userBudget
   console.log('🔍 Pre-screening destinations with Flight Inspiration API...');
 
   try {
+    logger.logAmadeusAPI({
+      operation: 'Flight Inspiration - Pre-screening',
+      params: {
+        origin: originCity,
+        maxPrice: Math.floor(userBudget * 0.5),
+        oneWay: false,
+        destinationsToCheck: destinations.length
+      },
+    });
+
     // Flight Inspiration API - broad search
     const response = await amadeus.shopping.flightDestinations.get({
       origin: originCity,
@@ -63,7 +76,15 @@ export async function preScreenDestinations(destinations, originCity, userBudget
       oneWay: false
     });
 
+    const duration = Date.now() - startTime;
     const availableDestinations = response.data.map(d => d.destination);
+
+    logger.logAmadeusAPI({
+      operation: 'Flight Inspiration - Success',
+      params: { origin: originCity },
+      results: availableDestinations,
+      duration,
+    });
 
     // Cache the result
     await cache.set(cacheKey, availableDestinations, CACHE_TTL.FLIGHT_DESTINATIONS);
@@ -77,6 +98,7 @@ export async function preScreenDestinations(destinations, originCity, userBudget
     console.log(`✅ Pre-screening: ${filtered.length}/${destinations.length} destinations have flights`);
     return filtered.slice(0, 5); // Keep top 5
   } catch (error) {
+    const duration = Date.now() - startTime;
     console.error('Amadeus pre-screening error:', {
       message: error.message,
       status: error.response?.status,
@@ -84,6 +106,14 @@ export async function preScreenDestinations(destinations, originCity, userBudget
       code: error.code,
       description: error.description
     });
+
+    logger.logAmadeusAPI({
+      operation: 'Flight Inspiration - Error',
+      params: { origin: originCity },
+      error: error.message,
+      duration,
+    });
+
     // Fallback: return top 5 by AI score if API fails
     return destinations.slice(0, 5);
   }
@@ -91,6 +121,8 @@ export async function preScreenDestinations(destinations, originCity, userBudget
 
 // Detailed search for top destinations
 export async function searchFlightOffers(destination, slot, originCity) {
+  const startTime = Date.now();
+
   if (!amadeus) {
     console.warn('Amadeus client not initialized, cannot search flights');
     return null;
@@ -107,6 +139,19 @@ export async function searchFlightOffers(destination, slot, originCity) {
   }
 
   try {
+    logger.logAmadeusAPI({
+      operation: 'Flight Offers Search',
+      params: {
+        origin: originCity,
+        destination: destination.iataCode,
+        destinationCity: destination.city,
+        departureDate: slot.startDate,
+        returnDate: slot.endDate,
+        adults: 1,
+        max: 3
+      },
+    });
+
     const response = await amadeus.shopping.flightOffersSearch.get({
       originLocationCode: originCity,
       destinationLocationCode: destination.iataCode,
@@ -117,7 +162,15 @@ export async function searchFlightOffers(destination, slot, originCity) {
       max: 3 // Get top 3 offers
     });
 
+    const duration = Date.now() - startTime;
+
     if (!response.data || response.data.length === 0) {
+      logger.logAmadeusAPI({
+        operation: 'Flight Offers - No Results',
+        params: { destination: destination.city },
+        results: [],
+        duration,
+      });
       return null;
     }
 
@@ -163,8 +216,23 @@ export async function searchFlightOffers(destination, slot, originCity) {
     await cache.set(cacheKey, flightData, CACHE_TTL.FLIGHT_OFFERS);
     console.log(`✅ Flight offer: Cached for ${destination.city}`);
 
+    logger.logAmadeusAPI({
+      operation: 'Flight Offers - Success',
+      params: { destination: destination.city },
+      results: {
+        price: flightData.price,
+        currency: flightData.currency,
+        segments: flightData.segments.length,
+        returnSegments: flightData.returnSegments?.length || 0,
+        airline: flightData.validatingAirline,
+        cabinClass: flightData.cabinClass
+      },
+      duration: Date.now() - startTime,
+    });
+
     return flightData;
   } catch (error) {
+    const duration = Date.now() - startTime;
     console.error(`Flight search error for ${destination.city}:`, {
       message: error.message,
       status: error.response?.status,
@@ -173,6 +241,14 @@ export async function searchFlightOffers(destination, slot, originCity) {
       description: error.description,
       iataCode: destination.iataCode
     });
+
+    logger.logAmadeusAPI({
+      operation: 'Flight Offers - Error',
+      params: { destination: destination.city, iataCode: destination.iataCode },
+      error: error.message,
+      duration,
+    });
+
     return null;
   }
 }
@@ -209,6 +285,8 @@ export function estimateHotelCost(destination, slot, style) {
 
 // Search for actual hotels using Amadeus Hotel API
 export async function searchHotels(destination, slot, userPreferences) {
+  const startTime = Date.now();
+
   if (!amadeus) {
     console.warn('Amadeus client not initialized, cannot search hotels');
     return null;
@@ -229,6 +307,18 @@ export async function searchHotels(destination, slot, userPreferences) {
     }
 
     console.log(`🏨 Searching hotels in ${destination.city}...`);
+
+    logger.logAmadeusAPI({
+      operation: 'Hotel Search',
+      params: {
+        cityCode,
+        city: destination.city,
+        checkIn: slot.startDate,
+        checkOut: slot.endDate,
+        style: userPreferences.style,
+        nights: slot.duration - 1
+      },
+    });
 
     // Search for hotels by city
     const hotelsResponse = await amadeus.referenceData.locations.hotels.byCity.get({
@@ -309,13 +399,35 @@ export async function searchHotels(destination, slot, userPreferences) {
     await cache.set(cacheKey, hotelData, CACHE_TTL.HOTELS);
     console.log(`✅ Hotels: Cached for ${destination.city}`);
 
+    logger.logAmadeusAPI({
+      operation: 'Hotel Search - Success',
+      params: { city: destination.city },
+      results: {
+        hotelCount: topHotels.length,
+        averagePrice: hotelData.averagePrice,
+        priceRange: topHotels.length > 0 ? {
+          min: Math.min(...topHotels.map(h => h.price.total)),
+          max: Math.max(...topHotels.map(h => h.price.total))
+        } : null
+      },
+      duration: Date.now() - startTime,
+    });
+
     return hotelData;
   } catch (error) {
+    const duration = Date.now() - startTime;
     console.error(`Hotel search error for ${destination.city}:`, {
       message: error.message,
       status: error.response?.status,
       code: error.code,
       description: error.description
+    });
+
+    logger.logAmadeusAPI({
+      operation: 'Hotel Search - Error',
+      params: { city: destination.city },
+      error: error.message,
+      duration,
     });
 
     // Fallback to estimation if API fails

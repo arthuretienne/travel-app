@@ -14,7 +14,9 @@ import invitationsRoutes from './src/routes/invitations.js';
 import votingRoutes from './src/routes/voting.js';
 import messagesRoutes from './src/routes/messages.js';
 import membersRoutes from './src/routes/members.js';
+import billingRoutes from './src/routes/billing.js';
 import prisma from './src/db/prisma.js';
+import { apiLimiter, strictLimiter, emailLimiter } from './src/middleware/rateLimiter.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +33,12 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Rate limiting
+app.use('/api/', apiLimiter); // Apply general rate limit to all API routes
+
+// Stripe webhook needs raw body - must be before express.json() middleware
+// So we need to handle it specially in the billing routes
+
 // Routes
 app.use('/api/travel', travelRoutes);
 app.use('/api/users', userRoutes);
@@ -38,12 +46,15 @@ app.use('/api/searches', searchRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/dates', datesRoutes);
 
+// Billing & subscription routes
+app.use('/api/billing', billingRoutes);
+
 // Collaborative trips routes
 app.use('/api/trips', tripsRoutes);
 app.use('/api/trips', votingRoutes);
 app.use('/api/trips', messagesRoutes);
 app.use('/api/trips', membersRoutes);
-app.use('/api/invitations', invitationsRoutes);
+app.use('/api/trips', invitationsRoutes);
 
 // Health check
 app.get('/api/health', async (req, res) => {
