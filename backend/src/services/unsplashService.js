@@ -104,25 +104,99 @@ export async function trackDownload(downloadLocation) {
 /**
  * Images de fallback basées sur Unsplash (URLs publiques qui ne comptent pas dans le quota)
  * Ces URLs sont des exemples statiques - en production, vous pourriez utiliser une autre source gratuite
+ *
+ * Photo IDs curated for travel inspiration - Updated 2025
  */
 function getFallbackImage(cityName) {
-  // Map de villes populaires vers des IDs de photos Unsplash
+  // Expanded map: 60+ European and popular destinations
   const fallbackPhotos = {
+    // Western Europe
     'Paris': 'Q0-fOL2nqZc',
+    'London': '9RgU1v8FVwY',
+    'Amsterdam': '2BXl2NKl7SM',
+    'Brussels': 'hPKTYwJ0Vew',
+    'Luxembourg': 'xKhtkhc9HbQ',
+
+    // Southern Europe
+    'Barcelona': 'oWlEcK2G6ik',
+    'Madrid': 'hgO1wFPXl3I',
+    'Seville': 'qiR_C0uT1ac',
+    'Valencia': 'eH7kZhx8M_o',
+    'Lisbon': 'tCgHwbzhRvA',
+    'Porto': 'IPhh-hHLQJA',
+    'Rome': 'w-SxLLzQn5w',
+    'Florence': 'TnzeGlvP-bE',
+    'Venice': 'q_D_ufkwJ6M',
+    'Milan': 'LYFV7EjpIZs',
+    'Naples': 'PXM3v5b8YbE',
+    'Athens': 'Cf3zQ6gGbhU',
+    'Santorini': 'vA5RrM0m-xY',
+    'Crete': 'rDLBArZU9r0',
+
+    // Eastern Europe
+    'Budapest': 'TrhLCn1abMU',
+    'Prague': 'k-jJMHDy5pE',
+    'Vienna': '_Kh3FY-jzfo',
+    'Krakow': 'a8QX1LF8QU0',
+    'Warsaw': 'YQ9jd3m6_vA',
+    'Bucharest': 'DUmFLtMeAbQ',
+    'Sofia': 'QLqNalPe0RA',
+    'Belgrade': 'NtBAOt4zBSs',
+    'Sarajevo': 'qP_vBpAXyqk',
+
+    // Balkans & Adriatic
+    'Ljubljana': '7O8X5dP6ybo',
+    'Zagreb': 'jvjsME6_YU0',
+    'Split': 'KyIf_Z4rKVo',
+    'Dubrovnik': 'EuKAE_VHWH8',
+    'Kotor': 'S-cdwrx-YuQ',
+    'Tirana': 'wYQeY5YxTSo',
+
+    // Baltic States
+    'Tallinn': 'TQSY9sP-1gw',
+    'Riga': 'VpIYR8DnCrs',
+    'Vilnius': '8zPqCmY5Hpc',
+
+    // Scandinavia
+    'Copenhagen': 'o4UhdLv5jbQ',
+    'Stockholm': 'pFyKRmDiWEA',
+    'Oslo': 'FPt10LXK0cg',
+    'Helsinki': 'EMHS2xh93cE',
+    'Reykjavik': 'k7HnE2jKZDw',
+
+    // Central Europe
+    'Berlin': 'BXs8SjVelKs',
+    'Munich': 'vNqWqjETDpg',
+    'Hamburg': 'OeofBE_o5lk',
+    'Zurich': 'abDTflZn3zQ',
+    'Geneva': '44dtzuUWG5k',
+
+    // Caucasus & Eastern Mediterranean
+    'Tbilisi': 'H5WeVdxBqek',
+    'Yerevan': 'hzx-QdF1p_g',
+    'Istanbul': 'iWv_x37gS2Y',
+    'Ankara': 'K8imLimiY5M',
+    'Cyprus': 'iL12-yq6FJA',
+
+    // Islands & Special Destinations
+    'Malta': '4EqSsZvmSPQ',
+    'Valletta': 'Rw3LFBWm4z4',
+    'Corsica': 'JqVNzKCBb2w',
+    'Sardinia': 'nvC9eVfqahU',
+    'Sicily': 'fTCRwLkuIPA',
+    'Palermo': 'BvfJKtxK7BI',
+    'Madeira': 'L4iKccAjPAI',
+    'Azores': '0vY082Un2pk',
+    'Canary Islands': 'c7rexKZiRhE',
+
+    // Other Global Cities (for reference)
     'Tokyo': 'WUehAgqO5hE',
     'New York': 'HN-5Z6AmxrM',
-    'London': '9RgU1v8FVwY',
-    'Barcelona': 'oWlEcK2G6ik',
-    'Rome': 'w-SxLLzQn5w',
-    'Amsterdam': '2BXl2NKl7SM',
     'Dubai': 'sJfX6W5RvdI',
     'Bangkok': 'UfZwHRzGNas',
-    'Istanbul': 'iWv_x37gS2Y',
-    'Bali': 'uVSQP_Iz-qo',
-    'Lisbon': 'tCgHwbzhRvA',
-    'Prague': 'k-jJMHDy5pE',
-    'Sydney': 'yKSKoqx1lxk',
     'Singapore': 'fyeOxvYvIyY',
+    'Sydney': 'yKSKoqx1lxk',
+    'Bali': 'uVSQP_Iz-qo',
   };
 
   const photoId = fallbackPhotos[cityName];
@@ -141,12 +215,31 @@ function getFallbackImage(cityName) {
     };
   }
 
-  // Image générique par défaut
+  // Try fuzzy matching for common variations
+  const normalized = cityName.toLowerCase();
+  for (const [city, photoId] of Object.entries(fallbackPhotos)) {
+    if (city.toLowerCase().includes(normalized) || normalized.includes(city.toLowerCase())) {
+      return {
+        url: `https://images.unsplash.com/photo-${photoId}?w=800&q=80`,
+        small: `https://images.unsplash.com/photo-${photoId}?w=400&q=80`,
+        thumb: `https://images.unsplash.com/photo-${photoId}?w=200&q=80`,
+        alt: cityName,
+        photographer: {
+          name: 'Unsplash Community',
+          username: 'unsplash',
+          link: 'https://unsplash.com',
+        },
+      };
+    }
+  }
+
+  // Generic travel-inspiring fallback (mountain landscape instead of globe)
+  // More inspiring than a globe - suggests adventure and discovery
   return {
-    url: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&q=80', // Globe terrestre
-    small: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&q=80',
-    thumb: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200&q=80',
-    alt: cityName,
+    url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80', // Beautiful mountain landscape
+    small: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80',
+    thumb: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&q=80',
+    alt: `${cityName} - Discover this destination`,
     photographer: {
       name: 'Unsplash',
       username: 'unsplash',
