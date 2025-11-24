@@ -5,7 +5,8 @@ import { useUser, useAuth } from '@clerk/clerk-react';
 import {
   AlertTriangle, Trophy, Calendar, Lightbulb, CloudSun, Plane,
   Building, Ticket, Save, BarChart, Frown, ArrowLeft, Search,
-  ExternalLink, Clock, MapPin, Star, Check, X
+  ExternalLink, Clock, MapPin, Star, Check, X, ChevronLeft, ChevronRight,
+  Hotel, Sparkles, Users
 } from 'lucide-react';
 
 function Results() {
@@ -19,14 +20,29 @@ function Results() {
   const [error, setError] = useState(null);
   const [savingTripId, setSavingTripId] = useState(null);
   const [proposingTripId, setProposingTripId] = useState(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   // Check if we're proposing for a group trip
   const forGroupTrip = location.state?.forGroupTrip;
+
+  // Carousel navigation
+  const goToNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % recommendations.length);
+  };
+
+  const goToPrevious = () => {
+    setCurrentIndex((prev) => (prev - 1 + recommendations.length) % recommendations.length);
+  };
+
+  const goToIndex = (index) => {
+    setCurrentIndex(index);
+  };
 
   useEffect(() => {
     // If recommendations are passed via state, use them directly
     if (location.state?.recommendations) {
       setRecommendations(location.state.recommendations);
+      setCurrentIndex(0); // Reset to first destination
       setLoading(false);
     } else if (searchId) {
       // Otherwise fetch from API using searchId
@@ -36,6 +52,22 @@ function Results() {
       setError('No recommendations available');
     }
   }, [searchId, location.state]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (recommendations.length > 1) {
+        if (e.key === 'ArrowLeft') {
+          goToPrevious();
+        } else if (e.key === 'ArrowRight') {
+          goToNext();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [recommendations.length, currentIndex]);
 
   const fetchRecommendations = async () => {
     try {
@@ -231,20 +263,20 @@ function Results() {
     <div className="min-h-screen bg-surface-subtle p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
           <div>
             {forGroupTrip ? (
               <>
                 <h1 className="text-3xl font-bold text-text-main mb-2">Propose a Destination</h1>
                 <p className="text-text-secondary">
-                  We found <strong className="text-primary">{recommendations.length} amazing destinations</strong> based on your group's preferences. Choose one to propose to the group!
+                  We crafted <strong className="text-primary">{recommendations.length} exceptional destinations</strong> based on your group's preferences. Choose one to propose!
                 </p>
               </>
             ) : (
               <>
                 <h1 className="text-3xl font-bold text-text-main mb-2">Your Perfect Trips</h1>
                 <p className="text-text-secondary">
-                  We found <strong className="text-primary">{recommendations.length} amazing destinations</strong> tailored just for you
+                  We crafted <strong className="text-primary">{recommendations.length} exceptional destinations</strong> tailored just for you
                 </p>
               </>
             )}
@@ -279,8 +311,52 @@ function Results() {
           </div>
         </div>
 
-        <div className="space-y-8">
-          {recommendations.map((trip, index) => (
+        {/* Carousel Navigation Dots */}
+        {recommendations.length > 1 && (
+          <div className="flex items-center justify-center gap-2 mb-6">
+            {recommendations.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => goToIndex(index)}
+                className={`transition-all ${
+                  index === currentIndex
+                    ? 'w-8 h-2 bg-primary rounded-full'
+                    : 'w-2 h-2 bg-gray-300 rounded-full hover:bg-gray-400'
+                }`}
+                aria-label={`Go to destination ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Carousel Container with Navigation */}
+        {recommendations.length > 0 && (
+          <div className="relative">
+            {/* Previous Button */}
+            {recommendations.length > 1 && (
+              <button
+                onClick={goToPrevious}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-gray-200 hover:bg-white hover:scale-110 transition-all"
+                aria-label="Previous destination"
+              >
+                <ChevronLeft size={24} className="text-gray-700" />
+              </button>
+            )}
+
+            {/* Next Button */}
+            {recommendations.length > 1 && (
+              <button
+                onClick={goToNext}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-gray-200 hover:bg-white hover:scale-110 transition-all"
+                aria-label="Next destination"
+              >
+                <ChevronRight size={24} className="text-gray-700" />
+              </button>
+            )}
+
+            {/* Current Destination Card */}
+            {recommendations.map((trip, index) => (
+              index === currentIndex && (
             <div key={index} className="bg-white rounded-3xl overflow-hidden shadow-card border border-gray-100 hover:border-primary/30 transition-all group">
               <div className="flex flex-col lg:flex-row">
                 {/* Destination Image */}
@@ -557,8 +633,10 @@ function Results() {
                 </div>
               </details>
             </div>
-          ))}
-        </div>
+              )
+            ))}
+          </div>
+        )}
 
         {recommendations.length === 0 && (
           <div className="bg-white rounded-3xl p-16 text-center shadow-card border border-gray-100">
