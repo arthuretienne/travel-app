@@ -1,9 +1,12 @@
 // backend/src/services/stripeService.js
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-11-20.acacia',
-});
+// Initialize Stripe only if API key is provided (optional for development)
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-11-20.acacia',
+    })
+  : null;
 
 // Subscription plans configuration
 export const PLANS = {
@@ -65,6 +68,10 @@ export const PLANS = {
  */
 export async function createCheckoutSession({ userId, userEmail, planName, successUrl, cancelUrl }) {
   try {
+    if (!stripe) {
+      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+    }
+
     const plan = PLANS[planName.toUpperCase()];
 
     if (!plan || !plan.priceId) {
@@ -114,6 +121,10 @@ export async function createCheckoutSession({ userId, userEmail, planName, succe
  */
 export async function createBillingPortalSession({ customerId, returnUrl }) {
   try {
+    if (!stripe) {
+      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+    }
+
     console.log(`💳 Creating billing portal session for customer ${customerId}`);
 
     const session = await stripe.billingPortal.sessions.create({
@@ -136,6 +147,10 @@ export async function createBillingPortalSession({ customerId, returnUrl }) {
  */
 export async function getSubscription(subscriptionId) {
   try {
+    if (!stripe) {
+      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+    }
+
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     return subscription;
   } catch (error) {
@@ -149,6 +164,10 @@ export async function getSubscription(subscriptionId) {
  */
 export async function cancelSubscription(subscriptionId) {
   try {
+    if (!stripe) {
+      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+    }
+
     console.log(`💳 Canceling subscription: ${subscriptionId}`);
 
     const subscription = await stripe.subscriptions.update(subscriptionId, {
@@ -168,6 +187,10 @@ export async function cancelSubscription(subscriptionId) {
  */
 export async function reactivateSubscription(subscriptionId) {
   try {
+    if (!stripe) {
+      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+    }
+
     console.log(`💳 Reactivating subscription: ${subscriptionId}`);
 
     const subscription = await stripe.subscriptions.update(subscriptionId, {
@@ -187,6 +210,10 @@ export async function reactivateSubscription(subscriptionId) {
  */
 export function constructWebhookEvent(payload, signature, webhookSecret) {
   try {
+    if (!stripe) {
+      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+    }
+
     return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
   } catch (error) {
     console.error('❌ Webhook signature verification failed:', error);
@@ -199,6 +226,10 @@ export function constructWebhookEvent(payload, signature, webhookSecret) {
  */
 export async function getCustomerByEmail(email) {
   try {
+    if (!stripe) {
+      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+    }
+
     const customers = await stripe.customers.list({
       email,
       limit: 1,
@@ -216,6 +247,10 @@ export async function getCustomerByEmail(email) {
  */
 export async function createCustomer({ email, name, metadata }) {
   try {
+    if (!stripe) {
+      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+    }
+
     console.log(`💳 Creating Stripe customer: ${email}`);
 
     const customer = await stripe.customers.create({
