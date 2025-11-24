@@ -139,11 +139,19 @@ function buildPrompt(profile, originCity = 'CDG') {
     '12-mois': 12
   };
   const monthsAhead = monthsMap[availability.timeHorizon] || 6;
+
+  // CRITICAL: Amadeus Flight API only searches up to 330 days in the future
+  // Cap the search window to 11 months maximum
+  const maxMonths = Math.min(monthsAhead, 11);
   const maxDate = new Date(today);
-  maxDate.setMonth(maxDate.getMonth() + monthsAhead);
-  
+  maxDate.setMonth(maxDate.getMonth() + maxMonths);
+
+  // Start from tomorrow to avoid same-day booking issues
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() + 1);
+
   // Format dates for prompt
-  const startDateStr = today.toISOString().split('T')[0];
+  const startDateStr = startDate.toISOString().split('T')[0];
   const endDateStr = maxDate.toISOString().split('T')[0];
   
   // Build preferred months text
@@ -314,6 +322,7 @@ CRITICAL INSTRUCTIONS:
 2. Dates must be in format YYYY-MM-DD (e.g., "2025-06-15")
 3. Each trip should be ${tripDays} days long (startDate + ${tripDays} days = endDate)
 4. ALL dates must be between ${startDateStr} and ${endDateStr}
+   ⚠️ IMPORTANT: Dates too far in future won't have flight availability - prioritize dates in next 6-8 months for better flight prices
 5. Consider for each destination:
    - Best season/weather for that location
    - Avoiding peak tourist periods (if user wants to avoid crowds)

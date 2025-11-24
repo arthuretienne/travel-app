@@ -209,6 +209,14 @@ router.post('/recommendations',
       duration: Math.ceil((new Date(destination.endDate) - new Date(destination.startDate)) / (1000 * 60 * 60 * 24)) + 1,
       season: getSeason(destination.startDate)
     };
+
+        // Log flight search parameters for debugging
+        console.log(`🔍 Searching flights for ${destination.city}:`);
+        console.log(`   Origin: ${originCity}`);
+        console.log(`   Destination: ${destination.iataCode} (${destination.city})`);
+        console.log(`   Dates: ${slot.startDate} → ${slot.endDate} (${slot.duration} days)`);
+        console.log(`   Budget: €${userProfile.basic.budget}`);
+
         // Get flight offers
         let flightOffer = await searchFlightOffers(destination, slot, originCity);
 

@@ -165,9 +165,16 @@ export async function searchFlightOffers(destination, slot, originCity) {
     const duration = Date.now() - startTime;
 
     if (!response.data || response.data.length === 0) {
+      console.log(`❌ No flight results for ${destination.city} (${destination.iataCode})`);
+      console.log(`   Search params: ${originCity} → ${destination.iataCode}, ${slot.startDate} to ${slot.endDate}`);
       logger.logAmadeusAPI({
         operation: 'Flight Offers - No Results',
-        params: { destination: destination.city },
+        params: {
+          origin: originCity,
+          destination: destination.city,
+          iataCode: destination.iataCode,
+          dates: `${slot.startDate} to ${slot.endDate}`
+        },
         results: [],
         duration,
       });
