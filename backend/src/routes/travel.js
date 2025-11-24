@@ -1,7 +1,7 @@
 // backend/src/routes/travel.js
 import express from 'express';
 import { generateDestinations } from '../services/claudeService.js';
-import { preScreenDestinations, searchFlightOffers, getHotelCostWithFallbacks } from '../services/amadeusService.js';
+import { searchFlightOffers, getHotelCostWithFallbacks } from '../services/amadeusService.js';
 import { getHotelCostWithBooking } from '../services/bookingService.js';
 import { searchFlixBus } from '../services/flixbusService.js';
 import { generateAffiliateLinks } from '../services/affiliateService.js';
@@ -184,26 +184,11 @@ router.post('/recommendations',
       }
     }
 
-    // Step 2: Pre-screen with Amadeus Flight Inspiration
-    console.log('✈️  Step 2: Pre-screening with Amadeus...');
-    let preScreened = await preScreenDestinations(
-      destinations,
-      originCity,
-      userProfile.basic.budget
-    );
-    console.log(`✅ Pre-screened to ${preScreened.length} destinations`);
-
-    // CRITICAL FALLBACK: If no destinations have flights, keep ALL destinations
-    // We'll try alternative transport methods (train, bus, estimation)
-    if (preScreened.length === 0) {
-      console.warn('⚠️  Pre-screening returned 0 results - keeping ALL destinations for fallback transport search');
-      preScreened = destinations.slice(0, 10); // Keep all 10 Claude destinations
-    } else if (preScreened.length < 3) {
-      // If less than 3, add more from original list to ensure variety
-      console.warn(`⚠️  Only ${preScreened.length} destinations pre-screened - adding more for variety`);
-      const remaining = destinations.filter(d => !preScreened.find(p => p.iataCode === d.iataCode));
-      preScreened = [...preScreened, ...remaining].slice(0, 10);
-    }
+    // Step 2: Use Claude destinations directly (no pre-screening)
+    // Claude has already verified connectivity in its prompt, and we have fallbacks for missing flights
+    console.log('✈️  Step 2: Using Claude destinations directly (skipping Amadeus pre-screening to preserve diversity)...');
+    let preScreened = destinations.slice(0, 3); // Use all 3 Claude-generated destinations
+    console.log(`✅ Using ${preScreened.length} Claude destinations (Porto/Bucharest trap avoided! 🎉)`);
 
     // Step 3: Get photos for top destinations
     console.log('📸 Step 3: Fetching destination photos...');
