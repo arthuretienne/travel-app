@@ -25,10 +25,10 @@ class Logger {
     console.log('🤖 Call Count:', this.stats.claudeApiCalls);
 
     if (input) {
-      console.log('🤖 Input:', typeof input === 'string'
+      const inputString = typeof input === 'string'
         ? input.substring(0, 200) + (input.length > 200 ? '...' : '')
-        : JSON.stringify(input, null, 2).substring(0, 500)
-      );
+        : JSON.stringify(input, null, 2);
+      console.log('🤖 Input:', inputString ? inputString.substring(0, 500) : 'N/A');
     }
 
     if (tokensUsed) {
@@ -48,10 +48,10 @@ class Logger {
         timestamp: new Date().toISOString(),
       });
     } else if (output) {
-      console.log('✅ Claude Response:', typeof output === 'string'
+      const outputString = typeof output === 'string'
         ? output.substring(0, 300) + (output.length > 300 ? '...' : '')
-        : JSON.stringify(output, null, 2).substring(0, 500)
-      );
+        : JSON.stringify(output, null, 2);
+      console.log('✅ Claude Response:', outputString ? outputString.substring(0, 500) : 'N/A');
     }
 
     console.log('🤖 =======================================\n');
@@ -86,11 +86,9 @@ class Logger {
       });
     } else if (results) {
       console.log('✅ Results Count:', Array.isArray(results) ? results.length : 'N/A');
-      console.log('✅ Sample Result:', JSON.stringify(
-        Array.isArray(results) ? results[0] : results,
-        null,
-        2
-      ).substring(0, 500));
+      const sampleResult = Array.isArray(results) ? results[0] : results;
+      const resultString = JSON.stringify(sampleResult, null, 2);
+      console.log('✅ Sample Result:', resultString ? resultString.substring(0, 500) : 'N/A');
     }
 
     console.log('✈️  =======================================\n');
