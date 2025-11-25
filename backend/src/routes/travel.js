@@ -64,6 +64,11 @@ router.post('/recommendations',
         culturalAdaptability: userPreferences.culturalAdaptability,
         climateSensitivity: userPreferences.climateSensitivity,
         preferredAirports: userPreferences.preferredAirports || [],
+        // New onboarding fields
+        personality: userPreferences.personality,
+        refusedTransports: userPreferences.refusedTransports || [],
+        professionalStatus: userPreferences.professionalStatus,
+        idealDuration: userPreferences.idealDuration,
       };
     } else {
       console.log('⚠️  No onboarding preferences found for user');

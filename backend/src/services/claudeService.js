@@ -190,11 +190,14 @@ function buildPrompt(profile, originCity = 'CDG') {
     onboardingSection = `
 
 🎯 PERSONAL TRAVEL PROFILE (from onboarding - USE THIS FOR ULTRA-PERSONALIZATION):
+Traveler personality: ${onboardingPreferences.personality || 'Not specified'} (Routard=backpacker, Explorateur=explorer, Confort=comfort, Luxe=luxury)
 Why they travel: ${onboardingPreferences.whyTravel || 'Not specified'}
 Main goal: ${onboardingPreferences.mainGoal || 'Not specified'}
 Global style: ${onboardingPreferences.globalStyle || 'Not specified'}
 Preferred activities: ${activitiesList}
 Ideal rhythm: ${onboardingPreferences.idealRhythm || 'Not specified'}
+Ideal duration: ${onboardingPreferences.idealDuration || 'Not specified'}
+Professional status: ${onboardingPreferences.professionalStatus || 'Not specified'}
 Accommodation preference: ${onboardingPreferences.accommodationPref || 'Not specified'}
 Visa preference: ${onboardingPreferences.visaPreference || 'Not specified'}
 Mobility needs: ${onboardingPreferences.mobilityNeeds || 'None'}
@@ -279,7 +282,15 @@ ${preferredMonthsText}
 
 🚨 CRITICAL TRANSPORT ACCESSIBILITY CONSTRAINT 🚨
 You MUST ONLY suggest destinations that are ACTUALLY REACHABLE from ${originCityName} (${originCity}) within the budget and flight time constraints.
-
+${onboardingPreferences?.refusedTransports?.length > 0
+  ? `\n⚠️ USER REFUSES THESE TRANSPORT MODES: ${onboardingPreferences.refusedTransports.join(', ')}
+  - DO NOT suggest destinations that REQUIRE these transport modes
+  - If plane refused: ONLY suggest destinations reachable by train/bus/car
+  - If train refused: Focus on air-accessible destinations
+  - If bus refused: Avoid bus-only destinations
+  - If car refused: Ensure good public transport at destination
+  - If boat refused: Avoid island destinations requiring ferry access\n`
+  : ''}
 MANDATORY FLIGHT CONNECTIVITY RULES:
 1. For destinations under €${basic.budget} budget:
    - PRIORITIZE cities with direct flights or 1-stop connections from ${originCityName}
@@ -287,9 +298,7 @@ MANDATORY FLIGHT CONNECTIVITY RULES:
    - Verify the route actually exists year-round (check ${originCity} airport connections)
    - Avoid suggesting remote islands or exotic locations unless budget > €1500
 
-2. For European destinations (under 1500km from ${originCityName}):
-   - Consider TRAIN alternatives: Eurostar, TGV, ICE depending on origin city
-   - Consider BUS alternatives: FlixBus, BlaBlaBus serve most European capitals
+2. For European destinations (under 1500km from ${originCityName}):${onboardingPreferences?.refusedTransports?.includes('train') ? '' : '\n   - Consider TRAIN alternatives: Eurostar, TGV, ICE depending on origin city'}${onboardingPreferences?.refusedTransports?.includes('bus') ? '' : '\n   - Consider BUS alternatives: FlixBus, BlaBlaBus serve most European capitals'}
    - These alternatives can be CHEAPER than flights and should be suggested when relevant
 
 3. For long-haul destinations (>5h flight from ${originCity}):
