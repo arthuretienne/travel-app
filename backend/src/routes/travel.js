@@ -200,6 +200,11 @@ router.post('/recommendations',
     const photoMap = await getDestinationPhotos(preScreened.slice(0, 5));
     console.log(`✅ Fetched ${photoMap.size} photos`);
 
+    // Debug: Log photo data
+    for (const [city, photo] of photoMap.entries()) {
+      console.log(`  📷 ${city}:`, photo?.url ? `${photo.url.substring(0, 50)}...` : 'NO PHOTO');
+    }
+
     // Step 4: Detailed search for top destinations
     console.log('🔎 Step 4: Searching detailed flights and alternatives...');
     // Try to get at least 5 destinations to ensure we return minimum 3 after filtering
@@ -350,6 +355,7 @@ router.post('/recommendations',
 
         // Get photo from map
         const photo = photoMap.get(destination.city);
+        console.log(`📷 Attaching photo for ${destination.city}:`, photo ? 'YES' : 'NO');
 
         return {
           destination: {

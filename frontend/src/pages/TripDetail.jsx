@@ -1338,10 +1338,17 @@ function TripEnhancementsSection({ trip, userName }) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load enhancements');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Enhancement API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(errorData.error || 'Failed to load enhancements');
       }
 
       const data = await response.json();
+      console.log('✅ Enhancements loaded:', data);
       setEnhancements(data.data);
     } catch (err) {
       console.error('Error fetching enhancements:', err);

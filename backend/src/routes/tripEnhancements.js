@@ -47,13 +47,39 @@ router.get('/:id/enhancements', authenticateUser, async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
+    // Debug: Log trip data
+    console.log('🔍 Trip data:', {
+      id: trip.id,
+      name: trip.name,
+      status: trip.status,
+      hasFinalDestination: !!trip.finalDestination,
+      finalStartDate: trip.finalStartDate,
+      finalEndDate: trip.finalEndDate,
+    });
+
     // Only provide enhancements if trip is confirmed
     if (!trip.finalDestination) {
-      return res.status(400).json({ error: 'Trip destination not yet confirmed' });
+      console.log('⚠️  No finalDestination found. Trip might not be confirmed yet.');
+      return res.status(400).json({
+        error: 'Trip destination not yet confirmed',
+        debug: {
+          tripId: trip.id,
+          status: trip.status,
+          hasFinalDestination: false,
+        }
+      });
     }
 
     const destination = trip.finalDestination;
-    const { city, country, startDate, endDate } = destination;
+    console.log('✅ Final destination:', destination);
+
+    // Get dates from destination or trip level
+    const city = destination.city;
+    const country = destination.country;
+    const startDate = destination.startDate || trip.finalStartDate;
+    const endDate = destination.endDate || trip.finalEndDate;
+
+    console.log('📅 Trip dates:', { startDate, endDate });
 
     // Fetch user preferences for personalization
     const userPreferences = await prisma.userPreferences.findUnique({
