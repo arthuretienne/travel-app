@@ -1,11 +1,14 @@
 // backend/src/services/unsplashService.js
+// MIGRATED TO PEXELS - This service now uses Pexels as primary source
 import { createApi } from 'unsplash-js';
 import nodeFetch from 'node-fetch';
+import { getDestinationPhotos as getPexelsPhotos } from './pexelsService.js';
 
 // NOTE: dotenv est déjà chargé dans server.js via env.js
 // Les variables d'environnement sont disponibles via process.env
 
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
+const USE_PEXELS = process.env.PEXELS_API_KEY; // Prefer Pexels if available
 
 let unsplash;
 
@@ -19,14 +22,31 @@ if (UNSPLASH_ACCESS_KEY) {
   console.warn('⚠️  UNSPLASH_ACCESS_KEY not set, using fallback images');
 }
 
+if (USE_PEXELS) {
+  console.log('✅ Using Pexels as primary photo source (better quality & higher limits)');
+}
+
 /**
  * Recherche une photo pour une destination
+ * NOW USES PEXELS AS PRIMARY SOURCE (better quality, higher API limits)
  * @param {string} cityName - Nom de la ville
  * @param {string} countryName - Nom du pays
  * @returns {Promise<string>} URL de la photo
  */
 export async function getDestinationPhoto(cityName, countryName) {
-  // Fallback images si pas de clé Unsplash
+  // Use Pexels if available (better quality and higher limits)
+  if (USE_PEXELS) {
+    try {
+      const pexelsPhoto = await getPexelsPhotos(cityName, countryName);
+      if (pexelsPhoto) {
+        return pexelsPhoto;
+      }
+    } catch (error) {
+      console.warn('Pexels fallback to Unsplash:', error.message);
+    }
+  }
+
+  // Fallback to Unsplash
   if (!unsplash) {
     return getFallbackImage(cityName);
   }
