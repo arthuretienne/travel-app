@@ -16,6 +16,7 @@ const CITIES = [
   { name: 'Bordeaux', code: 'BOD' },
   { name: 'Nantes', code: 'NTE' },
   { name: 'Strasbourg', code: 'SXB' },
+  { name: '🌍 Nomade (pas de ville fixe)', code: 'NOMAD' },
 ];
 
 function OnboardingNew({ onSubmit }) {
@@ -28,6 +29,10 @@ function OnboardingNew({ onSubmit }) {
     destinationPreference: 'europe',
     originCity: 'PAR',
     travelers: 1,
+    personality: 'explorateur',
+    refusedTransports: [],
+    professionalStatus: 'salarié',
+    idealDuration: '1-semaine',
   });
 
   const [errors, setErrors] = useState({});
@@ -55,6 +60,15 @@ function OnboardingNew({ onSubmit }) {
       activities: prev.activities.includes(activity)
         ? prev.activities.filter(a => a !== activity)
         : [...prev.activities, activity]
+    }));
+  };
+
+  const toggleRefusedTransport = (transport) => {
+    setFormData(prev => ({
+      ...prev,
+      refusedTransports: prev.refusedTransports.includes(transport)
+        ? prev.refusedTransports.filter(t => t !== transport)
+        : [...prev.refusedTransports, transport]
     }));
   };
 
@@ -90,6 +104,8 @@ function OnboardingNew({ onSubmit }) {
         travelStyle: formData.style,
         activities: formData.activities,
         destinationTypes: [formData.destinationPreference],
+        personality: formData.personality,
+        refusedTransports: formData.refusedTransports,
       },
       constraints: {
         budget: formData.budget,
@@ -98,6 +114,8 @@ function OnboardingNew({ onSubmit }) {
       availability: {
         preferredMonths: formData.preferredMonths,
         flexibleDates: true,
+        professionalStatus: formData.professionalStatus,
+        idealDuration: formData.idealDuration,
       },
     };
 
@@ -132,6 +150,35 @@ function OnboardingNew({ onSubmit }) {
                 onClick={() => handleChange('budget', option.value)}
               >
                 {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Personality */}
+        <div className="form-section">
+          <label className="section-label">
+            <span className="label-icon">🧳</span>
+            Quel type de voyageur êtes-vous ?
+          </label>
+          <div className="personality-options">
+            {[
+              { label: 'Routard', value: 'routard', icon: '🎒', desc: 'Aventure et authenticité' },
+              { label: 'Explorateur', value: 'explorateur', icon: '🗺️', desc: 'Découverte et curiosité' },
+              { label: 'Confort', value: 'confort', icon: '🏨', desc: 'Qualité et détente' },
+              { label: 'Luxe', value: 'luxe', icon: '💎', desc: 'Premium et exclusif' },
+            ].map(option => (
+              <button
+                key={option.value}
+                type="button"
+                className={`personality-button ${formData.personality === option.value ? 'active' : ''}`}
+                onClick={() => handleChange('personality', option.value)}
+              >
+                <span className="personality-icon">{option.icon}</span>
+                <div className="personality-text">
+                  <span className="personality-label">{option.label}</span>
+                  <span className="personality-desc">{option.desc}</span>
+                </div>
               </button>
             ))}
           </div>
@@ -210,6 +257,39 @@ function OnboardingNew({ onSubmit }) {
           </div>
         </div>
 
+        {/* Refused Transports */}
+        <div className="form-section">
+          <label className="section-label">
+            <span className="label-icon">🚫</span>
+            Quels transports vous N'ACCEPTEZ PAS ? (inversé : par défaut tout est accepté)
+          </label>
+          <div className="transport-options">
+            {[
+              { label: 'Avion', value: 'plane', icon: '✈️' },
+              { label: 'Train', value: 'train', icon: '🚆' },
+              { label: 'Bus', value: 'bus', icon: '🚌' },
+              { label: 'Voiture', value: 'car', icon: '🚗' },
+              { label: 'Bateau', value: 'boat', icon: '⛴️' },
+            ].map(option => (
+              <label
+                key={option.value}
+                className={`transport-checkbox ${formData.refusedTransports.includes(option.value) ? 'refused' : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={formData.refusedTransports.includes(option.value)}
+                  onChange={() => toggleRefusedTransport(option.value)}
+                />
+                <span className="transport-icon">{option.icon}</span>
+                <span className="transport-label">
+                  {formData.refusedTransports.includes(option.value) ? '❌' : '✅'} {option.label}
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="help-text">Par défaut, tous les transports sont acceptés. Cochez ceux que vous refusez.</p>
+        </div>
+
         {/* Activities */}
         <div className="form-section">
           <label className="section-label">
@@ -265,6 +345,45 @@ function OnboardingNew({ onSubmit }) {
                 <span>{option.label}</span>
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Availability */}
+        <div className="form-section-row">
+          <div className="form-section-half">
+            <label className="section-label">
+              <span className="label-icon">💼</span>
+              Statut professionnel
+            </label>
+            <select
+              value={formData.professionalStatus}
+              onChange={(e) => handleChange('professionalStatus', e.target.value)}
+              className="select-input"
+            >
+              <option value="salarié">Salarié</option>
+              <option value="indépendant">Indépendant</option>
+              <option value="étudiant">Étudiant</option>
+              <option value="retraité">Retraité</option>
+              <option value="autre">Autre</option>
+            </select>
+          </div>
+
+          <div className="form-section-half">
+            <label className="section-label">
+              <span className="label-icon">⏱️</span>
+              Durée idéale
+            </label>
+            <select
+              value={formData.idealDuration}
+              onChange={(e) => handleChange('idealDuration', e.target.value)}
+              className="select-input"
+            >
+              <option value="weekend">Week-end (2-3 jours)</option>
+              <option value="1-semaine">1 semaine</option>
+              <option value="2-semaines">2 semaines</option>
+              <option value="3-semaines">3 semaines ou plus</option>
+              <option value="flexible">Flexible</option>
+            </select>
           </div>
         </div>
 

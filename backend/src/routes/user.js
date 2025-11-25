@@ -242,6 +242,12 @@ router.put('/preferences', authenticateUser, async (req, res) => {
       activities: req.body.activities || [],
       maxFlightHours: req.body.maxFlightHours,
       destinationPref: req.body.destinationPref,
+
+      // New onboarding fields (OnboardingNew component)
+      personality: req.body.personality,
+      refusedTransports: req.body.refusedTransports || [],
+      professionalStatus: req.body.professionalStatus,
+      idealDuration: req.body.idealDuration,
     };
 
     // Remove undefined values

@@ -105,6 +105,12 @@ model UserPreferences {
   maxFlightHours    Int?
   destinationPref   String?
 
+  // New onboarding fields (OnboardingNew component)
+  personality         String? // "routard" | "explorateur" | "confort" | "luxe"
+  refusedTransports   String[] // Inverse logic: transports user REFUSES (empty = all accepted)
+  professionalStatus  String? // "salarié" | "indépendant" | "étudiant" | "retraité" | "autre"
+  idealDuration       String? // "weekend" | "1-semaine" | "2-semaines" | "3-semaines" | "flexible"
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
