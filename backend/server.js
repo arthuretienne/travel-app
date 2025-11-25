@@ -15,6 +15,7 @@ import votingRoutes from './src/routes/voting.js';
 import messagesRoutes from './src/routes/messages.js';
 import membersRoutes from './src/routes/members.js';
 import billingRoutes from './src/routes/billing.js';
+import tripEnhancementsRoutes from './src/routes/tripEnhancements.js';
 import prisma from './src/db/prisma.js';
 import { apiLimiter, strictLimiter, emailLimiter } from './src/middleware/rateLimiter.js';
 
@@ -55,6 +56,7 @@ app.use('/api/trips', votingRoutes);
 app.use('/api/trips', messagesRoutes);
 app.use('/api/trips', membersRoutes);
 app.use('/api/trips', invitationsRoutes);
+app.use('/api/trips', tripEnhancementsRoutes);
 
 // Health check
 app.get('/api/health', async (req, res) => {
