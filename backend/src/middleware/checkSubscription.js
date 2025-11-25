@@ -108,6 +108,14 @@ export function requireFeature(featureName) {
 export function checkLimit(limitType, usageField) {
   return async (req, res, next) => {
     try {
+      // DEV MODE: Bypass all usage limits during development
+      const DEV_MODE = process.env.DEV_MODE === 'true' || process.env.NODE_ENV === 'development';
+
+      if (DEV_MODE) {
+        console.log('🚀 DEV MODE: Bypassing usage limits for testing');
+        return next();
+      }
+
       if (!req.subscription) {
         await checkSubscription(req, res, () => {});
       }
@@ -149,6 +157,14 @@ export function checkLimit(limitType, usageField) {
  */
 export function incrementUsage(usageField) {
   return async (req, res, next) => {
+    // DEV MODE: Skip incrementing usage during development
+    const DEV_MODE = process.env.DEV_MODE === 'true' || process.env.NODE_ENV === 'development';
+
+    if (DEV_MODE) {
+      console.log('🚀 DEV MODE: Skipping usage increment for testing');
+      return next();
+    }
+
     const originalJson = res.json.bind(res);
 
     res.json = function (data) {
