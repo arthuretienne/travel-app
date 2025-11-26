@@ -3,6 +3,7 @@ import Amadeus from 'amadeus';
 import cache from './cacheService.js';
 import { calculateRealHotelCost } from '../data/realHotelPrices.js';
 import { logger } from './logger.js';
+import { withTimeoutAndFallback } from '../utils/timeout.js';
 
 // NOTE: dotenv est déjà chargé dans server.js
 // Les variables d'environnement sont disponibles via process.env
@@ -152,15 +153,21 @@ export async function searchFlightOffers(destination, slot, originCity) {
       },
     });
 
-    const response = await amadeus.shopping.flightOffersSearch.get({
-      originLocationCode: originCity,
-      destinationLocationCode: destination.iataCode,
-      departureDate: slot.startDate,
-      returnDate: slot.endDate,
-      adults: 1,
-      currencyCode: 'EUR',
-      max: 3 // Get top 3 offers
-    });
+    // Add 5 second timeout to prevent slow API calls from blocking
+    const response = await withTimeoutAndFallback(
+      amadeus.shopping.flightOffersSearch.get({
+        originLocationCode: originCity,
+        destinationLocationCode: destination.iataCode,
+        departureDate: slot.startDate,
+        returnDate: slot.endDate,
+        adults: 1,
+        currencyCode: 'EUR',
+        max: 3 // Get top 3 offers
+      }),
+      5000, // 5 second timeout
+      { data: [] }, // Return empty results on timeout
+      `Flight search ${originCity} → ${destination.iataCode}`
+    );
 
     const duration = Date.now() - startTime;
 
@@ -327,10 +334,15 @@ export async function searchHotels(destination, slot, userPreferences) {
       },
     });
 
-    // Search for hotels by city
-    const hotelsResponse = await amadeus.referenceData.locations.hotels.byCity.get({
-      cityCode: cityCode
-    });
+    // Search for hotels by city with timeout
+    const hotelsResponse = await withTimeoutAndFallback(
+      amadeus.referenceData.locations.hotels.byCity.get({
+        cityCode: cityCode
+      }),
+      4000, // 4 second timeout
+      { data: [] }, // Return empty on timeout
+      `Hotel search ${destination.city}`
+    );
 
     if (!hotelsResponse.data || hotelsResponse.data.length === 0) {
       console.log(`⚠️  No hotels found for ${destination.city}`);
