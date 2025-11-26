@@ -78,6 +78,13 @@ export async function preScreenDestinations(destinations, originCity, userBudget
     });
 
     const duration = Date.now() - startTime;
+
+    // Safety check: ensure response.data exists
+    if (!response.data || response.data.length === 0) {
+      console.log('⚠️  Flight Inspiration returned no destinations, using all Claude destinations');
+      return destinations.slice(0, 5);
+    }
+
     const availableDestinations = response.data.map(d => d.destination);
 
     logger.logAmadeusAPI({
