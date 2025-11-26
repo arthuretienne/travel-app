@@ -1,6 +1,5 @@
 // backend/src/services/pexelsService.js
 import axios from 'axios';
-import { logger } from './logger.js';
 
 const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
 const PEXELS_API_URL = 'https://api.pexels.com/v1';
@@ -42,13 +41,6 @@ export async function getDestinationPhotos(cityName, countryName = '') {
     // Get the best quality photo
     const photo = response.data.photos[0];
 
-    logger.logAPICall({
-      service: 'Pexels',
-      operation: 'Search Photos',
-      params: { city: cityName, country: countryName },
-      status: 'success',
-    });
-
     return {
       url: photo.src.large2x || photo.src.large,
       medium: photo.src.large || photo.src.medium,
@@ -63,15 +55,6 @@ export async function getDestinationPhotos(cityName, countryName = '') {
     };
   } catch (error) {
     console.error('Pexels API Error:', error.response?.data || error.message);
-
-    logger.logAPICall({
-      service: 'Pexels',
-      operation: 'Search Photos',
-      params: { city: cityName, country: countryName },
-      status: 'error',
-      error: error.message,
-    });
-
     return getFallbackPhoto(cityName);
   }
 }
