@@ -926,13 +926,13 @@ function TripEnhancementsSection({ trip, userName }) {
         userPersonality={null}
       />
 
-      {/* Weather & Packing Section - Side by Side */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      {/* Weather & Packing Section - Side by Side (Simplified) */}
+      <div className="grid lg:grid-cols-2 gap-4">
         {/* Weather Forecast */}
         {weather && <WeatherForecastCard weather={weather} destination={destination} />}
 
         {/* Packing Tips */}
-        {packing && <PackingTipsCard packing={packing} destination={destination} />}
+        {packing && <PackingTipsCard packing={packing} />}
       </div>
 
       {/* Local Events */}
@@ -943,160 +943,66 @@ function TripEnhancementsSection({ trip, userName }) {
   );
 }
 
-// Weather Forecast Card Component
+// Weather Forecast Card Component - Simplified
 function WeatherForecastCard({ weather, destination }) {
+  // Get average conditions for trip period (first 5-7 days)
+  const tripForecast = weather.forecast.slice(0, Math.min(5, weather.forecast.length));
+  const avgTemp = Math.round(
+    tripForecast.reduce((sum, day) => sum + day.day.avgtemp_c, 0) / tripForecast.length
+  );
+  const maxRainChance = Math.max(...tripForecast.map(d => d.day.daily_chance_of_rain));
+
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl shadow-card border border-blue-100 overflow-hidden">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Sun className="w-6 h-6 text-yellow-500" />
-            Weather Forecast
-          </h2>
-          <span className="text-sm text-gray-600">{destination.city}</span>
-        </div>
-
-        {/* Current Weather */}
-        <div className="bg-white rounded-xl p-4 mb-4">
-          <p className="text-sm text-gray-600 mb-2">Current Conditions</p>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img src={weather.current.icon} alt={weather.current.condition} className="w-16 h-16" />
-              <div>
-                <p className="text-3xl font-bold text-gray-900">{Math.round(weather.current.temp_c)}°C</p>
-                <p className="text-sm text-gray-600">{weather.current.condition}</p>
-              </div>
-            </div>
-            <div className="text-right text-sm text-gray-600">
-              <div className="flex items-center gap-1 justify-end">
-                <Droplet className="w-4 h-4" />
-                <span>{weather.current.humidity}%</span>
-              </div>
-              <div className="flex items-center gap-1 justify-end mt-1">
-                <Wind className="w-4 h-4" />
-                <span>{Math.round(weather.current.wind_kph)} km/h</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 7-Day Forecast */}
-        <div className="space-y-2">
-          <p className="text-sm font-semibold text-gray-700 mb-3">7-Day Forecast</p>
-          {weather.forecast.map((day, idx) => (
-            <div key={idx} className="bg-white rounded-lg p-3 flex items-center justify-between hover:bg-blue-50 transition-colors">
-              <div className="flex items-center gap-3 flex-1">
-                <span className="text-sm font-medium text-gray-700 w-20">
-                  {idx === 0 ? 'Today' : new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                </span>
-                <img src={day.day.icon} alt={day.day.condition} className="w-8 h-8" />
-                <span className="text-xs text-gray-600 flex-1">{day.day.condition}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                {day.day.daily_chance_of_rain > 30 && (
-                  <span className="text-xs text-blue-600 flex items-center gap-1">
-                    <Droplet className="w-3 h-3" />
-                    {day.day.daily_chance_of_rain}%
-                  </span>
-                )}
-                <span className="text-sm font-semibold text-gray-900">
-                  {Math.round(day.day.maxtemp_c)}° / {Math.round(day.day.mintemp_c)}°
-                </span>
-              </div>
-            </div>
-          ))}
+    <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl shadow-sm border border-blue-100 p-4">
+      <div className="flex items-center gap-3">
+        <img src={weather.current.icon} alt={weather.current.condition} className="w-12 h-12" />
+        <div className="flex-1">
+          <h3 className="font-bold text-gray-900">Weather</h3>
+          <p className="text-sm text-gray-600">
+            Currently {Math.round(weather.current.temp_c)}°C • {weather.current.condition}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Trip average: ~{avgTemp}°C
+            {maxRainChance > 30 && ` • ${maxRainChance}% rain chance`}
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-// Packing Tips Card Component
-function PackingTipsCard({ packing, destination }) {
+// Packing Tips Card Component - Simplified (1-2 key tips only)
+function PackingTipsCard({ packing }) {
+  // Get only the MOST important tips (first 2 essentials)
+  const keyEssentials = packing.essentials.slice(0, 2);
+  const keyClothing = packing.clothing.slice(0, 1);
+
   return (
-    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-card border border-purple-100 overflow-hidden">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Backpack className="w-6 h-6 text-purple-600" />
-            Packing Tips
-          </h2>
-          <span className="text-sm text-gray-600">{destination.city}</span>
-        </div>
-
-        {/* Weather Summary */}
-        {packing.weatherSummary && (
-          <div className="bg-white rounded-xl p-4 mb-4">
-            <p className="text-sm font-semibold text-gray-700 mb-2">Expected Conditions</p>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-gray-600">Avg Temperature</p>
-                <p className="font-bold text-gray-900">{packing.weatherSummary.avgTemp}°C</p>
+    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl shadow-sm border border-purple-100 p-4">
+      <div className="flex items-start gap-3">
+        <Backpack className="w-6 h-6 text-purple-600 flex-shrink-0" />
+        <div className="flex-1">
+          <h3 className="font-bold text-gray-900 mb-2">Essential Packing</h3>
+          <div className="space-y-1.5 text-sm">
+            {keyEssentials.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-gray-700">
+                <CheckCircle2 className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                <span>{item}</span>
               </div>
-              <div>
-                <p className="text-gray-600">Range</p>
-                <p className="font-bold text-gray-900">{packing.weatherSummary.tempRange}</p>
+            ))}
+            {keyClothing.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-gray-700">
+                <CheckCircle2 className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                <span>{item}</span>
               </div>
-              {packing.weatherSummary.rainChance > 20 && (
-                <div>
-                  <p className="text-gray-600">Rain Chance</p>
-                  <p className="font-bold text-blue-600">{packing.weatherSummary.rainChance}%</p>
-                </div>
-              )}
-              {packing.weatherSummary.maxUV > 5 && (
-                <div>
-                  <p className="text-gray-600">Max UV</p>
-                  <p className="font-bold text-orange-600">{packing.weatherSummary.maxUV}</p>
-                </div>
-              )}
-            </div>
+            ))}
           </div>
-        )}
-
-        {/* Packing Lists */}
-        <div className="space-y-4">
-          {/* Essential Items */}
-          <div>
-            <h3 className="text-sm font-bold text-red-700 mb-2 flex items-center gap-1">
-              <Heart className="w-4 h-4" />
-              Essentials (Don't Forget!)
-            </h3>
-            <div className="bg-white rounded-lg p-3 space-y-1.5">
-              {packing.essentials.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="w-4 h-4 text-red-500 flex-shrink-0" />
-                  <span className="text-gray-700">{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Clothing */}
-          <div>
-            <h3 className="text-sm font-bold text-purple-700 mb-2">Clothing</h3>
-            <div className="bg-white rounded-lg p-3 space-y-1.5">
-              {packing.clothing.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm">
-                  <Circle className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                  <span className="text-gray-700">{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Optional Items */}
-          {packing.optional.length > 0 && (
-            <div>
-              <h3 className="text-sm font-bold text-gray-600 mb-2">Optional (Nice to Have)</h3>
-              <div className="bg-white rounded-lg p-3 space-y-1.5">
-                {packing.optional.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-sm">
-                    <Plus className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-600">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {packing.weatherSummary && (
+            <p className="text-xs text-gray-500 mt-2">
+              {packing.weatherSummary.tempRange} •
+              {packing.weatherSummary.rainChance > 30 && ' Bring rain gear'}
+              {packing.weatherSummary.maxUV > 6 && ' High UV - SPF 50+'}
+            </p>
           )}
         </div>
       </div>
