@@ -8,9 +8,211 @@ import prisma from '../db/prisma.js';
 
 const router = express.Router();
 
+// Helper function to get trip data (used by all routes)
+async function getTripData(id, userId) {
+  // Try collaborative trip first
+  let trip = await prisma.collaborativeTrip.findUnique({
+    where: { id },
+    include: {
+      members: {
+        include: {
+          user: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+      },
+    },
+  });
+
+  let isSavedTrip = false;
+  let members = [];
+
+  // Try saved trip if not found
+  if (!trip) {
+    trip = await prisma.savedTrip.findUnique({ where: { id } });
+    isSavedTrip = true;
+  }
+
+  if (!trip) return null;
+
+  // Check access
+  if (!isSavedTrip) {
+    const userMember = trip.members.find(m => m.userId === userId);
+    const isCreator = trip.creatorId === userId;
+    members = trip.members;
+    if (!isCreator && !userMember) return null;
+  } else {
+    if (trip.userId !== userId) return null;
+  }
+
+  // Extract destination
+  let city, country, startDate, endDate;
+  if (isSavedTrip) {
+    city = trip.city;
+    country = trip.country;
+    startDate = trip.startDate;
+    endDate = trip.endDate;
+  } else if (trip.finalDestination) {
+    city = trip.finalDestination.city;
+    country = trip.finalDestination.country;
+    startDate = trip.finalDestination.startDate || trip.finalStartDate;
+    endDate = trip.finalDestination.endDate || trip.finalEndDate;
+  } else {
+    // Fallback
+    city = 'Paris';
+    country = 'France';
+    startDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    endDate = new Date(Date.now() + 37 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  }
+
+  return { trip, isSavedTrip, members, city, country, startDate, endDate };
+}
+
+/**
+ * GET /api/trips/:id/weather
+ * FAST: Get weather forecast only (2-3 seconds)
+ */
+router.get('/:id/weather', authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tripData = await getTripData(id, req.user.id);
+
+    if (!tripData) {
+      return res.status(404).json({ error: 'Trip not found or access denied' });
+    }
+
+    const { city, country } = tripData;
+
+    // Get weather forecast
+    const weather = await getWeatherForecast(city, country);
+
+    if (!weather) {
+      return res.status(500).json({ error: 'Failed to fetch weather' });
+    }
+
+    res.json({ success: true, data: { weather } });
+  } catch (error) {
+    console.error('Error fetching weather:', error);
+    res.status(500).json({ error: 'Failed to fetch weather', message: error.message });
+  }
+});
+
+/**
+ * GET /api/trips/:id/packing
+ * FAST: Get packing recommendations (depends on weather, 3-5 seconds)
+ */
+router.get('/:id/packing', authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tripData = await getTripData(id, req.user.id);
+
+    if (!tripData) {
+      return res.status(404).json({ error: 'Trip not found or access denied' });
+    }
+
+    const { city, country, startDate, endDate } = tripData;
+
+    // Get weather forecast for packing
+    const weather = await getWeatherForecast(city, country);
+    const packing = weather
+      ? getPackingRecommendations(weather.forecast, { startDate, endDate })
+      : {
+          clothing: ['Versatile layers', 'Comfortable walking shoes'],
+          essentials: ['Sunscreen', 'Water bottle'],
+          optional: ['Umbrella'],
+        };
+
+    res.json({ success: true, data: { packing, city, country } });
+  } catch (error) {
+    console.error('Error fetching packing tips:', error);
+    res.status(500).json({ error: 'Failed to fetch packing tips', message: error.message });
+  }
+});
+
+/**
+ * GET /api/trips/:id/itinerary
+ * SLOW: Generate personalized itinerary with Claude AI (10-15 seconds)
+ */
+router.get('/:id/itinerary', authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tripData = await getTripData(id, req.user.id);
+
+    if (!tripData) {
+      return res.status(404).json({ error: 'Trip not found or access denied' });
+    }
+
+    const { trip, isSavedTrip, members, city, country, startDate, endDate } = tripData;
+    const destination = { city, country, startDate, endDate };
+
+    // Get user preferences
+    const userPreferences = await prisma.userPreferences.findUnique({
+      where: { userId: req.user.id },
+    });
+
+    const userProfile = {
+      personality: userPreferences?.personality,
+      topActivities: userPreferences?.topActivities || [],
+      budget: userPreferences?.budget || 1500,
+      idealRhythm: userPreferences?.idealRhythm,
+    };
+
+    const userName = req.user.firstName || 'there';
+
+    // Generate itinerary
+    const itinerary = await generatePersonalizedItinerary(
+      destination,
+      userProfile,
+      userName,
+      isSavedTrip ? [] : members
+    );
+
+    res.json({ success: true, data: { itinerary, city, country } });
+  } catch (error) {
+    console.error('Error generating itinerary:', error);
+    res.status(500).json({ error: 'Failed to generate itinerary', message: error.message });
+  }
+});
+
+/**
+ * GET /api/trips/:id/events
+ * FAST: Get local events (instant, from static data)
+ */
+router.get('/:id/events', authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tripData = await getTripData(id, req.user.id);
+
+    if (!tripData) {
+      return res.status(404).json({ error: 'Trip not found or access denied' });
+    }
+
+    const { city, startDate, endDate } = tripData;
+
+    // Get events
+    const upcomingEvents = getLocalEvents(city, startDate, endDate);
+    const allCityEvents = getAllCityEvents(city);
+
+    res.json({
+      success: true,
+      data: {
+        events: {
+          upcoming: upcomingEvents,
+          regular: allCityEvents,
+        },
+        city,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    res.status(500).json({ error: 'Failed to fetch events', message: error.message });
+  }
+});
+
 /**
  * GET /api/trips/:id/enhancements
- * Get weather, itinerary, packing tips, and local events for a trip
+ * DEPRECATED: Use separate routes above for better performance
+ * Keep for backward compatibility
  */
 router.get('/:id/enhancements', authenticateUser, async (req, res) => {
   try {
