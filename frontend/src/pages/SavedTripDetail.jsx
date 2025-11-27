@@ -24,7 +24,19 @@ import {
   CheckSquare,
   Square,
   Star,
+  Sun,
+  CloudRain,
+  Cloudy,
+  CloudSnow,
+  Wind,
+  Droplet,
+  Backpack,
+  Heart,
+  Circle,
+  Plus,
+  CheckCircle2,
 } from 'lucide-react';
+import { PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -479,6 +491,9 @@ export default function SavedTripDetail() {
           </div>
         )}
 
+        {/* TRIP ENHANCEMENTS - Weather, Itinerary, Packing, Events */}
+        <TripEnhancementsSection trip={trip} userName={user?.firstName || 'there'} />
+
         {/* Book Your Trip - 3 Column Layout */}
         <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 border-b border-gray-100">
@@ -812,6 +827,282 @@ export default function SavedTripDetail() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ========================================
+// TRIP ENHANCEMENTS SECTION
+// Weather, Itinerary, Packing, Events
+// ========================================
+function TripEnhancementsSection({ trip, userName }) {
+  const { getToken } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [enhancements, setEnhancements] = useState(null);
+  const [error, setError] = useState(null);
+  const [activeDay, setActiveDay] = useState(0);
+
+  useEffect(() => {
+    fetchEnhancements();
+  }, [trip.id]);
+
+  const fetchEnhancements = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/api/trips/${trip.id}/enhancements`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Enhancement API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(errorData.error || 'Failed to load enhancements');
+      }
+
+      const data = await response.json();
+      console.log('✅ Enhancements loaded:', data);
+      setEnhancements(data.data);
+    } catch (err) {
+      console.error('Error fetching enhancements:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-8">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-text-secondary">Preparing your personalized trip plan...</p>
+          <p className="text-sm text-text-secondary mt-2">Checking weather, planning itinerary, finding events...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-amber-900 mb-1">Unable to load trip enhancements</h3>
+            <p className="text-sm text-amber-700">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!enhancements) return null;
+
+  const { weather, packing, itinerary, events } = enhancements;
+  // For SavedTrip, create a pseudo destination object from trip data
+  const destination = {
+    city: trip.city,
+    country: trip.country,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Weather & Packing Section - Side by Side */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Weather Forecast */}
+        {weather && <WeatherForecastCard weather={weather} destination={destination} />}
+
+        {/* Packing Tips */}
+        {packing && <PackingTipsCard packing={packing} destination={destination} />}
+      </div>
+
+      {/* Personalized Itinerary */}
+      {itinerary && itinerary.length > 0 && (
+        <PersonalizedItineraryCard
+          itinerary={itinerary}
+          userName={userName}
+          activeDay={activeDay}
+          setActiveDay={setActiveDay}
+          destination={destination}
+        />
+      )}
+
+      {/* Local Events */}
+      {(events.upcoming.length > 0 || events.regular.length > 0) && (
+        <LocalEventsCard events={events} destination={destination} />
+      )}
+    </div>
+  );
+}
+
+// Weather Forecast Card Component
+function WeatherForecastCard({ weather, destination }) {
+  return (
+    <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl shadow-card border border-blue-100 overflow-hidden">
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Sun className="w-6 h-6 text-yellow-500" />
+            Weather Forecast
+          </h2>
+          <span className="text-sm text-gray-600">{destination.city}</span>
+        </div>
+
+        {/* Current Weather */}
+        <div className="bg-white rounded-xl p-4 mb-4">
+          <p className="text-sm text-gray-600 mb-2">Current Conditions</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img src={weather.current.icon} alt={weather.current.condition} className="w-16 h-16" />
+              <div>
+                <p className="text-3xl font-bold text-gray-900">{Math.round(weather.current.temp_c)}°C</p>
+                <p className="text-sm text-gray-600">{weather.current.condition}</p>
+              </div>
+            </div>
+            <div className="text-right text-sm text-gray-600">
+              <div className="flex items-center gap-1 justify-end">
+                <Droplet className="w-4 h-4" />
+                <span>{weather.current.humidity}%</span>
+              </div>
+              <div className="flex items-center gap-1 justify-end mt-1">
+                <Wind className="w-4 h-4" />
+                <span>{Math.round(weather.current.wind_kph)} km/h</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 7-Day Forecast */}
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-gray-700 mb-3">7-Day Forecast</p>
+          {weather.forecast.map((day, idx) => (
+            <div key={idx} className="bg-white rounded-lg p-3 flex items-center justify-between hover:bg-blue-50 transition-colors">
+              <div className="flex items-center gap-3 flex-1">
+                <span className="text-sm font-medium text-gray-700 w-20">
+                  {idx === 0 ? 'Today' : new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                </span>
+                <img src={day.day.icon} alt={day.day.condition} className="w-8 h-8" />
+                <span className="text-xs text-gray-600 flex-1">{day.day.condition}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                {day.day.daily_chance_of_rain > 30 && (
+                  <span className="text-xs text-blue-600 flex items-center gap-1">
+                    <Droplet className="w-3 h-3" />
+                    {day.day.daily_chance_of_rain}%
+                  </span>
+                )}
+                <span className="text-sm font-semibold text-gray-900">
+                  {Math.round(day.day.maxtemp_c)}° / {Math.round(day.day.mintemp_c)}°
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Packing Tips Card Component
+function PackingTipsCard({ packing, destination }) {
+  return (
+    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-card border border-purple-100 overflow-hidden">
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Backpack className="w-6 h-6 text-purple-600" />
+            Packing Tips
+          </h2>
+          <span className="text-sm text-gray-600">{destination.city}</span>
+        </div>
+
+        {/* Weather Summary */}
+        {packing.weatherSummary && (
+          <div className="bg-white rounded-xl p-4 mb-4">
+            <p className="text-sm font-semibold text-gray-700 mb-2">Expected Conditions</p>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-gray-600">Avg Temperature</p>
+                <p className="font-bold text-gray-900">{packing.weatherSummary.avgTemp}°C</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Range</p>
+                <p className="font-bold text-gray-900">{packing.weatherSummary.tempRange}</p>
+              </div>
+              {packing.weatherSummary.rainChance > 20 && (
+                <div>
+                  <p className="text-gray-600">Rain Chance</p>
+                  <p className="font-bold text-blue-600">{packing.weatherSummary.rainChance}%</p>
+                </div>
+              )}
+              {packing.weatherSummary.maxUV > 5 && (
+                <div>
+                  <p className="text-gray-600">Max UV</p>
+                  <p className="font-bold text-orange-600">{packing.weatherSummary.maxUV}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Packing Lists */}
+        <div className="space-y-4">
+          {/* Essential Items */}
+          <div>
+            <h3 className="text-sm font-bold text-red-700 mb-2 flex items-center gap-1">
+              <Heart className="w-4 h-4" />
+              Essentials (Don't Forget!)
+            </h3>
+            <div className="bg-white rounded-lg p-3 space-y-1.5">
+              {packing.essentials.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-red-500 flex-shrink-0" />
+                  <span className="text-gray-700">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Clothing */}
+          <div>
+            <h3 className="text-sm font-bold text-purple-700 mb-2">Clothing</h3>
+            <div className="bg-white rounded-lg p-3 space-y-1.5">
+              {packing.clothing.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-sm">
+                  <Circle className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                  <span className="text-gray-700">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Optional Items */}
+          {packing.optional.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-gray-600 mb-2">Optional (Nice to Have)</h3>
+              <div className="bg-white rounded-lg p-3 space-y-1.5">
+                {packing.optional.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-sm">
+                    <Plus className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-600">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
