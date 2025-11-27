@@ -1,6 +1,5 @@
 // backend/src/services/weatherService.js
 import axios from 'axios';
-import { logger } from './logger.js';
 
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
 const WEATHER_API_URL = 'http://api.weatherapi.com/v1';
@@ -32,12 +31,7 @@ export async function getWeatherForecast(city, country) {
 
     const data = response.data;
 
-    logger.logAPICall({
-      service: 'WeatherAPI',
-      operation: 'Get Forecast',
-      params: { location, days: 7 },
-      status: 'success',
-    });
+    console.log(`✅ Weather API success for ${location}`);
 
     return {
       location: {
@@ -70,16 +64,7 @@ export async function getWeatherForecast(city, country) {
       })),
     };
   } catch (error) {
-    console.error('Weather API Error:', error.response?.data || error.message);
-
-    logger.logAPICall({
-      service: 'WeatherAPI',
-      operation: 'Get Forecast',
-      params: { location: `${city}, ${country}`, days: 7 },
-      status: 'error',
-      error: error.message,
-    });
-
+    console.error('❌ Weather API Error:', error.response?.data || error.message);
     return null;
   }
 }
