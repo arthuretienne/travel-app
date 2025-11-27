@@ -491,9 +491,6 @@ export default function SavedTripDetail() {
           </div>
         )}
 
-        {/* TRIP ENHANCEMENTS - Weather, Itinerary, Packing, Events */}
-        <TripEnhancementsSection trip={trip} userName={user?.firstName || 'there'} />
-
         {/* Book Your Trip - 3 Column Layout */}
         <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 border-b border-gray-100">
@@ -713,6 +710,9 @@ export default function SavedTripDetail() {
             </div>
           </div>
         </div>
+
+        {/* TRIP ENHANCEMENTS - Weather, Itinerary, Packing, Events */}
+        <TripEnhancementsSection trip={trip} userName={user?.firstName || 'there'} />
       </div>
 
       {/* Invite Friends Modal */}
