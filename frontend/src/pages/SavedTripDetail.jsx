@@ -36,7 +36,7 @@ import {
   Plus,
   CheckCircle2,
 } from 'lucide-react';
-import { PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
+import { CompleteTripPlanCard, PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -918,6 +918,14 @@ function TripEnhancementsSection({ trip, userName }) {
 
   return (
     <div className="space-y-6">
+      {/* COMPLETE TRIP PLAN - Main Plan with Everything */}
+      <CompleteTripPlanCard
+        trip={trip}
+        enhancements={enhancements}
+        userName={userName}
+        userPersonality={null}
+      />
+
       {/* Weather & Packing Section - Side by Side */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Weather Forecast */}
@@ -926,17 +934,6 @@ function TripEnhancementsSection({ trip, userName }) {
         {/* Packing Tips */}
         {packing && <PackingTipsCard packing={packing} destination={destination} />}
       </div>
-
-      {/* Personalized Itinerary */}
-      {itinerary && itinerary.length > 0 && (
-        <PersonalizedItineraryCard
-          itinerary={itinerary}
-          userName={userName}
-          activeDay={activeDay}
-          setActiveDay={setActiveDay}
-          destination={destination}
-        />
-      )}
 
       {/* Local Events */}
       {(events.upcoming.length > 0 || events.regular.length > 0) && (
