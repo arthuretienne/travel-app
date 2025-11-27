@@ -833,82 +833,24 @@ export default function SavedTripDetail() {
 
 // ========================================
 // TRIP ENHANCEMENTS SECTION
-// Weather, Itinerary, Packing, Events
+// Separate components loading in parallel
 // ========================================
 function TripEnhancementsSection({ trip, userName }) {
   const { getToken } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [enhancements, setEnhancements] = useState(null);
-  const [error, setError] = useState(null);
-  const [activeDay, setActiveDay] = useState(0);
 
-  useEffect(() => {
-    fetchEnhancements();
-  }, [trip.id]);
+  // Separate states for each component
+  const [weather, setWeather] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
 
-  const fetchEnhancements = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const [packing, setPacking] = useState(null);
+  const [packingLoading, setPackingLoading] = useState(true);
 
-      const token = await getToken();
-      const response = await fetch(`${API_URL}/api/trips/${trip.id}/enhancements`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+  const [itinerary, setItinerary] = useState(null);
+  const [itineraryLoading, setItineraryLoading] = useState(true);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Enhancement API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        });
-        throw new Error(errorData.error || 'Failed to load enhancements');
-      }
+  const [events, setEvents] = useState(null);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
-      const data = await response.json();
-      console.log('✅ Enhancements loaded:', data);
-      setEnhancements(data.data);
-    } catch (err) {
-      console.error('Error fetching enhancements:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-8">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-          <p className="text-text-secondary">Preparing your personalized trip plan...</p>
-          <p className="text-sm text-text-secondary mt-2">Checking weather, planning itinerary, finding events...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-amber-900 mb-1">Unable to load trip enhancements</h3>
-            <p className="text-sm text-amber-700">{error}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!enhancements) return null;
-
-  const { weather, packing, itinerary, events } = enhancements;
-  // For SavedTrip, create a pseudo destination object from trip data
   const destination = {
     city: trip.city,
     country: trip.country,
@@ -916,27 +858,136 @@ function TripEnhancementsSection({ trip, userName }) {
     endDate: trip.endDate,
   };
 
+  useEffect(() => {
+    // Fetch all in parallel!
+    fetchWeather();
+    fetchPacking();
+    fetchItinerary();
+    fetchEvents();
+  }, [trip.id]);
+
+  const fetchWeather = async () => {
+    try {
+      setWeatherLoading(true);
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/api/trips/${trip.id}/weather`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setWeather(data.data.weather);
+      }
+    } catch (err) {
+      console.error('Error fetching weather:', err);
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  const fetchPacking = async () => {
+    try {
+      setPackingLoading(true);
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/api/trips/${trip.id}/packing`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPacking(data.data.packing);
+      }
+    } catch (err) {
+      console.error('Error fetching packing:', err);
+    } finally {
+      setPackingLoading(false);
+    }
+  };
+
+  const fetchItinerary = async () => {
+    try {
+      setItineraryLoading(true);
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/api/trips/${trip.id}/itinerary`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setItinerary(data.data.itinerary);
+      }
+    } catch (err) {
+      console.error('Error fetching itinerary:', err);
+    } finally {
+      setItineraryLoading(false);
+    }
+  };
+
+  const fetchEvents = async () => {
+    try {
+      setEventsLoading(true);
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/api/trips/${trip.id}/events`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setEvents(data.data.events);
+      }
+    } catch (err) {
+      console.error('Error fetching events:', err);
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* COMPLETE TRIP PLAN - Main Plan with Everything */}
-      <CompleteTripPlanCard
-        trip={trip}
-        enhancements={enhancements}
-        userName={userName}
-        userPersonality={null}
-      />
-
-      {/* Weather & Packing Section - Side by Side (Simplified) */}
+      {/* Weather & Packing - Load FIRST (fast) */}
       <div className="grid lg:grid-cols-2 gap-4">
-        {/* Weather Forecast */}
-        {weather && <WeatherForecastCard weather={weather} destination={destination} />}
+        {/* Weather */}
+        {weatherLoading ? (
+          <div className="bg-blue-50 rounded-xl p-4 animate-pulse">
+            <div className="h-4 bg-blue-200 rounded w-1/2 mb-2"></div>
+            <div className="h-6 bg-blue-200 rounded w-3/4"></div>
+          </div>
+        ) : weather ? (
+          <WeatherForecastCard weather={weather} destination={destination} />
+        ) : null}
 
-        {/* Packing Tips */}
-        {packing && <PackingTipsCard packing={packing} />}
+        {/* Packing */}
+        {packingLoading ? (
+          <div className="bg-purple-50 rounded-xl p-4 animate-pulse">
+            <div className="h-4 bg-purple-200 rounded w-1/2 mb-2"></div>
+            <div className="h-6 bg-purple-200 rounded w-3/4"></div>
+          </div>
+        ) : packing ? (
+          <PackingTipsCard packing={packing} />
+        ) : null}
       </div>
 
-      {/* Local Events */}
-      {(events.upcoming.length > 0 || events.regular.length > 0) && (
+      {/* Itinerary - Loads in background */}
+      {itineraryLoading ? (
+        <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-2xl shadow-2xl border border-indigo-200 p-8">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Creating Your Personalized Plan...</h3>
+            <p className="text-gray-600">
+              Our AI is planning your perfect trip with flights, transfers, activities, and timing
+            </p>
+          </div>
+        </div>
+      ) : itinerary ? (
+        <CompleteTripPlanCard
+          trip={trip}
+          enhancements={{ weather, itinerary }}
+          userName={userName}
+        />
+      ) : null}
+
+      {/* Events - Load fast */}
+      {!eventsLoading && events && (events.upcoming.length > 0 || events.regular.length > 0) && (
         <LocalEventsCard events={events} destination={destination} />
       )}
     </div>
