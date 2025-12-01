@@ -74,6 +74,7 @@ function CreateTrip() {
     endDate: '',
     travelers: 1,
     travelVibe: 'cultural',
+    destination: '', // Optional: specific destination
 
     // Optional filters
     preferredWeather: 'any',
@@ -313,6 +314,7 @@ function CreateTrip() {
         // Solo trip - get recommendations as before
         const payload = {
           basic: {
+            ...(formData.destination && { destination: formData.destination }), // Add destination if provided
             budget: formData.budget || 1500,
             style: formData.travelVibe,
             activities: formData.mustHaves.length > 0 ? formData.mustHaves : ['cultural', 'nature'],
@@ -723,6 +725,25 @@ function CreateTrip() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Specific Destination (Optional) */}
+          <div>
+            <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+              <Globe size={20} className="text-primary" />
+              Specific Destination (Optional)
+            </label>
+            <p className="text-sm text-text-secondary mb-3">
+              💡 Leave empty to let AI suggest destinations, or enter a city/country for a personalized itinerary
+            </p>
+            {errors.destination && <p className="text-red-500 text-sm mb-2">{errors.destination}</p>}
+            <input
+              type="text"
+              value={formData.destination}
+              onChange={(e) => handleChange('destination', e.target.value)}
+              placeholder="e.g., Barcelona, Tokyo, Thailand..."
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            />
           </div>
         </div>
 

@@ -505,7 +505,16 @@ function Results() {
                     )}
 
                     <div className="text-xs text-text-secondary pt-2 border-t border-gray-100 flex justify-between">
-                      <span>{trip.flightDetails.airline} • {trip.flightDetails.cabinClass}</span>
+                      <div className="flex items-center gap-2">
+                        {trip.flightDetails.outbound?.segments?.[0]?.carrierLogo && (
+                          <img
+                            src={trip.flightDetails.outbound.segments[0].carrierLogo}
+                            alt={trip.flightDetails.airline}
+                            className="h-4 w-auto"
+                          />
+                        )}
+                        <span>{trip.flightDetails.airline} • {trip.flightDetails.cabinClass}</span>
+                      </div>
                       <span className="font-medium">€{trip.flightDetails.totalPrice}</span>
                     </div>
                   </div>

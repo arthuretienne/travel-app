@@ -9,7 +9,8 @@ function Results({ recommendations, onReset }) {
 
   const formatNumber = (num) => {
     // Format number to maximum 2 decimal places, removing unnecessary zeros
-    return parseFloat(num.toFixed(2));
+    // Handle undefined/null values gracefully
+    return parseFloat((num ?? 0).toFixed(2));
   };
 
   const getDestinationImage = (photo, city, country) => {

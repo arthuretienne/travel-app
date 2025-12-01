@@ -71,6 +71,7 @@ export async function searchAirport(query, locale = 'fr-FR') {
  * @param {string} params.originQuery - Origin city/airport name
  * @param {string} params.destinationQuery - Destination city/airport name
  * @param {string} params.date - Departure date (YYYY-MM-DD)
+ * @param {string} params.returnDate - Return date (YYYY-MM-DD, optional for one-way)
  * @param {number} params.adults - Number of adults (default: 1)
  * @param {string} params.cabinClass - Cabin class (economy, business, first)
  * @param {string} params.currency - Currency code (EUR, USD)
@@ -81,13 +82,14 @@ export async function searchFlights({
   originQuery,
   destinationQuery,
   date,
+  returnDate,
   adults = 1,
   cabinClass = 'economy',
   currency = 'EUR',
   market = 'fr-FR',
   countryCode = 'FR',
 }) {
-  const cacheKey = `flights:${originQuery}:${destinationQuery}:${date}:${adults}:${cabinClass}:${currency}`;
+  const cacheKey = `flights:${originQuery}:${destinationQuery}:${date}:${returnDate || 'oneway'}:${adults}:${cabinClass}:${currency}`;
 
   // Check cache
   const cached = cache.get(cacheKey);
@@ -108,16 +110,17 @@ export async function searchFlights({
     const origin = originAirports.find(a => a.type === 'AIRPORT') || originAirports[0];
     const destination = destAirports.find(a => a.type === 'AIRPORT') || destAirports[0];
 
-    console.log(`🔍 Searching flights: ${origin.name} → ${destination.name} on ${date}`);
+    console.log(`🔍 Searching flights: ${origin.name} → ${destination.name} on ${date}${returnDate ? ` (return: ${returnDate})` : ''}`);
 
     // Step 2: Search flights using v1 API
-    const response = await axios.get(`${BASE_URL}/api/v1/flights/searchFlights`, {
+    const response = await axios.get(`${BASE_URL}/api/v2/flights/searchFlights`, {
       params: {
         originSkyId: origin.skyId,
         destinationSkyId: destination.skyId,
         originEntityId: origin.entityId,
         destinationEntityId: destination.entityId,
         date: date,
+        returnDate: returnDate,
         cabinClass: cabinClass,
         adults: String(adults),
         sortBy: 'best',
@@ -172,16 +175,21 @@ export async function searchFlights({
         };
       });
 
+      // Use IATA codes from actual flight results (more reliable than airport search)
+      const firstFlight = flights[0];
+      const originIata = firstFlight?.outbound?.origin || origin.iata;
+      const destIata = firstFlight?.outbound?.destination || destination.iata;
+
       const result = {
         origin: {
           name: origin.name,
           skyId: origin.skyId,
-          iata: origin.iata,
+          iata: originIata,
         },
         destination: {
           name: destination.name,
           skyId: destination.skyId,
-          iata: destination.iata,
+          iata: destIata,
         },
         date: date,
         flights: flights,
@@ -348,11 +356,12 @@ export async function searchFlightEverywhere({
 
     console.log(`🌍 Searching destinations from ${origin.name} under €${maxPrice}`);
 
-    const response = await axios.get(`${BASE_URL}/api/v1/flights/searchFlightEverywhere`, {
+    const response = await axios.get(`${BASE_URL}/api/v2/flights/searchFlightEverywhere`, {
       params: {
-        originSkyId: origin.skyId,
+        originEntityId: origin.entityId,
+        cabinClass: 'economy',
+        journeyType: 'round_trip',
         currency: currency,
-        anytime: 'true',
       },
       headers: {
         'x-rapidapi-key': AIR_SCRAPER_API_KEY,

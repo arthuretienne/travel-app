@@ -351,8 +351,12 @@ export async function searchAttractions(cityName, { limit = 10, currency = 'EUR'
 
   try {
     // Step 1: Get location ID for attractions
-    const destResponse = await axios.get(`${BASE_URL}/api/v1/attractions/searchLocation`, {
-      params: { query: cityName },
+    // ✅ FIXED: Use /api/v1/attraction/searchLocation (singular!)
+    const destResponse = await axios.get(`${BASE_URL}/api/v1/attraction/searchLocation`, {
+      params: {
+        query: cityName,
+        languagecode: 'en-us'
+      },
       headers: {
         'x-rapidapi-key': BOOKING_API_KEY,
         'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
@@ -369,7 +373,8 @@ export async function searchAttractions(cityName, { limit = 10, currency = 'EUR'
     console.log(`📍 Found location: ${location.name} (${locationId})`);
 
     // Step 2: Search attractions
-    const attractionsResponse = await axios.get(`${BASE_URL}/api/v1/attractions/searchAttractions`, {
+    // ✅ FIXED: Use /api/v1/attraction/searchAttractions (singular!)
+    const attractionsResponse = await axios.get(`${BASE_URL}/api/v1/attraction/searchAttractions`, {
       params: {
         id: locationId,
         sortBy: 'trending', // trending, price, rating

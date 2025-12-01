@@ -373,9 +373,12 @@ export default function SavedTripDetail() {
                   </div>
                   <div className="text-sm text-blue-700">
                     <p>{flights.outbound.origin} → {flights.outbound.destination}</p>
-                    <p className="text-xs text-blue-600 mt-1">
-                      {flights.outbound.carrier} • {flights.outbound.duration || 'Duration N/A'}
-                    </p>
+                    <div className="flex items-center gap-2 text-xs text-blue-600 mt-1">
+                      {flights.outbound.carrierLogo && (
+                        <img src={flights.outbound.carrierLogo} alt={flights.outbound.carrier} className="h-5 w-auto" />
+                      )}
+                      <p>{flights.outbound.carrier} • {flights.outbound.duration || 'Duration N/A'}</p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -391,9 +394,12 @@ export default function SavedTripDetail() {
                   </div>
                   <div className="text-sm text-blue-700">
                     <p>{flights.return.origin} → {flights.return.destination}</p>
-                    <p className="text-xs text-blue-600 mt-1">
-                      {flights.return.carrier} • {flights.return.duration || 'Duration N/A'}
-                    </p>
+                    <div className="flex items-center gap-2 text-xs text-blue-600 mt-1">
+                      {flights.return.carrierLogo && (
+                        <img src={flights.return.carrierLogo} alt={flights.return.carrier} className="h-5 w-auto" />
+                      )}
+                      <p>{flights.return.carrier} • {flights.return.duration || 'Duration N/A'}</p>
+                    </div>
                   </div>
                 </div>
               )}
