@@ -480,3 +480,408 @@ function parseDestinations(response) {
     throw new Error(`Failed to parse destination recommendations: ${error.message}`);
   }
 }
+
+/**
+ * Generate detailed itinerary with real flight/hotel data (WITH DESTINATION scenario)
+ * Uses optimized prompt from claudePromptsOptimized.js
+ */
+export async function generateItineraryWithRealData(tripData, userId = null, userName = null) {
+  if (!client) {
+    throw new Error('Claude client not initialized. Please check ANTHROPIC_API_KEY environment variable.');
+  }
+
+  const { generateItineraryWithDestination } = await import('./claudePromptsOptimized.js');
+
+  const startTime = Date.now();
+  const promptMessage = generateItineraryWithDestination(tripData);
+
+  logger.logUserAction({
+    userId: userId || 'unknown',
+    userName: userName || 'Unknown User',
+    action: 'Generate Detailed Itinerary',
+    details: {
+      destination: tripData.destination.name,
+      budget: tripData.budget.total,
+      duration: tripData.dates.duration,
+    }
+  });
+
+  try {
+    logger.logClaudeAPI({
+      operation: 'Generate Itinerary WITH Destination - Request',
+      input: promptMessage.content.substring(0, 500) + '...',
+      tokensUsed: null,
+      duration: null,
+    });
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      temperature: 0.7, // Lower temperature for consistent JSON output
+      messages: [promptMessage]
+    });
+
+    const duration = Date.now() - startTime;
+    const response = message.content[0].text;
+
+    logger.logClaudeAPI({
+      operation: 'Generate Itinerary WITH Destination - Response',
+      input: null,
+      output: response.substring(0, 500) + '...',
+      tokensUsed: {
+        input: message.usage?.input_tokens,
+        output: message.usage?.output_tokens,
+        total: message.usage?.input_tokens + message.usage?.output_tokens,
+      },
+      duration,
+    });
+
+    // Parse JSON response
+    const itinerary = JSON.parse(response);
+
+    console.log(`✅ Generated detailed itinerary for ${tripData.destination.name}`);
+    return itinerary;
+
+  } catch (error) {
+    console.error('Failed to generate itinerary:', error.message);
+    throw new Error(`Failed to generate itinerary: ${error.message}`);
+  }
+}
+
+/**
+ * Generate destination recommendation (WITHOUT DESTINATION scenario)
+ * Uses optimized prompt from claudePromptsOptimized.js
+ */
+export async function generateDestinationRecommendationWithData(tripData, userId = null, userName = null) {
+  if (!client) {
+    throw new Error('Claude client not initialized. Please check ANTHROPIC_API_KEY environment variable.');
+  }
+
+  const { generateDestinationRecommendation } = await import('./claudePromptsOptimized.js');
+
+  const startTime = Date.now();
+  const promptMessage = generateDestinationRecommendation(tripData);
+
+  logger.logUserAction({
+    userId: userId || 'unknown',
+    userName: userName || 'Unknown User',
+    action: 'Generate Destination Recommendation',
+    details: {
+      destination: tripData.destination.name,
+      budget: tripData.budget.total,
+      duration: tripData.dates.duration,
+    }
+  });
+
+  try {
+    logger.logClaudeAPI({
+      operation: 'Generate Destination Recommendation - Request',
+      input: promptMessage.content.substring(0, 500) + '...',
+      tokensUsed: null,
+      duration: null,
+    });
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 3000,
+      temperature: 0.8, // Slightly higher for creative hooks
+      messages: [promptMessage]
+    });
+
+    const duration = Date.now() - startTime;
+    const response = message.content[0].text;
+
+    logger.logClaudeAPI({
+      operation: 'Generate Destination Recommendation - Response',
+      input: null,
+      output: response.substring(0, 500) + '...',
+      tokensUsed: {
+        input: message.usage?.input_tokens,
+        output: message.usage?.output_tokens,
+        total: message.usage?.input_tokens + message.usage?.output_tokens,
+      },
+      duration,
+    });
+
+    // Parse JSON response
+    const recommendation = JSON.parse(response);
+
+    console.log(`✅ Generated recommendation for ${tripData.destination.name}`);
+    return recommendation;
+
+  } catch (error) {
+    console.error('Failed to generate recommendation:', error.message);
+    throw new Error(`Failed to generate recommendation: ${error.message}`);
+  }
+}
+
+/**
+ * Generate personalized destination shortlist for Booking.com API workflow
+ * Returns 5-8 diverse destination names to search flights for
+ * @param {Object} userProfile - User preferences and profile
+ * @param {Object} options - Additional options
+ * @returns {Promise<string[]>} Array of destination city names
+ */
+export async function generateDestinationShortlist(userProfile, options = {}) {
+  if (!client) {
+    throw new Error('Claude client not initialized. Please check ANTHROPIC_API_KEY environment variable.');
+  }
+
+  const {
+    budget = 800,
+    duration = 7,
+    origin = 'Paris',
+    count = 6
+  } = options;
+
+  const prompt = `You are an expert travel advisor. Generate ${count} PERSONALIZED, DIVERSE European destination recommendations for this traveler.
+
+USER PROFILE:
+${JSON.stringify(userProfile, null, 2)}
+
+TRIP PARAMETERS:
+- Origin: ${origin}
+- Budget: €${budget}
+- Duration: ${duration} days
+
+🎯 REQUIREMENTS:
+1. **DIVERSITY IS CRITICAL**: Each destination must be in a DIFFERENT country
+2. **PERSONALIZATION**: Match their interests, vibe, and travel style
+3. **VARIETY**: Mix popular + hidden gems (at least 2 off-the-beaten-path)
+4. **REALISTIC**: Must be reachable from ${origin} within budget
+5. **SEASONAL**: Consider current season (December 2025)
+6. **NO REPEATS**: Avoid obvious tourist traps everyone suggests
+
+🚫 FORBIDDEN PATTERNS:
+- Don't default to "Barcelona, Lisbon, Amsterdam" for every young traveler
+- Don't suggest "Prague, Budapest, Krakow" for every budget traveler
+- Think beyond the top 10 European cities!
+
+✨ PERSONALIZATION FACTORS TO CONSIDER:
+- Travel vibe (${userProfile.basic?.style || 'explorer'})
+- Main activities (${userProfile.basic?.activities?.join(', ') || 'sightseeing'})
+- Budget level (${budget < 500 ? 'budget' : budget < 1000 ? 'mid-range' : 'comfortable'})
+- Nature vs City preference
+- Crowd tolerance
+- Cultural interests
+
+Return ONLY a valid JSON array of city names (no explanations):
+["City1", "City2", "City3", "City4", "City5", "City6"]
+
+Example good output: ["Porto", "Ljubljana", "Tallinn", "Valencia", "Krakow", "Bergen"]
+Example bad output: ["Paris", "Barcelona", "Amsterdam", "London", "Berlin", "Rome"] (too obvious!)`;
+
+  try {
+    logger.logClaudeAPI({
+      operation: 'Generate Destination Shortlist - Request',
+      input: { budget, duration, origin, userProfile: userProfile.basic },
+      tokensUsed: null,
+      duration: null,
+    });
+
+    const startTime = Date.now();
+
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 500,
+      temperature: 0.8, // Higher temperature for more creative suggestions
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    });
+
+    const duration = Date.now() - startTime;
+    const response = message.content[0].text.trim();
+
+    logger.logClaudeAPI({
+      operation: 'Generate Destination Shortlist - Response',
+      output: response,
+      tokensUsed: {
+        input: message.usage?.input_tokens,
+        output: message.usage?.output_tokens,
+        total: message.usage?.input_tokens + message.usage?.output_tokens,
+      },
+      duration,
+    });
+
+    // Parse JSON response
+    const destinations = JSON.parse(response);
+
+    if (!Array.isArray(destinations) || destinations.length === 0) {
+      throw new Error('Invalid destination shortlist format');
+    }
+
+    console.log(`✅ Generated ${destinations.length} personalized destinations:`, destinations);
+    return destinations;
+
+  } catch (error) {
+    console.error('Failed to generate destination shortlist:', error.message);
+
+    // Fallback to diverse default destinations if Claude fails
+    console.warn('⚠️  Using fallback destinations');
+    return ['Porto', 'Ljubljana', 'Valencia', 'Tallinn', 'Krakow', 'Bergen'];
+  }
+}
+
+/**
+ * Generate detailed roadtrip narrative with rich explanations
+ * Roadtrip cards need MORE TEXT and MORE EXPLANATIONS than single-city cards
+ * @param {Object} roadtripData - Complete roadtrip data from roadtripService
+ * @param {Object} userProfile - User preferences
+ * @returns {Promise<Object>} Enhanced roadtrip with narrative, highlights, logistics
+ */
+export async function generateRoadtripNarrative(roadtripData, userProfile) {
+  console.log('🤖 Generating detailed roadtrip narrative...');
+
+  const startTime = Date.now();
+
+  try {
+    // Build comprehensive roadtrip context
+    const citiesInfo = roadtripData.cities.map((city, i) => ({
+      order: i + 1,
+      name: city.name,
+      country: city.country,
+      nights: city.nights,
+      arrivalDate: city.arrivalDate,
+      departureDate: city.departureDate,
+      hotel: city.hotel ? {
+        name: city.hotel.name,
+        stars: city.hotel.stars,
+        rating: city.hotel.rating?.value,
+        pricePerNight: Math.round(city.hotel.price.amount / city.nights),
+        totalPrice: city.hotel.price.amount
+      } : null,
+      topAttractions: city.attractions.slice(0, 5).map(a => ({
+        name: a.name,
+        description: a.description,
+        price: a.price?.amount,
+        rating: a.rating?.value
+      }))
+    }));
+
+    const transportInfo = roadtripData.transport.map(t => ({
+      type: t.type,
+      cost: t.totalCost,
+      details: t.type === 'plane' ?
+        (t.details.segments ? `${t.details.segments.length} flight segments` : `${t.details.length} individual flights`) :
+        (t.details.name || 'Car rental')
+    }));
+
+    const prompt = `You are an expert travel writer creating a COMPELLING, DETAILED roadtrip itinerary card.
+
+🎯 CRITICAL: Roadtrip cards need MORE TEXT and MORE EXPLANATIONS than single-destination cards!
+
+USER PROFILE:
+${JSON.stringify(userProfile, null, 2)}
+
+ROADTRIP DATA:
+- Origin: ${roadtripData.origin}
+- Duration: ${roadtripData.duration} days
+- Cities: ${citiesInfo.map(c => c.name).join(' → ')}
+- Transport modes: ${roadtripData.acceptedTransportModes.join(', ')}
+- Budget: €${roadtripData.budget.total} (Transport: €${Math.round(roadtripData.budget.transport)}, Hotels: €${Math.round(roadtripData.budget.hotels)}, Activities: €${Math.round(roadtripData.budget.activities)})
+
+CITIES DETAILS:
+${JSON.stringify(citiesInfo, null, 2)}
+
+TRANSPORT:
+${JSON.stringify(transportInfo, null, 2)}
+
+📝 YOUR TASK:
+Create a RICH, DETAILED roadtrip narrative with:
+
+1. **Title** (creative, evocative)
+2. **Tagline** (2-3 lines capturing the essence)
+3. **Overview** (4-6 lines explaining the journey concept, why this route, what makes it special)
+4. **Day-by-Day Highlights** (2-3 lines per city explaining what to expect)
+5. **Transport Narrative** (Explain the journey between cities - flights, car rental, etc. Make it sound exciting!)
+6. **Perfect For** (Who would love this roadtrip - based on user profile)
+7. **Budget Breakdown Explanation** (Not just numbers - explain what they get for their money)
+8. **Practical Tips** (2-3 logistics tips specific to this route)
+9. **Best Time to Go** (Season/weather considerations)
+10. **Hidden Gems** (1-2 unique experiences along the route)
+
+⚠️ IMPORTANT FORMATTING:
+- Use **markdown** for emphasis
+- Be DESCRIPTIVE and NARRATIVE (not just bullet points)
+- Make it INSPIRATIONAL and INFORMATIVE
+- Include PRACTICAL DETAILS (transport times, distances, etc.)
+- Each section should have MORE DEPTH than a single-city card
+
+Return a JSON object with this structure:
+{
+  "title": "...",
+  "tagline": "...",
+  "overview": "...",
+  "dayByDayHighlights": [
+    {"day": 1, "city": "...", "description": "..."},
+    {"day": 2, "city": "...", "description": "..."}
+  ],
+  "transportNarrative": "...",
+  "perfectFor": "...",
+  "budgetExplanation": "...",
+  "practicalTips": ["...", "...", "..."],
+  "bestTimeToGo": "...",
+  "hiddenGems": ["...", "..."]
+}`;
+
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 3000, // More tokens for detailed narrative
+      temperature: 0.8, // Higher creativity for storytelling
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    });
+
+    const duration = Date.now() - startTime;
+    const response = message.content[0].text.trim();
+
+    console.log({
+      function: 'generateRoadtripNarrative',
+      tokensUsed: {
+        input: message.usage?.input_tokens,
+        output: message.usage?.output_tokens,
+        total: message.usage?.input_tokens + message.usage?.output_tokens,
+      },
+      duration,
+    });
+
+    // Parse JSON response
+    const narrative = JSON.parse(response);
+
+    console.log(`✅ Roadtrip narrative generated (${duration}ms)`);
+    return {
+      ...roadtripData,
+      narrative
+    };
+
+  } catch (error) {
+    console.error('Failed to generate roadtrip narrative:', error.message);
+
+    // Fallback: Basic narrative
+    return {
+      ...roadtripData,
+      narrative: {
+        title: roadtripData.title,
+        tagline: `Explore ${roadtripData.cities.length} amazing cities in ${roadtripData.duration} days`,
+        overview: `This ${roadtripData.duration}-day roadtrip takes you through ${roadtripData.cities.map(c => c.name).join(', ')}, combining culture, adventure, and discovery.`,
+        dayByDayHighlights: roadtripData.cities.map((city, i) => ({
+          day: i + 1,
+          city: city.name,
+          description: `Explore ${city.name} and discover its unique charm.`
+        })),
+        transportNarrative: `Travel between cities using ${roadtripData.acceptedTransportModes.join(' and ')}.`,
+        perfectFor: 'Adventurous travelers who love to explore multiple destinations.',
+        budgetExplanation: `Your €${roadtripData.budget.total} budget covers transport, accommodation, and activities.`,
+        practicalTips: ['Pack light for easy travel', 'Book transport in advance', 'Stay flexible with timing'],
+        bestTimeToGo: 'Spring and fall for pleasant weather',
+        hiddenGems: ['Local markets in each city', 'Regional cuisine tasting']
+      }
+    };
+  }
+}

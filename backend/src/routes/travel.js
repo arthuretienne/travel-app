@@ -1,17 +1,13 @@
 // backend/src/routes/travel.js
 import express from 'express';
-import { generateDestinations } from '../services/claudeService.js';
-import { searchFlightOffers, getHotelCostWithFallbacks } from '../services/amadeusService.js';
-import { getHotelCostWithBooking } from '../services/bookingService.js';
-import { searchFlixBus } from '../services/flixbusService.js';
+import { generateItineraryWithRealData, generateDestinationRecommendationWithData, generateRoadtripNarrative } from '../services/claudeService.js';
+import * as destinationService from '../services/destinationService.js';
+import * as roadtripService from '../services/roadtripService.js';
 import { generateAffiliateLinks } from '../services/affiliateService.js';
-import { calculateFinalScore } from '../utils/scoring.js';
-import { getDestinationPhotos } from '../services/unsplashService.js';
+import { getDestinationPhotos as getPexelsPhoto } from '../services/pexelsService.js';
 import { authenticateUser } from '../middleware/auth.js';
 import { strictLimiter } from '../middleware/rateLimiter.js';
 import { checkLimit, incrementUsage } from '../middleware/checkSubscription.js';
-import { filterByBudget, validateCostData, preFilterByEstimatedCost } from '../utils/budgetFilter.js';
-import { applyTemporalPricing, generateSmartDateSuggestions, calculateAvailableLeaveDays } from '../utils/temporalOptimization.js';
 import prisma from '../db/prisma.js';
 
 // Helper function to determine season
@@ -21,6 +17,67 @@ function getSeason(dateStr) {
   if (month >= 5 && month <= 7) return 'summer';
   if (month >= 8 && month <= 10) return 'autumn';
   return 'winter';
+}
+
+// Helper: Detect WITH vs WITHOUT destination scenario
+function detectScenario(userProfile) {
+  const hasDestination = userProfile.basic?.destination &&
+                         userProfile.basic?.destination.trim() !== '' &&
+                         userProfile.basic?.destination !== 'Surprise me';
+  return hasDestination ? 'WITH_DESTINATION' : 'WITHOUT_DESTINATION';
+}
+
+// Helper: Get photos for multiple destinations
+async function getDestinationPhotos(cityNames) {
+  const photoPromises = cityNames.map(async (cityName) => {
+    try {
+      const photo = await getPexelsPhoto(cityName);
+      return [cityName, photo];
+    } catch (error) {
+      console.warn(`Failed to get photo for ${cityName}:`, error.message);
+      return [cityName, null];
+    }
+  });
+
+  const results = await Promise.all(photoPromises);
+  return new Map(results);
+}
+
+// Helper: Calculate score from optimized trip data
+function calculateScoreFromTrip(trip, userBudget) {
+  const totalCost = trip.budget.total;
+  const remaining = trip.budget.remaining;
+  const flightCost = trip.flight.totalCost;
+
+  // Score based on budget utilization (optimal around 80-90%)
+  const budgetUtilization = (totalCost / userBudget) * 100;
+  const budgetScore = budgetUtilization >= 80 && budgetUtilization <= 100 ? 100 :
+                      budgetUtilization < 80 ? 70 : 50;
+
+  // Score based on flight cost (lower is better, <40% of budget is great)
+  const flightPercentage = (flightCost / userBudget) * 100;
+  const flightScore = flightPercentage < 30 ? 100 :
+                      flightPercentage < 40 ? 85 :
+                      flightPercentage < 50 ? 70 : 50;
+
+  // Score based on remaining budget (having 15-25% left is ideal for activities)
+  const remainingPercentage = (remaining / userBudget) * 100;
+  const valueScore = remainingPercentage >= 15 && remainingPercentage <= 30 ? 100 :
+                     remainingPercentage > 30 ? 80 :
+                     remainingPercentage > 10 ? 60 : 40;
+
+  const total = (budgetScore * 0.4) + (flightScore * 0.3) + (valueScore * 0.3);
+
+  return {
+    total: Math.round(total),
+    breakdown: {
+      // Map to frontend expected field names for backward compatibility
+      aiMatch: budgetScore,      // Budget alignment = how well it matches user needs
+      price: flightScore,        // Flight cost efficiency
+      originality: valueScore,   // Value/activities remaining budget
+      availability: 90           // Default high score (Air Scraper has good availability)
+    }
+  };
 }
 
 const router = express.Router();
@@ -74,396 +131,492 @@ router.post('/recommendations',
       console.log('⚠️  No onboarding preferences found for user');
     }
 
-    // Step 1: Determine origin city (needed for Claude prompt)
-    const originCity = (userPreferences?.preferredAirports?.[0]) || userProfile.availability?.originCity || 'CDG';
+    // Determine origin city
+    const originCity = (userPreferences?.preferredAirports?.[0]) || userProfile.availability?.originCity || 'Paris';
     console.log(`✈️  User's origin city: ${originCity}`);
 
-    // Step 1: Claude generates 10 destinations
-    console.log('🤖 Step 1: Generating destinations with Claude...');
-    const userName = req.user.firstName
-      ? `${req.user.firstName} ${req.user.lastName || ''}`.trim()
-      : req.user.email;
-    const allDestinations = await generateDestinations(userProfile, req.user.id, userName, originCity);
-    console.log(`✅ Generated ${allDestinations.length} destinations`);
+    // Detect scenario: WITH or WITHOUT destination
+    const scenario = detectScenario(userProfile);
+    console.log(`🎯 Scenario detected: ${scenario}`);
 
-    // Step 1.5: Pre-filter by estimated cost (BEFORE expensive API calls)
-    console.log('⚡ Step 1.5: Pre-filtering by estimated budget...');
-    const destinations = preFilterByEstimatedCost(
-      allDestinations,
-      userProfile.basic.budget,
-      userProfile.basic.maxFlightHours
-    );
-    console.log(`✅ Pre-filtered to ${destinations.length} destinations within estimated budget`);
+    // NEW WORKFLOW: Route based on scenario
+    if (scenario === 'WITH_DESTINATION') {
+      // ====================================================================
+      // WITH DESTINATION WORKFLOW - User specified destination
+      // ====================================================================
+      console.log('🎯 WITH DESTINATION workflow - Optimizing specific trip');
 
-    // Step 1.75: Temporal optimization - suggest best dates
-    console.log('📅 Step 1.75: Analyzing optimal travel dates...');
-    let temporalSuggestions = null;
-    let leaveDaysInfo = null;
-    let calendarSuggestions = null;
-    let cachedOptimalPeriods = null;
+      const destination = userProfile.basic.destination;
+      const budget = userProfile.basic.budget;
+      const duration = userProfile.availability?.duration || 7;
 
-    if (userPreferences) {
-      // Calculate available leave days
-      if (userPreferences.annualLeaveDays && userPreferences.takenLeaveDays !== null) {
-        leaveDaysInfo = calculateAvailableLeaveDays(userPreferences);
-        console.log(`📊 Leave days: ${leaveDaysInfo.remaining}/${leaveDaysInfo.total} remaining`);
-      }
+      // Step 1: Optimize trip with Air Scraper
+      console.log(`🔍 Step 1: Optimizing ${destination} trip with Air Scraper...`);
+      const optimizedTrip = await destinationService.optimizeDestination({
+        destination,
+        userProfile,
+        budget,
+        origin: originCity,
+        duration,
+        departureDate: userProfile.availability?.startDate
+      });
 
-      // Check if user provided specific dates in their request
-      const hasUserProvidedDates = userProfile.availability?.startDate && userProfile.availability?.endDate;
+      console.log(`✅ Trip optimized: €${optimizedTrip.flight.totalCost} flight + €${optimizedTrip.hotel.totalPrice} hotel`);
 
-      // If user didn't provide dates, check for cached optimal periods
-      if (!hasUserProvidedDates) {
-        console.log('🔍 User did not specify dates, checking for cached optimal periods...');
-        const today = new Date();
-        cachedOptimalPeriods = await prisma.optimalPeriod.findMany({
-          where: {
-            userId: req.user.id,
-            expiresAt: { gte: today }
+      // Step 2: Generate detailed itinerary with Claude (optimized prompt)
+      console.log('🤖 Step 2: Generating detailed itinerary with Claude...');
+      const userName = req.user.firstName
+        ? `${req.user.firstName} ${req.user.lastName || ''}`.trim()
+        : req.user.email;
+
+      const itinerary = await generateItineraryWithRealData(
+        {
+          userProfile,
+          ...optimizedTrip
+        },
+        req.user.id,
+        userName
+      );
+
+      console.log(`✅ Itinerary generated for ${optimizedTrip.destination.name}`);
+
+      // Step 3: Get photos
+      console.log('📸 Step 3: Fetching destination photos...');
+      const photoMap = await getDestinationPhotos([optimizedTrip.destination.name]);
+      const photo = photoMap.get(optimizedTrip.destination.name);
+
+      // Step 4: Calculate score
+      const score = calculateScoreFromTrip(optimizedTrip, budget);
+
+      // Step 5: Generate affiliate links
+      const affiliateLinks = generateAffiliateLinks(
+        {
+          destination: {
+            city: optimizedTrip.destination.name,
+            iataCode: optimizedTrip.destination.iata,
           },
-          orderBy: {
-            confidence: 'desc'
+          slot: {
+            startDate: optimizedTrip.dates.departure,
+            endDate: optimizedTrip.dates.return,
+          },
+          flightOffer: {
+            price: optimizedTrip.flight.totalCost,
           }
-        });
+        },
+        originCity
+      );
 
-        if (cachedOptimalPeriods && cachedOptimalPeriods.length > 0) {
-          console.log(`✅ Found ${cachedOptimalPeriods.length} cached optimal periods, will use silently`);
-          // Separate by type for later use
-          const shortTermCached = cachedOptimalPeriods.filter(p => p.type === 'short');
-          const longTermCached = cachedOptimalPeriods.filter(p => p.type === 'long');
+      // Format result
+      const result = {
+        destination: {
+          city: optimizedTrip.destination.name,
+          country: itinerary.destination || optimizedTrip.destination.name,
+          iataCode: optimizedTrip.destination.iata,
+          photo: photo
+        },
+        slot: {
+          startDate: optimizedTrip.dates.departure,
+          endDate: optimizedTrip.dates.return,
+          duration: optimizedTrip.dates.duration,
+          season: getSeason(optimizedTrip.dates.departure)
+        },
+        pricing: {
+          flight: optimizedTrip.budget.flight,
+          hotel: optimizedTrip.budget.hotel,
+          activities: optimizedTrip.budget.remaining,
+          total: optimizedTrip.budget.total,
+          remaining: optimizedTrip.budget.remaining,
+          currency: 'EUR'
+        },
+        flightDetails: {
+          outbound: {
+            departureTime: optimizedTrip.flight.outbound.departure,
+            arrivalTime: optimizedTrip.flight.outbound.arrival,
+            duration: `${Math.floor(optimizedTrip.flight.outbound.duration / 60)}h${optimizedTrip.flight.outbound.duration % 60}m`,
+            stops: optimizedTrip.flight.outbound.stops,
+            segments: [{
+              carrier: optimizedTrip.flight.outbound.carrier,
+              carrierLogo: optimizedTrip.flight.outbound.logo,
+              departureTime: optimizedTrip.flight.outbound.departure,
+              arrivalTime: optimizedTrip.flight.outbound.arrival,
+              origin: optimizedTrip.flight.outbound.origin,
+              destination: optimizedTrip.flight.outbound.destination,
+            }]
+          },
+          return: optimizedTrip.flight.return ? {
+            departureTime: optimizedTrip.flight.return.departure,
+            arrivalTime: optimizedTrip.flight.return.arrival,
+            duration: `${Math.floor(optimizedTrip.flight.return.duration / 60)}h${optimizedTrip.flight.return.duration % 60}m`,
+            stops: optimizedTrip.flight.return.stops,
+            segments: [{
+              carrier: optimizedTrip.flight.return.carrier,
+              carrierLogo: optimizedTrip.flight.return.logo,
+              departureTime: optimizedTrip.flight.return.departure,
+              arrivalTime: optimizedTrip.flight.return.arrival,
+              origin: optimizedTrip.flight.return.origin,
+              destination: optimizedTrip.flight.return.destination,
+            }]
+          } : null,
+          totalPrice: optimizedTrip.flight.totalCost,
+          pricePerPerson: optimizedTrip.flight.totalCost,
+          airline: optimizedTrip.flight.outbound.carrier,
+          cabinClass: 'ECONOMY',
+          isEstimate: false
+        },
+        hotelOptions: {
+          destination: optimizedTrip.destination.name,
+          checkIn: optimizedTrip.dates.departure,
+          checkOut: optimizedTrip.dates.return,
+          nights: optimizedTrip.hotel.totalNights,
+          hotels: [{
+            name: optimizedTrip.hotel.name,
+            stars: optimizedTrip.hotel.stars,
+            price: optimizedTrip.hotel.pricePerNight,
+            location: optimizedTrip.hotel.location,
+            amenities: optimizedTrip.hotel.amenities,
+          }],
+          averagePrice: optimizedTrip.hotel.pricePerNight
+        },
+        itinerary: itinerary,
+        score: score,
+        links: affiliateLinks
+      };
 
-          // Use the best period based on trip duration
-          const tripDuration = userProfile.availability?.duration || userPreferences.avgTripDuration || 7;
-          const bestPeriod = tripDuration <= 4
-            ? (shortTermCached[0] || longTermCached[0])
-            : (longTermCached[0] || shortTermCached[0]);
+      console.log(`✅ Returning 1 complete trip recommendation for ${destination}`);
 
-          if (bestPeriod) {
-            console.log(`🎯 Using cached optimal period: ${bestPeriod.title} (${bestPeriod.startDate.toISOString().split('T')[0]} - ${bestPeriod.endDate.toISOString().split('T')[0]})`);
-            // Inject dates into userProfile so Claude uses them
-            userProfile.availability = userProfile.availability || {};
-            userProfile.availability.startDate = bestPeriod.startDate.toISOString().split('T')[0];
-            userProfile.availability.endDate = bestPeriod.endDate.toISOString().split('T')[0];
-            userProfile.availability.duration = bestPeriod.duration;
-          }
-        } else {
-          console.log('⚠️  No cached optimal periods found');
+      return res.json({
+        success: true,
+        recommendations: [result],
+        metadata: {
+          scenario: 'WITH_DESTINATION',
+          totalGenerated: 1,
+          finalResults: 1,
+          processingTime: new Date().toISOString(),
+          usedAirScraper: true,
+          usedOptimizedPrompt: true,
         }
-      }
+      });
 
-      // If calendar is connected, get calendar-based suggestions
-      if (userPreferences.calendarConnected && userPreferences.calendarAccessToken) {
-        console.log('📅 Using Google Calendar for date suggestions...');
+    } else {
+      // ====================================================================
+      // WITHOUT DESTINATION WORKFLOW - Discover destinations
+      // ====================================================================
+      console.log('🌍 WITHOUT DESTINATION workflow - Discovering destinations');
+
+      const budget = userProfile.basic.budget;
+      const duration = userProfile.availability?.duration || 7;
+
+      // CHECK: Should we propose a roadtrip?
+      const shouldRoadtrip = userPreferences ?
+        roadtripService.shouldProposeRoadtrip(userPreferences, { budget, duration }) :
+        false;
+
+      if (shouldRoadtrip) {
+        console.log('🗺️  ROADTRIP MODE DETECTED - Generating multi-city itinerary');
+
+        // ====================================================================
+        // ROADTRIP WORKFLOW - Multi-city/multi-country journey
+        // ====================================================================
+
         try {
-          const { suggestTravelDatesFromCalendar, refreshAccessToken } = await import('../services/googleCalendarService.js');
-
-          let accessToken = userPreferences.calendarAccessToken;
-
-          // Refresh token if expired
-          if (userPreferences.calendarTokenExpiry && new Date(userPreferences.calendarTokenExpiry) < new Date()) {
-            console.log('🔄 Refreshing expired access token...');
-            accessToken = await refreshAccessToken(userPreferences.calendarRefreshToken);
-          }
-
-          const tripDuration = userProfile.availability?.duration || userPreferences.avgTripDuration || 7;
-          calendarSuggestions = await suggestTravelDatesFromCalendar(
-            accessToken,
-            userPreferences.calendarRefreshToken,
-            tripDuration
-          );
-          console.log(`✅ Generated ${calendarSuggestions.length} calendar-based suggestions`);
-        } catch (error) {
-          console.error('⚠️  Calendar suggestions failed:', error);
-          // Fall back to standard temporal optimization
-        }
-      }
-
-      // Generate smart date suggestions (manual mode or fallback)
-      if (!calendarSuggestions) {
-        temporalSuggestions = generateSmartDateSuggestions(userProfile);
-        console.log(`✅ Generated ${temporalSuggestions.length} optimal date suggestions`);
-
-        if (temporalSuggestions.length > 0) {
-          console.log(`💡 Best period: ${temporalSuggestions[0].reason || temporalSuggestions[0].strategy}`);
-        }
-      }
-    }
-
-    // Step 2: Use Claude destinations directly (no pre-screening)
-    // Claude has already verified connectivity in its prompt, and we have fallbacks for missing flights
-    console.log('✈️  Step 2: Using Claude destinations directly (skipping Amadeus pre-screening to preserve diversity)...');
-    let preScreened = destinations.slice(0, 3); // Use all 3 Claude-generated destinations
-    console.log(`✅ Using ${preScreened.length} Claude destinations (Porto/Bucharest trap avoided! 🎉)`);
-
-    // Step 3: Get photos for top destinations
-    console.log('📸 Step 3: Fetching destination photos...');
-    const photoMap = await getDestinationPhotos(preScreened.slice(0, 5));
-    console.log(`✅ Fetched ${photoMap.size} photos`);
-
-    // Debug: Log photo data
-    for (const [city, photo] of photoMap.entries()) {
-      console.log(`  📷 ${city}:`, photo?.url ? `${photo.url.substring(0, 50)}...` : 'NO PHOTO');
-    }
-
-    // Step 4: Detailed search for top destinations
-    console.log('🔎 Step 4: Searching detailed flights and alternatives...');
-    // Try to get at least 5 destinations to ensure we return minimum 3 after filtering
-    const topDestinations = preScreened.slice(0, 5);
-
-   const results = await Promise.all(
-  topDestinations.map(async (destination) => {
-    // Use AI-generated dates instead of user slots
-    const slot = {
-      startDate: destination.startDate,
-      endDate: destination.endDate,
-      duration: Math.ceil((new Date(destination.endDate) - new Date(destination.startDate)) / (1000 * 60 * 60 * 24)) + 1,
-      season: getSeason(destination.startDate)
-    };
-
-        // Log flight search parameters for debugging
-        console.log(`🔍 Searching flights for ${destination.city}:`);
-        console.log(`   Origin: ${originCity}`);
-        console.log(`   Destination: ${destination.iataCode} (${destination.city})`);
-        console.log(`   Dates: ${slot.startDate} → ${slot.endDate} (${slot.duration} days)`);
-        console.log(`   Budget: €${userProfile.basic.budget}`);
-
-        // Get flight offers
-        let flightOffer = await searchFlightOffers(destination, slot, originCity);
-
-        // FALLBACK: If no flight found, create estimated transport cost
-        if (!flightOffer) {
-          console.log(`⚠️  No flights found for ${destination.city} - using estimated transport cost`);
-
-          // Estimate transport cost based on distance/budget
-          const estimatedFlightCost = destination.estimatedBudget
-            ? Math.round(destination.estimatedBudget * 0.4) // 40% of estimated budget for transport
-            : Math.round(userProfile.basic.budget * 0.3); // Or 30% of user budget
-
-          // Create a placeholder flight offer with estimated cost
-          flightOffer = {
-            price: estimatedFlightCost,
-            segments: [],
-            totalDuration: 'Unknown',
-            validatingAirline: 'TBD',
-            cabinClass: 'ECONOMY',
-            isEstimate: true, // Flag to indicate this is not real flight data
-            transportNote: 'Vol non disponible - coût estimé (train/bus possible)'
-          };
-        }
-
-        // Search for alternative transport (FlixBus/Train)
-        console.log(`🚌 Searching alternative transport for ${destination.city}...`);
-        let transportAlternatives = [];
-
-        // Try FlixBus for European destinations
-        try {
-          const flixbusResults = await searchFlixBus({
-            fromCity: originCity,
-            toCity: destination.city,
-            date: slot.startDate,
-            adults: 1,
+          // Generate complete roadtrip with transport, hotels, and activities
+          const roadtrip = await roadtripService.generateRoadtrip({
+            userProfile: userPreferences,
+            origin: originCity,
+            budget,
+            duration,
+            departureDate: userProfile.availability?.startDate
           });
 
-          if (flixbusResults && flixbusResults.length > 0) {
-            // Get cheapest FlixBus option
-            const cheapestBus = flixbusResults.reduce((min, curr) =>
-              curr.price.amount < min.price.amount ? curr : min
-            );
+          console.log(`✅ Roadtrip generated: ${roadtrip.cities.length} cities, €${roadtrip.budget.totalCost}`);
 
-            transportAlternatives.push({
-              type: 'bus',
-              operator: 'FlixBus',
-              price: cheapestBus.price.amount,
-              currency: cheapestBus.price.currency,
-              duration: cheapestBus.duration,
-              departure: cheapestBus.departure.time,
-              arrival: cheapestBus.arrival.time,
-              transfers: cheapestBus.transfers,
-              bookingUrl: cheapestBus.bookingUrl,
-              isEstimate: false,
-            });
-            console.log(`✅ Found FlixBus: €${cheapestBus.price.amount} (${cheapestBus.duration}min)`);
-          }
+          // Generate detailed narrative for roadtrip card
+          const enrichedRoadtrip = await generateRoadtripNarrative(roadtrip, userPreferences);
+
+          console.log('✅ Roadtrip narrative generated');
+
+          // Get photos for all cities
+          const photoMap = await getDestinationPhotos(roadtrip.cities.map(c => c.name));
+
+          // Format roadtrip result (different structure from single-city)
+          const roadtripResult = {
+            type: 'roadtrip',
+            title: enrichedRoadtrip.narrative.title,
+            tagline: enrichedRoadtrip.narrative.tagline,
+            overview: enrichedRoadtrip.narrative.overview,
+            cities: roadtrip.cities.map(city => ({
+              name: city.name,
+              country: city.country,
+              nights: city.nights,
+              arrivalDate: city.arrivalDate,
+              departureDate: city.departureDate,
+              photo: photoMap.get(city.name),
+              hotel: city.hotel ? {
+                name: city.hotel.name,
+                stars: city.hotel.stars,
+                rating: city.hotel.rating,
+                pricePerNight: Math.round(city.hotel.price.amount / city.nights),
+                totalPrice: city.hotel.price.amount,
+                photos: city.hotel.photos
+              } : null,
+              topAttractions: city.attractions.slice(0, 3).map(a => ({
+                name: a.name,
+                description: a.description,
+                rating: a.rating,
+                price: a.price
+              }))
+            })),
+            transport: {
+              modes: roadtrip.acceptedTransportModes,
+              plan: roadtrip.transport,
+              narrative: enrichedRoadtrip.narrative.transportNarrative
+            },
+            pricing: {
+              total: roadtrip.budget.total,
+              transport: roadtrip.budget.transport,
+              hotels: roadtrip.budget.hotels,
+              activities: roadtrip.budget.activities,
+              totalCost: roadtrip.budget.totalCost,
+              currency: 'EUR'
+            },
+            narrative: {
+              dayByDayHighlights: enrichedRoadtrip.narrative.dayByDayHighlights,
+              perfectFor: enrichedRoadtrip.narrative.perfectFor,
+              budgetExplanation: enrichedRoadtrip.narrative.budgetExplanation,
+              practicalTips: enrichedRoadtrip.narrative.practicalTips,
+              bestTimeToGo: enrichedRoadtrip.narrative.bestTimeToGo,
+              hiddenGems: enrichedRoadtrip.narrative.hiddenGems
+            },
+            score: {
+              total: roadtrip.isAffordable ? 95 : 70,
+              breakdown: {
+                aiMatch: 95,
+                price: roadtrip.isAffordable ? 90 : 60,
+                originality: 98, // Roadtrips are unique!
+                availability: 85
+              }
+            },
+            duration: roadtrip.duration,
+            origin: roadtrip.origin
+          };
+
+          console.log('✅ Returning roadtrip recommendation');
+
+          return res.json({
+            success: true,
+            recommendations: [roadtripResult],
+            metadata: {
+              scenario: 'ROADTRIP',
+              totalGenerated: 1,
+              finalResults: 1,
+              processingTime: new Date().toISOString(),
+              usedBookingAPI: true,
+              roadtripMode: true
+            }
+          });
+
         } catch (error) {
-          console.log(`⚠️  FlixBus search failed for ${destination.city}:`, error.message);
+          console.error('❌ Roadtrip generation failed:', error.message);
+          console.warn('⚠️  Falling back to standard destination discovery');
+          // Fall through to standard destination discovery
         }
+      }
 
-        // Estimate train cost (no API available)
-        // TODO: Create trainPrices.js database with historical prices
-        const estimatedTrainCost = Math.round(flightOffer.price * 0.6); // Trains typically 60% of flight cost
-        transportAlternatives.push({
-          type: 'train',
-          operator: 'SNCF/DB/Trenitalia',
-          price: estimatedTrainCost,
-          currency: 'EUR',
-          duration: null,
-          isEstimate: true,
-          note: 'Prix estimé - Vérifiez sur le site officiel',
-          bookingUrl: 'https://www.trainline.com',
-        });
+      // ====================================================================
+      // STANDARD DESTINATION DISCOVERY (3 single-city recommendations)
+      // ====================================================================
 
-        // IMPROVED: Get hotel cost with Booking.com (primary) -> Amadeus (fallback)
-        console.log(`🏨 Searching hotels for ${destination.city}...`);
+      // Step 1: Discover top destinations with Booking.com
+      console.log('🔍 Step 1: Discovering destinations with Booking.com...');
+      const topDestinations = await destinationService.discoverDestinations({
+        userProfile,
+        budget,
+        origin: originCity,
+        duration,
+        departureDate: userProfile.availability?.startDate
+      });
 
-        // Try Booking.com first (better data)
-        let hotelResult = await getHotelCostWithBooking({
-          cityName: destination.city,
-          checkInDate: slot.startDate,
-          checkOutDate: slot.endDate,
-          adults: 1,
-          style: userProfile.basic.style,
-        });
+      console.log(`✅ Discovered ${topDestinations.length} destinations`);
 
-        // Fallback to Amadeus if Booking.com fails
-        if (!hotelResult || !hotelResult.hotels) {
-          console.log(`⚠️  Booking.com unavailable for ${destination.city}, trying Amadeus...`);
-          hotelResult = await getHotelCostWithFallbacks(destination, slot, userProfile.basic);
-        }
+      // Step 2: Optimize top 3 destinations in PARALLEL
+      console.log('⚡ Step 2: Optimizing top 3 destinations in parallel...');
+      const optimizedTrips = await Promise.all(
+        topDestinations.slice(0, 3).map(dest =>
+          destinationService.optimizeDestination({
+            destination: dest.name,
+            userProfile,
+            budget,
+            origin: originCity,
+            duration,
+            departureDate: userProfile.availability?.startDate
+          }).catch(error => {
+            console.warn(`⚠️  Failed to optimize ${dest.name}:`, error.message);
+            return null;
+          })
+        )
+      );
 
-        const hotelCost = hotelResult.cost;
-        const hotelSearch = hotelResult.hotels ? {
-          hotels: hotelResult.hotels,
-          averagePrice: hotelResult.cost,
-          source: hotelResult.source,
-          destination: destination.city,
-          checkIn: slot.startDate,
-          checkOut: slot.endDate,
-          nights: slot.duration - 1,
-        } : null;
+      // Filter out failures
+      const validTrips = optimizedTrips.filter(t => t !== null);
+      console.log(`✅ Successfully optimized ${validTrips.length} trips`);
 
-        // Calculate activities budget
-        const activitiesBudget = Math.round(
-          userProfile.basic.budget * (userProfile.preferences.activitiesBudget / 100)
-        );
+      if (validTrips.length === 0) {
+        throw new Error('Could not optimize any destinations. Please try again with different criteria.');
+      }
 
-        // Total cost
-        const totalCost = flightOffer.price + hotelCost + activitiesBudget;
+      // Step 3: Generate recommendations with Claude (PARALLEL)
+      console.log('🤖 Step 3: Generating recommendations with Claude (parallel)...');
+      const userName = req.user.firstName
+        ? `${req.user.firstName} ${req.user.lastName || ''}`.trim()
+        : req.user.email;
 
-        // Calculate final score
-        const score = calculateFinalScore(
-          destination,
-          flightOffer.price,
-          hotelCost,
-          userProfile.basic.budget
-        );
+      const recommendations = await Promise.all(
+        validTrips.map((trip, idx) =>
+          generateDestinationRecommendationWithData(
+            {
+              userProfile,
+              ...trip,
+              alternativeDestinations: validTrips
+                .filter((_, i) => i !== idx)
+                .map(t => t.destination.name)
+            },
+            req.user.id,
+            userName
+          ).catch(error => {
+            console.warn(`⚠️  Failed to generate recommendation for ${trip.destination.name}:`, error.message);
+            return null;
+          })
+        )
+      );
 
-        // Generate affiliate links
+      console.log(`✅ Generated ${recommendations.filter(r => r).length} recommendations`);
+
+      // Step 4: Get photos
+      console.log('📸 Step 4: Fetching destination photos...');
+      const photoMap = await getDestinationPhotos(
+        validTrips.map(t => t.destination.name)
+      );
+
+      // Step 5: Combine and format results
+      const results = validTrips.map((trip, idx) => {
+        const recommendation = recommendations[idx];
+        const photo = photoMap.get(trip.destination.name);
+        const score = calculateScoreFromTrip(trip, budget);
+
         const affiliateLinks = generateAffiliateLinks(
-          { destination, slot, flightOffer },
+          {
+            destination: {
+              city: trip.destination.name,
+              iataCode: trip.destination.iata,
+            },
+            slot: {
+              startDate: trip.dates.departure,
+              endDate: trip.dates.return,
+            },
+            flightOffer: {
+              price: trip.flight.totalCost,
+            }
+          },
           originCity
         );
 
-        // Get photo from map
-        const photo = photoMap.get(destination.city);
-        console.log(`📷 Attaching photo for ${destination.city}:`, photo ? 'YES' : 'NO');
-
         return {
           destination: {
-            city: destination.city,
-            country: destination.country,
-            iataCode: destination.iataCode,
-            matchReason: destination.matchReason,
-            seasonReason: destination.seasonReason,
-            photo: photo // Add photo to destination
+            city: trip.destination.name,
+            country: recommendation?.destinationName || trip.destination.name,
+            iataCode: trip.destination.iata,
+            photo: photo,
+            matchReason: recommendation?.tagline || `Perfect for ${userProfile.basic.activities.join(', ')}`
           },
           slot: {
-            startDate: slot.startDate,
-            endDate: slot.endDate,
-            duration: slot.duration,
-            season: slot.season
+            startDate: trip.dates.departure,
+            endDate: trip.dates.return,
+            duration: trip.dates.duration,
+            season: getSeason(trip.dates.departure)
           },
           pricing: {
-            flight: Math.round(flightOffer.price),
-            hotel: hotelCost,
-            activities: activitiesBudget,
-            total: totalCost,
-            remaining: userProfile.basic.budget - totalCost,
+            flight: trip.budget.flight,
+            hotel: trip.budget.hotel,
+            activities: trip.budget.remaining,
+            total: trip.budget.total,
+            remaining: trip.budget.remaining,
             currency: 'EUR'
           },
           flightDetails: {
             outbound: {
-              segments: flightOffer.segments || [],
-              departureTime: flightOffer.segments?.[0]?.departureTime,
-              arrivalTime: flightOffer.segments?.[flightOffer.segments.length - 1]?.arrivalTime,
-              duration: flightOffer.totalDuration,
-              stops: flightOffer.segments ? flightOffer.segments.length - 1 : 0
+              departureTime: trip.flight.outbound.departure,
+              arrivalTime: trip.flight.outbound.arrival,
+              duration: `${Math.floor(trip.flight.outbound.duration / 60)}h${trip.flight.outbound.duration % 60}m`,
+              stops: trip.flight.outbound.stops,
+              segments: [{
+                carrier: trip.flight.outbound.carrier,
+                carrierLogo: trip.flight.outbound.logo,
+                departureTime: trip.flight.outbound.departure,
+                arrivalTime: trip.flight.outbound.arrival,
+                origin: trip.flight.outbound.origin,
+                destination: trip.flight.outbound.destination,
+              }]
             },
-            return: flightOffer.returnSegments ? {
-              segments: flightOffer.returnSegments || [],
-              departureTime: flightOffer.returnSegments?.[0]?.departureTime,
-              arrivalTime: flightOffer.returnSegments?.[flightOffer.returnSegments.length - 1]?.arrivalTime,
-              duration: flightOffer.returnDuration,
-              stops: flightOffer.returnSegments ? flightOffer.returnSegments.length - 1 : 0
+            return: trip.flight.return ? {
+              departureTime: trip.flight.return.departure,
+              arrivalTime: trip.flight.return.arrival,
+              duration: `${Math.floor(trip.flight.return.duration / 60)}h${trip.flight.return.duration % 60}m`,
+              stops: trip.flight.return.stops,
+              segments: [{
+                carrier: trip.flight.return.carrier,
+                carrierLogo: trip.flight.return.logo,
+                departureTime: trip.flight.return.departure,
+                arrivalTime: trip.flight.return.arrival,
+                origin: trip.flight.return.origin,
+                destination: trip.flight.return.destination,
+              }]
             } : null,
-            totalPrice: Math.round(flightOffer.price),
-            pricePerPerson: Math.round(flightOffer.price),
-            airline: flightOffer.validatingAirline,
-            cabinClass: flightOffer.cabinClass || 'ECONOMY',
-            isEstimate: flightOffer.isEstimate || false,
-            transportNote: flightOffer.transportNote || null
+            totalPrice: trip.flight.totalCost,
+            pricePerPerson: trip.flight.totalCost,
+            airline: trip.flight.outbound.carrier,
+            cabinClass: 'ECONOMY',
+            isEstimate: false
           },
-          hotelOptions: hotelSearch ? {
-            destination: hotelSearch.destination,
-            checkIn: hotelSearch.checkIn,
-            checkOut: hotelSearch.checkOut,
-            nights: hotelSearch.nights,
-            hotels: hotelSearch.hotels,
-            averagePrice: hotelSearch.averagePrice
-          } : null,
-          transportAlternatives: transportAlternatives,
-          suggestedActivities: destination.suggestedActivities || [],
+          hotelOptions: {
+            destination: trip.destination.name,
+            checkIn: trip.dates.departure,
+            checkOut: trip.dates.return,
+            nights: trip.hotel.totalNights,
+            hotels: [{
+              name: trip.hotel.name,
+              stars: trip.hotel.stars,
+              price: trip.hotel.pricePerNight,
+              location: trip.hotel.location,
+              amenities: trip.hotel.amenities,
+            }],
+            averagePrice: trip.hotel.pricePerNight
+          },
+          recommendation: recommendation,
           score: score,
           links: affiliateLinks
         };
-      })
-    );
+      });
 
-    // Filter out nulls (though now we shouldn't have any)
-    let validResults = results.filter(r => r !== null);
+      // Sort by score
+      results.sort((a, b) => b.score.total - a.score.total);
 
-    // CRITICAL: Filter by budget (remove anything > 110% of budget)
-    const budgetFiltered = filterByBudget(validResults, userProfile.basic.budget, 0.10);
+      console.log(`✅ Returning ${results.length} diverse trip recommendations`);
 
-    // Validate cost data quality
-    const qualityFiltered = budgetFiltered.filter(r => validateCostData(r));
-
-    // CRITICAL GUARANTEE: Always return at least 3 results
-    // If budget/quality filtering removed too many, relax constraints
-    if (qualityFiltered.length < 3 && validResults.length >= 3) {
-      console.warn(`⚠️  Only ${qualityFiltered.length} results after filtering - relaxing budget constraint to guarantee 3 results`);
-      // Take top 3 by score from unfiltered results
-      validResults.sort((a, b) => b.score.total - a.score.total);
-      validResults = validResults.slice(0, 3);
-    } else {
-      validResults = qualityFiltered;
+      return res.json({
+        success: true,
+        recommendations: results,
+        metadata: {
+          scenario: 'WITHOUT_DESTINATION',
+          totalGenerated: topDestinations.length,
+          optimized: validTrips.length,
+          finalResults: results.length,
+          processingTime: new Date().toISOString(),
+          usedAirScraper: true,
+          usedOptimizedPrompt: true,
+          parallelProcessing: true,
+        }
+      });
     }
-
-    // Sort by score
-    validResults.sort((a, b) => b.score.total - a.score.total);
-
-    console.log(`✅ Returning ${validResults.length} budget-appropriate recommendations (guaranteed minimum 3)`);
-
-    res.json({
-      success: true,
-      recommendations: validResults,
-      temporalOptimization: (temporalSuggestions || calendarSuggestions) ? {
-        suggestedDates: calendarSuggestions || temporalSuggestions,
-        leaveDaysInfo: leaveDaysInfo,
-        source: calendarSuggestions ? 'google_calendar' : 'manual_optimization',
-        message: calendarSuggestions
-          ? `📅 Nous avons analysé votre calendrier et trouvé ${calendarSuggestions.length} périodes idéales pour voyager !`
-          : temporalSuggestions?.length > 0
-            ? `💡 Nous avons trouvé ${temporalSuggestions.length} périodes optimales pour voyager et économiser !`
-            : null
-      } : null,
-      metadata: {
-        totalGenerated: destinations.length,
-        preScreened: preScreened.length,
-        finalResults: validResults.length,
-        calendarIntegrated: !!calendarSuggestions,
-        processingTime: new Date().toISOString()
-      }
-    });
 
   } catch (error) {
     console.error('❌ Error in recommendations:', error);
