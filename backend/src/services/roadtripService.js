@@ -526,7 +526,10 @@ export async function generateRoadtrip({
       country: city.countryName,
       arrivalDate: arrivalDate.toISOString().split('T')[0],
       departureDate: departureDate.toISOString().split('T')[0],
-      nights: daysPerCity
+      nights: daysPerCity,
+      // ✅ FIX #1: Store cityName for hotel/attraction searches
+      cityName: city.cityName || validDests[i].cityName, // Use clean city name
+      flightCode: city.flightCode || city.id // For flight searches
     });
 
     currentDate = departureDate;
@@ -611,7 +614,7 @@ export async function generateRoadtrip({
   const hotelPromises = cities.map(async (city) => {
     try {
       const hotels = await bookingService.searchHotels({
-        destinationQuery: city.name,
+        destinationQuery: city.cityName || city.name, // ✅ FIX #1: Use cityName for better results
         arrivalDate: city.arrivalDate,
         departureDate: city.departureDate,
         adults: 1,
@@ -632,7 +635,7 @@ export async function generateRoadtrip({
         hotelOptions: affordable.slice(0, 5)
       };
     } catch (error) {
-      console.error(`❌ Failed to search hotels in ${city.name}`);
+      console.error(`❌ Failed to search hotels in ${city.cityName || city.name}`);
       return {
         city: city.name,
         selectedHotel: null,
@@ -648,13 +651,13 @@ export async function generateRoadtrip({
 
   const attractionsPromises = cities.map(async (city) => {
     try {
-      const attractions = await searchAttractions(city.name, { limit: 5, currency: 'EUR' });
+      const attractions = await searchAttractions(city.cityName || city.name, { limit: 5, currency: 'EUR' }); // ✅ FIX #1: Use cityName
       return {
         city: city.name,
         attractions: attractions.attractions || []
       };
     } catch (error) {
-      console.error(`❌ Failed to search attractions in ${city.name}`);
+      console.error(`❌ Failed to search attractions in ${city.cityName || city.name}`);
       return {
         city: city.name,
         attractions: []

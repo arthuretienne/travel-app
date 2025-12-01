@@ -14,6 +14,24 @@ const CACHE_TTL = {
 };
 
 /**
+ * Extract city name from airport name
+ * @param {string} apiName - Name from API (may be airport)
+ * @param {string} originalQuery - Original query from user
+ * @returns {string} Clean city name
+ */
+function extractCityName(apiName, originalQuery) {
+  // If name contains airport keywords, use original query
+  const airportKeywords = ['Airport', 'Aeroporto', 'Aéroport', 'Flughafen', 'Aeropuerto'];
+  const hasAirportKeyword = airportKeywords.some(keyword => apiName.includes(keyword));
+
+  if (hasAirportKeyword) {
+    return originalQuery; // Return original clean query like "Porto", "Barcelona"
+  }
+
+  return apiName; // Already a city name
+}
+
+/**
  * Search destination and get ID (with Redis caching)
  * @param {string} destinationName - City or destination name
  * @returns {Promise<Object>} Destination with id, name, type, country
@@ -54,13 +72,16 @@ export async function getDestinationId(destinationName) {
       code: city.code,
       type: city.type,
       country: city.country,
-      countryName: city.countryName
+      countryName: city.countryName,
+      // ✅ FIX #1: Add cityName for hotel/attraction searches
+      cityName: extractCityName(city.name, destinationName),
+      flightCode: city.id // Explicit flight code for clarity
     };
 
     // Cache for 30 days
     cache.set(cacheKey, destination, CACHE_TTL.DESTINATION_ID);
 
-    console.log(`📍 Found & cached: ${destination.name} (${destination.id})`);
+    console.log(`📍 Found & cached: ${destination.name} (${destination.id}) → cityName: ${destination.cityName}`);
     return destination;
 
   } catch (error) {
@@ -100,116 +121,254 @@ export async function searchFlights({
     return cached;
   }
 
-  console.log(`✈️  Searching flights: ${fromId} → ${toId} on ${departDate}`);
+  // ✅ FIX #2: Round-trip with fallback
+  if (returnDate) {
+    console.log(`✈️  Round-trip search: ${fromId} → ${toId} (${departDate} to ${returnDate})`);
 
-  try {
-    const params = {
+    try {
+      // Try round-trip API first
+      const result = await searchRoundTripDirect({
+        fromId, toId, departDate, returnDate,
+        adults, cabinClass, currency, sort
+      });
+
+      cache.set(cacheKey, result, CACHE_TTL.FLIGHT_SEARCH);
+      return result;
+
+    } catch (error) {
+      // If timeout or error, fallback to 2× one-way
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        console.warn(`⚠️  Round-trip timeout, using 2× one-way fallback`);
+      } else {
+        console.warn(`⚠️  Round-trip failed (${error.message}), using 2× one-way fallback`);
+      }
+
+      const result = await searchTwoOneWayFlights({
+        fromId, toId, departDate, returnDate,
+        adults, cabinClass, currency, sort
+      });
+
+      cache.set(cacheKey, result, CACHE_TTL.FLIGHT_SEARCH);
+      return result;
+    }
+  }
+
+  // One-way search (no changes, works perfectly)
+  console.log(`✈️  One-way search: ${fromId} → ${toId} on ${departDate}`);
+  return await searchOneWayDirect({
+    fromId, toId, departDate,
+    adults, cabinClass, currency, sort
+  });
+}
+
+/**
+ * Search round-trip flights (direct API call)
+ * @private
+ */
+async function searchRoundTripDirect({
+  fromId, toId, departDate, returnDate,
+  adults, cabinClass, currency, sort
+}) {
+  const params = {
+    fromId,
+    toId,
+    departDate,
+    returnDate,
+    stops: 'none',
+    pageNo: 1,
+    adults,
+    sort,
+    cabinClass,
+    currency_code: currency
+  };
+
+  const response = await axios.get(`${BASE_URL}/api/v1/flights/searchFlights`, {
+    params,
+    headers: {
+      'x-rapidapi-key': BOOKING_API_KEY,
+      'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
+    },
+    timeout: 60000 // Increase to 60s for round-trip
+  });
+
+  if (!response.data?.status || !response.data?.data?.flightOffers?.length) {
+    throw new Error('No round-trip flights found');
+  }
+
+  const flights = parseFlightOffers(response.data.data.flightOffers, currency);
+
+  console.log(`✅ Found ${flights.length} round-trip flights`);
+
+  return {
+    fromId,
+    toId,
+    departDate,
+    returnDate,
+    flights,
+    count: flights.length
+  };
+}
+
+/**
+ * Search one-way flight (direct API call)
+ * @private
+ */
+async function searchOneWayDirect({
+  fromId, toId, departDate,
+  adults, cabinClass, currency, sort
+}) {
+  const cacheKey = `booking:flights:${fromId}:${toId}:${departDate}:null:${adults}:${cabinClass}`;
+
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    console.log(`✅ Flight cache HIT: ${fromId} → ${toId}`);
+    return cached;
+  }
+
+  const params = {
+    fromId,
+    toId,
+    departDate,
+    stops: 'none',
+    pageNo: 1,
+    adults,
+    sort,
+    cabinClass,
+    currency_code: currency
+  };
+
+  const response = await axios.get(`${BASE_URL}/api/v1/flights/searchFlights`, {
+    params,
+    headers: {
+      'x-rapidapi-key': BOOKING_API_KEY,
+      'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
+    },
+    timeout: 30000
+  });
+
+  if (!response.data?.status || !response.data?.data?.flightOffers?.length) {
+    console.warn(`⚠️  No flights found: ${fromId} → ${toId}`);
+    return {
       fromId,
       toId,
       departDate,
-      stops: 'none', // Direct flights only for better UX
-      pageNo: 1,
-      adults,
-      sort,
-      cabinClass,
-      currency_code: currency
+      returnDate: null,
+      flights: [],
+      count: 0
     };
+  }
 
-    // Add return date if provided
-    if (returnDate) {
-      params.returnDate = returnDate;
-    }
+  const flights = parseFlightOffers(response.data.data.flightOffers, currency);
 
-    const response = await axios.get(`${BASE_URL}/api/v1/flights/searchFlights`, {
-      params,
-      headers: {
-        'x-rapidapi-key': BOOKING_API_KEY,
-        'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
-      },
-      timeout: 30000 // 30 second timeout
-    });
+  const result = {
+    fromId,
+    toId,
+    departDate,
+    returnDate: null,
+    flights,
+    count: flights.length
+  };
 
-    if (!response.data?.status) {
-      console.warn(`⚠️  No flights found: ${fromId} → ${toId}`);
-      return {
-        fromId,
-        toId,
-        departDate,
-        returnDate,
-        flights: [],
-        count: 0
-      };
-    }
+  cache.set(cacheKey, result, CACHE_TTL.FLIGHT_SEARCH);
 
-    const flightOffers = response.data.data?.flightOffers || [];
+  console.log(`✅ Found ${flights.length} one-way flights`);
+  return result;
+}
 
-    if (flightOffers.length === 0) {
-      console.warn(`⚠️  0 flights returned: ${fromId} → ${toId}`);
-      return {
-        fromId,
-        toId,
-        departDate,
-        returnDate,
-        flights: [],
-        count: 0
-      };
-    }
+/**
+ * Fallback: Search 2× one-way flights and combine cheapest
+ * @private
+ */
+async function searchTwoOneWayFlights({
+  fromId, toId, departDate, returnDate,
+  adults, cabinClass, currency, sort
+}) {
+  console.log(`🔄 Searching 2× one-way flights as fallback...`);
 
-    // Parse flight offers
-    const flights = flightOffers.map(offer => {
-      const outbound = offer.segments?.[0];
-      const returnSeg = offer.segments?.[1];
-      const price = offer.priceBreakdown?.total;
+  const [outboundResults, returnResults] = await Promise.all([
+    searchOneWayDirect({ fromId, toId, departDate, adults, cabinClass, currency, sort }),
+    searchOneWayDirect({ fromId: toId, toId: fromId, departDate: returnDate, adults, cabinClass, currency, sort })
+  ]);
 
-      return {
-        token: offer.token,
-        price: {
-          amount: price?.units || 0,
-          currency: price?.currencyCode || currency,
-          formatted: `${price?.currencyCode || currency} ${price?.units || 0}`
-        },
-        outbound: outbound ? {
-          departureAirport: outbound.departureAirport?.code,
-          arrivalAirport: outbound.arrivalAirport?.code,
-          departureTime: outbound.departureTime,
-          arrivalTime: outbound.arrivalTime,
-          duration: outbound.totalTime,
-          airline: outbound.legs?.[0]?.carriersData?.[0]?.name,
-          airlineCode: outbound.legs?.[0]?.carriersData?.[0]?.code,
-          airlineLogo: outbound.legs?.[0]?.carriersData?.[0]?.logo,
-        } : null,
-        return: returnSeg ? {
-          departureAirport: returnSeg.departureAirport?.code,
-          arrivalAirport: returnSeg.arrivalAirport?.code,
-          departureTime: returnSeg.departureTime,
-          arrivalTime: returnSeg.arrivalTime,
-          duration: returnSeg.totalTime,
-          airline: returnSeg.legs?.[0]?.carriersData?.[0]?.name,
-          airlineCode: returnSeg.legs?.[0]?.carriersData?.[0]?.code,
-          airlineLogo: returnSeg.legs?.[0]?.carriersData?.[0]?.logo,
-        } : null
-      };
-    });
-
-    const result = {
+  if (outboundResults.count === 0 || returnResults.count === 0) {
+    console.warn('⚠️  One or both one-way searches returned 0 flights');
+    return {
       fromId,
       toId,
       departDate,
       returnDate,
-      flights,
-      count: flights.length
+      flights: [],
+      count: 0
     };
-
-    // Cache for 1 hour
-    cache.set(cacheKey, result, CACHE_TTL.FLIGHT_SEARCH);
-
-    console.log(`✅ Found ${flights.length} flights: ${fromId} → ${toId}`);
-    return result;
-
-  } catch (error) {
-    console.error(`❌ searchFlights failed: ${fromId} → ${toId}`, error.message);
-    throw new Error(`Failed to search flights: ${error.message}`);
   }
+
+  // Combine cheapest outbound + cheapest return
+  const outboundFlight = outboundResults.flights[0];
+  const returnFlight = returnResults.flights[0];
+
+  const combinedFlight = {
+    token: `${outboundFlight.token}|${returnFlight.token}`,
+    price: {
+      amount: outboundFlight.price.amount + returnFlight.price.amount,
+      currency: outboundFlight.price.currency,
+      formatted: `${outboundFlight.price.currency} ${outboundFlight.price.amount + returnFlight.price.amount}`
+    },
+    outbound: outboundFlight.outbound,
+    return: returnFlight.outbound // Return flight's outbound is the return segment
+  };
+
+  console.log(`✅ Combined 2× one-way: €${combinedFlight.price.amount} (outbound €${outboundFlight.price.amount} + return €${returnFlight.price.amount})`);
+
+  return {
+    fromId,
+    toId,
+    departDate,
+    returnDate,
+    flights: [combinedFlight],
+    count: 1,
+    isCombinedOneWay: true // Flag to indicate this is a fallback
+  };
+}
+
+/**
+ * Parse flight offers from API response
+ * @private
+ */
+function parseFlightOffers(flightOffers, currency) {
+  return flightOffers.map(offer => {
+    const outbound = offer.segments?.[0];
+    const returnSeg = offer.segments?.[1];
+    const price = offer.priceBreakdown?.total;
+
+    return {
+      token: offer.token,
+      price: {
+        amount: price?.units || 0,
+        currency: price?.currencyCode || currency,
+        formatted: `${price?.currencyCode || currency} ${price?.units || 0}`
+      },
+      outbound: outbound ? {
+        departureAirport: outbound.departureAirport?.code,
+        arrivalAirport: outbound.arrivalAirport?.code,
+        departureTime: outbound.departureTime,
+        arrivalTime: outbound.arrivalTime,
+        duration: outbound.totalTime,
+        airline: outbound.legs?.[0]?.carriersData?.[0]?.name,
+        airlineCode: outbound.legs?.[0]?.carriersData?.[0]?.code,
+        airlineLogo: outbound.legs?.[0]?.carriersData?.[0]?.logo,
+      } : null,
+      return: returnSeg ? {
+        departureAirport: returnSeg.departureAirport?.code,
+        arrivalAirport: returnSeg.arrivalAirport?.code,
+        departureTime: returnSeg.departureTime,
+        arrivalTime: returnSeg.arrivalTime,
+        duration: returnSeg.totalTime,
+        airline: returnSeg.legs?.[0]?.carriersData?.[0]?.name,
+        airlineCode: returnSeg.legs?.[0]?.carriersData?.[0]?.code,
+        airlineLogo: returnSeg.legs?.[0]?.carriersData?.[0]?.logo,
+      } : null
+    };
+  });
 }
 
 /**
