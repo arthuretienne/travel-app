@@ -691,7 +691,7 @@ Example bad output: ["Paris", "Barcelona", "Amsterdam", "London", "Berlin", "Rom
       }]
     });
 
-    const duration = Date.now() - startTime;
+    const apiDuration = Date.now() - startTime;  // Renamed to avoid conflict with trip duration
     const response = message.content[0].text.trim();
 
     logger.logClaudeAPI({
@@ -702,7 +702,7 @@ Example bad output: ["Paris", "Barcelona", "Amsterdam", "London", "Berlin", "Rom
         output: message.usage?.output_tokens,
         total: message.usage?.input_tokens + message.usage?.output_tokens,
       },
-      duration,
+      duration: apiDuration,
     });
 
     // Parse JSON response

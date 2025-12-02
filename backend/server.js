@@ -22,6 +22,9 @@ import { apiLimiter, strictLimiter, emailLimiter } from './src/middleware/rateLi
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy - Required for Railway/Vercel deployments to properly handle X-Forwarded-For headers
+app.set('trust proxy', true);
+
 // Middleware
 app.use(cors({
   origin: [
