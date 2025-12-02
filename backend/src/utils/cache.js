@@ -50,11 +50,19 @@ class InMemoryCache {
     }
 
     // Set auto-cleanup timer
-    const timer = setTimeout(() => {
-      this.delete(key);
-    }, ttlMinutes * 60 * 1000);
+    // JavaScript setTimeout max value is 2147483647ms (24.8 days)
+    // For TTL > 24 days, rely on manual cleanup or get() expiry check
+    const ttlMs = ttlMinutes * 60 * 1000;
+    const MAX_TIMEOUT = 2147483647; // Max 32-bit signed integer
 
-    this.timers.set(key, timer);
+    if (ttlMs <= MAX_TIMEOUT) {
+      const timer = setTimeout(() => {
+        this.delete(key);
+      }, ttlMs);
+
+      this.timers.set(key, timer);
+    }
+    // For long TTLs, cleanup will happen via get() expiry check or manual cleanup()
 
     console.log(`💾 Cache SET: ${key} (TTL: ${ttlMinutes}min)`);
   }
