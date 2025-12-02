@@ -195,7 +195,7 @@ async function searchRoundTripDirect({
     throw new Error('No round-trip flights found');
   }
 
-  const flights = parseFlightOffers(response.data.data.flightOffers, currency);
+  const flights = parseFlightOffers(response.data.data.flightOffers, currency, fromId, toId, departDate, returnDate);
 
   console.log(`✅ Found ${flights.length} round-trip flights`);
 
@@ -258,7 +258,7 @@ async function searchOneWayDirect({
     };
   }
 
-  const flights = parseFlightOffers(response.data.data.flightOffers, currency);
+  const flights = parseFlightOffers(response.data.data.flightOffers, currency, fromId, toId, departDate, null);
 
   const result = {
     fromId,
@@ -314,7 +314,9 @@ async function searchTwoOneWayFlights({
       formatted: `${outboundFlight.price.currency} ${outboundFlight.price.amount + returnFlight.price.amount}`
     },
     outbound: outboundFlight.outbound,
-    return: returnFlight.outbound // Return flight's outbound is the return segment
+    return: returnFlight.outbound, // Return flight's outbound is the return segment
+    // Booking URLs for each leg
+    bookingUrl: `https://www.booking.com/flights?type=ONEWAY&from=${fromId}&to=${toId}&depart_date=${departDate}&adults=1&token=${outboundFlight.token}`
   };
 
   console.log(`✅ Combined 2× one-way: €${combinedFlight.price.amount} (outbound €${outboundFlight.price.amount} + return €${returnFlight.price.amount})`);
@@ -334,11 +336,16 @@ async function searchTwoOneWayFlights({
  * Parse flight offers from API response
  * @private
  */
-function parseFlightOffers(flightOffers, currency) {
+function parseFlightOffers(flightOffers, currency, fromId, toId, departDate, returnDate) {
   return flightOffers.map(offer => {
     const outbound = offer.segments?.[0];
     const returnSeg = offer.segments?.[1];
     const price = offer.priceBreakdown?.total;
+
+    // Generate Booking.com flight booking URL
+    const bookingUrl = returnDate
+      ? `https://www.booking.com/flights?type=ROUNDTRIP&from=${fromId}&to=${toId}&depart_date=${departDate}&return_date=${returnDate}&adults=1&token=${offer.token}`
+      : `https://www.booking.com/flights?type=ONEWAY&from=${fromId}&to=${toId}&depart_date=${departDate}&adults=1&token=${offer.token}`;
 
     return {
       token: offer.token,
@@ -366,7 +373,8 @@ function parseFlightOffers(flightOffers, currency) {
         airline: returnSeg.legs?.[0]?.carriersData?.[0]?.name,
         airlineCode: returnSeg.legs?.[0]?.carriersData?.[0]?.code,
         airlineLogo: returnSeg.legs?.[0]?.carriersData?.[0]?.logo,
-      } : null
+      } : null,
+      bookingUrl: bookingUrl
     };
   });
 }
@@ -462,13 +470,21 @@ export async function searchHotels({
       const grossPrice = hotel.property?.priceBreakdown?.grossPrice?.value || 0;
       const pricePerNight = grossPrice; // This is already the total price for the stay
 
+      // Extract description from accessibilityLabel
+      const description = hotel.accessibilityLabel || '';
+
+      // Extract room details from description
+      const roomMatch = description.match(/Entire\s+\w+\s+–\s+([\d\.]+\s*m²)\s*:\s*(.+?)(?:\.|$)/);
+      const roomDetails = roomMatch ? roomMatch[2] : null;
+
       return {
         id: hotel.hotel_id,
         name: hotel.property?.name || 'Unknown Hotel',
         stars: hotel.property?.propertyClass || hotel.property?.accuratePropertyClass || 0,
         rating: {
           value: hotel.property?.reviewScore || 0,
-          count: hotel.property?.reviewCount || 0
+          count: hotel.property?.reviewCount || 0,
+          word: hotel.property?.reviewScoreWord || ''
         },
         price: {
           amount: grossPrice,
@@ -481,7 +497,16 @@ export async function searchHotels({
         mainPhoto: hotel.property?.photoUrls?.[0] || null,
         amenities: hotel.property?.amenities || [],
         checkInTime: hotel.property?.checkin?.fromTime,
-        checkOutTime: hotel.property?.checkout?.untilTime
+        checkOutTime: hotel.property?.checkout?.untilTime,
+        description: description,
+        roomDetails: roomDetails,
+        coordinates: {
+          latitude: hotel.property?.latitude,
+          longitude: hotel.property?.longitude
+        },
+        blockId: hotel.property?.blockIds?.[0],
+        // Generate Booking.com URL
+        bookingUrl: `https://www.booking.com/hotel/es/${hotel.hotel_id}.html?checkin=${arrivalDate}&checkout=${departureDate}&group_adults=${adults}&no_rooms=${rooms}`
       };
     });
 
