@@ -205,6 +205,15 @@ router.get('/suggestions', authenticateUser, async (req, res) => {
       console.log('🔄 Refreshing expired access token...');
       accessToken = await refreshAccessToken(preferences.calendarRefreshToken);
 
+      // If token refresh failed (expired/revoked), return error to prompt re-authorization
+      if (!accessToken) {
+        return res.status(401).json({
+          success: false,
+          error: 'Google Calendar authorization expired. Please reconnect your calendar.',
+          needsReauth: true
+        });
+      }
+
       // Update token in database
       await prisma.userPreferences.update({
         where: { userId: req.user.id },
@@ -212,6 +221,15 @@ router.get('/suggestions', authenticateUser, async (req, res) => {
           calendarAccessToken: accessToken,
           calendarTokenExpiry: new Date(Date.now() + 3600 * 1000), // 1 hour from now
         },
+      });
+    }
+
+    // Check if we have a valid access token
+    if (!accessToken) {
+      return res.status(401).json({
+        success: false,
+        error: 'No calendar authorization found. Please connect your calendar first.',
+        needsReauth: true
       });
     }
 

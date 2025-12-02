@@ -214,7 +214,8 @@ export async function refreshAccessToken(refreshToken) {
     const { credentials } = await oauth2Client.refreshAccessToken();
     return credentials.access_token;
   } catch (error) {
-    console.error('Error refreshing access token:', error);
-    throw error;
+    console.error('⚠️  Google Calendar token expired or revoked:', error.message);
+    // Return null instead of throwing - allows app to continue without calendar integration
+    return null;
   }
 }
