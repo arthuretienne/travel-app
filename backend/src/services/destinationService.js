@@ -288,12 +288,12 @@ export async function optimizeDestination({
 
     const result = {
       destination: {
-        name: destDest.name,
+        name: destDest.cityName || destDest.name,  // Use cityName for clean display
         code: destDest.code,
         id: destDest.id,
       },
       origin: {
-        name: originDest.name,
+        name: originDest.cityName || originDest.name,  // Use cityName for clean display
         code: originDest.code,
         id: originDest.id,
       },

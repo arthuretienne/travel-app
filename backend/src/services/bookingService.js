@@ -7,10 +7,10 @@ const BASE_URL = 'https://booking-com15.p.rapidapi.com';
 const BOOKING_API_KEY = process.env.BOOKING_API_KEY || 'b723f67a8cmshf49874500229ca8p12d559jsnedd1aee8f4ea';
 
 const CACHE_TTL = {
-  DESTINATION_ID: 2592000,  // 30 days (permanent cache for destination IDs)
-  FLIGHT_SEARCH: 3600,      // 1 hour (flight prices change)
-  HOTEL_SEARCH: 21600,      // 6 hours (hotel prices change)
-  HOTEL_DETAILS: 43200,     // 12 hours (details more stable)
+  DESTINATION_ID: 43200,    // 30 days in minutes (permanent cache for destination IDs)
+  FLIGHT_SEARCH: 60,        // 1 hour in minutes (flight prices change)
+  HOTEL_SEARCH: 360,        // 6 hours in minutes (hotel prices change)
+  HOTEL_DETAILS: 720,       // 12 hours in minutes (details more stable)
 };
 
 /**
