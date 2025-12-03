@@ -46,17 +46,28 @@ async function getTripData(id, userId) {
   }
 
   // Extract destination
-  let city, country, startDate, endDate;
+  let city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails;
   if (isSavedTrip) {
     city = trip.city;
     country = trip.country;
     startDate = trip.startDate;
     endDate = trip.endDate;
+    // Parse trip data JSON for activities, flights, hotel
+    if (trip.tripData) {
+      const tripData = typeof trip.tripData === 'string' ? JSON.parse(trip.tripData) : trip.tripData;
+      suggestedActivities = tripData.suggestedActivities || [];
+      flightDetails = tripData.flight;
+      hotelDetails = tripData.hotel;
+    }
   } else if (trip.finalDestination) {
     city = trip.finalDestination.city;
     country = trip.finalDestination.country;
     startDate = trip.finalDestination.startDate || trip.finalStartDate;
     endDate = trip.finalDestination.endDate || trip.finalEndDate;
+    // For collaborative trips, activities might be in finalDestination
+    if (trip.finalDestination.suggestedActivities) {
+      suggestedActivities = trip.finalDestination.suggestedActivities;
+    }
   } else {
     // Fallback
     city = 'Paris';
@@ -65,7 +76,18 @@ async function getTripData(id, userId) {
     endDate = new Date(Date.now() + 37 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   }
 
-  return { trip, isSavedTrip, members, city, country, startDate, endDate };
+  return {
+    trip,
+    isSavedTrip,
+    members,
+    city,
+    country,
+    startDate,
+    endDate,
+    suggestedActivities: suggestedActivities || [],
+    flightDetails,
+    hotelDetails
+  };
 }
 
 /**
@@ -142,8 +164,16 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Trip not found or access denied' });
     }
 
-    const { trip, isSavedTrip, members, city, country, startDate, endDate } = tripData;
-    const destination = { city, country, startDate, endDate };
+    const { trip, isSavedTrip, members, city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails } = tripData;
+    const destination = {
+      city,
+      country,
+      startDate,
+      endDate,
+      suggestedActivities,
+      flightDetails,
+      hotelDetails
+    };
 
     // Get user preferences
     const userPreferences = await prisma.userPreferences.findUnique({

@@ -16,6 +16,9 @@ const client = new Anthropic({
 export async function generatePersonalizedItinerary(tripData, userProfile, userName, members = []) {
   const { city, country, startDate, endDate, suggestedActivities } = tripData;
 
+  console.log('📅 Generating itinerary for:', { city, country, startDate, endDate });
+  console.log('🎯 Activities to include:', suggestedActivities?.length || 0);
+
   const start = new Date(startDate);
   const end = new Date(endDate);
   const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
@@ -112,8 +115,10 @@ ${memberCount > 1 ? `- Suggest group-friendly activities for ${memberCount} peop
 OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
 
   try {
+    console.log('🤖 Calling Claude API for itinerary generation...');
+
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-3-5-sonnet-20240620',
       max_tokens: 4000,
       temperature: 0.7,
       messages: [{
@@ -122,17 +127,26 @@ OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
       }]
     });
 
+    console.log('✅ Claude API response received');
+
     const response = message.content[0].text;
+    console.log('📝 Response preview:', response.substring(0, 200) + '...');
+
     const jsonMatch = response.match(/\[\s*\{[\s\S]*\}\s*\]/);
 
     if (!jsonMatch) {
-      console.error('Failed to parse itinerary JSON');
+      console.error('❌ Failed to parse itinerary JSON');
+      console.error('Response was:', response);
       return null;
     }
 
-    return JSON.parse(jsonMatch[0]);
+    const itinerary = JSON.parse(jsonMatch[0]);
+    console.log(`✅ Generated ${itinerary.length} days of itinerary`);
+
+    return itinerary;
   } catch (error) {
-    console.error('Error generating itinerary:', error);
+    console.error('❌ Error generating itinerary:', error.message);
+    console.error('Full error:', error);
     return null;
   }
 }
