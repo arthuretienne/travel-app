@@ -44,12 +44,13 @@ function Results({ recommendations, onReset }) {
 
       <div className="trips-list">
         {recommendations.map((trip, index) => (
+          trip?.destination && (
           <div key={index} className="trip-card-modern">
             {/* Destination Image */}
             <div className="destination-image-container">
               <img
-                src={getDestinationImage(trip.destination.photo, trip.destination.city, trip.destination.country)}
-                alt={trip.destination.photo?.alt || `${trip.destination.city}, ${trip.destination.country}`}
+                src={getDestinationImage(trip.destination?.photo, trip.destination?.city, trip.destination?.country)}
+                alt={trip.destination?.photo?.alt || `${trip.destination?.city}, ${trip.destination?.country}`}
                 className="destination-image"
                 onError={(e) => {
                   // Fallback to a placeholder if image fails to load
@@ -258,6 +259,7 @@ function Results({ recommendations, onReset }) {
               </div>
             </details>
           </div>
+          )
         ))}
       </div>
 

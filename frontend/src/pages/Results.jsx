@@ -356,14 +356,14 @@ function Results() {
 
             {/* Current Destination Card */}
             {recommendations.map((trip, index) => (
-              index === currentIndex && (
+              index === currentIndex && trip?.destination && (
             <div key={index} className="bg-white rounded-3xl overflow-hidden shadow-card border border-gray-100 hover:border-primary/30 transition-all group">
               <div className="flex flex-col lg:flex-row">
                 {/* Destination Image */}
                 <div className="lg:w-1/3 relative h-64 lg:h-auto overflow-hidden">
                   <img
-                    src={getDestinationImage(trip.destination.photo, trip.destination.city, trip.destination.country)}
-                    alt={trip.destination.photo?.alt || `${trip.destination.city}, ${trip.destination.country}`}
+                    src={getDestinationImage(trip.destination?.photo, trip.destination?.city, trip.destination?.country)}
+                    alt={trip.destination?.photo?.alt || `${trip.destination?.city}, ${trip.destination?.country}`}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     onError={(e) => {
                       e.target.src = `https://source.unsplash.com/800x400/?${encodeURIComponent(trip.destination.city)}`;

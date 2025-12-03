@@ -129,8 +129,14 @@ OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
 
     console.log('✅ Claude API response received');
 
-    const response = message.content[0].text;
+    let response = message.content[0].text.trim();
     console.log('📝 Response preview:', response.substring(0, 200) + '...');
+
+    // Strip markdown code blocks if present
+    if (response.startsWith('```')) {
+      console.log('⚠️  Detected markdown wrapper, stripping...');
+      response = response.replace(/^```(?:json)?\n?/g, '').replace(/\n?```$/g, '').trim();
+    }
 
     const jsonMatch = response.match(/\[\s*\{[\s\S]*\}\s*\]/);
 

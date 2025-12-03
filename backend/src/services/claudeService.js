@@ -522,7 +522,7 @@ export async function generateItineraryWithRealData(tripData, userId = null, use
     });
 
     const duration = Date.now() - startTime;
-    const response = message.content[0].text;
+    let response = message.content[0].text.trim();
 
     logger.logClaudeAPI({
       operation: 'Generate Itinerary WITH Destination - Response',
@@ -535,6 +535,11 @@ export async function generateItineraryWithRealData(tripData, userId = null, use
       },
       duration,
     });
+
+    // Strip markdown code blocks if present
+    if (response.startsWith('```')) {
+      response = response.replace(/^```(?:json)?\n?/g, '').replace(/\n?```$/g, '').trim();
+    }
 
     // Parse JSON response
     const itinerary = JSON.parse(response);
@@ -589,7 +594,7 @@ export async function generateDestinationRecommendationWithData(tripData, userId
     });
 
     const duration = Date.now() - startTime;
-    const response = message.content[0].text;
+    let response = message.content[0].text.trim();
 
     logger.logClaudeAPI({
       operation: 'Generate Destination Recommendation - Response',
@@ -602,6 +607,11 @@ export async function generateDestinationRecommendationWithData(tripData, userId
       },
       duration,
     });
+
+    // Strip markdown code blocks if present
+    if (response.startsWith('```')) {
+      response = response.replace(/^```(?:json)?\n?/g, '').replace(/\n?```$/g, '').trim();
+    }
 
     // Parse JSON response
     const recommendation = JSON.parse(response);
@@ -644,18 +654,28 @@ TRIP PARAMETERS:
 - Budget: €${budget}
 - Duration: ${duration} days
 
-🎯 REQUIREMENTS:
-1. **DIVERSITY IS CRITICAL**: Each destination must be in a DIFFERENT country
-2. **PERSONALIZATION**: Match their interests, vibe, and travel style
-3. **VARIETY**: Mix popular + hidden gems (at least 2 off-the-beaten-path)
-4. **REALISTIC**: Must be reachable from ${origin} within budget
-5. **SEASONAL**: Consider current season (December 2025)
-6. **NO REPEATS**: Avoid obvious tourist traps everyone suggests
+🎯 CRITICAL REQUIREMENTS:
+1. **AIRPORTS MANDATORY**: EVERY city MUST have a major international airport with direct or 1-stop flights from ${origin}
+2. **DIVERSITY IS CRITICAL**: Each destination must be in a DIFFERENT country
+3. **PERSONALIZATION**: Match their interests, vibe, and travel style
+4. **VARIETY**: Mix popular + hidden gems (at least 2 off-the-beaten-path)
+5. **REALISTIC**: Flights must exist within budget (check flight accessibility!)
+6. **SEASONAL**: Consider current season (December 2025)
+7. **FRESH PICKS**: Avoid repetitive suggestions (Kotor, Tbilisi, Sarajevo are overused!)
 
 🚫 FORBIDDEN PATTERNS:
-- Don't default to "Barcelona, Lisbon, Amsterdam" for every young traveler
-- Don't suggest "Prague, Budapest, Krakow" for every budget traveler
-- Think beyond the top 10 European cities!
+- ❌ Don't always suggest: Kotor, Tbilisi, Sarajevo, Tromsø (already overused!)
+- ❌ Don't default to "Barcelona, Lisbon, Amsterdam" for every young traveler
+- ❌ Don't suggest "Prague, Budapest, Krakow" for every budget traveler
+- ❌ Don't pick tiny cities without proper airports (e.g., avoid small mountain towns)
+- ❌ Think beyond the same 10 cities you always suggest!
+
+✅ GOOD DESTINATION CRITERIA:
+- Has international airport (code like OPO, VLC, GDN, etc.)
+- Direct flights OR easy 1-stop from ${origin}
+- Rich activities matching user interests
+- Good hotel availability
+- Seasonal appeal (winter activities for December)
 
 ✨ PERSONALIZATION FACTORS TO CONSIDER:
 - Travel vibe (${userProfile.basic?.style || 'explorer'})
@@ -665,11 +685,19 @@ TRIP PARAMETERS:
 - Crowd tolerance
 - Cultural interests
 
-Return ONLY a valid JSON array of city names (no explanations):
+🎲 VARIETY TIPS:
+- Mix West + East + North + South Europe
+- Include at least 1 coastal city
+- Include at least 1 city with mountains nearby
+- Don't cluster all suggestions in one region (e.g., all Balkans)
+
+CRITICAL OUTPUT FORMAT:
+Return ONLY a pure JSON array. NO markdown, NO code blocks, NO backticks, NO explanations.
+Just the raw JSON array:
 ["City1", "City2", "City3", "City4", "City5", "City6"]
 
-Example good output: ["Porto", "Ljubljana", "Tallinn", "Valencia", "Krakow", "Bergen"]
-Example bad output: ["Paris", "Barcelona", "Amsterdam", "London", "Berlin", "Rome"] (too obvious!)`;
+Example GOOD output: ["Porto", "Valencia", "Gdansk", "Ljubljana", "Bologna", "Edinburgh"]
+Example BAD output: ["Kotor", "Tbilisi", "Sarajevo", "Tromsø", "Brasov", "Innsbruck"] (too repetitive + some lack major airports!)`;
 
   try {
     logger.logClaudeAPI({
@@ -692,7 +720,7 @@ Example bad output: ["Paris", "Barcelona", "Amsterdam", "London", "Berlin", "Rom
     });
 
     const apiDuration = Date.now() - startTime;  // Renamed to avoid conflict with trip duration
-    const response = message.content[0].text.trim();
+    let response = message.content[0].text.trim();
 
     logger.logClaudeAPI({
       operation: 'Generate Destination Shortlist - Response',
@@ -704,6 +732,13 @@ Example bad output: ["Paris", "Barcelona", "Amsterdam", "London", "Berlin", "Rom
       },
       duration: apiDuration,
     });
+
+    // Strip markdown code blocks if present (```json ... ``` or ``` ... ```)
+    if (response.startsWith('```')) {
+      console.log('⚠️  Detected markdown wrapper in Claude response, stripping...');
+      response = response.replace(/^```(?:json)?\n?/g, '').replace(/\n?```$/g, '').trim();
+      console.log('✅ Cleaned response:', response);
+    }
 
     // Parse JSON response
     const destinations = JSON.parse(response);
@@ -839,7 +874,7 @@ Return a JSON object with this structure:
     });
 
     const duration = Date.now() - startTime;
-    const response = message.content[0].text.trim();
+    let response = message.content[0].text.trim();
 
     console.log({
       function: 'generateRoadtripNarrative',
@@ -850,6 +885,11 @@ Return a JSON object with this structure:
       },
       duration,
     });
+
+    // Strip markdown code blocks if present
+    if (response.startsWith('```')) {
+      response = response.replace(/^```(?:json)?\n?/g, '').replace(/\n?```$/g, '').trim();
+    }
 
     // Parse JSON response
     const narrative = JSON.parse(response);
