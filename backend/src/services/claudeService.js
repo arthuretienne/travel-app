@@ -48,7 +48,7 @@ export async function generateDestinations(userProfile, userId = null, userName 
     });
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 4000,
       temperature: 1.0, // Increased for maximum creativity and diversity
       messages: [{
@@ -515,7 +515,7 @@ export async function generateItineraryWithRealData(tripData, userId = null, use
     });
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 4000,
       temperature: 0.7, // Lower temperature for consistent JSON output
       messages: [promptMessage]
@@ -582,7 +582,7 @@ export async function generateDestinationRecommendationWithData(tripData, userId
     });
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 3000,
       temperature: 0.8, // Slightly higher for creative hooks
       messages: [promptMessage]
@@ -682,7 +682,7 @@ Example bad output: ["Paris", "Barcelona", "Amsterdam", "London", "Berlin", "Rom
     const startTime = Date.now();
 
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20240620',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 500,
       temperature: 0.8, // Higher temperature for more creative suggestions
       messages: [{
@@ -827,7 +827,7 @@ Return a JSON object with this structure:
 }`;
 
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20240620',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 3000, // More tokens for detailed narrative
       temperature: 0.8, // Higher creativity for storytelling
       messages: [

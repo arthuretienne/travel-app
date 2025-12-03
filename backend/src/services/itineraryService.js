@@ -118,7 +118,7 @@ OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
     console.log('🤖 Calling Claude API for itinerary generation...');
 
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20240620',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 4000,
       temperature: 0.7,
       messages: [{
