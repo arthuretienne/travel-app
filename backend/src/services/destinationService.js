@@ -88,12 +88,13 @@ export async function discoverDestinations({
         const cheapestFlight = flights.flights[0];
 
         return {
-          name: dest.name,
+          name: cityName, // Use clean city name instead of airport name
           cityName,
           code: dest.code,
           country: dest.country,
           countryName: dest.countryName,
           destinationId: dest.id,
+          airportName: dest.name, // Keep original airport name for reference
           price: {
             amount: cheapestFlight.price.amount,
             currency: cheapestFlight.price.currency,

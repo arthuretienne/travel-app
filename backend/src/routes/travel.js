@@ -320,12 +320,16 @@ router.post('/recommendations',
 
         try {
           // Generate complete roadtrip with transport, hotels, and activities
+          // Use optimal date or default to 2 months from now
+          const defaultDepartureDate = new Date();
+          defaultDepartureDate.setMonth(defaultDepartureDate.getMonth() + 2);
+
           const roadtrip = await roadtripService.generateRoadtrip({
             userProfile: userPreferences,
             origin: originCity,
             budget,
             duration,
-            departureDate: userProfile.availability?.startDate
+            departureDate: userProfile.availability?.startDate || defaultDepartureDate.toISOString().split('T')[0]
           });
 
           console.log(`✅ Roadtrip generated: ${roadtrip.cities.length} cities, €${roadtrip.budget.totalCost}`);

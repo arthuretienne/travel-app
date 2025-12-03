@@ -682,7 +682,7 @@ Example bad output: ["Paris", "Barcelona", "Amsterdam", "London", "Berlin", "Rom
     const startTime = Date.now();
 
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-3-5-sonnet-20240620',
       max_tokens: 500,
       temperature: 0.8, // Higher temperature for more creative suggestions
       messages: [{
@@ -827,7 +827,7 @@ Return a JSON object with this structure:
 }`;
 
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-3-5-sonnet-20240620',
       max_tokens: 3000, // More tokens for detailed narrative
       temperature: 0.8, // Higher creativity for storytelling
       messages: [
