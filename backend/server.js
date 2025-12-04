@@ -30,8 +30,11 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:5174',
-    'https://travel-app-ten-rho.vercel.app', // Production frontend
-    /\.vercel\.app$/ // Allow all Vercel preview deployments
+    'https://travel-app-ten-rho.vercel.app', // Legacy Vercel frontend
+    'https://skusku.life',                    // Production domain
+    'https://www.skusku.life',                // Production domain with www
+    /\.vercel\.app$/,                         // Allow all Vercel preview deployments
+    /\.skusku\.life$/                         // Allow subdomains
   ],
   credentials: true
 }));

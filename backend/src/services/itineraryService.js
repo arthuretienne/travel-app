@@ -14,10 +14,12 @@ const client = new Anthropic({
  * @returns {Promise<Array>} Daily itinerary
  */
 export async function generatePersonalizedItinerary(tripData, userProfile, userName, members = []) {
-  const { city, country, startDate, endDate, suggestedActivities } = tripData;
+  const { city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails } = tripData;
 
   console.log('📅 Generating itinerary for:', { city, country, startDate, endDate });
   console.log('🎯 Activities to include:', suggestedActivities?.length || 0);
+  console.log('✈️  Flight details available:', !!flightDetails);
+  console.log('🏨 Hotel details available:', !!hotelDetails);
 
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -27,8 +29,40 @@ export async function generatePersonalizedItinerary(tripData, userProfile, userN
   const groupText = memberCount > 1 ? `for ${userName} and ${memberCount - 1} friend${memberCount > 1 ? 's' : ''}` : `for ${userName}`;
 
   const activitiesText = suggestedActivities?.length > 0
-    ? suggestedActivities.map(a => `- ${a.name} (${a.category}, ${a.duration}, €${a.estimatedPrice})`).join('\n')
+    ? suggestedActivities.map(a => `- ${a.name} (${a.category || 'activity'}, ${a.duration || '2h'}, €${a.estimatedPrice || a.price || 0})`).join('\n')
     : 'Activities based on user preferences';
+
+  // Build flight info section for the prompt
+  let flightInfoText = '';
+  if (flightDetails) {
+    const outbound = flightDetails.outbound || flightDetails;
+    const returnFlight = flightDetails.return || flightDetails.inbound;
+    flightInfoText = `
+FLIGHT INFORMATION (REAL DATA):
+- Outbound: ${outbound?.departure || 'N/A'} → ${outbound?.arrival || city}
+  - Departure: ${outbound?.departureTime || startDate}
+  - Arrival: ${outbound?.arrivalTime || 'morning'}
+  - Airline: ${flightDetails.airline || outbound?.airline || 'N/A'}
+  - Duration: ${flightDetails.duration || outbound?.duration || 'N/A'}
+${returnFlight ? `- Return: ${returnFlight?.departure || city} → ${returnFlight?.arrival || 'origin'}
+  - Departure: ${returnFlight?.departureTime || endDate}` : ''}
+- Total flight cost: €${flightDetails.totalCost || flightDetails.price || 'N/A'}`;
+  }
+
+  // Build hotel info section for the prompt
+  let hotelInfoText = '';
+  if (hotelDetails) {
+    hotelInfoText = `
+HOTEL INFORMATION (REAL DATA):
+- Hotel: ${hotelDetails.name || 'Booked accommodation'}
+- Location: ${hotelDetails.location || hotelDetails.address || city}
+- Check-in: ${hotelDetails.checkIn || startDate}
+- Check-out: ${hotelDetails.checkOut || endDate}
+- Rating: ${hotelDetails.rating || hotelDetails.stars || 'N/A'} stars
+- Price per night: €${hotelDetails.pricePerNight || Math.round((hotelDetails.totalPrice || 0) / Math.max(days - 1, 1))}
+- Total hotel cost: €${hotelDetails.totalPrice || hotelDetails.price || 'N/A'}
+${hotelDetails.amenities ? `- Amenities: ${Array.isArray(hotelDetails.amenities) ? hotelDetails.amenities.join(', ') : hotelDetails.amenities}` : ''}`;
+  }
 
   const personalityText = userProfile?.personality
     ? `Traveler personality: ${userProfile.personality} (${
@@ -48,6 +82,8 @@ TRIP DETAILS:
 ${personalityText}
 - User preferences: ${userProfile?.topActivities?.join(', ') || 'various activities'}
 - Budget per person: €${userProfile?.budget || 1500}
+${flightInfoText}
+${hotelInfoText}
 
 SUGGESTED ACTIVITIES TO INCLUDE:
 ${activitiesText}
@@ -94,16 +130,20 @@ STRUCTURE EACH DAY AS:
 }
 
 IMPORTANT RULES:
-1. Day 1: Include arrival logistics (airport transfer, hotel check-in, first meal)
-2. Last day: Include checkout time, departure logistics, airport timing
-3. Include REALISTIC transport times (walking, metro, taxi, etc.)
+1. Day 1: Include arrival logistics (airport transfer to hotel, check-in time, first meal)
+   ${flightDetails ? `- Use REAL flight arrival time to plan Day 1 (arriving ${flightDetails.outbound?.arrivalTime || 'morning'})` : '- Assume morning arrival'}
+   ${hotelDetails ? `- Hotel check-in at ${hotelDetails.name || 'hotel'}: typically 3 PM but can store luggage earlier` : ''}
+2. Last day: Include checkout time (usually 11 AM), departure logistics, airport timing
+   ${flightDetails?.return ? `- Return flight departs at ${flightDetails.return?.departureTime || 'evening'} - plan accordingly!` : ''}
+3. Include REALISTIC transport times (walking, metro, taxi with estimated costs)
 4. Budget breakdown per day (stay under €${userProfile?.budget || 1500} total)
 5. Mix free and paid activities
-6. Include meal breaks (breakfast, lunch, dinner) with cost estimates
+6. Include meal breaks (breakfast, lunch, dinner) with SPECIFIC restaurant suggestions near activities
 7. Add personal touches referencing ${userName} and their preferences
 8. Include "insider tips" for each major activity
 9. Pace appropriately - don't exhaust travelers!
 10. Consider ${userProfile?.idealRhythm || 'balanced'} rhythm preference
+11. Include AIRPORT TRANSFER options with prices (taxi, metro, bus, Uber estimate)
 
 PERSONALIZATION FOR ${userName}:
 - Address them directly in tips ("${userName}, you'll love...")
