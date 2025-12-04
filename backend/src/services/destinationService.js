@@ -18,6 +18,7 @@ export async function discoverDestinations({
   origin,
   duration = 7,
   departureDate = null,
+  userId = null, // For diversity tracking
 }) {
   console.log(`🔍 NEW WORKFLOW: Discovering destinations from ${origin} with budget €${budget}`);
 
@@ -29,7 +30,8 @@ export async function discoverDestinations({
       budget,
       duration,
       origin,
-      count: 6
+      count: 6,
+      userId // Pass userId for diversity (avoids recently recommended destinations)
     });
 
     console.log(`✅ Claude suggested: ${shortlist.join(', ')}`);

@@ -1,6 +1,8 @@
 // backend/src/services/claudeService.js
 import Anthropic from '@anthropic-ai/sdk';
 import { logger } from './logger.js';
+import * as cache from '../utils/cache.js';
+import prisma from '../db/prisma.js';
 
 // NOTE: dotenv est déjà chargé dans server.js
 // Les variables d'environnement sont disponibles via process.env
@@ -626,8 +628,27 @@ export async function generateDestinationRecommendationWithData(tripData, userId
 }
 
 /**
+ * Generate hash from user profile for cache key
+ * @param {Object} userProfile - User profile
+ * @param {Object} options - Options
+ * @returns {string} Hash string
+ */
+function generateProfileHash(userProfile, options) {
+  const key = {
+    activities: userProfile.basic?.activities?.sort() || [],
+    style: userProfile.basic?.style || 'explorer',
+    budget: options.budget || 800,
+    origin: options.origin || 'Paris',
+    duration: options.duration || 7
+  };
+  // Simple hash: JSON stringify and take first 32 chars of base64
+  return Buffer.from(JSON.stringify(key)).toString('base64').slice(0, 32);
+}
+
+/**
  * Generate personalized destination shortlist for Booking.com API workflow
  * Returns 5-8 diverse destination names to search flights for
+ * Uses cache to avoid repeated Claude calls (24h TTL)
  * @param {Object} userProfile - User preferences and profile
  * @param {Object} options - Additional options
  * @returns {Promise<string[]>} Array of destination city names
@@ -641,8 +662,44 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
     budget = 800,
     duration = 7,
     origin = 'Paris',
-    count = 6
+    count = 6,
+    excludeDestinations = [], // Previously recommended destinations to exclude
+    userId = null // For fetching past recommendations
   } = options;
+
+  // Check cache first (only if no exclusions requested)
+  const cacheKey = `destinations:${generateProfileHash(userProfile, options)}`;
+  const cachedDestinations = cache.get(cacheKey);
+  if (cachedDestinations && excludeDestinations.length === 0) {
+    console.log(`⚡ Cache HIT for destination shortlist`);
+    return cachedDestinations;
+  }
+
+  // Fetch user's past recommendations for diversity (last 30 days)
+  let pastDestinations = [...excludeDestinations];
+  if (userId) {
+    try {
+      const recentRecommendations = await prisma.recommendation.findMany({
+        where: {
+          search: { userId },
+          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+        },
+        select: { city: true },
+        distinct: ['city'],
+        take: 20
+      });
+      const dbCities = recentRecommendations.map(r => r.city);
+      pastDestinations = [...new Set([...pastDestinations, ...dbCities])];
+      console.log(`📊 Found ${dbCities.length} past destinations to avoid for diversity`);
+    } catch (error) {
+      console.warn('⚠️  Could not fetch past recommendations:', error.message);
+    }
+  }
+
+  // Build exclusion text for prompt
+  const exclusionText = pastDestinations.length > 0
+    ? `\n🚫 ALREADY RECOMMENDED (DO NOT SUGGEST AGAIN):\n${pastDestinations.join(', ')}\n`
+    : '';
 
   const prompt = `You are an expert travel advisor. Generate ${count} PERSONALIZED, DIVERSE European destination recommendations for this traveler.
 
@@ -653,7 +710,7 @@ TRIP PARAMETERS:
 - Origin: ${origin}
 - Budget: €${budget}
 - Duration: ${duration} days
-
+${exclusionText}
 🎯 CRITICAL REQUIREMENTS:
 1. **AIRPORTS MANDATORY**: EVERY city MUST have a major international airport with direct or 1-stop flights from ${origin}
 2. **DIVERSITY IS CRITICAL**: Each destination must be in a DIFFERENT country
@@ -748,6 +805,13 @@ Example BAD output: ["Kotor", "Tbilisi", "Sarajevo", "Tromsø", "Brasov", "Innsb
     }
 
     console.log(`✅ Generated ${destinations.length} personalized destinations:`, destinations);
+
+    // Cache results for 24 hours (1440 minutes) if no exclusions
+    if (excludeDestinations.length === 0) {
+      cache.set(cacheKey, destinations, 1440);
+      console.log(`💾 Cached destination shortlist for 24h`);
+    }
+
     return destinations;
 
   } catch (error) {

@@ -437,7 +437,8 @@ router.post('/recommendations',
         budget,
         origin: originCity,
         duration,
-        departureDate: userProfile.availability?.startDate
+        departureDate: userProfile.availability?.startDate,
+        userId: req.user.id // For diversity tracking (avoids recently suggested cities)
       });
 
       console.log(`✅ Discovered ${topDestinations.length} destinations`);
@@ -468,40 +469,40 @@ router.post('/recommendations',
         throw new Error('Could not optimize any destinations. Please try again with different criteria.');
       }
 
-      // Step 3: Generate recommendations with Claude (PARALLEL)
-      console.log('🤖 Step 3: Generating recommendations with Claude (parallel)...');
+      // Step 3: Generate recommendations with Claude + Fetch photos (PARALLEL)
+      console.log('🤖 Step 3: Generating recommendations + fetching photos (parallel)...');
       const userName = req.user.firstName
         ? `${req.user.firstName} ${req.user.lastName || ''}`.trim()
         : req.user.email;
 
-      const recommendations = await Promise.all(
-        validTrips.map((trip, idx) =>
-          generateDestinationRecommendationWithData(
-            {
-              userProfile,
-              ...trip,
-              alternativeDestinations: validTrips
-                .filter((_, i) => i !== idx)
-                .map(t => t.destination.name)
-            },
-            req.user.id,
-            userName
-          ).catch(error => {
-            console.warn(`⚠️  Failed to generate recommendation for ${trip.destination.name}:`, error.message);
-            return null;
-          })
-        )
-      );
+      // Run Claude recommendations AND photo fetching in parallel
+      const [recommendations, photoMap] = await Promise.all([
+        // Claude recommendations for all trips in parallel
+        Promise.all(
+          validTrips.map((trip, idx) =>
+            generateDestinationRecommendationWithData(
+              {
+                userProfile,
+                ...trip,
+                alternativeDestinations: validTrips
+                  .filter((_, i) => i !== idx)
+                  .map(t => t.destination.name)
+              },
+              req.user.id,
+              userName
+            ).catch(error => {
+              console.warn(`⚠️  Failed to generate recommendation for ${trip.destination.name}:`, error.message);
+              return null;
+            })
+          )
+        ),
+        // Photos fetched in parallel with Claude
+        getDestinationPhotos(validTrips.map(t => t.destination.name))
+      ]);
 
-      console.log(`✅ Generated ${recommendations.filter(r => r).length} recommendations`);
+      console.log(`✅ Generated ${recommendations.filter(r => r).length} recommendations + ${photoMap.size} photos`);
 
-      // Step 4: Get photos
-      console.log('📸 Step 4: Fetching destination photos...');
-      const photoMap = await getDestinationPhotos(
-        validTrips.map(t => t.destination.name)
-      );
-
-      // Step 5: Combine and format results
+      // Step 4: Combine and format results
       const results = validTrips.map((trip, idx) => {
         const recommendation = recommendations[idx];
         const photo = photoMap.get(trip.destination.name);
@@ -637,9 +638,226 @@ router.get('/test', async (req, res) => {
   res.json({
     message: 'Travel API is working',
     endpoints: {
-      recommendations: 'POST /api/travel/recommendations'
+      recommendations: 'POST /api/travel/recommendations',
+      streamingRecommendations: 'POST /api/travel/recommendations/stream'
     }
   });
 });
+
+/**
+ * STREAMING RECOMMENDATIONS ENDPOINT
+ * Uses Server-Sent Events (SSE) to stream results progressively
+ * Benefits: User sees first result in ~5s instead of waiting 15s for all
+ */
+router.post('/recommendations/stream',
+  strictLimiter,
+  authenticateUser,
+  checkLimit('maxSearchesPerMonth', 'searchesThisMonth'),
+  incrementUsage('searchesThisMonth'),
+  async (req, res) => {
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+
+    // Helper to send SSE event
+    const sendEvent = (type, data) => {
+      res.write(`event: ${type}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const userProfile = req.body;
+
+      // Send initial status
+      sendEvent('status', { stage: 'starting', message: 'Initializing search...' });
+
+      // Fetch user preferences
+      const userPreferences = await prisma.userPreferences.findUnique({
+        where: { userId: req.user.id },
+      });
+
+      if (userPreferences) {
+        userProfile.onboardingPreferences = userPreferences;
+      }
+
+      const originCity = (userPreferences?.preferredAirports?.[0]) || userProfile.availability?.originCity || 'Paris';
+      const budget = userProfile.basic.budget;
+      const duration = userProfile.availability?.duration || 7;
+
+      // Only handle WITHOUT_DESTINATION scenario for streaming
+      const scenario = detectScenario(userProfile);
+      if (scenario === 'WITH_DESTINATION') {
+        sendEvent('error', { message: 'Streaming not available for specific destination searches' });
+        res.end();
+        return;
+      }
+
+      // Step 1: Discover destinations
+      sendEvent('status', { stage: 'discovering', message: 'Finding perfect destinations...' });
+
+      const topDestinations = await destinationService.discoverDestinations({
+        userProfile,
+        budget,
+        origin: originCity,
+        duration,
+        departureDate: userProfile.availability?.startDate,
+        userId: req.user.id
+      });
+
+      sendEvent('status', {
+        stage: 'discovered',
+        message: `Found ${topDestinations.length} destinations`,
+        destinations: topDestinations.slice(0, 3).map(d => d.name)
+      });
+
+      // Step 2: Process each destination and stream results as they complete
+      const userName = req.user.firstName
+        ? `${req.user.firstName} ${req.user.lastName || ''}`.trim()
+        : req.user.email;
+
+      const destinationsToProcess = topDestinations.slice(0, 3);
+      let completedCount = 0;
+
+      // Process destinations in parallel but stream results as they complete
+      await Promise.all(
+        destinationsToProcess.map(async (dest, idx) => {
+          try {
+            // Optimize trip
+            const trip = await destinationService.optimizeDestination({
+              destination: dest.name,
+              userProfile,
+              budget,
+              origin: originCity,
+              duration,
+              departureDate: userProfile.availability?.startDate
+            });
+
+            if (!trip) return;
+
+            // Generate recommendation and get photo in parallel
+            const [recommendation, photoResult] = await Promise.all([
+              generateDestinationRecommendationWithData(
+                {
+                  userProfile,
+                  ...trip,
+                  alternativeDestinations: destinationsToProcess
+                    .filter((_, i) => i !== idx)
+                    .map(d => d.name)
+                },
+                req.user.id,
+                userName
+              ).catch(() => null),
+              getPexelsPhoto(trip.destination.name).catch(() => null)
+            ]);
+
+            // Calculate score
+            const score = calculateScoreFromTrip(trip, budget);
+
+            // Generate affiliate links
+            const affiliateLinks = generateAffiliateLinks(
+              {
+                destination: {
+                  city: trip.destination.name,
+                  iataCode: trip.destination.iata,
+                },
+                slot: {
+                  startDate: trip.dates.departure,
+                  endDate: trip.dates.return,
+                },
+                flightOffer: {
+                  price: trip.flight.totalCost,
+                }
+              },
+              originCity
+            );
+
+            // Build result
+            const result = {
+              destination: {
+                city: trip.destination.name,
+                country: recommendation?.destinationName || trip.destination.name,
+                iataCode: trip.destination.iata,
+                photo: photoResult,
+                matchReason: recommendation?.tagline || `Perfect for ${userProfile.basic.activities?.join(', ') || 'your interests'}`
+              },
+              slot: {
+                startDate: trip.dates.departure,
+                endDate: trip.dates.return,
+                duration: trip.dates.duration,
+                season: getSeason(trip.dates.departure)
+              },
+              pricing: {
+                flight: trip.budget.flight,
+                hotel: trip.budget.hotel,
+                activities: trip.budget.remaining,
+                total: trip.budget.total,
+                remaining: trip.budget.remaining,
+                currency: 'EUR'
+              },
+              flightDetails: {
+                outbound: {
+                  departureTime: trip.flight.outbound.departure,
+                  arrivalTime: trip.flight.outbound.arrival,
+                  duration: `${Math.floor(trip.flight.outbound.duration / 60)}h${trip.flight.outbound.duration % 60}m`,
+                  stops: trip.flight.outbound.stops,
+                },
+                return: trip.flight.return ? {
+                  departureTime: trip.flight.return.departure,
+                  arrivalTime: trip.flight.return.arrival,
+                  duration: `${Math.floor(trip.flight.return.duration / 60)}h${trip.flight.return.duration % 60}m`,
+                  stops: trip.flight.return.stops,
+                } : null,
+                totalPrice: trip.flight.totalCost,
+                airline: trip.flight.outbound.carrier,
+              },
+              hotelOptions: {
+                destination: trip.destination.name,
+                checkIn: trip.dates.departure,
+                checkOut: trip.dates.return,
+                nights: trip.hotel.totalNights,
+                hotels: [{
+                  name: trip.hotel.name,
+                  stars: trip.hotel.stars,
+                  price: trip.hotel.pricePerNight,
+                }],
+              },
+              recommendation: recommendation,
+              score: score,
+              links: affiliateLinks
+            };
+
+            completedCount++;
+
+            // Stream this result immediately
+            sendEvent('recommendation', {
+              index: completedCount,
+              total: destinationsToProcess.length,
+              data: result
+            });
+
+          } catch (error) {
+            console.warn(`⚠️  Streaming: Failed to process ${dest.name}:`, error.message);
+            sendEvent('warning', { destination: dest.name, error: error.message });
+          }
+        })
+      );
+
+      // Send completion event
+      sendEvent('complete', {
+        totalResults: completedCount,
+        processingTime: new Date().toISOString()
+      });
+
+      res.end();
+
+    } catch (error) {
+      console.error('Streaming error:', error);
+      sendEvent('error', { message: error.message });
+      res.end();
+    }
+  }
+);
 
 export default router;
