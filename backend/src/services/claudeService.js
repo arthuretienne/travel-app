@@ -667,7 +667,11 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
     userId = null // For fetching past recommendations
   } = options;
 
-  // Check cache first (only if no exclusions requested)
+  // Generate a random seed for this session to encourage variety
+  const randomSeed = Math.floor(Math.random() * 10000);
+
+  // Check cache first - but only for very short period (2 hours)
+  // We want fresh suggestions frequently for better UX
   const cacheKey = `destinations:${generateProfileHash(userProfile, options)}`;
   const cachedDestinations = cache.get(cacheKey);
   if (cachedDestinations && excludeDestinations.length === 0) {
@@ -701,7 +705,14 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
     ? `\n🚫 ALREADY RECOMMENDED (DO NOT SUGGEST AGAIN):\n${pastDestinations.join(', ')}\n`
     : '';
 
+  // Current date for seasonal context
+  const currentDate = new Date().toISOString().split('T')[0];
+  const currentMonth = new Date().toLocaleString('en-US', { month: 'long' });
+
   const prompt = `You are an expert travel advisor. Generate ${count} PERSONALIZED, DIVERSE European destination recommendations for this traveler.
+
+🎲 VARIATION SEED: ${randomSeed} (use this to vary your suggestions - different seeds = different destinations!)
+📅 TODAY'S DATE: ${currentDate} (${currentMonth})
 
 USER PROFILE:
 ${JSON.stringify(userProfile, null, 2)}
@@ -769,7 +780,7 @@ Example BAD output: ["Kotor", "Tbilisi", "Sarajevo", "Tromsø", "Brasov", "Innsb
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 500,
-      temperature: 0.8, // Higher temperature for more creative suggestions
+      temperature: 0.95, // Very high temperature for maximum diversity
       messages: [{
         role: 'user',
         content: prompt
@@ -806,10 +817,11 @@ Example BAD output: ["Kotor", "Tbilisi", "Sarajevo", "Tromsø", "Brasov", "Innsb
 
     console.log(`✅ Generated ${destinations.length} personalized destinations:`, destinations);
 
-    // Cache results for 24 hours (1440 minutes) if no exclusions
+    // Cache results for 2 hours (120 minutes) to allow for variety
+    // Shorter TTL ensures users get fresh suggestions more often
     if (excludeDestinations.length === 0) {
-      cache.set(cacheKey, destinations, 1440);
-      console.log(`💾 Cached destination shortlist for 24h`);
+      cache.set(cacheKey, destinations, 120);
+      console.log(`💾 Cached destination shortlist for 2h`);
     }
 
     return destinations;
