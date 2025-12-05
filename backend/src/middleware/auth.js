@@ -45,24 +45,48 @@ export async function authenticateUser(req, res, next) {
       },
     });
 
-    // If user doesn't exist in our DB, create them
+    // If user doesn't exist in our DB, create or update them
     if (!user) {
       const clerkUser = await clerkClient.users.getUser(clerkId);
+      const email = clerkUser.emailAddresses[0]?.emailAddress || '';
 
-      user = await prisma.user.create({
-        data: {
-          clerkId,
-          email: clerkUser.emailAddresses[0]?.emailAddress || '',
-          firstName: clerkUser.firstName,
-          lastName: clerkUser.lastName,
-          imageUrl: clerkUser.imageUrl,
-        },
-        include: {
-          preferences: true,
-        },
+      // Check if user exists with same email but different clerkId
+      // (happens when switching from Clerk Development to Production)
+      const existingUserByEmail = await prisma.user.findUnique({
+        where: { email },
       });
 
-      console.log('✅ New user created:', user.email);
+      if (existingUserByEmail) {
+        // Update existing user with new clerkId (Dev → Prod migration)
+        user = await prisma.user.update({
+          where: { email },
+          data: {
+            clerkId, // Update to new Production clerkId
+            firstName: clerkUser.firstName || existingUserByEmail.firstName,
+            lastName: clerkUser.lastName || existingUserByEmail.lastName,
+            imageUrl: clerkUser.imageUrl || existingUserByEmail.imageUrl,
+          },
+          include: {
+            preferences: true,
+          },
+        });
+        console.log('✅ User migrated to new Clerk ID:', user.email);
+      } else {
+        // Create new user
+        user = await prisma.user.create({
+          data: {
+            clerkId,
+            email,
+            firstName: clerkUser.firstName,
+            lastName: clerkUser.lastName,
+            imageUrl: clerkUser.imageUrl,
+          },
+          include: {
+            preferences: true,
+          },
+        });
+        console.log('✅ New user created:', user.email);
+      }
     }
 
     // Attach user to request
