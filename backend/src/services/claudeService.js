@@ -589,9 +589,9 @@ export async function generateDestinationRecommendationWithData(tripData, userId
     });
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 3000,
-      temperature: 0.8, // Slightly higher for creative hooks
+      model: 'claude-3-5-haiku-20241022', // Fast model for quick recommendations
+      max_tokens: 500, // Reduced - simplified prompt needs less tokens
+      temperature: 0.7,
       messages: [promptMessage]
     });
 

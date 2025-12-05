@@ -528,10 +528,11 @@ router.post('/recommendations',
         return {
           destination: {
             city: trip.destination.name,
-            country: recommendation?.destinationName || trip.destination.name,
+            country: trip.destination.country || trip.destination.name,
             iataCode: trip.destination.iata,
             photo: photo,
-            matchReason: recommendation?.tagline || `Perfect for ${userProfile.basic.activities.join(', ')}`
+            matchReason: recommendation?.matchReason || recommendation?.tagline || `Perfect for ${userProfile.basic?.activities?.join(', ') || 'your interests'}`,
+            seasonReason: recommendation?.seasonReason || `Great time to visit ${trip.destination.name}`
           },
           slot: {
             startDate: trip.dates.departure,
@@ -547,55 +548,55 @@ router.post('/recommendations',
             remaining: trip.budget.remaining,
             currency: 'EUR'
           },
-          flightDetails: {
+          flightDetails: trip.flight?.outbound ? {
             outbound: {
               departureTime: trip.flight.outbound.departure,
               arrivalTime: trip.flight.outbound.arrival,
-              duration: `${Math.floor(trip.flight.outbound.duration / 60)}h${trip.flight.outbound.duration % 60}m`,
-              stops: trip.flight.outbound.stops,
+              duration: `${Math.floor((trip.flight.outbound.duration || 0) / 60)}h${(trip.flight.outbound.duration || 0) % 60}m`,
+              stops: trip.flight.outbound.stops || 0,
               segments: [{
-                carrier: trip.flight.outbound.carrier,
+                carrier: trip.flight.outbound.carrier || 'Airline',
                 carrierLogo: trip.flight.outbound.logo,
                 departureTime: trip.flight.outbound.departure,
                 arrivalTime: trip.flight.outbound.arrival,
-                origin: trip.flight.outbound.origin,
-                destination: trip.flight.outbound.destination,
+                origin: trip.flight.outbound.origin || originCity,
+                destination: trip.flight.outbound.destination || trip.destination.iata,
               }]
             },
             return: trip.flight.return ? {
               departureTime: trip.flight.return.departure,
               arrivalTime: trip.flight.return.arrival,
-              duration: `${Math.floor(trip.flight.return.duration / 60)}h${trip.flight.return.duration % 60}m`,
-              stops: trip.flight.return.stops,
+              duration: `${Math.floor((trip.flight.return.duration || 0) / 60)}h${(trip.flight.return.duration || 0) % 60}m`,
+              stops: trip.flight.return.stops || 0,
               segments: [{
-                carrier: trip.flight.return.carrier,
+                carrier: trip.flight.return.carrier || 'Airline',
                 carrierLogo: trip.flight.return.logo,
                 departureTime: trip.flight.return.departure,
                 arrivalTime: trip.flight.return.arrival,
-                origin: trip.flight.return.origin,
-                destination: trip.flight.return.destination,
+                origin: trip.flight.return.origin || trip.destination.iata,
+                destination: trip.flight.return.destination || originCity,
               }]
             } : null,
-            totalPrice: trip.flight.totalCost,
-            pricePerPerson: trip.flight.totalCost,
-            airline: trip.flight.outbound.carrier,
+            totalPrice: trip.flight.totalCost || trip.budget.flight,
+            pricePerPerson: trip.flight.totalCost || trip.budget.flight,
+            airline: trip.flight.outbound.carrier || 'Airline',
             cabinClass: 'ECONOMY',
-            isEstimate: false
-          },
-          hotelOptions: {
+            isEstimate: !trip.flight.outbound.departure
+          } : null,
+          hotelOptions: trip.hotel?.name ? {
             destination: trip.destination.name,
             checkIn: trip.dates.departure,
             checkOut: trip.dates.return,
-            nights: trip.hotel.totalNights,
+            nights: trip.hotel.totalNights || trip.dates.duration - 1,
             hotels: [{
               name: trip.hotel.name,
-              stars: trip.hotel.stars,
-              price: trip.hotel.pricePerNight,
-              location: trip.hotel.location,
-              amenities: trip.hotel.amenities,
+              stars: trip.hotel.stars || 0,
+              price: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / (trip.dates.duration - 1)),
+              location: trip.hotel.location || trip.destination.name,
+              amenities: trip.hotel.amenities || [],
             }],
-            averagePrice: trip.hotel.pricePerNight
-          },
+            averagePrice: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / (trip.dates.duration - 1))
+          } : null,
           recommendation: recommendation,
           score: score,
           links: affiliateLinks

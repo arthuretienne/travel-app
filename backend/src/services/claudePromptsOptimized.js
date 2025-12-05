@@ -223,203 +223,43 @@ function safeTimeExtract(datetime) {
 
 /**
  * Generate recommendation prompt for WITHOUT DESTINATION scenario
- * Backend has selected a destination and found real flights/hotel
- * Claude creates a compelling pitch for this specific destination
+ * OPTIMIZED: Simplified prompt for faster response (~10s instead of 60s)
  */
 export function generateDestinationRecommendation({
-  // User profile
   userProfile,
-
-  // Destination selected by backend
   destination,
   origin,
-
-  // Real travel data
   dates,
   flight,
   hotel,
   budget,
-
-  // Context
-  alternativeDestinations = [], // The other 2 options being generated in parallel
+  alternativeDestinations = [],
 }) {
-  // Extract user preferences safely from nested structure
-  const interests = userProfile.basic?.activities || userProfile.preferences?.interests || [];
-  const travelPace = userProfile.preferences?.travelPace || 'balanced';
-  const budgetLevel = userProfile.basic?.budgetLevel || 'moderate';
-  const climate = userProfile.preferences?.climate;
-  const avoidCrowds = userProfile.preferences?.avoidCrowds || false;
+  const interests = userProfile.basic?.activities || [];
+  const style = userProfile.basic?.style || 'explorer';
 
-  // Get seasonal insights for this trip
+  // Get seasonal insights
   const seasonalInsights = getSeasonalInsights(destination.name, dates.departure, {
-    avoidCrowds,
-    climate,
-    budgetLevel,
+    avoidCrowds: userProfile.preferences?.avoidCrowds || false,
+    climate: userProfile.preferences?.climate,
+    budgetLevel: userProfile.basic?.budgetLevel || 'moderate',
   });
-
-  // Safely extract flight times
-  const outboundDepartureTime = safeTimeExtract(flight?.outbound?.departure);
-  const outboundArrivalTime = safeTimeExtract(flight?.outbound?.arrival);
-  const returnDepartureTime = safeTimeExtract(flight?.return?.departure);
-  const outboundCarrier = flight?.outbound?.carrier || 'Airline';
-  const outboundStops = flight?.outbound?.stops ?? 0;
-  const outboundDuration = flight?.outbound?.duration || 0;
-  const flightTotalCost = flight?.totalCost || 0;
 
   return {
     role: 'user',
-    content: `You are a travel expert presenting ${destination.name} as a ${dates.duration}-day trip option.
+    content: `Generate a SHORT travel recommendation for ${destination.name} (${dates.duration} days).
 
-## Your Goal
-Create a compelling, personalized recommendation that makes the traveler excited about ${destination.name}.
+USER: ${style} traveler, loves ${interests.length > 0 ? interests.join(', ') : 'culture, nature'}
+SEASON: ${seasonalInsights.monthName} - ${seasonalInsights.weather.description}
+BUDGET: €${budget.remaining} for activities (flights+hotel already booked)
 
-## Trip Snapshot (${dates.duration} days)
-
-**Flight:**
-- ${outboundCarrier}: ${outboundDepartureTime} → ${outboundArrivalTime} on ${dates.departure}
-- ${outboundStops === 0 ? '✈️ Direct flight' : `${outboundStops} stop(s)`} • ${Math.floor(outboundDuration / 60)}h ${outboundDuration % 60}min
-- Return: ${returnDepartureTime} on ${dates.return}
-- **€${flightTotalCost}** round-trip
-
-**Suggested Hotel:**
-- ${hotel.name} (${hotel.stars}★)
-- ${hotel.location}${hotel.distanceToCenter ? ` • ${hotel.distanceToCenter} from center` : ''}
-- €${hotel.pricePerNight}/night × ${hotel.totalNights} nights = **€${hotel.totalPrice}**
-
-**Budget:**
-- Flights: €${budget.flight}
-- Hotel: €${budget.hotel}
-- **Available for experiences: €${budget.remaining}**
-- Daily budget: ~€${budget.dailyActivities}
-
-## Traveler Profile
-
-**Loves:** ${interests.length > 0 ? interests.join(', ') : 'Culture, Food, Local experiences'}
-**Travel Style:** ${travelPace} pace • ${budgetLevel} budget
-**Climate Preference:** ${climate || 'Flexible'}
-${avoidCrowds ? '**Important:** This traveler wants to AVOID CROWDS' : ''}
-
-## Seasonal Context for ${destination.name} in ${seasonalInsights.monthName}
-
-**Season:** ${seasonalInsights.season.charAt(0).toUpperCase() + seasonalInsights.season.slice(1)}
-**Weather:** ${seasonalInsights.weather.temp} - ${seasonalInsights.weather.description}
-**Crowds:** ${seasonalInsights.crowds.description}
-**Pricing:** ${seasonalInsights.pricing.description}
-${seasonalInsights.userMatch.length > 0 ? `\n**Perfect for this traveler:** ${seasonalInsights.userMatch.join(' • ')}` : ''}
-
-## Your Task
-
-Create a compelling trip recommendation that includes:
-
-### 1. **Opening Hook (2-3 sentences)**
-Start with an exciting, specific detail about ${destination.name} that connects to this traveler's interests (${interests.length > 0 ? interests.slice(0, 2).join(' and ') : 'culture and local experiences'}).
-
-### 2. **Why Now (Timing-specific reasons)**
-Explain why ${seasonalInsights.monthName} is THE perfect time to visit:
-- **Season & Weather:** ${seasonalInsights.weather.description} at ${seasonalInsights.weather.temp} - How does this benefit their trip?
-- **Crowds:** ${seasonalInsights.crowds.description} ${avoidCrowds ? '- EMPHASIZE this since traveler avoids crowds!' : ''}
-- **Pricing:** ${seasonalInsights.pricing.description} - Specific money saved
-- **Personal Match:** ${seasonalInsights.userMatch.length > 0 ? seasonalInsights.userMatch.join('; ') : 'How this timing matches their preferences'}
-
-### 3. **Why ${destination.name} is Perfect for You (Destination-specific reasons)**
-Personalized reasons based on their profile:
-- **Vibe Match:** Their travel vibe is "${userProfile.basic?.style || travelPace}" - How does ${destination.name} deliver this?
-${interests.length > 0 ? interests.map(int => `- **${int.charAt(0).toUpperCase() + int.slice(1)} Lovers:** Specific ${int} experiences in ${destination.name}`).join('\n') : '- **Culture Lovers:** Specific cultural experiences\n- **Food Lovers:** Specific culinary experiences'}
-- **Budget Value:** €${budget.remaining} remaining = [Specific amazing things this enables]
-- **Pace Alignment:** ${travelPace} pace = [How ${destination.name} perfectly fits - 2-3 activities/day or 5-6?]
-
-### 4. **Day-by-Day Preview (Brief)**
-Quick overview of each day (1-2 sentences per day):
-- **Day 1:** Arrive ${outboundArrivalTime}, evening [specific activity]
-- **Day 2-${dates.duration - 1}:** Mix of [specific experiences]
-- **Day ${dates.duration}:** Morning [activity], depart ${returnDepartureTime}
-
-### 5. **Hidden Gem**
-One off-the-beaten-path experience unique to ${destination.name} that matches their interests.
-
-### 6. **Budget Breakdown Preview**
-Show how €${budget.remaining} can be spent across ${dates.duration} days for an amazing trip.
-
-## Output Format
-
-Return ONLY valid JSON (no markdown, no code blocks):
-
+Return ONLY this JSON (no markdown):
 {
-  "destinationName": "${destination.name}",
-  "tagline": "One compelling sentence (max 12 words)",
-  "hook": "2-3 sentence opening that creates excitement and connects to traveler's interests (${interests.length > 0 ? interests.join(', ') : 'culture, food, local experiences'})",
-  "whyNow": {
-    "season": "${seasonalInsights.monthName} is ${seasonalInsights.isPeakSeason ? 'peak season' : 'off-season'} - [Explain why this timing is perfect]",
-    "weather": "${seasonalInsights.weather.temp} - [How this weather benefits the traveler's plans]",
-    "crowds": "${seasonalInsights.crowds.description} - ${avoidCrowds ? '[Emphasize low crowds since traveler avoids them]' : '[Mention crowd level matter-of-factly]'}",
-    "pricing": "${seasonalInsights.pricing.description} - [Specific savings or value at this time]",
-    "personalMatch": "${seasonalInsights.userMatch.length > 0 ? seasonalInsights.userMatch[0] : '[How this timing matches their preferences]'}"
-  },
-  "whyThisDestination": {
-    "vibeMatch": "[How ${destination.name} matches their '${userProfile.basic?.style || travelPace}' vibe from the form]",
-    "activities": [
-      ${interests.length > 0 ? interests.map(int => `"${int.charAt(0).toUpperCase() + int.slice(1)} lovers: [Specific ${int} experience in ${destination.name}]"`).join(',\n      ') : '"Culture: [Specific cultural experience]",\n      "Food: [Specific culinary experience]"'}
-    ],
-    "budgetValue": "Your €${budget.total} budget breakdown: €${budget.flight} flights + €${budget.hotel} hotel = €${budget.remaining} for [Specific amazing experiences this enables]",
-    "paceAlignment": "${travelPace} pace means [How ${destination.name} perfectly fits this pace - specific examples]",
-    "hiddenBenefit": "[One unexpected benefit of ${destination.name} for this specific traveler profile]"
-  },
-  "whyYoullLoveIt": [
-    "Interest match: [Specific reason for ${interests[0] || 'culture'}]",
-    "Interest match: [Specific reason for ${interests[1] || interests[0] || 'food'}]",
-    "Value: [Specific way €${budget.remaining} goes far here]",
-    "Experience: [Unique thing only possible here]",
-    "Vibe: [Why the atmosphere/culture matches their style]"
-  ],
-  "dayByDayPreview": [
-    "Day 1: Arrive in the evening (${outboundArrivalTime}), [specific evening activity]",
-    "Day 2: [Specific experiences]",
-    "Day 3: [Specific experiences]"
-    // ... for each day
-  ],
-  "hiddenGem": {
-    "name": "[Specific place/experience]",
-    "description": "Why it's special and perfect for this traveler",
-    "estimatedCost": 25
-  },
-  "budgetPreview": {
-    "activities": "€${Math.round(budget.remaining * 0.45)} - [Examples: specific activities with costs]",
-    "food": "€${Math.round(budget.remaining * 0.35)} - [Examples: specific restaurants/experiences]",
-    "transport": "€${Math.round(budget.remaining * 0.10)} - [Specific transport advice]",
-    "highlight": "[One specific experience this budget enables]"
-  },
-  "perfectFor": [
-    "[Interest 1] lovers",
-    "[Interest 2] enthusiasts",
-    "${travelPace}-paced travelers",
-    "${budgetLevel} budget travelers"
-  ],
-  "tripCost": {
-    "flights": ${budget.flight},
-    "hotel": ${budget.hotel},
-    "experiences": ${budget.remaining},
-    "total": ${budget.total}
-  },
-  "comparedTo": {
-    "alternatives": ${JSON.stringify(alternativeDestinations)},
-    "advantage": "Why ${destination.name} stands out vs ${alternativeDestinations.join(' and ')} for THIS specific traveler"
-  },
-  "bookingDetails": {
-    "flight": {
-      "outbound": "${dates.departure} at ${outboundDepartureTime}",
-      "return": "${dates.return} at ${returnDepartureTime}",
-      "carrier": "${outboundCarrier}",
-      "price": ${flightTotalCost}
-    },
-    "hotel": {
-      "name": "${hotel.name}",
-      "stars": ${hotel.stars},
-      "pricePerNight": ${hotel.pricePerNight},
-      "nights": ${hotel.totalNights},
-      "total": ${hotel.totalPrice}
-    }
-  }
-}`,
+  "tagline": "Max 10 words catchy phrase",
+  "matchReason": "1-2 sentences why this destination matches the user (${interests.join(', ')})",
+  "seasonReason": "1 sentence why ${seasonalInsights.monthName} is great to visit",
+  "highlights": ["3 must-do activities"]
+}`
   };
 }
 
