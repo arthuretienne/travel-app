@@ -409,6 +409,44 @@
   font-size: 0.9rem;
 }
 
+/* Hotel Info Compact */
+.hotel-info-compact {
+  background: #f0fdf4;
+  border: 2px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.hotel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.hotel-icon {
+  font-size: 1.5rem;
+}
+
+.hotel-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  flex: 1;
+}
+
+.hotel-stars {
+  font-size: 0.9rem;
+}
+
+.hotel-details {
+  text-align: center;
+  color: #166534;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
 /* Action Buttons */
 .trip-actions {
   display: grid;

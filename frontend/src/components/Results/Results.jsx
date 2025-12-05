@@ -154,19 +154,39 @@ function Results({ recommendations, onReset }) {
               </div>
 
               {/* Flight Info */}
+              {trip.flightDetails && (
               <div className="flight-info-compact">
                 <div className="flight-route">
-                  <span className="airport">{trip.flightDetails.outbound.departure}</span>
+                  <span className="airport">{trip.flightDetails.outbound?.segments?.[0]?.origin || 'PAR'}</span>
                   <div className="flight-line">
                     <span className="flight-icon">✈️</span>
-                    <span className="flight-duration">{trip.flightDetails.duration}</span>
+                    <span className="flight-duration">{trip.flightDetails.outbound?.duration || '2h'}</span>
                   </div>
-                  <span className="airport">{trip.flightDetails.outbound.arrival}</span>
+                  <span className="airport">{trip.flightDetails.outbound?.segments?.[0]?.destination || trip.destination.iataCode}</span>
                 </div>
                 <div className="airline-info">
-                  {trip.flightDetails.airline} • Departure {new Date(trip.flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  {trip.flightDetails.airline || 'Airline'} • €{formatNumber(trip.flightDetails.totalPrice)} round-trip
+                  {trip.flightDetails.outbound?.departureTime && ` • Departs ${new Date(trip.flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
                 </div>
               </div>
+              )}
+
+              {/* Hotel Info */}
+              {trip.hotelOptions && trip.hotelOptions.hotels && trip.hotelOptions.hotels[0] && (
+              <div className="hotel-info-compact">
+                <div className="hotel-header">
+                  <span className="hotel-icon">🏨</span>
+                  <span className="hotel-name">{trip.hotelOptions.hotels[0].name}</span>
+                  {trip.hotelOptions.hotels[0].stars > 0 && (
+                    <span className="hotel-stars">{'⭐'.repeat(Math.min(trip.hotelOptions.hotels[0].stars, 5))}</span>
+                  )}
+                </div>
+                <div className="hotel-details">
+                  €{formatNumber(trip.hotelOptions.hotels[0].price)}/night • {trip.hotelOptions.nights} nights
+                  {trip.hotelOptions.hotels[0].location && ` • ${trip.hotelOptions.hotels[0].location}`}
+                </div>
+              </div>
+              )}
 
               {/* Action Buttons */}
               <div className="trip-actions">
