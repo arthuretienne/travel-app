@@ -159,7 +159,7 @@ OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 4000,
+      max_tokens: 8000, // Increased for detailed multi-day itineraries
       temperature: 0.7,
       messages: [{
         role: 'user',

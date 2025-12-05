@@ -13,6 +13,77 @@ const CACHE_TTL = {
   HOTEL_DETAILS: 720,       // 12 hours in minutes (details more stable)
 };
 
+// IATA code to city name mapping for common airports
+// Booking.com API doesn't recognize IATA codes, needs city names
+const IATA_TO_CITY = {
+  'PAR': 'Paris',
+  'CDG': 'Paris',
+  'ORY': 'Paris',
+  'LON': 'London',
+  'LHR': 'London',
+  'LGW': 'London',
+  'STN': 'London',
+  'LTN': 'London',
+  'NYC': 'New York',
+  'JFK': 'New York',
+  'EWR': 'New York',
+  'LGA': 'New York',
+  'BCN': 'Barcelona',
+  'MAD': 'Madrid',
+  'ROM': 'Rome',
+  'FCO': 'Rome',
+  'CIA': 'Rome',
+  'MIL': 'Milan',
+  'MXP': 'Milan',
+  'LIN': 'Milan',
+  'BER': 'Berlin',
+  'TXL': 'Berlin',
+  'SXF': 'Berlin',
+  'AMS': 'Amsterdam',
+  'BRU': 'Brussels',
+  'VIE': 'Vienna',
+  'ZRH': 'Zurich',
+  'GVA': 'Geneva',
+  'LIS': 'Lisbon',
+  'OPO': 'Porto',
+  'DUB': 'Dublin',
+  'CPH': 'Copenhagen',
+  'OSL': 'Oslo',
+  'STO': 'Stockholm',
+  'ARN': 'Stockholm',
+  'HEL': 'Helsinki',
+  'ATH': 'Athens',
+  'IST': 'Istanbul',
+  'PRG': 'Prague',
+  'BUD': 'Budapest',
+  'WAW': 'Warsaw',
+  'KRK': 'Krakow',
+  'VCE': 'Venice',
+  'FLR': 'Florence',
+  'NAP': 'Naples',
+  'NCE': 'Nice',
+  'MRS': 'Marseille',
+  'LYS': 'Lyon',
+  'TLS': 'Toulouse',
+  'BOD': 'Bordeaux',
+  'NTE': 'Nantes',
+  'MUC': 'Munich',
+  'FRA': 'Frankfurt',
+  'DUS': 'Dusseldorf',
+  'HAM': 'Hamburg',
+  'CGN': 'Cologne',
+  'AGP': 'Malaga',
+  'PMI': 'Palma de Mallorca',
+  'IBZ': 'Ibiza',
+  'SVQ': 'Seville',
+  'VLC': 'Valencia',
+  'BIO': 'Bilbao',
+  'EDI': 'Edinburgh',
+  'MAN': 'Manchester',
+  'BHX': 'Birmingham',
+  'GLA': 'Glasgow',
+};
+
 /**
  * Extract city name from airport name
  * @param {string} apiName - Name from API (may be airport)
@@ -37,21 +108,29 @@ function extractCityName(apiName, originalQuery) {
  * @returns {Promise<Object>} Destination with id, name, type, country
  */
 export async function getDestinationId(destinationName) {
-  const cacheKey = `booking:destination:${destinationName.toLowerCase()}`;
+  // Convert IATA codes to city names (Booking.com doesn't recognize IATA codes)
+  const upperName = destinationName.toUpperCase();
+  const resolvedName = IATA_TO_CITY[upperName] || destinationName;
+
+  if (resolvedName !== destinationName) {
+    console.log(`🔄 Resolved IATA code "${destinationName}" → "${resolvedName}"`);
+  }
+
+  const cacheKey = `booking:destination:${resolvedName.toLowerCase()}`;
 
   // Check cache first (30 days TTL)
   const cached = cache.get(cacheKey);
   if (cached) {
-    console.log(`✅ Cache HIT for "${destinationName}" → ${cached.id}`);
+    console.log(`✅ Cache HIT for "${resolvedName}" → ${cached.id}`);
     return cached;
   }
 
-  console.log(`🔍 Searching destination "${destinationName}"...`);
+  console.log(`🔍 Searching destination "${resolvedName}"...`);
 
   try {
     const response = await axios.get(`${BASE_URL}/api/v1/flights/searchDestination`, {
       params: {
-        query: destinationName
+        query: resolvedName
       },
       headers: {
         'x-rapidapi-key': BOOKING_API_KEY,
@@ -60,7 +139,7 @@ export async function getDestinationId(destinationName) {
     });
 
     if (!response.data?.status || !response.data?.data?.length) {
-      throw new Error(`No destination found for "${destinationName}"`);
+      throw new Error(`No destination found for "${resolvedName}"`);
     }
 
     // Prefer CITY over AIRPORT
@@ -73,9 +152,10 @@ export async function getDestinationId(destinationName) {
       type: city.type,
       country: city.country,
       countryName: city.countryName,
-      // ✅ FIX #1: Add cityName for hotel/attraction searches
-      cityName: extractCityName(city.name, destinationName),
-      flightCode: city.id // Explicit flight code for clarity
+      // Add cityName for hotel/attraction searches
+      cityName: extractCityName(city.name, resolvedName),
+      flightCode: city.id, // Explicit flight code for clarity
+      originalQuery: destinationName // Keep original query for reference
     };
 
     // Cache for 30 days
@@ -85,7 +165,7 @@ export async function getDestinationId(destinationName) {
     return destination;
 
   } catch (error) {
-    console.error(`❌ getDestinationId failed for "${destinationName}":`, error.message);
+    console.error(`❌ getDestinationId failed for "${resolvedName}" (original: "${destinationName}"):`, error.message);
     throw new Error(`Failed to find destination: ${error.message}`);
   }
 }
