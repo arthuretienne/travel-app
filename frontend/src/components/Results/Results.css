@@ -682,3 +682,183 @@
     padding-right: 1.5rem;
   }
 }
+
+/* ===================== */
+/* ROADTRIP STYLES       */
+/* ===================== */
+
+.roadtrip-card {
+  border: 2px solid #8b5cf6;
+}
+
+.roadtrip-card:hover {
+  border-color: #7c3aed;
+  box-shadow: 0 12px 40px rgba(139, 92, 246, 0.2);
+}
+
+/* Roadtrip Cities Preview */
+.roadtrip-cities {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding: 1rem 0;
+  margin-bottom: 1.5rem;
+  scroll-snap-type: x mandatory;
+}
+
+.roadtrip-city-card {
+  flex: 0 0 auto;
+  width: 140px;
+  background: #f8f9ff;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid #e8eaff;
+  scroll-snap-align: start;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.roadtrip-city-card:hover {
+  transform: translateY(-4px);
+  border-color: #8b5cf6;
+}
+
+.city-image-small {
+  width: 100%;
+  height: 80px;
+  overflow: hidden;
+}
+
+.city-image-small img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.city-info {
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.city-info strong {
+  display: block;
+  color: #1a1a1a;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.city-info span {
+  display: block;
+  color: #666;
+  font-size: 0.8rem;
+}
+
+.city-info small {
+  display: block;
+  color: #8b5cf6;
+  font-size: 0.7rem;
+  margin-top: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Roadtrip Narrative */
+.roadtrip-narrative {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  border: 2px solid #ddd6fe;
+}
+
+.roadtrip-narrative h4 {
+  color: #7c3aed;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+.roadtrip-narrative ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+}
+
+.roadtrip-narrative li {
+  padding: 0.5rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+  color: #555;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.roadtrip-narrative li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #8b5cf6;
+  font-weight: bold;
+}
+
+.hidden-gem {
+  background: white;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin: 0;
+  color: #7c3aed;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Transport modes */
+.transport-modes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+/* Day-by-day highlights in details */
+.roadtrip-day-by-day h4 {
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.day-highlight {
+  padding: 1rem;
+  background: #f8f9ff;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  border-left: 3px solid #8b5cf6;
+}
+
+.day-highlight strong {
+  display: block;
+  color: #7c3aed;
+  margin-bottom: 0.5rem;
+}
+
+.day-highlight p {
+  color: #555;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Responsive roadtrip */
+@media (max-width: 768px) {
+  .roadtrip-cities {
+    gap: 0.75rem;
+  }
+
+  .roadtrip-city-card {
+    width: 120px;
+  }
+
+  .city-image-small {
+    height: 60px;
+  }
+}

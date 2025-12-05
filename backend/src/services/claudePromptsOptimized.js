@@ -205,6 +205,23 @@ Return ONLY valid JSON (no markdown, no code blocks):
 }
 
 /**
+ * Helper: Safely extract time from ISO datetime string
+ * Returns 'TBD' if the value is undefined or invalid
+ */
+function safeTimeExtract(datetime) {
+  if (!datetime || typeof datetime !== 'string') return 'TBD';
+  try {
+    if (datetime.includes('T')) {
+      return datetime.split('T')[1].slice(0, 5);
+    }
+    // If it's already just a time or doesn't contain 'T'
+    return datetime.slice(0, 5) || 'TBD';
+  } catch {
+    return 'TBD';
+  }
+}
+
+/**
  * Generate recommendation prompt for WITHOUT DESTINATION scenario
  * Backend has selected a destination and found real flights/hotel
  * Claude creates a compelling pitch for this specific destination
@@ -240,6 +257,15 @@ export function generateDestinationRecommendation({
     budgetLevel,
   });
 
+  // Safely extract flight times
+  const outboundDepartureTime = safeTimeExtract(flight?.outbound?.departure);
+  const outboundArrivalTime = safeTimeExtract(flight?.outbound?.arrival);
+  const returnDepartureTime = safeTimeExtract(flight?.return?.departure);
+  const outboundCarrier = flight?.outbound?.carrier || 'Airline';
+  const outboundStops = flight?.outbound?.stops ?? 0;
+  const outboundDuration = flight?.outbound?.duration || 0;
+  const flightTotalCost = flight?.totalCost || 0;
+
   return {
     role: 'user',
     content: `You are a travel expert presenting ${destination.name} as a ${dates.duration}-day trip option.
@@ -250,10 +276,10 @@ Create a compelling, personalized recommendation that makes the traveler excited
 ## Trip Snapshot (${dates.duration} days)
 
 **Flight:**
-- ${flight.outbound.carrier}: ${flight.outbound.departure.split('T')[1].slice(0, 5)} → ${flight.outbound.arrival.split('T')[1].slice(0, 5)} on ${dates.departure}
-- ${flight.outbound.stops === 0 ? '✈️ Direct flight' : `${flight.outbound.stops} stop(s)`} • ${Math.floor(flight.outbound.duration / 60)}h ${flight.outbound.duration % 60}min
-- Return: ${flight.return ? flight.return.departure.split('T')[1].slice(0, 5) : 'TBD'} on ${dates.return}
-- **€${flight.totalCost}** round-trip
+- ${outboundCarrier}: ${outboundDepartureTime} → ${outboundArrivalTime} on ${dates.departure}
+- ${outboundStops === 0 ? '✈️ Direct flight' : `${outboundStops} stop(s)`} • ${Math.floor(outboundDuration / 60)}h ${outboundDuration % 60}min
+- Return: ${returnDepartureTime} on ${dates.return}
+- **€${flightTotalCost}** round-trip
 
 **Suggested Hotel:**
 - ${hotel.name} (${hotel.stars}★)
@@ -304,9 +330,9 @@ ${interests.length > 0 ? interests.map(int => `- **${int.charAt(0).toUpperCase()
 
 ### 4. **Day-by-Day Preview (Brief)**
 Quick overview of each day (1-2 sentences per day):
-- **Day 1:** Arrive ${flight.outbound.arrival.split('T')[1].slice(0, 5)}, evening [specific activity]
+- **Day 1:** Arrive ${outboundArrivalTime}, evening [specific activity]
 - **Day 2-${dates.duration - 1}:** Mix of [specific experiences]
-- **Day ${dates.duration}:** Morning [activity], depart ${flight.return?.departure.split('T')[1].slice(0, 5) || 'afternoon'}
+- **Day ${dates.duration}:** Morning [activity], depart ${returnDepartureTime}
 
 ### 5. **Hidden Gem**
 One off-the-beaten-path experience unique to ${destination.name} that matches their interests.
@@ -346,7 +372,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
     "Vibe: [Why the atmosphere/culture matches their style]"
   ],
   "dayByDayPreview": [
-    "Day 1: Arrive in the evening (${flight.outbound.arrival.split('T')[1].slice(0, 5)}), [specific evening activity]",
+    "Day 1: Arrive in the evening (${outboundArrivalTime}), [specific evening activity]",
     "Day 2: [Specific experiences]",
     "Day 3: [Specific experiences]"
     // ... for each day
@@ -380,10 +406,10 @@ Return ONLY valid JSON (no markdown, no code blocks):
   },
   "bookingDetails": {
     "flight": {
-      "outbound": "${dates.departure} at ${flight.outbound.departure.split('T')[1].slice(0, 5)}",
-      "return": "${dates.return} at ${flight.return?.departure.split('T')[1].slice(0, 5) || 'TBD'}",
-      "carrier": "${flight.outbound.carrier}",
-      "price": ${flight.totalCost}
+      "outbound": "${dates.departure} at ${outboundDepartureTime}",
+      "return": "${dates.return} at ${returnDepartureTime}",
+      "carrier": "${outboundCarrier}",
+      "price": ${flightTotalCost}
     },
     "hotel": {
       "name": "${hotel.name}",
@@ -401,10 +427,16 @@ Return ONLY valid JSON (no markdown, no code blocks):
  * Helper: Calculate when first activity can start after flight arrival
  */
 function calculateFirstActivityTime(arrivalTime) {
-  const arrival = new Date(arrivalTime);
-  // Add 90 minutes (immigration + baggage + transfer)
-  arrival.setMinutes(arrival.getMinutes() + 90);
-  return arrival.toISOString().split('T')[1].slice(0, 5); // Return HH:MM format
+  if (!arrivalTime) return '14:00'; // Default to 2 PM if no arrival time
+  try {
+    const arrival = new Date(arrivalTime);
+    if (isNaN(arrival.getTime())) return '14:00'; // Invalid date
+    // Add 90 minutes (immigration + baggage + transfer)
+    arrival.setMinutes(arrival.getMinutes() + 90);
+    return arrival.toISOString().split('T')[1].slice(0, 5); // Return HH:MM format
+  } catch {
+    return '14:00'; // Default fallback
+  }
 }
 
 export default {
