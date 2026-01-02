@@ -10,6 +10,7 @@ import {
   Thermometer, Target, Ban, Plane, Bot, ChevronDown, ChevronRight,
   X, Loader2
 } from 'lucide-react';
+import { SearchLoadingScreen } from '../components/SkeletonLoaders';
 
 const TRAVEL_VIBES = [
   { label: 'Adventure & Nature', value: 'adventure', icon: Mountain },
@@ -63,6 +64,7 @@ function CreateTrip() {
   const { user } = useUser();
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState('analyzing');
   const [loadingPreferences, setLoadingPreferences] = useState(true);
   const [showOptionalFilters, setShowOptionalFilters] = useState(false);
 
@@ -264,6 +266,7 @@ function CreateTrip() {
     }
 
     setLoading(true);
+    setLoadingStage('analyzing');
 
     try {
       const token = await getToken();
@@ -353,6 +356,14 @@ function CreateTrip() {
           },
         };
 
+        // Progress through loading stages
+        setLoadingStage('searching');
+
+        // Simulate stage progression while waiting for API
+        const stageTimer1 = setTimeout(() => setLoadingStage('flights'), 3000);
+        const stageTimer2 = setTimeout(() => setLoadingStage('hotels'), 6000);
+        const stageTimer3 = setTimeout(() => setLoadingStage('optimizing'), 9000);
+
         const response = await fetch(`${API_URL}/api/travel/recommendations`, {
           method: 'POST',
           headers: {
@@ -361,6 +372,11 @@ function CreateTrip() {
           },
           body: JSON.stringify(payload),
         });
+
+        // Clear timers when response arrives
+        clearTimeout(stageTimer1);
+        clearTimeout(stageTimer2);
+        clearTimeout(stageTimer3);
 
         const data = await response.json();
 
@@ -391,36 +407,7 @@ function CreateTrip() {
 
   return (
     <div className="min-h-screen bg-surface-subtle p-4 md:p-8">
-      {loading && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl p-12 max-w-lg w-[90%] text-center shadow-2xl animate-slide-up">
-            <div className="mb-8 relative h-20 flex items-center justify-center">
-              <Plane size={48} className="text-primary animate-bounce" />
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-2">
-                <div className="w-2 h-2 bg-primary rounded-full animate-ping"></div>
-                <div className="w-2 h-2 bg-primary rounded-full animate-ping delay-100"></div>
-                <div className="w-2 h-2 bg-primary rounded-full animate-ping delay-200"></div>
-              </div>
-            </div>
-            <h2 className="text-2xl font-bold text-text-main mb-6">Finding Your Perfect Trip</h2>
-            <div className="space-y-4 text-left max-w-xs mx-auto mb-6">
-              <div className="flex items-center gap-3 text-text-secondary">
-                <Bot size={20} className="text-primary" />
-                <p>Analyzing your preferences...</p>
-              </div>
-              <div className="flex items-center gap-3 text-text-secondary">
-                <Globe size={20} className="text-green-500" />
-                <p>Searching destinations worldwide...</p>
-              </div>
-              <div className="flex items-center gap-3 text-text-secondary">
-                <Plane size={20} className="text-blue-500" />
-                <p>Finding best flight options...</p>
-              </div>
-            </div>
-            <p className="text-sm text-text-secondary italic">This usually takes 10-15 seconds</p>
-          </div>
-        </div>
-      )}
+      {loading && <SearchLoadingScreen stage={loadingStage} />}
 
       <div className="max-w-4xl mx-auto text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-text-main mb-2">Create Your Perfect Trip</h1>

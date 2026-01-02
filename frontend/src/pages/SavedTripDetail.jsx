@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
+import { SavedTripDetailSkeleton } from '../components/SkeletonLoaders';
 import {
   ArrowLeft,
   MapPin,
@@ -234,14 +235,7 @@ export default function SavedTripDetail() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-          <p className="text-text-secondary">Loading trip...</p>
-        </div>
-      </div>
-    );
+    return <SavedTripDetailSkeleton />;
   }
 
   if (error || !trip) {
@@ -266,8 +260,9 @@ export default function SavedTripDetail() {
   const destination = tripData.destination || {};
   const pricing = tripData.pricing || {};
   const slot = tripData.slot || {};
-  const flights = tripData.flights || {};
-  const hotels = tripData.hotels || {};
+  const flightDetails = tripData.flightDetails || {};
+  const hotelOptions = tripData.hotelOptions || {};
+  const links = tripData.links || {};
 
   const duration = trip.startDate && trip.endDate
     ? Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))
@@ -354,52 +349,99 @@ export default function SavedTripDetail() {
       {/* Main Content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Flight Details */}
-        {flights && (flights.outbound || flights.return) && (
+        {flightDetails && (flightDetails.outbound || flightDetails.return) && (
           <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Plane className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-bold text-text-main">Flights</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Plane className="w-5 h-5 text-primary" />
+                <h2 className="text-lg font-bold text-text-main">Flights</h2>
+              </div>
+              {flightDetails.totalPrice && (
+                <span className="text-lg font-bold text-primary">
+                  €{Math.round(flightDetails.totalPrice)}
+                </span>
+              )}
             </div>
 
             <div className="space-y-4">
               {/* Outbound Flight */}
-              {flights.outbound && (
+              {flightDetails.outbound && (
                 <div className="p-4 bg-blue-50 rounded-xl">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-blue-900">Outbound</span>
-                    <span className="text-lg font-bold text-blue-900">
-                      €{Math.round(flights.outbound.price || 0)}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-semibold text-blue-900">Outbound Flight</span>
+                    <span className="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
+                      {slot.startDate ? new Date(slot.startDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date TBD'}
                     </span>
                   </div>
-                  <div className="text-sm text-blue-700">
-                    <p>{flights.outbound.origin} → {flights.outbound.destination}</p>
-                    <div className="flex items-center gap-2 text-xs text-blue-600 mt-1">
-                      {flights.outbound.carrierLogo && (
-                        <img src={flights.outbound.carrierLogo} alt={flights.outbound.carrier} className="h-5 w-auto" />
-                      )}
-                      <p>{flights.outbound.carrier} • {flights.outbound.duration || 'Duration N/A'}</p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-900">
+                        {flightDetails.outbound.departureTime ? new Date(flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                      </div>
+                      <div className="text-xs text-blue-600">{flightDetails.outbound.departureAirport || trip.city}</div>
                     </div>
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="h-px bg-blue-300 flex-1"></div>
+                      <div className="text-xs text-blue-600 flex items-center gap-1 bg-blue-100 px-2 py-0.5 rounded-full">
+                        <Plane size={10} className="rotate-90" />
+                        {flightDetails.outbound.duration || 'Duration N/A'}
+                      </div>
+                      <div className="h-px bg-blue-300 flex-1"></div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-900">
+                        {flightDetails.outbound.arrivalTime ? new Date(flightDetails.outbound.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                      </div>
+                      <div className="text-xs text-blue-600">{flightDetails.outbound.arrivalAirport || destination.city}</div>
+                    </div>
+                  </div>
+                  {/* Airline info */}
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-blue-200">
+                    {flightDetails.outbound.segments?.[0]?.carrierLogo && (
+                      <img src={flightDetails.outbound.segments[0].carrierLogo} alt={flightDetails.airline} className="h-5 w-auto" />
+                    )}
+                    <span className="text-xs text-blue-700">{flightDetails.airline || 'Airline'} • {flightDetails.cabinClass || 'Economy'}</span>
                   </div>
                 </div>
               )}
 
               {/* Return Flight */}
-              {flights.return && (
+              {flightDetails.return && (
                 <div className="p-4 bg-blue-50 rounded-xl">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-blue-900">Return</span>
-                    <span className="text-lg font-bold text-blue-900">
-                      €{Math.round(flights.return.price || 0)}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-semibold text-blue-900">Return Flight</span>
+                    <span className="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
+                      {slot.endDate ? new Date(slot.endDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date TBD'}
                     </span>
                   </div>
-                  <div className="text-sm text-blue-700">
-                    <p>{flights.return.origin} → {flights.return.destination}</p>
-                    <div className="flex items-center gap-2 text-xs text-blue-600 mt-1">
-                      {flights.return.carrierLogo && (
-                        <img src={flights.return.carrierLogo} alt={flights.return.carrier} className="h-5 w-auto" />
-                      )}
-                      <p>{flights.return.carrier} • {flights.return.duration || 'Duration N/A'}</p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-900">
+                        {flightDetails.return.departureTime ? new Date(flightDetails.return.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                      </div>
+                      <div className="text-xs text-blue-600">{flightDetails.return.departureAirport || destination.city}</div>
                     </div>
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="h-px bg-blue-300 flex-1"></div>
+                      <div className="text-xs text-blue-600 flex items-center gap-1 bg-blue-100 px-2 py-0.5 rounded-full">
+                        <Plane size={10} className="-rotate-90" />
+                        {flightDetails.return.duration || 'Duration N/A'}
+                      </div>
+                      <div className="h-px bg-blue-300 flex-1"></div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-900">
+                        {flightDetails.return.arrivalTime ? new Date(flightDetails.return.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                      </div>
+                      <div className="text-xs text-blue-600">{flightDetails.return.arrivalAirport || trip.city}</div>
+                    </div>
+                  </div>
+                  {/* Airline info */}
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-blue-200">
+                    {flightDetails.return.segments?.[0]?.carrierLogo && (
+                      <img src={flightDetails.return.segments[0].carrierLogo} alt={flightDetails.airline} className="h-5 w-auto" />
+                    )}
+                    <span className="text-xs text-blue-700">{flightDetails.airline || 'Airline'} • {flightDetails.cabinClass || 'Economy'}</span>
                   </div>
                 </div>
               )}
@@ -408,45 +450,75 @@ export default function SavedTripDetail() {
         )}
 
         {/* Accommodation */}
-        {hotels && hotels.averagePrice && (
+        {(hotelOptions?.hotels?.length > 0 || pricing?.hotel) && (
           <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Hotel className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-bold text-text-main">Accommodation</h2>
-            </div>
-
-            <div className="p-4 bg-green-50 rounded-xl">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-green-900">
-                  {duration} nights • {hotels.source === 'booking_com' ? 'Booking.com' : 'Estimated'}
-                </span>
-                <span className="text-lg font-bold text-green-900">
-                  €{Math.round(hotels.totalCost || 0)}
-                </span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Hotel className="w-5 h-5 text-primary" />
+                <h2 className="text-lg font-bold text-text-main">Accommodation</h2>
               </div>
-              <p className="text-sm text-green-700">
-                Average: €{Math.round(hotels.averagePrice || 0)} per night
-              </p>
-              {hotels.confidence && (
-                <p className="text-xs text-green-600 mt-1">
-                  Confidence: {hotels.confidence}
-                </p>
+              {pricing?.hotel && (
+                <span className="text-lg font-bold text-primary">
+                  €{Math.round(pricing.hotel)}
+                </span>
               )}
             </div>
 
-            {hotels.options && hotels.options.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <p className="text-sm font-medium text-text-secondary">Suggested Hotels:</p>
-                {hotels.options.slice(0, 3).map((hotel, idx) => (
-                  <div key={idx} className="p-3 bg-gray-50 rounded-lg">
-                    <p className="font-medium text-text-main">{hotel.name}</p>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-sm text-text-secondary">
-                        {hotel.rating ? `⭐ ${hotel.rating}/10` : 'No rating'}
-                      </span>
-                      <span className="text-sm font-semibold text-primary">
-                        €{Math.round(hotel.price?.total || 0)}
-                      </span>
+            {/* Summary card */}
+            <div className="p-4 bg-green-50 rounded-xl mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-green-900">
+                  {duration} nights
+                </span>
+                <span className="text-sm text-green-700">
+                  ~€{Math.round((pricing?.hotel || 0) / duration)} per night
+                </span>
+              </div>
+            </div>
+
+            {/* Hotel list */}
+            {hotelOptions?.hotels?.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-text-main">Recommended Hotels:</p>
+                {hotelOptions.hotels.slice(0, 3).map((hotel, idx) => (
+                  <div key={idx} className="p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-primary/30 transition-colors">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="font-semibold text-text-main">{hotel.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {hotel.stars && (
+                            <span className="text-xs text-amber-600 flex items-center gap-0.5">
+                              {'★'.repeat(hotel.stars)}
+                            </span>
+                          )}
+                          {hotel.rating?.value && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                              {hotel.rating.value}/10
+                            </span>
+                          )}
+                          {hotel.location && (
+                            <span className="text-xs text-text-secondary flex items-center gap-1">
+                              <MapPin size={10} />
+                              {hotel.location}
+                            </span>
+                          )}
+                        </div>
+                        {hotel.amenities?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {hotel.amenities.slice(0, 4).map((amenity, i) => (
+                              <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                {amenity}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className="text-lg font-bold text-primary">
+                          €{Math.round(hotel.pricePerNight || hotel.price?.amount / duration || 0)}
+                        </span>
+                        <span className="text-xs text-text-secondary block">/night</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -540,7 +612,7 @@ export default function SavedTripDetail() {
                     )}
                   </div>
                   <a
-                    href={`https://www.skyscanner.com/transport/flights/${encodeURIComponent(trip.city.toLowerCase())}/`}
+                    href={links.skyscanner || `https://www.skyscanner.com/transport/flights/${encodeURIComponent(trip.city?.toLowerCase() || 'paris')}/`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-3 w-full py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 ml-0"
@@ -625,7 +697,7 @@ export default function SavedTripDetail() {
                         €{Math.round(hotel.pricePerNight * trip.tripData.hotelOptions.nights)}
                       </div>
                       <a
-                        href={hotel.url || `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(trip.city)}`}
+                        href={hotel.url || links.booking || `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(trip.city || '')}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-full py-2 px-4 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
@@ -641,7 +713,7 @@ export default function SavedTripDetail() {
                   <Hotel size={32} className="mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No hotels loaded</p>
                   <a
-                    href={`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(trip.city + ', ' + trip.country)}${trip.startDate ? `&checkin=${trip.startDate}` : ''}${trip.endDate ? `&checkout=${trip.endDate}` : ''}&group_adults=1&no_rooms=1`}
+                    href={links.booking || `https://www.booking.com/searchresults.html?ss=${encodeURIComponent((trip.city || '') + ', ' + (trip.country || ''))}${trip.startDate ? `&checkin=${trip.startDate}` : ''}${trip.endDate ? `&checkout=${trip.endDate}` : ''}&group_adults=1&no_rooms=1`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-3 inline-block py-2 px-4 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"

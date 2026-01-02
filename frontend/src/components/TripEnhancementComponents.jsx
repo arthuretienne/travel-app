@@ -1,5 +1,6 @@
 // frontend/src/components/TripEnhancementComponents.jsx
 // Personalized Itinerary and Local Events Components
+import { useState } from 'react';
 import {
   MapPin,
   Sun,
@@ -12,34 +13,93 @@ import {
   PartyPopper,
   CalendarDays,
   Plane,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 // Complete Trip Plan Card - AI-Generated Personalized Plan
 export function CompleteTripPlanCard({ trip, enhancements, userName }) {
   const { weather, itinerary } = enhancements;
   const flightDetails = trip.tripData?.flightDetails || trip.finalDestination?.flightDetails;
+  const [selectedDay, setSelectedDay] = useState(0);
+
+  const goToPrevDay = () => setSelectedDay(prev => Math.max(0, prev - 1));
+  const goToNextDay = () => setSelectedDay(prev => Math.min((itinerary?.length || 1) - 1, prev + 1));
 
   return (
     <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-2xl shadow-2xl border border-indigo-200 overflow-hidden">
       {/* Header - Simple et Épuré */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">✨ Your Personalized Travel Plan</h2>
+        <h2 className="text-2xl font-bold mb-2">Your Personalized Travel Plan</h2>
         <p className="text-indigo-100">
           Everything planned for you, {userName} - flights, transfers, activities, and rest time
         </p>
       </div>
 
+      {/* Day Navigation Tabs */}
+      {itinerary && itinerary.length > 0 && (
+        <div className="bg-white border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center gap-2">
+            {/* Previous button */}
+            <button
+              onClick={goToPrevDay}
+              disabled={selectedDay === 0}
+              className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft size={20} className="text-gray-600" />
+            </button>
+
+            {/* Day tabs - scrollable */}
+            <div className="flex-1 overflow-x-auto scrollbar-hide">
+              <div className="flex gap-2">
+                {itinerary.map((day, idx) => {
+                  const isActive = selectedDay === idx;
+                  const isFirstDay = idx === 0;
+                  const isLastDay = idx === itinerary.length - 1;
+
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedDay(idx)}
+                      className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {isFirstDay ? '🛬 Day 1' : isLastDay ? `🛫 Day ${idx + 1}` : `Day ${idx + 1}`}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Next button */}
+            <button
+              onClick={goToNextDay}
+              disabled={selectedDay === itinerary.length - 1}
+              className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight size={20} className="text-gray-600" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="p-6 space-y-5">
-        {/* Day-by-Day Itinerary with Timing & Transfers */}
+        {/* Day-by-Day Itinerary with Timing & Transfers - Show only selected day */}
         {itinerary && itinerary.length > 0 && (
           <div className="space-y-4">
-            {itinerary.map((day, idx) => {
+            {/* Only render the selected day */}
+            {(() => {
+              const day = itinerary[selectedDay];
+              const idx = selectedDay;
               const dayWeather = weather?.forecast?.[idx];
               const isFirstDay = idx === 0;
               const isLastDay = idx === itinerary.length - 1;
 
               return (
-                <div key={idx} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                <div key={idx} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden animate-fade-in">
                   {/* Day Header */}
                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 border-b border-gray-200">
                     <div className="flex items-center justify-between">
@@ -180,7 +240,7 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
                   </div>
                 </div>
               );
-            })}
+            })()}
           </div>
         )}
 

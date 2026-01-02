@@ -8,6 +8,7 @@ import {
   ExternalLink, Clock, MapPin, Star, Check, X, ChevronLeft, ChevronRight,
   Hotel, Sparkles, Users
 } from 'lucide-react';
+import { TripCardSkeleton } from '../components/SkeletonLoaders';
 
 function Results() {
   const { searchId } = useParams();
@@ -221,11 +222,34 @@ function Results() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 border-4 border-gray-200 border-t-primary rounded-full animate-spin mx-auto mb-6"></div>
-          <h2 className="text-2xl font-bold text-text-main mb-2">Finding your perfect trips...</h2>
-          <p className="text-text-secondary">Analyzing your profile and searching thousands of flights to find the best matches.</p>
+      <div className="min-h-screen bg-surface-subtle p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header skeleton */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+            <div className="space-y-3">
+              <div className="h-9 w-64 bg-gray-200 rounded-lg animate-pulse" />
+              <div className="h-5 w-96 bg-gray-200 rounded-lg animate-pulse" />
+            </div>
+            <div className="flex gap-3">
+              <div className="h-10 w-32 bg-gray-200 rounded-lg animate-pulse" />
+              <div className="h-10 w-32 bg-gray-200 rounded-lg animate-pulse" />
+            </div>
+          </div>
+
+          {/* Trip card skeleton */}
+          <TripCardSkeleton />
+
+          {/* Navigation dots skeleton */}
+          <div className="flex justify-center gap-2 mt-8">
+            <div className="w-3 h-3 bg-primary rounded-full" />
+            <div className="w-3 h-3 bg-gray-300 rounded-full" />
+            <div className="w-3 h-3 bg-gray-300 rounded-full" />
+          </div>
+
+          {/* Loading message */}
+          <p className="text-center text-text-secondary mt-6 animate-pulse">
+            Analyzing your profile and searching thousands of flights...
+          </p>
         </div>
       </div>
     );
@@ -469,83 +493,218 @@ function Results() {
                   </div>
 
                   {/* Enhanced Flight Info */}
-                  <div className="mb-6 space-y-3">
-                    <div className="flex items-center gap-4 text-sm">
-                      <div className="w-20 font-medium text-text-secondary">Outbound</div>
-                      <div className="flex-1 flex items-center gap-3">
-                        <div className="font-mono font-semibold">{new Date(trip.flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                        <div className="flex-1 flex items-center gap-2">
-                          <div className="h-[1px] bg-gray-300 flex-1"></div>
-                          <div className="text-xs text-text-secondary flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full">
-                            <Plane size={10} className="rotate-90" />
-                            {trip.flightDetails.outbound.duration}
-                          </div>
-                          <div className="h-[1px] bg-gray-300 flex-1"></div>
-                        </div>
-                        <div className="font-mono font-semibold">{new Date(trip.flightDetails.outbound.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                  {trip.flightDetails && (
+                    <div className="mb-6 bg-blue-50/50 rounded-xl p-4 border border-blue-100">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold text-blue-900 flex items-center gap-2">
+                          <Plane size={16} className="text-blue-600" />
+                          Flights
+                        </h4>
+                        <span className="text-lg font-bold text-blue-900">€{Math.round(trip.flightDetails.totalPrice || trip.pricing?.flight || 0)}</span>
                       </div>
-                    </div>
 
-                    {trip.flightDetails.return && (
-                      <div className="flex items-center gap-4 text-sm">
-                        <div className="w-20 font-medium text-text-secondary">Return</div>
-                        <div className="flex-1 flex items-center gap-3">
-                          <div className="font-mono font-semibold">{new Date(trip.flightDetails.return.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                          <div className="flex-1 flex items-center gap-2">
-                            <div className="h-[1px] bg-gray-300 flex-1"></div>
-                            <div className="text-xs text-text-secondary flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full">
-                              <Plane size={10} className="-rotate-90" />
-                              {trip.flightDetails.return.duration}
+                      <div className="space-y-3">
+                        {/* Outbound Flight */}
+                        {trip.flightDetails.outbound && (
+                          <div className="bg-white rounded-lg p-3 border border-blue-100">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">OUTBOUND</span>
+                              <span className="text-xs text-gray-500">{formatDate(trip.slot?.startDate)}</span>
                             </div>
-                            <div className="h-[1px] bg-gray-300 flex-1"></div>
+                            <div className="flex items-center gap-3">
+                              <div className="text-center min-w-[60px]">
+                                <div className="font-mono font-bold text-gray-900">
+                                  {trip.flightDetails.outbound.departureTime
+                                    ? new Date(trip.flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                                    : '--:--'}
+                                </div>
+                                <div className="text-xs text-gray-500">{trip.flightDetails.outbound.segments?.[0]?.origin || 'CDG'}</div>
+                              </div>
+                              <div className="flex-1 flex items-center gap-2">
+                                <div className="h-px bg-blue-200 flex-1"></div>
+                                <div className="text-xs text-blue-600 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                  <Plane size={10} className="rotate-90" />
+                                  {trip.flightDetails.outbound.duration || 'Direct'}
+                                  {trip.flightDetails.outbound.stops > 0 && ` • ${trip.flightDetails.outbound.stops} stop`}
+                                </div>
+                                <div className="h-px bg-blue-200 flex-1"></div>
+                              </div>
+                              <div className="text-center min-w-[60px]">
+                                <div className="font-mono font-bold text-gray-900">
+                                  {trip.flightDetails.outbound.arrivalTime
+                                    ? new Date(trip.flightDetails.outbound.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                                    : '--:--'}
+                                </div>
+                                <div className="text-xs text-gray-500">{trip.flightDetails.outbound.segments?.[0]?.destination || trip.destination?.iataCode || 'DST'}</div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="font-mono font-semibold">{new Date(trip.flightDetails.return.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="text-xs text-text-secondary pt-2 border-t border-gray-100 flex justify-between">
-                      <div className="flex items-center gap-2">
-                        {trip.flightDetails.outbound?.segments?.[0]?.carrierLogo && (
-                          <img
-                            src={trip.flightDetails.outbound.segments[0].carrierLogo}
-                            alt={trip.flightDetails.airline}
-                            className="h-4 w-auto"
-                          />
                         )}
-                        <span>{trip.flightDetails.airline} • {trip.flightDetails.cabinClass}</span>
+
+                        {/* Return Flight */}
+                        {trip.flightDetails.return && (
+                          <div className="bg-white rounded-lg p-3 border border-blue-100">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">RETURN</span>
+                              <span className="text-xs text-gray-500">{formatDate(trip.slot?.endDate)}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="text-center min-w-[60px]">
+                                <div className="font-mono font-bold text-gray-900">
+                                  {trip.flightDetails.return.departureTime
+                                    ? new Date(trip.flightDetails.return.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                                    : '--:--'}
+                                </div>
+                                <div className="text-xs text-gray-500">{trip.flightDetails.return.segments?.[0]?.origin || trip.destination?.iataCode || 'DST'}</div>
+                              </div>
+                              <div className="flex-1 flex items-center gap-2">
+                                <div className="h-px bg-blue-200 flex-1"></div>
+                                <div className="text-xs text-blue-600 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                  <Plane size={10} className="-rotate-90" />
+                                  {trip.flightDetails.return.duration || 'Direct'}
+                                  {trip.flightDetails.return.stops > 0 && ` • ${trip.flightDetails.return.stops} stop`}
+                                </div>
+                                <div className="h-px bg-blue-200 flex-1"></div>
+                              </div>
+                              <div className="text-center min-w-[60px]">
+                                <div className="font-mono font-bold text-gray-900">
+                                  {trip.flightDetails.return.arrivalTime
+                                    ? new Date(trip.flightDetails.return.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                                    : '--:--'}
+                                </div>
+                                <div className="text-xs text-gray-500">{trip.flightDetails.return.segments?.[0]?.destination || 'CDG'}</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <span className="font-medium">€{trip.flightDetails.totalPrice}</span>
+
+                      {/* Airline info */}
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-blue-100">
+                        <div className="flex items-center gap-2">
+                          {trip.flightDetails.outbound?.segments?.[0]?.carrierLogo && (
+                            <img
+                              src={trip.flightDetails.outbound.segments[0].carrierLogo}
+                              alt={trip.flightDetails.airline}
+                              className="h-5 w-auto"
+                            />
+                          )}
+                          <span className="text-sm text-gray-700 font-medium">{trip.flightDetails.airline || 'Airline'}</span>
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{trip.flightDetails.cabinClass || 'Economy'}</span>
+                        </div>
+                        {trip.flightDetails.isEstimate && (
+                          <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Estimated</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Hotel Options */}
                   {trip.hotelOptions && trip.hotelOptions.hotels && trip.hotelOptions.hotels.length > 0 && (
-                    <div className="mb-8">
-                      <h4 className="text-sm font-bold text-text-main mb-3 uppercase tracking-wider">Recommended Hotels</h4>
+                    <div className="mb-6 bg-green-50/50 rounded-xl p-4 border border-green-100">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold text-green-900 flex items-center gap-2">
+                          <Hotel size={16} className="text-green-600" />
+                          Accommodation
+                        </h4>
+                        <div className="text-right">
+                          <span className="text-lg font-bold text-green-900">€{Math.round(trip.pricing?.hotel || 0)}</span>
+                          <span className="text-xs text-green-700 block">{trip.hotelOptions.nights || trip.slot?.duration - 1} nights</span>
+                        </div>
+                      </div>
                       <div className="space-y-3">
-                        {trip.hotelOptions.hotels.slice(0, 3).map((hotel, hotelIndex) => (
-                          <div key={hotelIndex} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl hover:border-primary/30 transition-colors">
-                            <div>
-                              <div className="font-medium text-text-main">{hotel.name}</div>
-                              <div className="flex text-yellow-400 text-xs mt-0.5">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star key={i} size={10} fill={i < hotel.rating ? "currentColor" : "none"} className={i < hotel.rating ? "" : "text-gray-300"} />
-                                ))}
+                        {trip.hotelOptions.hotels.slice(0, 2).map((hotel, hotelIndex) => (
+                          <div key={hotelIndex} className="bg-white rounded-lg p-3 border border-green-100">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <div className="font-semibold text-gray-900">{hotel.name || 'Hotel'}</div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  {/* Star rating */}
+                                  {hotel.stars > 0 && (
+                                    <div className="flex text-amber-400">
+                                      {[...Array(Math.min(hotel.stars, 5))].map((_, i) => (
+                                        <Star key={i} size={12} fill="currentColor" />
+                                      ))}
+                                    </div>
+                                  )}
+                                  {/* Location */}
+                                  {hotel.location && (
+                                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                                      <MapPin size={10} />
+                                      {hotel.location}
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Amenities */}
+                                {hotel.amenities && hotel.amenities.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {hotel.amenities.slice(0, 3).map((amenity, i) => (
+                                      <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                        {amenity}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-bold text-text-main">€{Math.round(hotel.price.total)}</div>
-                              <button
-                                onClick={() => handleAffiliateClick(index, 'booking_hotel', hotel.bookingUrl)}
-                                className="text-xs text-primary hover:underline flex items-center justify-end gap-1"
-                              >
-                                View <ExternalLink size={10} />
-                              </button>
+                              <div className="text-right">
+                                <div className="font-bold text-green-800">
+                                  €{Math.round(hotel.price || hotel.pricePerNight || trip.hotelOptions.averagePrice || 0)}
+                                </div>
+                                <div className="text-xs text-gray-500">/night</div>
+                              </div>
                             </div>
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Activities Budget */}
+                  {trip.pricing?.activities > 0 && (
+                    <div className="mb-6 bg-purple-50/50 rounded-xl p-4 border border-purple-100">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold text-purple-900 flex items-center gap-2">
+                          <Sparkles size={16} className="text-purple-600" />
+                          Activities & Experiences
+                        </h4>
+                        <div className="text-right">
+                          <span className="text-lg font-bold text-purple-900">€{Math.round(trip.pricing.activities)}</span>
+                          <span className="text-xs text-purple-700 block">available</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-white rounded-lg p-2 border border-purple-100 flex items-center gap-2">
+                          <span className="text-lg">🏛️</span>
+                          <div>
+                            <div className="text-xs font-medium text-gray-900">Museums & Culture</div>
+                            <div className="text-xs text-gray-500">€10-25 per visit</div>
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-2 border border-purple-100 flex items-center gap-2">
+                          <span className="text-lg">🍽️</span>
+                          <div>
+                            <div className="text-xs font-medium text-gray-900">Local Cuisine</div>
+                            <div className="text-xs text-gray-500">€15-40 per meal</div>
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-2 border border-purple-100 flex items-center gap-2">
+                          <span className="text-lg">🚶</span>
+                          <div>
+                            <div className="text-xs font-medium text-gray-900">Walking Tours</div>
+                            <div className="text-xs text-gray-500">€15-30 per tour</div>
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-2 border border-purple-100 flex items-center gap-2">
+                          <span className="text-lg">🌅</span>
+                          <div>
+                            <div className="text-xs font-medium text-gray-900">Day Trips</div>
+                            <div className="text-xs text-gray-500">€40-80 per trip</div>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-purple-600 mt-3 text-center">
+                        ~€{Math.round(trip.pricing.activities / (trip.slot?.duration || 7))} daily budget for experiences
+                      </p>
                     </div>
                   )}
 

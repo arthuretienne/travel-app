@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { OptimalPeriodsWidget } from '../components/OptimalPeriodsWidget';
+import { DashboardCardSkeleton } from '../components/SkeletonLoaders';
 import { Plane, Globe, Target, AlertTriangle, Map, Calendar, Clock, DollarSign, Plus, ArrowRight, Users, Filter, MapPin } from 'lucide-react';
 
 function Dashboard() {
@@ -215,9 +216,10 @@ function Dashboard() {
           </div>
 
           {loading ? (
-            <div className="bg-white rounded-3xl shadow-card p-12 text-center border border-gray-100">
-              <div className="w-10 h-10 border-3 border-gray-200 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-text-secondary">Loading your trips...</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <DashboardCardSkeleton />
+              <DashboardCardSkeleton />
+              <DashboardCardSkeleton />
             </div>
           ) : error ? (
             <div className="bg-white rounded-3xl shadow-card p-12 text-center border border-gray-100">

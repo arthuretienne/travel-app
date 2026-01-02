@@ -154,6 +154,7 @@ router.get('/:id/packing', authenticateUser, async (req, res) => {
 /**
  * GET /api/trips/:id/itinerary
  * SLOW: Generate personalized itinerary with Claude AI (10-15 seconds)
+ * CACHING: Saves itinerary to tripData to avoid regeneration on revisit
  */
 router.get('/:id/itinerary', authenticateUser, async (req, res) => {
   try {
@@ -165,6 +166,25 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
     }
 
     const { trip, isSavedTrip, members, city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails } = tripData;
+
+    // Check if itinerary already exists in tripData
+    const existingTripData = typeof trip.tripData === 'string' ? JSON.parse(trip.tripData) : (trip.tripData || {});
+
+    if (existingTripData.cachedItinerary) {
+      console.log(`✅ Using cached itinerary for trip ${id}`);
+      return res.json({
+        success: true,
+        data: {
+          itinerary: existingTripData.cachedItinerary,
+          city,
+          country,
+          cached: true
+        }
+      });
+    }
+
+    console.log(`🔄 Generating new itinerary for trip ${id}...`);
+
     const destination = {
       city,
       country,
@@ -197,7 +217,41 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
       isSavedTrip ? [] : members
     );
 
-    res.json({ success: true, data: { itinerary, city, country } });
+    // Save itinerary to tripData for caching
+    try {
+      const updatedTripData = {
+        ...existingTripData,
+        cachedItinerary: itinerary,
+        itineraryCachedAt: new Date().toISOString()
+      };
+
+      if (isSavedTrip) {
+        await prisma.savedTrip.update({
+          where: { id },
+          data: { tripData: updatedTripData }
+        });
+      } else {
+        // For collaborative trips, update the finalDestination or trip data
+        if (trip.finalDestination) {
+          await prisma.collaborativeTrip.update({
+            where: { id },
+            data: {
+              finalDestination: {
+                ...trip.finalDestination,
+                cachedItinerary: itinerary,
+                itineraryCachedAt: new Date().toISOString()
+              }
+            }
+          });
+        }
+      }
+      console.log(`💾 Itinerary cached for trip ${id}`);
+    } catch (cacheError) {
+      console.warn('⚠️ Failed to cache itinerary:', cacheError.message);
+      // Continue even if caching fails
+    }
+
+    res.json({ success: true, data: { itinerary, city, country, cached: false } });
   } catch (error) {
     console.error('Error generating itinerary:', error);
     res.status(500).json({ error: 'Failed to generate itinerary', message: error.message });
