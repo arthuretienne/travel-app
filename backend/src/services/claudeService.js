@@ -645,6 +645,9 @@ function generateProfileHash(userProfile, options) {
   return Buffer.from(JSON.stringify(key)).toString('base64').slice(0, 32);
 }
 
+// TESTING MODE: Set to true to disable cache and see fresh results each time
+const TESTING_MODE = true;
+
 /**
  * Generate personalized destination shortlist for Booking.com API workflow
  * Returns 5-8 diverse destination names to search flights for
@@ -670,13 +673,16 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
   // Generate a random seed for this session to encourage variety
   const randomSeed = Math.floor(Math.random() * 10000);
 
-  // Check cache first - but only for very short period (2 hours)
-  // We want fresh suggestions frequently for better UX
+  // CACHE DISABLED FOR TESTING - Set TESTING_MODE = false in production
   const cacheKey = `destinations:${generateProfileHash(userProfile, options)}`;
-  const cachedDestinations = cache.get(cacheKey);
-  if (cachedDestinations && excludeDestinations.length === 0) {
-    console.log(`⚡ Cache HIT for destination shortlist`);
-    return cachedDestinations;
+  if (!TESTING_MODE) {
+    const cachedDestinations = cache.get(cacheKey);
+    if (cachedDestinations && excludeDestinations.length === 0) {
+      console.log(`⚡ Cache HIT for destination shortlist`);
+      return cachedDestinations;
+    }
+  } else {
+    console.log(`🧪 TESTING MODE: Cache disabled, generating fresh destinations`);
   }
 
   // Fetch user's past recommendations for diversity (last 30 days)
@@ -705,67 +711,50 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
     ? `\n🚫 ALREADY RECOMMENDED (DO NOT SUGGEST AGAIN):\n${pastDestinations.join(', ')}\n`
     : '';
 
-  // Current date for seasonal context
-  const currentDate = new Date().toISOString().split('T')[0];
+  // Current month for seasonal context
   const currentMonth = new Date().toLocaleString('en-US', { month: 'long' });
 
-  const prompt = `You are an expert travel advisor. Generate ${count} PERSONALIZED, DIVERSE European destination recommendations for this traveler.
+  // Extract key user preferences for better personalization
+  const style = userProfile.basic?.style || 'explorer';
+  const activities = userProfile.basic?.activities || [];
+  const budgetLevel = budget < 500 ? 'budget' : budget < 1000 ? 'mid-range' : 'comfortable';
+  const onboarding = userProfile.onboardingPreferences || {};
 
-🎲 VARIATION SEED: ${randomSeed} (use this to vary your suggestions - different seeds = different destinations!)
-📅 TODAY'S DATE: ${currentDate} (${currentMonth})
+  const prompt = `You are a creative travel expert. Generate ${count} UNIQUE destinations for this specific traveler.
 
-USER PROFILE:
-${JSON.stringify(userProfile, null, 2)}
+🎲 SEED: ${randomSeed} - Use this to randomize your choices!
 
-TRIP PARAMETERS:
-- Origin: ${origin}
-- Budget: €${budget}
-- Duration: ${duration} days
+👤 THIS TRAVELER:
+- Style: ${style} (${style === 'routard' ? 'backpacker, authentic local experiences' : style === 'aventurier' ? 'adventure seeker, off-beaten-path' : style === 'confort' ? 'comfort traveler, quality hotels' : 'balanced explorer'})
+- Activities: ${activities.join(', ') || 'open to everything'}
+- Budget: €${budget} (${budgetLevel})
+- Why they travel: ${onboarding.whyTravel || 'discover new places'}
+- Main goal: ${onboarding.mainGoal || 'exploration'}
+- Personality: ${onboarding.personality || 'curious'}
+${onboarding.topActivities?.length ? `- Top activities: ${onboarding.topActivities.join(', ')}` : ''}
+
+📍 From: ${origin} | Duration: ${duration} days
 ${exclusionText}
-🎯 CRITICAL REQUIREMENTS:
-1. **AIRPORTS MANDATORY**: EVERY city MUST have a major international airport with direct or 1-stop flights from ${origin}
-2. **DIVERSITY IS CRITICAL**: Each destination must be in a DIFFERENT country
-3. **PERSONALIZATION**: Match their interests, vibe, and travel style
-4. **VARIETY**: Mix popular + hidden gems (at least 2 off-the-beaten-path)
-5. **REALISTIC**: Flights must exist within budget (check flight accessibility!)
-6. **SEASONAL**: Consider current season (December 2025)
-7. **FRESH PICKS**: Avoid repetitive suggestions (Kotor, Tbilisi, Sarajevo are overused!)
+🎯 YOUR MISSION:
+Think like a REAL travel agent who knows THIS person. What would YOU recommend to THEM specifically?
 
-🚫 FORBIDDEN PATTERNS:
-- ❌ Don't always suggest: Kotor, Tbilisi, Sarajevo, Tromsø (already overused!)
-- ❌ Don't default to "Barcelona, Lisbon, Amsterdam" for every young traveler
-- ❌ Don't suggest "Prague, Budapest, Krakow" for every budget traveler
-- ❌ Don't pick tiny cities without proper airports (e.g., avoid small mountain towns)
-- ❌ Think beyond the same 10 cities you always suggest!
+- ${style === 'routard' ? 'Focus on authentic, budget-friendly destinations with local vibes' : ''}
+- ${style === 'aventurier' ? 'Surprise them with adventurous, lesser-known destinations' : ''}
+- ${activities.includes('plage') ? 'Include coastal/beach destinations' : ''}
+- ${activities.includes('culture') ? 'Include culturally rich cities' : ''}
+- ${activities.includes('nature') ? 'Include nature/outdoor destinations' : ''}
+- ${activities.includes('gastronomie') ? 'Include food capitals' : ''}
 
-✅ GOOD DESTINATION CRITERIA:
-- Has international airport (code like OPO, VLC, GDN, etc.)
-- Direct flights OR easy 1-stop from ${origin}
-- Rich activities matching user interests
-- Good hotel availability
-- Seasonal appeal (winter activities for December)
+⚠️ CONSTRAINTS:
+- Each city MUST have an international airport (flights from ${origin})
+- All ${count} cities in DIFFERENT countries
+- Mix: some popular + some hidden gems
+- Season: ${currentMonth} - consider weather!
 
-✨ PERSONALIZATION FACTORS TO CONSIDER:
-- Travel vibe (${userProfile.basic?.style || 'explorer'})
-- Main activities (${userProfile.basic?.activities?.join(', ') || 'sightseeing'})
-- Budget level (${budget < 500 ? 'budget' : budget < 1000 ? 'mid-range' : 'comfortable'})
-- Nature vs City preference
-- Crowd tolerance
-- Cultural interests
+🌍 THINK GLOBALLY: Europe, Morocco, Turkey, Georgia, Jordan... anywhere reachable within budget!
 
-🎲 VARIETY TIPS:
-- Mix West + East + North + South Europe
-- Include at least 1 coastal city
-- Include at least 1 city with mountains nearby
-- Don't cluster all suggestions in one region (e.g., all Balkans)
-
-CRITICAL OUTPUT FORMAT:
-Return ONLY a pure JSON array. NO markdown, NO code blocks, NO backticks, NO explanations.
-Just the raw JSON array:
-["City1", "City2", "City3", "City4", "City5", "City6"]
-
-Example GOOD output: ["Porto", "Valencia", "Gdansk", "Ljubljana", "Bologna", "Edinburgh"]
-Example BAD output: ["Kotor", "Tbilisi", "Sarajevo", "Tromsø", "Brasov", "Innsbruck"] (too repetitive + some lack major airports!)`;
+OUTPUT: Return ONLY a JSON array of city names, nothing else.
+["City1", "City2", "City3", "City4", "City5", "City6"]`;
 
   try {
     logger.logClaudeAPI({
@@ -817,11 +806,10 @@ Example BAD output: ["Kotor", "Tbilisi", "Sarajevo", "Tromsø", "Brasov", "Innsb
 
     console.log(`✅ Generated ${destinations.length} personalized destinations:`, destinations);
 
-    // Cache results for 2 hours (120 minutes) to allow for variety
-    // Shorter TTL ensures users get fresh suggestions more often
-    if (excludeDestinations.length === 0) {
-      cache.set(cacheKey, destinations, 120);
-      console.log(`💾 Cached destination shortlist for 2h`);
+    // Cache results only if not in testing mode
+    if (!TESTING_MODE && excludeDestinations.length === 0) {
+      cache.set(cacheKey, destinations, 30); // 30 min cache in production
+      console.log(`💾 Cached destination shortlist for 30min`);
     }
 
     return destinations;
@@ -829,9 +817,20 @@ Example BAD output: ["Kotor", "Tbilisi", "Sarajevo", "Tromsø", "Brasov", "Innsb
   } catch (error) {
     console.error('Failed to generate destination shortlist:', error.message);
 
-    // Fallback to diverse default destinations if Claude fails
-    console.warn('⚠️  Using fallback destinations');
-    return ['Porto', 'Ljubljana', 'Valencia', 'Tallinn', 'Krakow', 'Bergen'];
+    // Fallback with RANDOM selection from diverse list
+    console.warn('⚠️  Using randomized fallback destinations');
+    const allFallbacks = [
+      'Porto', 'Valencia', 'Seville', 'Malaga', 'Bilbao',
+      'Florence', 'Bologna', 'Naples', 'Palermo', 'Turin',
+      'Krakow', 'Gdansk', 'Wroclaw', 'Budapest', 'Ljubljana',
+      'Split', 'Dubrovnik', 'Athens', 'Thessaloniki', 'Sofia',
+      'Tallinn', 'Riga', 'Vilnius', 'Helsinki', 'Stockholm',
+      'Copenhagen', 'Edinburgh', 'Dublin', 'Reykjavik', 'Bergen',
+      'Marrakech', 'Fez', 'Istanbul', 'Tbilisi', 'Amman'
+    ];
+    // Shuffle and pick random 6
+    const shuffled = allFallbacks.sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
   }
 }
 

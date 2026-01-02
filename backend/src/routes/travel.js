@@ -82,6 +82,73 @@ function calculateScoreFromTrip(trip, userBudget) {
 
 const router = express.Router();
 
+// ==========================================
+// TEST ENDPOINT: Test algorithm with random profiles
+// ==========================================
+router.get('/test-algorithm', async (req, res) => {
+  try {
+    const { generateDestinationShortlist } = await import('../services/claudeService.js');
+
+    // Random test profiles to simulate different users
+    const testProfiles = [
+      {
+        name: 'Budget Backpacker',
+        basic: { style: 'routard', activities: ['culture', 'nature'], budget: 500 },
+        onboardingPreferences: { whyTravel: 'discover authentic places', mainGoal: 'adventure', personality: 'curious' }
+      },
+      {
+        name: 'Beach Lover',
+        basic: { style: 'confort', activities: ['plage', 'gastronomie'], budget: 1200 },
+        onboardingPreferences: { whyTravel: 'relax and unwind', mainGoal: 'relaxation', personality: 'chill' }
+      },
+      {
+        name: 'Culture Enthusiast',
+        basic: { style: 'explorer', activities: ['culture', 'musées', 'gastronomie'], budget: 800 },
+        onboardingPreferences: { whyTravel: 'learn about history', mainGoal: 'cultural immersion', personality: 'intellectual' }
+      },
+      {
+        name: 'Adventure Seeker',
+        basic: { style: 'aventurier', activities: ['nature', 'randonnée', 'sport'], budget: 1000 },
+        onboardingPreferences: { whyTravel: 'push my limits', mainGoal: 'adventure', personality: 'thrill-seeker' }
+      },
+      {
+        name: 'Foodie Traveler',
+        basic: { style: 'explorer', activities: ['gastronomie', 'culture'], budget: 900 },
+        onboardingPreferences: { whyTravel: 'taste the world', mainGoal: 'culinary discovery', personality: 'epicurean', topActivities: ['food tours', 'cooking classes', 'wine tasting'] }
+      }
+    ];
+
+    // Pick random profile or use query param
+    const profileIndex = req.query.profile ? parseInt(req.query.profile) : Math.floor(Math.random() * testProfiles.length);
+    const testProfile = testProfiles[profileIndex % testProfiles.length];
+
+    console.log(`\n🧪 TESTING ALGORITHM with profile: ${testProfile.name}`);
+    console.log('Profile:', JSON.stringify(testProfile, null, 2));
+
+    const startTime = Date.now();
+    const destinations = await generateDestinationShortlist(testProfile, {
+      budget: testProfile.basic.budget,
+      duration: 7,
+      origin: req.query.origin || 'Paris',
+      count: 6
+    });
+    const duration = Date.now() - startTime;
+
+    res.json({
+      success: true,
+      testProfile: testProfile.name,
+      profileDetails: testProfile,
+      destinations,
+      duration: `${duration}ms`,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Test algorithm error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Main endpoint: Generate travel recommendations
 // Apply strict rate limiting (10 req/15min) for expensive Claude AI calls
 // Check usage limits and increment counter on success
