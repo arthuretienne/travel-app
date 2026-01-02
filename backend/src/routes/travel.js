@@ -617,52 +617,61 @@ router.post('/recommendations',
           },
           flightDetails: trip.flight?.outbound ? {
             outbound: {
-              departureTime: trip.flight.outbound.departure,
-              arrivalTime: trip.flight.outbound.arrival,
-              duration: `${Math.floor((trip.flight.outbound.duration || 0) / 60)}h${(trip.flight.outbound.duration || 0) % 60}m`,
+              departureTime: trip.flight.outbound.departureTime,
+              arrivalTime: trip.flight.outbound.arrivalTime,
+              departureAirport: trip.flight.outbound.departureAirport,
+              arrivalAirport: trip.flight.outbound.arrivalAirport,
+              duration: typeof trip.flight.outbound.duration === 'number'
+                ? `${Math.floor(trip.flight.outbound.duration / 60)}h${trip.flight.outbound.duration % 60}m`
+                : trip.flight.outbound.duration || 'N/A',
               stops: trip.flight.outbound.stops || 0,
               segments: [{
-                carrier: trip.flight.outbound.carrier || 'Airline',
-                carrierLogo: trip.flight.outbound.logo,
-                departureTime: trip.flight.outbound.departure,
-                arrivalTime: trip.flight.outbound.arrival,
-                origin: trip.flight.outbound.origin || originCity,
-                destination: trip.flight.outbound.destination || trip.destination.iata,
+                carrier: trip.flight.outbound.airline || 'Airline',
+                carrierLogo: trip.flight.outbound.airlineLogo,
+                departureTime: trip.flight.outbound.departureTime,
+                arrivalTime: trip.flight.outbound.arrivalTime,
+                origin: trip.flight.outbound.departureAirport || originCity,
+                destination: trip.flight.outbound.arrivalAirport || trip.destination.iata,
               }]
             },
             return: trip.flight.return ? {
-              departureTime: trip.flight.return.departure,
-              arrivalTime: trip.flight.return.arrival,
-              duration: `${Math.floor((trip.flight.return.duration || 0) / 60)}h${(trip.flight.return.duration || 0) % 60}m`,
+              departureTime: trip.flight.return.departureTime,
+              arrivalTime: trip.flight.return.arrivalTime,
+              departureAirport: trip.flight.return.departureAirport,
+              arrivalAirport: trip.flight.return.arrivalAirport,
+              duration: typeof trip.flight.return.duration === 'number'
+                ? `${Math.floor(trip.flight.return.duration / 60)}h${trip.flight.return.duration % 60}m`
+                : trip.flight.return.duration || 'N/A',
               stops: trip.flight.return.stops || 0,
               segments: [{
-                carrier: trip.flight.return.carrier || 'Airline',
-                carrierLogo: trip.flight.return.logo,
-                departureTime: trip.flight.return.departure,
-                arrivalTime: trip.flight.return.arrival,
-                origin: trip.flight.return.origin || trip.destination.iata,
-                destination: trip.flight.return.destination || originCity,
+                carrier: trip.flight.return.airline || 'Airline',
+                carrierLogo: trip.flight.return.airlineLogo,
+                departureTime: trip.flight.return.departureTime,
+                arrivalTime: trip.flight.return.arrivalTime,
+                origin: trip.flight.return.departureAirport || trip.destination.iata,
+                destination: trip.flight.return.arrivalAirport || originCity,
               }]
             } : null,
             totalPrice: trip.flight.totalCost || trip.budget.flight,
             pricePerPerson: trip.flight.totalCost || trip.budget.flight,
-            airline: trip.flight.outbound.carrier || 'Airline',
+            airline: trip.flight.outbound.airline || 'Airline',
             cabinClass: 'ECONOMY',
-            isEstimate: !trip.flight.outbound.departure
+            isEstimate: !trip.flight.outbound.departureTime
           } : null,
           hotelOptions: trip.hotel?.name ? {
             destination: trip.destination.name,
             checkIn: trip.dates.departure,
             checkOut: trip.dates.return,
-            nights: trip.hotel.totalNights || trip.dates.duration - 1,
+            nights: trip.hotel.totalNights || (trip.dates.duration ? trip.dates.duration - 1 : 3),
             hotels: [{
               name: trip.hotel.name,
               stars: trip.hotel.stars || 0,
-              price: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / (trip.dates.duration - 1)),
+              price: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, (trip.dates.duration || 4) - 1)),
+              pricePerNight: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, (trip.dates.duration || 4) - 1)),
               location: trip.hotel.location || trip.destination.name,
               amenities: trip.hotel.amenities || [],
             }],
-            averagePrice: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / (trip.dates.duration - 1))
+            averagePrice: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, (trip.dates.duration || 4) - 1))
           } : null,
           recommendation: recommendation,
           score: score,
