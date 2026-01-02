@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "postCommit": "echo '✅ Commit done'"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm start:*)",
+      "Bash(npm test:*)",
+      "Bash(curl:*)",
+      "Bash(git:*)"
+    ]
+  }
+}

@@ -11,7 +11,6 @@
     "@anthropic-ai/sdk": "^0.27.0",
     "@clerk/clerk-sdk-node": "^4.13.23",
     "@prisma/client": "^6.19.0",
-    "amadeus": "^10.0.0",
     "axios": "^1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -21,8 +20,7 @@
     "node-fetch": "^3.3.2",
     "prisma": "^6.19.0",
     "resend": "^6.5.2",
-    "stripe": "^20.0.0",
-    "unsplash-js": "^7.0.20"
+    "stripe": "^20.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
