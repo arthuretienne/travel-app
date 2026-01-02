@@ -52,7 +52,9 @@ function Dashboard() {
       });
 
       if (!tripsResponse.ok) {
-        throw new Error('Failed to fetch saved trips');
+        const errorData = await tripsResponse.json().catch(() => ({}));
+        console.error('Trips fetch failed:', tripsResponse.status, errorData);
+        throw new Error(errorData.message || `Failed to fetch saved trips (${tripsResponse.status})`);
       }
 
       const tripsData = await tripsResponse.json();
@@ -96,7 +98,9 @@ function Dashboard() {
       });
 
       if (!tripsResponse.ok) {
-        throw new Error('Failed to fetch saved trips');
+        const errorData = await tripsResponse.json().catch(() => ({}));
+        console.error('Trips fetch failed:', tripsResponse.status, errorData);
+        throw new Error(errorData.message || `Failed to fetch saved trips (${tripsResponse.status})`);
       }
 
       const tripsData = await tripsResponse.json();
