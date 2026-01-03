@@ -1,6 +1,6 @@
 // backend/src/routes/travel.js
 import express from 'express';
-import { generateItineraryWithRealData, generateDestinationRecommendationWithData, generateRoadtripNarrative } from '../services/claudeService.js';
+import { generateDestinationRecommendationWithData, generateRoadtripNarrative } from '../services/claudeService.js';
 import * as destinationService from '../services/destinationService.js';
 import * as roadtripService from '../services/roadtripService.js';
 import { generateAffiliateLinks } from '../services/affiliateService.js';
@@ -230,32 +230,18 @@ router.post('/recommendations',
 
       console.log(`✅ Trip optimized: €${optimizedTrip.flight.totalCost} flight + €${optimizedTrip.hotel.totalPrice} hotel`);
 
-      // Step 2: Generate detailed itinerary with Claude (optimized prompt)
-      console.log('🤖 Step 2: Generating detailed itinerary with Claude...');
-      const userName = req.user.firstName
-        ? `${req.user.firstName} ${req.user.lastName || ''}`.trim()
-        : req.user.email;
+      // NOTE: Itinerary generation moved to save trip endpoint for faster search
+      // The detailed itinerary will be generated when user saves the trip
 
-      const itinerary = await generateItineraryWithRealData(
-        {
-          userProfile,
-          ...optimizedTrip
-        },
-        req.user.id,
-        userName
-      );
-
-      console.log(`✅ Itinerary generated for ${optimizedTrip.destination.name}`);
-
-      // Step 3: Get photos
-      console.log('📸 Step 3: Fetching destination photos...');
+      // Step 2: Get photos
+      console.log('📸 Step 2: Fetching destination photos...');
       const photoMap = await getDestinationPhotos([optimizedTrip.destination.name]);
       const photo = photoMap.get(optimizedTrip.destination.name);
 
-      // Step 4: Calculate score
+      // Step 3: Calculate score
       const score = calculateScoreFromTrip(optimizedTrip, budget);
 
-      // Step 5: Generate affiliate links
+      // Step 4: Generate affiliate links
       const affiliateLinks = generateAffiliateLinks(
         {
           destination: {
@@ -273,13 +259,14 @@ router.post('/recommendations',
         originCity
       );
 
-      // Format result
+      // Format result (without detailed itinerary - that's generated on save)
       const result = {
         destination: {
           city: optimizedTrip.destination.name,
-          country: itinerary.destination || optimizedTrip.destination.name,
+          country: optimizedTrip.destination.country || optimizedTrip.destination.name,
           iataCode: optimizedTrip.destination.iata,
-          photo: photo
+          photo: photo,
+          matchReason: `Perfect destination for your ${duration}-day trip`,
         },
         slot: {
           startDate: optimizedTrip.dates.departure,
@@ -344,7 +331,13 @@ router.post('/recommendations',
           }],
           averagePrice: optimizedTrip.hotel.pricePerNight
         },
-        itinerary: itinerary,
+        // Light summary - detailed itinerary generated on save
+        tripSummary: {
+          type: 'single-destination',
+          cities: [optimizedTrip.destination.name],
+          totalDays: optimizedTrip.dates.duration,
+          highlights: [`Explore ${optimizedTrip.destination.name}`, 'Local experiences', 'Cultural immersion'],
+        },
         score: score,
         links: affiliateLinks
       };
