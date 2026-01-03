@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import {
   AlertTriangle, Trophy, Calendar, Lightbulb, CloudSun, Plane,
-  Building, Ticket, Save, BarChart, Frown, ArrowLeft, Search,
+  Building, Ticket, Save, Frown, ArrowLeft, Search,
   ExternalLink, Clock, MapPin, Star, Check, X, ChevronLeft, ChevronRight,
   Hotel, Sparkles, Users
 } from 'lucide-react';
@@ -211,13 +211,6 @@ function Results() {
     }
     const query = encodeURIComponent(`${city} ${country} travel`);
     return `https://source.unsplash.com/800x400/?${query}`;
-  };
-
-  const getScoreColor = (score) => {
-    if (score >= 90) return 'text-emerald-500 border-emerald-500 bg-emerald-50';
-    if (score >= 80) return 'text-blue-500 border-blue-500 bg-blue-50';
-    if (score >= 70) return 'text-amber-500 border-amber-500 bg-amber-50';
-    return 'text-red-500 border-red-500 bg-red-50';
   };
 
   if (loading) {
@@ -427,16 +420,12 @@ function Results() {
                       </div>
                     </div>
 
-                    <div className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 ${getScoreColor(trip.score.total)}`}>
-                      <div className="text-2xl font-bold leading-none">
-                        {formatNumber(trip.score.total)}
-                      </div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">match</div>
-                    </div>
                   </div>
 
-                  {/* Why This Trip */}
+                  {/* Why This Trip - Only show if we have AI content */}
+                  {(trip.destination?.matchReason || trip.destination?.seasonReason) && (
                   <div className="grid md:grid-cols-2 gap-4 mb-6">
+                    {trip.destination?.matchReason && (
                     <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
                       <div className="flex items-center gap-2 mb-2 text-blue-700 font-semibold text-sm">
                         <Lightbulb size={16} />
@@ -444,6 +433,8 @@ function Results() {
                       </div>
                       <p className="text-sm text-text-secondary leading-relaxed">{trip.destination.matchReason}</p>
                     </div>
+                    )}
+                    {trip.destination?.seasonReason && (
                     <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
                       <div className="flex items-center gap-2 mb-2 text-amber-700 font-semibold text-sm">
                         <CloudSun size={16} />
@@ -451,24 +442,27 @@ function Results() {
                       </div>
                       <p className="text-sm text-text-secondary leading-relaxed">{trip.destination.seasonReason}</p>
                     </div>
+                    )}
                   </div>
+                  )}
 
                   {/* Price Overview */}
+                  {trip.pricing && (
                   <div className="bg-gray-50 rounded-2xl p-5 mb-6 border border-gray-100">
                     <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4 mb-4 pb-4 border-b border-gray-200">
                       <div>
                         <div className="text-sm text-text-secondary mb-1">Total Trip Cost</div>
-                        <div className="text-2xl font-bold text-text-main">€{formatNumber(trip.pricing.total)}</div>
+                        <div className="text-2xl font-bold text-text-main">€{formatNumber(trip.pricing?.total || 0)}</div>
                       </div>
-                      {trip.pricing.remaining >= 0 ? (
+                      {(trip.pricing?.remaining ?? 0) >= 0 ? (
                         <div className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm font-medium flex items-center gap-1">
                           <Check size={14} />
-                          €{formatNumber(trip.pricing.remaining)} under budget
+                          €{formatNumber(trip.pricing?.remaining || 0)} under budget
                         </div>
                       ) : (
                         <div className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium flex items-center gap-1">
                           <AlertTriangle size={14} />
-                          €{formatNumber(Math.abs(trip.pricing.remaining))} over budget
+                          €{formatNumber(Math.abs(trip.pricing?.remaining || 0))} over budget
                         </div>
                       )}
                     </div>
@@ -477,20 +471,21 @@ function Results() {
                       <div className="flex flex-col items-center p-2 bg-white rounded-lg border border-gray-100">
                         <Plane size={16} className="text-blue-500 mb-1" />
                         <span className="text-text-secondary text-xs">Flight</span>
-                        <span className="font-semibold">€{formatNumber(trip.pricing.flight)}</span>
+                        <span className="font-semibold">€{formatNumber(trip.pricing?.flight || 0)}</span>
                       </div>
                       <div className="flex flex-col items-center p-2 bg-white rounded-lg border border-gray-100">
                         <Building size={16} className="text-purple-500 mb-1" />
                         <span className="text-text-secondary text-xs">Hotel</span>
-                        <span className="font-semibold">€{formatNumber(trip.pricing.hotel)}</span>
+                        <span className="font-semibold">€{formatNumber(trip.pricing?.hotel || 0)}</span>
                       </div>
                       <div className="flex flex-col items-center p-2 bg-white rounded-lg border border-gray-100">
                         <Ticket size={16} className="text-pink-500 mb-1" />
                         <span className="text-text-secondary text-xs">Activities</span>
-                        <span className="font-semibold">€{formatNumber(trip.pricing.activities)}</span>
+                        <span className="font-semibold">€{formatNumber(trip.pricing?.activities || 0)}</span>
                       </div>
                     </div>
                   </div>
+                  )}
 
                   {/* Enhanced Flight Info */}
                   {trip.flightDetails && (
@@ -668,7 +663,7 @@ function Results() {
                           Activities & Experiences
                         </h4>
                         <div className="text-right">
-                          <span className="text-lg font-bold text-purple-900">€{Math.round(trip.pricing.activities)}</span>
+                          <span className="text-lg font-bold text-purple-900">€{Math.round(trip.pricing?.activities || 0)}</span>
                           <span className="text-xs text-purple-700 block">available</span>
                         </div>
                       </div>
@@ -703,7 +698,7 @@ function Results() {
                         </div>
                       </div>
                       <p className="text-xs text-purple-600 mt-3 text-center">
-                        ~€{Math.round(trip.pricing.activities / (trip.slot?.duration || 7))} daily budget for experiences
+                        ~€{Math.round((trip.pricing?.activities || 0) / (trip.slot?.duration || 7))} daily budget for experiences
                       </p>
                     </div>
                   )}
@@ -747,59 +742,6 @@ function Results() {
                 </div>
               </div>
 
-              {/* Collapsible Details */}
-              <details className="group/details border-t border-gray-100 bg-gray-50/50">
-                <summary className="flex items-center justify-center gap-2 p-4 cursor-pointer text-sm font-medium text-text-secondary hover:text-primary transition-colors list-none">
-                  <BarChart size={16} />
-                  View detailed scoring breakdown
-                  <span className="group-open/details:rotate-180 transition-transform">
-                    <ArrowLeft size={14} className="-rotate-90" />
-                  </span>
-                </summary>
-                <div className="p-6 pt-0 border-t border-gray-100/50">
-                  <div className="max-w-2xl mx-auto pt-6">
-                    <h4 className="text-sm font-bold text-text-main mb-4">Scoring Breakdown</h4>
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-text-secondary">AI Match (40%)</span>
-                          <span className="font-bold">{formatNumber(trip.score.breakdown.aiMatch)}pts</span>
-                        </div>
-                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-primary rounded-full" style={{ width: `${formatNumber(trip.score.breakdown.aiMatch)}%` }}></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-text-secondary">Price Value (30%)</span>
-                          <span className="font-bold">{formatNumber(trip.score.breakdown.price)}pts</span>
-                        </div>
-                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-green-500 rounded-full" style={{ width: `${formatNumber(trip.score.breakdown.price)}%` }}></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-text-secondary">Originality (20%)</span>
-                          <span className="font-bold">{formatNumber(trip.score.breakdown.originality)}pts</span>
-                        </div>
-                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-purple-500 rounded-full" style={{ width: `${formatNumber(trip.score.breakdown.originality)}%` }}></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-text-secondary">Availability (10%)</span>
-                          <span className="font-bold">{formatNumber(trip.score.breakdown.availability)}pts</span>
-                        </div>
-                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-amber-500 rounded-full" style={{ width: `${formatNumber(trip.score.breakdown.availability)}%` }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </details>
             </div>
               )
             ))}
