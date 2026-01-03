@@ -2,7 +2,7 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/auth.js';
 import { getWeatherForecast, getPackingRecommendations } from '../services/weatherService.js';
-import { generatePersonalizedItinerary } from '../services/itineraryService.js';
+import { generatePersonalizedItinerary, generatePackingFromItinerary } from '../services/itineraryService.js';
 import { getLocalEvents, getAllCityEvents } from '../data/localEvents.js';
 import prisma from '../db/prisma.js';
 
@@ -196,6 +196,7 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
         success: true,
         data: {
           itinerary: existingTripData.cachedItinerary,
+          packing: existingTripData.cachedPacking,
           city,
           country,
           cached: true
@@ -237,11 +238,22 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
       isSavedTrip ? [] : members
     );
 
-    // Save itinerary to tripData for caching
+    // Get weather and generate packing list based on itinerary activities
+    let packing = null;
+    try {
+      const weather = await getWeatherForecast(city, country);
+      packing = generatePackingFromItinerary(itinerary, weather, { city, country });
+      console.log(`📦 Generated packing list with ${packing.activityItems?.length || 0} activity-specific items`);
+    } catch (packingError) {
+      console.warn('⚠️ Failed to generate packing:', packingError.message);
+    }
+
+    // Save itinerary and packing to tripData for caching
     try {
       const updatedTripData = {
         ...existingTripData,
         cachedItinerary: itinerary,
+        cachedPacking: packing,
         itineraryCachedAt: new Date().toISOString()
       };
 
@@ -259,19 +271,20 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
               finalDestination: {
                 ...trip.finalDestination,
                 cachedItinerary: itinerary,
+                cachedPacking: packing,
                 itineraryCachedAt: new Date().toISOString()
               }
             }
           });
         }
       }
-      console.log(`💾 Itinerary cached for trip ${id}`);
+      console.log(`💾 Itinerary and packing cached for trip ${id}`);
     } catch (cacheError) {
       console.warn('⚠️ Failed to cache itinerary:', cacheError.message);
       // Continue even if caching fails
     }
 
-    res.json({ success: true, data: { itinerary, city, country, cached: false } });
+    res.json({ success: true, data: { itinerary, packing, city, country, cached: false } });
   } catch (error) {
     console.error('Error generating itinerary:', error);
     res.status(500).json({ error: 'Failed to generate itinerary', message: error.message });

@@ -196,3 +196,96 @@ OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
     return null;
   }
 }
+
+/**
+ * Generate packing list based on itinerary activities and weather
+ * @param {Array} itinerary - Generated itinerary with activities
+ * @param {Object} weatherData - Weather forecast data
+ * @param {Object} tripData - Trip destination info
+ * @returns {Object} Packing recommendations
+ */
+export function generatePackingFromItinerary(itinerary, weatherData, tripData) {
+  // Extract all activity types from itinerary
+  const activityTypes = new Set();
+  itinerary?.forEach(day => {
+    day.schedule?.forEach(activity => {
+      if (activity.type) {
+        activityTypes.add(activity.type.toLowerCase());
+      }
+    });
+  });
+
+  console.log('📦 Generating packing for activities:', [...activityTypes]);
+
+  // Base essentials
+  const essentials = [
+    'Passport & travel documents',
+    'Phone & charger',
+    'Wallet & cards',
+    'Travel insurance docs',
+    'Medications',
+  ];
+
+  // Clothing based on weather
+  const clothing = ['Underwear (1 per day + extra)', 'Socks'];
+
+  if (weatherData?.forecast) {
+    const avgTemp = weatherData.forecast.reduce((acc, d) => acc + (d.day?.avgtemp_c || 20), 0) / weatherData.forecast.length;
+    const hasRain = weatherData.forecast.some(d => d.day?.daily_chance_of_rain > 40);
+
+    if (avgTemp < 15) {
+      clothing.push('Warm jacket', 'Sweaters/layers', 'Long pants');
+    } else if (avgTemp < 25) {
+      clothing.push('Light jacket', 'Mix of shorts & pants', 'Light layers');
+    } else {
+      clothing.push('Light clothing', 'Shorts', 'T-shirts', 'Sunhat');
+    }
+
+    if (hasRain) {
+      clothing.push('Rain jacket or umbrella');
+    }
+  } else {
+    clothing.push('Versatile layers', 'Light jacket');
+  }
+
+  // Activity-based items
+  const activityItems = [];
+
+  if (activityTypes.has('culture') || activityTypes.has('museum') || activityTypes.has('sightseeing')) {
+    activityItems.push('Comfortable walking shoes');
+  }
+  if (activityTypes.has('beach') || activityTypes.has('swimming') || activityTypes.has('pool')) {
+    activityItems.push('Swimsuit', 'Beach towel', 'Sandals', 'Sunscreen SPF 50');
+  }
+  if (activityTypes.has('hiking') || activityTypes.has('nature') || activityTypes.has('outdoor')) {
+    activityItems.push('Hiking shoes', 'Daypack', 'Water bottle', 'Sunscreen');
+  }
+  if (activityTypes.has('nightlife') || activityTypes.has('dinner') || activityTypes.has('restaurant')) {
+    activityItems.push('Smart casual outfit', 'Nice shoes');
+  }
+  if (activityTypes.has('sport') || activityTypes.has('adventure')) {
+    activityItems.push('Athletic wear', 'Sports shoes');
+  }
+
+  // Always add walking shoes if not already
+  if (!activityItems.includes('Comfortable walking shoes') && !activityItems.includes('Hiking shoes')) {
+    activityItems.push('Comfortable walking shoes');
+  }
+
+  // Optional nice-to-haves
+  const optional = [
+    'Book or e-reader',
+    'Reusable shopping bag',
+    'Snacks for travel',
+    'Travel pillow',
+  ];
+
+  return {
+    essentials,
+    clothing,
+    activityItems,
+    optional,
+    generatedAt: new Date().toISOString(),
+    basedOnActivities: [...activityTypes],
+  };
+}
