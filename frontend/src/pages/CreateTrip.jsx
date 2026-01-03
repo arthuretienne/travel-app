@@ -407,11 +407,15 @@ function CreateTrip() {
                     if (eventData.stage === 'discovering') setLoadingStage('searching');
                     if (eventData.stage === 'discovered') setLoadingStage('flights');
                   } else if (eventType === 'recommendation') {
-                    // A recommendation is ready!
-                    streamingResults.push(eventData);
-                    setLoadingStage('optimizing');
+                    // A recommendation is ready - extract data from wrapper
+                    if (eventData.data) {
+                      streamingResults.push(eventData.data);
+                      setLoadingStage('optimizing');
+                      console.log(`✅ Received recommendation ${eventData.index}/${eventData.total}`);
+                    }
                   } else if (eventType === 'complete') {
                     // All done - navigate to results
+                    console.log(`✅ Streaming complete: ${streamingResults.length} results`);
                     if (streamingResults.length > 0) {
                       navigate('/results', { state: { recommendations: streamingResults } });
                       return;
