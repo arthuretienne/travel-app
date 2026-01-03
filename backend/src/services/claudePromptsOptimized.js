@@ -247,7 +247,7 @@ export function generateDestinationRecommendation({
 
   return {
     role: 'user',
-    content: `Generate a SHORT travel recommendation for ${destination.name} (${dates.duration} days).
+    content: `Generate a SHORT travel recommendation for ${destination.name}, ${destination.country || ''} (${dates.duration} days).
 
 USER: ${style} traveler, loves ${interests.length > 0 ? interests.join(', ') : 'culture, nature'}
 SEASON: ${seasonalInsights.monthName} - ${seasonalInsights.weather.description}
@@ -255,10 +255,10 @@ BUDGET: €${budget.remaining} for activities (flights+hotel already booked)
 
 Return ONLY this JSON (no markdown):
 {
-  "tagline": "Max 10 words catchy phrase",
-  "matchReason": "1-2 sentences why this destination matches the user (${interests.join(', ')})",
-  "seasonReason": "1 sentence why ${seasonalInsights.monthName} is great to visit",
-  "highlights": ["3 must-do activities"]
+  "tagline": "Max 10 words catchy phrase about ${destination.name}",
+  "matchReason": "1-2 sentences why ${destination.name} matches this traveler. Be specific about the destination!",
+  "seasonReason": "1 sentence about ${seasonalInsights.monthName} in ${destination.name} - mention specific events, weather perks, currency advantages, or seasonal highlights",
+  "highlights": ["3 SPECIFIC must-do activities unique to ${destination.name} - include real place names like 'Mario Kart in Shibuya', 'Lumphini Park morning tai chi', 'Fushimi Inari sunrise hike'"]
 }`
   };
 }

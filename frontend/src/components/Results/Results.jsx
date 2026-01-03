@@ -232,6 +232,42 @@ function Results({ recommendations, onReset }) {
                 </div>
               </div>
 
+              {/* Why This Trip - Only show if we have AI-generated content */}
+              {(trip.destination.matchReason || trip.destination.seasonReason) && (
+                <div className="why-section">
+                  {trip.destination.matchReason && (
+                    <div className="why-card">
+                      <div className="why-icon">💡</div>
+                      <div className="why-content">
+                        <strong>Why this destination?</strong>
+                        <p>{trip.destination.matchReason}</p>
+                      </div>
+                    </div>
+                  )}
+                  {trip.destination.seasonReason && (
+                    <div className="why-card">
+                      <div className="why-icon">🌤️</div>
+                      <div className="why-content">
+                        <strong>Why now?</strong>
+                        <p>{trip.destination.seasonReason}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Highlights */}
+              {trip.destination.highlights?.length > 0 && (
+                <div className="highlights-section">
+                  <div className="highlights-title">✨ Must-do experiences</div>
+                  <div className="highlights-list">
+                    {trip.destination.highlights.map((highlight, i) => (
+                      <span key={i} className="highlight-tag">{highlight}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Price Overview */}
               <div className="price-overview">
                 <div className="price-main">

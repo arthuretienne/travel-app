@@ -230,16 +230,25 @@ router.post('/recommendations',
 
       console.log(`✅ Trip optimized: €${optimizedTrip.flight.totalCost} flight + €${optimizedTrip.hotel.totalPrice} hotel`);
 
-      // NOTE: Itinerary generation moved to save trip endpoint for faster search
-      // The detailed itinerary will be generated when user saves the trip
+      // Step 2: Generate destination insights with Claude (fast call)
+      console.log('🤖 Step 2: Generating destination insights...');
+      let destinationInsights = null;
+      try {
+        destinationInsights = await generateDestinationRecommendationWithData({
+          destination: { name: optimizedTrip.destination.name, country: optimizedTrip.destination.country },
+          userProfile,
+          dates: { departure: optimizedTrip.dates.departure, duration: optimizedTrip.dates.duration },
+          budget: { remaining: optimizedTrip.budget.activities },
+        });
+        console.log(`✅ Generated insights: ${destinationInsights?.tagline || 'N/A'}`);
+      } catch (insightError) {
+        console.warn('⚠️  Failed to generate insights:', insightError.message);
+      }
 
-      // Step 2: Get photos
-      console.log('📸 Step 2: Fetching destination photos...');
+      // Step 3: Get photos
+      console.log('📸 Step 3: Fetching destination photos...');
       const photoMap = await getDestinationPhotos([optimizedTrip.destination.name]);
       const photo = photoMap.get(optimizedTrip.destination.name);
-
-      // Step 3: Calculate score
-      const score = calculateScoreFromTrip(optimizedTrip, budget);
 
       // Step 4: Generate affiliate links
       const affiliateLinks = generateAffiliateLinks(
@@ -267,6 +276,10 @@ router.post('/recommendations',
           country: optimizedTrip.destination.country,
           iataCode: optimizedTrip.destination.iata || optimizedTrip.destination.code,
           photo: photo,
+          tagline: destinationInsights?.tagline,
+          matchReason: destinationInsights?.matchReason,
+          seasonReason: destinationInsights?.seasonReason,
+          highlights: destinationInsights?.highlights || [],
         },
         slot: {
           startDate: optimizedTrip.dates.departure,
@@ -293,14 +306,26 @@ router.post('/recommendations',
               ? `${Math.floor(optimizedTrip.flight.outbound.duration / 60)}h${optimizedTrip.flight.outbound.duration % 60}m`
               : optimizedTrip.flight.outbound.duration || 'N/A',
             stops: optimizedTrip.flight.outbound.stops || 0,
-            segments: [{
-              carrier: optimizedTrip.flight.outbound.airline || 'Airline',
-              carrierLogo: optimizedTrip.flight.outbound.airlineLogo,
-              departureTime: optimizedTrip.flight.outbound.departureTime,
-              arrivalTime: optimizedTrip.flight.outbound.arrivalTime,
-              origin: optimizedTrip.flight.outbound.departureAirport,
-              destination: optimizedTrip.flight.outbound.arrivalAirport,
-            }]
+            // Use actual segments from API if available, otherwise create single segment
+            segments: optimizedTrip.flight.outbound.segments?.length > 0
+              ? optimizedTrip.flight.outbound.segments.map(seg => ({
+                  carrier: seg.airline || 'Airline',
+                  carrierLogo: seg.airlineLogo,
+                  departureTime: seg.departureTime,
+                  arrivalTime: seg.arrivalTime,
+                  origin: seg.departureAirport,
+                  destination: seg.arrivalAirport,
+                  duration: seg.duration ? `${Math.floor(seg.duration / 60)}h${seg.duration % 60}m` : null,
+                  flightNumber: seg.flightNumber,
+                }))
+              : [{
+                  carrier: optimizedTrip.flight.outbound.airline || 'Airline',
+                  carrierLogo: optimizedTrip.flight.outbound.airlineLogo,
+                  departureTime: optimizedTrip.flight.outbound.departureTime,
+                  arrivalTime: optimizedTrip.flight.outbound.arrivalTime,
+                  origin: optimizedTrip.flight.outbound.departureAirport,
+                  destination: optimizedTrip.flight.outbound.arrivalAirport,
+                }]
           },
           return: optimizedTrip.flight.return ? {
             departureTime: optimizedTrip.flight.return.departureTime,
@@ -311,14 +336,25 @@ router.post('/recommendations',
               ? `${Math.floor(optimizedTrip.flight.return.duration / 60)}h${optimizedTrip.flight.return.duration % 60}m`
               : optimizedTrip.flight.return.duration || 'N/A',
             stops: optimizedTrip.flight.return.stops || 0,
-            segments: [{
-              carrier: optimizedTrip.flight.return.airline || 'Airline',
-              carrierLogo: optimizedTrip.flight.return.airlineLogo,
-              departureTime: optimizedTrip.flight.return.departureTime,
-              arrivalTime: optimizedTrip.flight.return.arrivalTime,
-              origin: optimizedTrip.flight.return.departureAirport,
-              destination: optimizedTrip.flight.return.arrivalAirport,
-            }]
+            segments: optimizedTrip.flight.return.segments?.length > 0
+              ? optimizedTrip.flight.return.segments.map(seg => ({
+                  carrier: seg.airline || 'Airline',
+                  carrierLogo: seg.airlineLogo,
+                  departureTime: seg.departureTime,
+                  arrivalTime: seg.arrivalTime,
+                  origin: seg.departureAirport,
+                  destination: seg.arrivalAirport,
+                  duration: seg.duration ? `${Math.floor(seg.duration / 60)}h${seg.duration % 60}m` : null,
+                  flightNumber: seg.flightNumber,
+                }))
+              : [{
+                  carrier: optimizedTrip.flight.return.airline || 'Airline',
+                  carrierLogo: optimizedTrip.flight.return.airlineLogo,
+                  departureTime: optimizedTrip.flight.return.departureTime,
+                  arrivalTime: optimizedTrip.flight.return.arrivalTime,
+                  origin: optimizedTrip.flight.return.departureAirport,
+                  destination: optimizedTrip.flight.return.arrivalAirport,
+                }]
           } : null,
           totalPrice: optimizedTrip.flight.totalCost,
           pricePerPerson: optimizedTrip.flight.totalCost,
@@ -332,11 +368,17 @@ router.post('/recommendations',
           checkOut: optimizedTrip.dates.return,
           nights: optimizedTrip.hotel.totalNights,
           hotels: [{
+            id: optimizedTrip.hotel.id,
             name: optimizedTrip.hotel.name,
             stars: optimizedTrip.hotel.stars,
             price: optimizedTrip.hotel.pricePerNight,
+            totalPrice: optimizedTrip.hotel.totalPrice,
             location: optimizedTrip.hotel.location,
             amenities: optimizedTrip.hotel.amenities,
+            rating: optimizedTrip.hotel.rating, // { value, count, word }
+            mainPhoto: optimizedTrip.hotel.mainPhoto,
+            checkInTime: optimizedTrip.hotel.checkInTime,
+            checkOutTime: optimizedTrip.hotel.checkOutTime,
           }],
           averagePrice: optimizedTrip.hotel.pricePerNight
         },
@@ -347,7 +389,6 @@ router.post('/recommendations',
           totalDays: optimizedTrip.dates.duration,
           highlights: [`Explore ${optimizedTrip.destination.name}`, 'Local experiences', 'Cultural immersion'],
         },
-        score: score,
         links: affiliateLinks
       };
 

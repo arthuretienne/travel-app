@@ -267,6 +267,36 @@
   margin: 0;
 }
 
+/* Highlights Section */
+.highlights-section {
+  padding: 1rem;
+  background: #f8fafb;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+.highlights-title {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.highlights-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.highlight-tag {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
 /* Price Overview */
 .price-overview {
   background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
