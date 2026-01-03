@@ -109,7 +109,27 @@ router.get('/:id/weather', authenticateUser, async (req, res) => {
     const weather = await getWeatherForecast(city, country);
 
     if (!weather) {
-      return res.status(500).json({ error: 'Failed to fetch weather' });
+      // Return mock weather data if API fails or key not configured
+      const mockWeather = {
+        location: { name: city, country: country },
+        current: {
+          temp_c: 20,
+          condition: 'Partly cloudy',
+          icon: 'https://cdn.weatherapi.com/weather/64x64/day/116.png',
+          humidity: 50,
+        },
+        forecast: Array.from({ length: 7 }, (_, i) => ({
+          date: new Date(Date.now() + i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          day: {
+            maxtemp_c: 22 + Math.floor(Math.random() * 5),
+            mintemp_c: 14 + Math.floor(Math.random() * 3),
+            condition: 'Partly cloudy',
+            icon: 'https://cdn.weatherapi.com/weather/64x64/day/116.png',
+            daily_chance_of_rain: Math.floor(Math.random() * 30),
+          },
+        })),
+      };
+      return res.json({ success: true, data: { weather: mockWeather, isMock: true } });
     }
 
     res.json({ success: true, data: { weather } });
