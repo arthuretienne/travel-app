@@ -23,13 +23,6 @@ function Results({ recommendations, onReset }) {
     return `https://source.unsplash.com/800x400/?${query}`;
   };
 
-  const getScoreColor = (score) => {
-    if (score >= 90) return '#10b981'; // green
-    if (score >= 80) return '#3b82f6'; // blue
-    if (score >= 70) return '#f59e0b'; // orange
-    return '#ef4444'; // red
-  };
-
   // Check if any recommendation is a roadtrip
   const hasRoadtrip = recommendations.some(r => r.type === 'roadtrip');
 
@@ -79,12 +72,6 @@ function Results({ recommendations, onReset }) {
                     <div className="trip-dates-badge">
                       📅 {trip.duration} days • {trip.cities?.map(c => c.name).join(' → ')}
                     </div>
-                  </div>
-                  <div className="match-score" style={{ borderColor: getScoreColor(trip.score?.total || 90) }}>
-                    <div className="score-number" style={{ color: getScoreColor(trip.score?.total || 90) }}>
-                      {formatNumber(trip.score?.total || 90)}
-                    </div>
-                    <div className="score-label">match</div>
                   </div>
                 </div>
 
@@ -243,30 +230,6 @@ function Results({ recommendations, onReset }) {
                     <span className="trip-duration">• {trip.slot.duration} days</span>
                   </div>
                 </div>
-                <div className="match-score" style={{ borderColor: getScoreColor(trip.score.total) }}>
-                  <div className="score-number" style={{ color: getScoreColor(trip.score.total) }}>
-                    {formatNumber(trip.score.total)}
-                  </div>
-                  <div className="score-label">match</div>
-                </div>
-              </div>
-
-              {/* Why This Trip */}
-              <div className="why-section">
-                <div className="why-card">
-                  <div className="why-icon">💡</div>
-                  <div className="why-content">
-                    <strong>Why this destination?</strong>
-                    <p>{trip.destination.matchReason}</p>
-                  </div>
-                </div>
-                <div className="why-card">
-                  <div className="why-icon">🌤️</div>
-                  <div className="why-content">
-                    <strong>Why now?</strong>
-                    <p>{trip.destination.seasonReason}</p>
-                  </div>
-                </div>
               </div>
 
               {/* Price Overview */}
@@ -368,67 +331,6 @@ function Results({ recommendations, onReset }) {
               </div>
             </div>
 
-            {/* Collapsible Details */}
-            <details className="trip-details">
-              <summary className="details-toggle">
-                📊 View detailed scoring
-              </summary>
-              <div className="details-content">
-                <div className="score-breakdown-detailed">
-                  <h4>How we scored this trip:</h4>
-                  <div className="score-bars">
-                    <div className="score-bar-item">
-                      <div className="score-bar-header">
-                        <span>AI Match (40%)</span>
-                        <strong>{formatNumber(trip.score.breakdown.aiMatch)}pts</strong>
-                      </div>
-                      <div className="score-bar-fill-container">
-                        <div 
-                          className="score-bar-fill" 
-                          style={{ width: `${formatNumber(trip.score.breakdown.aiMatch)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className="score-bar-item">
-                      <div className="score-bar-header">
-                        <span>Price Value (30%)</span>
-                        <strong>{formatNumber(trip.score.breakdown.price)}pts</strong>
-                      </div>
-                      <div className="score-bar-fill-container">
-                        <div 
-                          className="score-bar-fill" 
-                          style={{ width: `${formatNumber(trip.score.breakdown.price)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className="score-bar-item">
-                      <div className="score-bar-header">
-                        <span>Originality (20%)</span>
-                        <strong>{formatNumber(trip.score.breakdown.originality)}pts</strong>
-                      </div>
-                      <div className="score-bar-fill-container">
-                        <div 
-                          className="score-bar-fill" 
-                          style={{ width: `${formatNumber(trip.score.breakdown.originality)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className="score-bar-item">
-                      <div className="score-bar-header">
-                        <span>Availability (10%)</span>
-                        <strong>{formatNumber(trip.score.breakdown.availability)}pts</strong>
-                      </div>
-                      <div className="score-bar-fill-container">
-                        <div 
-                          className="score-bar-fill" 
-                          style={{ width: `${formatNumber(trip.score.breakdown.availability)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </details>
           </div>
           )
         ))}

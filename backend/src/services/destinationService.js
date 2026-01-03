@@ -289,11 +289,18 @@ export async function optimizeDestination({
         .trim();
     };
 
+    // Estimate activity budget based on destination cost of living
+    const dailyCostIndex = estimateCostOfLiving(destDest.countryName || destDest.country || 'Unknown');
+    const estimatedDailyActivities = Math.round(dailyCostIndex * 1.2); // Daily activity budget
+    const estimatedActivitiesBudget = estimatedDailyActivities * duration;
+
     const result = {
       destination: {
         name: destDest.cityName || destDest.name,  // Use cityName for clean display
+        country: destDest.countryName || destDest.country || 'Unknown',
         code: destDest.code,
         id: destDest.id,
+        iata: destDest.code,
       },
       origin: {
         name: originDest.cityName || originDest.name,  // Use cityName for clean display
@@ -334,7 +341,9 @@ export async function optimizeDestination({
         flight: flightCost,
         hotel: hotelCost,
         remaining: remainingBudget,
-        dailyActivities: Math.round(remainingBudget / duration),
+        // Activity estimation based on destination cost of living, not leftover budget
+        activities: Math.min(estimatedActivitiesBudget, remainingBudget),
+        dailyActivities: estimatedDailyActivities,
       },
     };
 
