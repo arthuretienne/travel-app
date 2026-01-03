@@ -485,7 +485,7 @@ function CreateTrip() {
 
   return (
     <div className="min-h-screen bg-surface-subtle p-4 md:p-8">
-      {loading && <SearchLoadingScreen stage={loadingStage} />}
+      {loading && <SearchLoadingScreen stage={loadingStage} scenario={formData.destination ? 'WITH_DESTINATION' : 'WITHOUT_DESTINATION'} />}
 
       <div className="max-w-4xl mx-auto text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-text-main mb-2">Create Your Perfect Trip</h1>

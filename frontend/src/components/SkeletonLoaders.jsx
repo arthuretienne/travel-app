@@ -92,14 +92,28 @@ export function DashboardCardSkeleton() {
 }
 
 // Loading screen with progress steps
-export function SearchLoadingScreen({ stage = 'analyzing' }) {
-  const stages = [
+export function SearchLoadingScreen({ stage = 'analyzing', scenario = 'WITHOUT_DESTINATION' }) {
+  // Different stages for WITH_DESTINATION vs WITHOUT_DESTINATION
+  const stagesWithDestination = [
+    { key: 'analyzing', label: 'Analyzing your travel dates', icon: '📅' },
+    { key: 'searching', label: 'Checking 7 date options for best price', icon: '💰' },
+    { key: 'flights', label: 'Finding cheapest flight dates', icon: '✈️' },
+    { key: 'hotels', label: 'Searching hotels at destination', icon: '🏨' },
+    { key: 'optimizing', label: 'Finalizing best deal', icon: '✨' },
+  ];
+
+  const stagesWithoutDestination = [
     { key: 'analyzing', label: 'Analyzing your preferences', icon: '🧠' },
     { key: 'searching', label: 'Searching destinations worldwide', icon: '🌍' },
     { key: 'flights', label: 'Finding best flight options', icon: '✈️' },
     { key: 'hotels', label: 'Checking hotel availability', icon: '🏨' },
     { key: 'optimizing', label: 'Optimizing your itinerary', icon: '✨' },
   ];
+
+  const stages = scenario === 'WITH_DESTINATION' ? stagesWithDestination : stagesWithoutDestination;
+  const title = scenario === 'WITH_DESTINATION'
+    ? 'Finding Best Dates & Prices'
+    : 'Finding Your Perfect Trip';
 
   const currentIndex = stages.findIndex(s => s.key === stage);
 
@@ -120,7 +134,7 @@ export function SearchLoadingScreen({ stage = 'analyzing' }) {
         </div>
 
         <h2 className="text-2xl font-bold text-center text-text-main mb-8">
-          Finding Your Perfect Trip
+          {title}
         </h2>
 
         {/* Progress steps */}

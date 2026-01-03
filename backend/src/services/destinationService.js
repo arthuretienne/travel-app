@@ -150,8 +150,54 @@ export async function discoverDestinations({
 }
 
 /**
+ * Generate date candidates for multi-date search
+ * Returns array of departure dates to check
+ */
+function generateDateCandidates(userDepartureDate, duration) {
+  const candidates = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (userDepartureDate) {
+    // User specified a date - check ±3 days around it
+    const baseDate = new Date(userDepartureDate);
+    for (let offset = -3; offset <= 3; offset++) {
+      const candidate = new Date(baseDate);
+      candidate.setDate(candidate.getDate() + offset);
+      // Don't search dates in the past
+      if (candidate >= today) {
+        candidates.push(candidate.toISOString().split('T')[0]);
+      }
+    }
+  } else {
+    // No date specified - search across next 8 weeks (every weekend + some weekdays)
+    const startSearch = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000); // Start in 2 weeks
+
+    for (let week = 0; week < 8; week++) {
+      // Friday departure (popular for weekend trips)
+      const friday = new Date(startSearch);
+      friday.setDate(friday.getDate() + (week * 7) + (5 - friday.getDay() + 7) % 7);
+      if (friday > today) {
+        candidates.push(friday.toISOString().split('T')[0]);
+      }
+
+      // Wednesday departure (often cheaper)
+      const wednesday = new Date(startSearch);
+      wednesday.setDate(wednesday.getDate() + (week * 7) + (3 - wednesday.getDay() + 7) % 7);
+      if (wednesday > today && !candidates.includes(wednesday.toISOString().split('T')[0])) {
+        candidates.push(wednesday.toISOString().split('T')[0]);
+      }
+    }
+  }
+
+  // Sort by date and limit to 7 candidates max for performance
+  candidates.sort();
+  return candidates.slice(0, 7);
+}
+
+/**
  * Optimize trip for a specific destination
- * NEW WORKFLOW: Uses Booking.com API
+ * NEW WORKFLOW: Uses Booking.com API with multi-date search
  * Returns complete trip package with flights, hotel, and budget breakdown
  */
 export async function optimizeDestination({
@@ -165,41 +211,78 @@ export async function optimizeDestination({
   console.log(`🎯 NEW WORKFLOW: Optimizing ${destination} trip for €${budget} budget`);
 
   try {
-    // Calculate departure date if not provided
-    if (!departureDate) {
-      const today = new Date();
-      const future = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000); // +30 days
-      departureDate = future.toISOString().split('T')[0];
-    }
-
-    // Calculate return date
-    const returnDate = new Date(departureDate);
-    returnDate.setDate(returnDate.getDate() + duration);
-    const returnDateStr = returnDate.toISOString().split('T')[0];
-
     // STEP 1: Get destination IDs
     console.log('📍 Step 1: Getting destination IDs...');
     const originDest = await bookingService.getDestinationId(origin);
     const destDest = await bookingService.getDestinationId(destination);
 
-    // STEP 2: Search flights
-    console.log('✈️  Step 2: Searching flights...');
-    const flightResults = await bookingService.searchFlights({
-      fromId: originDest.id,
-      toId: destDest.id,
-      departDate: departureDate,
-      returnDate: returnDateStr,
-      adults: 1,
-      cabinClass: 'ECONOMY',
-      currency: 'EUR'
-    });
+    // STEP 2: Generate date candidates and search flights in parallel
+    const dateCandidates = generateDateCandidates(departureDate, duration);
+    console.log(`📅 Step 2: Checking ${dateCandidates.length} date options for best price...`);
+    console.log(`   Dates: ${dateCandidates.join(', ')}`);
 
-    if (!flightResults.flights || flightResults.flights.length === 0) {
-      throw new Error(`No flights found from ${origin} to ${destination}`);
+    // Search flights for all date candidates in parallel (max 3 concurrent)
+    const flightSearches = [];
+    const batchSize = 3;
+
+    for (let i = 0; i < dateCandidates.length; i += batchSize) {
+      const batch = dateCandidates.slice(i, i + batchSize);
+      const batchPromises = batch.map(async (depDate) => {
+        const returnDate = new Date(depDate);
+        returnDate.setDate(returnDate.getDate() + duration);
+        const returnDateStr = returnDate.toISOString().split('T')[0];
+
+        try {
+          const result = await bookingService.searchFlights({
+            fromId: originDest.id,
+            toId: destDest.id,
+            departDate: depDate,
+            returnDate: returnDateStr,
+            adults: 1,
+            cabinClass: 'ECONOMY',
+            currency: 'EUR'
+          });
+
+          if (result.flights && result.flights.length > 0) {
+            const bestFlight = result.flights[0];
+            return {
+              departureDate: depDate,
+              returnDate: returnDateStr,
+              flight: bestFlight,
+              price: bestFlight.price.amount
+            };
+          }
+          return null;
+        } catch (error) {
+          console.warn(`   ⚠️ Failed to search ${depDate}: ${error.message}`);
+          return null;
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      flightSearches.push(...batchResults.filter(r => r !== null));
     }
 
-    const bestFlight = flightResults.flights[0]; // Already sorted by 'best'
-    const flightCost = bestFlight.price.amount;
+    if (flightSearches.length === 0) {
+      throw new Error(`No flights found from ${origin} to ${destination} for any date`);
+    }
+
+    // Find the cheapest date option
+    flightSearches.sort((a, b) => a.price - b.price);
+    const bestOption = flightSearches[0];
+
+    console.log(`✅ Best price found: €${bestOption.price} on ${bestOption.departureDate}`);
+    if (flightSearches.length > 1) {
+      const savings = flightSearches[flightSearches.length - 1].price - bestOption.price;
+      if (savings > 0) {
+        console.log(`   💰 Savings vs worst date: €${savings}`);
+      }
+    }
+
+    const bestFlight = bestOption.flight;
+    const flightCost = bestOption.price;
+    const selectedDepartureDate = bestOption.departureDate;
+    const selectedReturnDate = bestOption.returnDate;
 
     console.log(`✅ Best flight: ${bestFlight.outbound.airline} - €${flightCost}`);
 
@@ -211,14 +294,15 @@ export async function optimizeDestination({
     console.log(`🏨 Budget for hotel: €${maxNightlyRate}/night × ${totalNights} nights`);
 
     // STEP 4: Search hotels using Booking.com API
+    console.log(`🏨 Step 3: Searching hotels for ${selectedDepartureDate} to ${selectedReturnDate}...`);
     let suggestedHotel;
     let hotelSearchResults = null;
 
     try {
       hotelSearchResults = await bookingService.searchHotels({
         destinationQuery: destination,
-        arrivalDate: departureDate,
-        departureDate: returnDateStr,
+        arrivalDate: selectedDepartureDate,
+        departureDate: selectedReturnDate,
         adults: 1,
         rooms: 1,
         currency: 'EUR'
@@ -308,9 +392,11 @@ export async function optimizeDestination({
         id: originDest.id,
       },
       dates: {
-        departure: departureDate,
-        return: returnDateStr,
+        departure: selectedDepartureDate,
+        return: selectedReturnDate,
         duration: duration,
+        userRequestedDate: departureDate, // Original user request (if any)
+        datesChecked: dateCandidates.length, // How many dates we checked
       },
       flight: {
         outbound: {
