@@ -23,14 +23,14 @@ export async function discoverDestinations({
   console.log(`🔍 NEW WORKFLOW: Discovering destinations from ${origin} with budget €${budget}`);
 
   try {
-    // STEP 1: Claude AI generates personalized shortlist (6 destinations)
+    // STEP 1: Claude AI generates personalized shortlist (4 destinations - faster)
     console.log('🤖 Step 1: Generating personalized shortlist with Claude AI...');
 
     const shortlist = await generateDestinationShortlist(userProfile, {
       budget,
       duration,
       origin,
-      count: 6,
+      count: 4, // Reduced from 6 to 4 for faster response
       userId // Pass userId for diversity (avoids recently recommended destinations)
     });
 

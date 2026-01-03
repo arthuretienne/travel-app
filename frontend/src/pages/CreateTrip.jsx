@@ -356,34 +356,108 @@ function CreateTrip() {
           },
         };
 
-        // Progress through loading stages
+        // Use streaming endpoint for progressive loading
         setLoadingStage('searching');
 
-        // Simulate stage progression while waiting for API
-        const stageTimer1 = setTimeout(() => setLoadingStage('flights'), 3000);
-        const stageTimer2 = setTimeout(() => setLoadingStage('hotels'), 6000);
-        const stageTimer3 = setTimeout(() => setLoadingStage('optimizing'), 9000);
+        // Try streaming first, fallback to regular endpoint
+        const useStreaming = !formData.destination; // Only stream for discovery mode
 
-        const response = await fetch(`${API_URL}/api/travel/recommendations`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
+        if (useStreaming) {
+          // Streaming mode - results appear progressively
+          const streamingResults = [];
 
-        // Clear timers when response arrives
-        clearTimeout(stageTimer1);
-        clearTimeout(stageTimer2);
-        clearTimeout(stageTimer3);
+          const response = await fetch(`${API_URL}/api/travel/recommendations/stream`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+          });
 
-        const data = await response.json();
+          if (!response.ok) {
+            throw new Error('Streaming request failed');
+          }
 
-        if (data.success && data.recommendations) {
-          navigate('/results', { state: { recommendations: data.recommendations } });
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop() || '';
+
+            for (const chunk of lines) {
+              if (!chunk.trim()) continue;
+
+              const eventMatch = chunk.match(/event: (\w+)/);
+              const dataMatch = chunk.match(/data: (.+)/);
+
+              if (eventMatch && dataMatch) {
+                const eventType = eventMatch[1];
+                try {
+                  const eventData = JSON.parse(dataMatch[1]);
+
+                  if (eventType === 'status') {
+                    // Update loading stage based on backend status
+                    if (eventData.stage === 'discovering') setLoadingStage('searching');
+                    if (eventData.stage === 'discovered') setLoadingStage('flights');
+                  } else if (eventType === 'recommendation') {
+                    // A recommendation is ready!
+                    streamingResults.push(eventData);
+                    setLoadingStage('optimizing');
+                  } else if (eventType === 'complete') {
+                    // All done - navigate to results
+                    if (streamingResults.length > 0) {
+                      navigate('/results', { state: { recommendations: streamingResults } });
+                      return;
+                    }
+                  } else if (eventType === 'error') {
+                    throw new Error(eventData.message || 'Streaming error');
+                  }
+                } catch (parseError) {
+                  console.warn('SSE parse error:', parseError);
+                }
+              }
+            }
+          }
+
+          // If we got results, navigate
+          if (streamingResults.length > 0) {
+            navigate('/results', { state: { recommendations: streamingResults } });
+          } else {
+            throw new Error('No recommendations received');
+          }
         } else {
-          throw new Error(data.error || 'Failed to get recommendations');
+          // Regular mode for specific destination
+          const stageTimer1 = setTimeout(() => setLoadingStage('flights'), 3000);
+          const stageTimer2 = setTimeout(() => setLoadingStage('hotels'), 6000);
+          const stageTimer3 = setTimeout(() => setLoadingStage('optimizing'), 9000);
+
+          const response = await fetch(`${API_URL}/api/travel/recommendations`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+          });
+
+          clearTimeout(stageTimer1);
+          clearTimeout(stageTimer2);
+          clearTimeout(stageTimer3);
+
+          const data = await response.json();
+
+          if (data.success && data.recommendations) {
+            navigate('/results', { state: { recommendations: data.recommendations } });
+          } else {
+            throw new Error(data.error || 'Failed to get recommendations');
+          }
         }
       }
     } catch (error) {

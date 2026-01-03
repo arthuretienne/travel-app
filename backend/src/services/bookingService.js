@@ -268,7 +268,7 @@ async function searchRoundTripDirect({
       'x-rapidapi-key': BOOKING_API_KEY,
       'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
     },
-    timeout: 60000 // Increase to 60s for round-trip
+    timeout: 30000 // 30s timeout - faster fallback to one-way
   });
 
   if (!response.data?.status || !response.data?.data?.flightOffers?.length) {
