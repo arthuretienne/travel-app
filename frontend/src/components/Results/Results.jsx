@@ -269,17 +269,18 @@ function Results({ recommendations, onReset }) {
               )}
 
               {/* Price Overview */}
+              {trip.pricing && (
               <div className="price-overview">
                 <div className="price-main">
                   <div className="price-label">Total Trip Cost</div>
-                  <div className="price-value">€{formatNumber(trip.pricing.total)}</div>
-                  {trip.pricing.remaining >= 0 ? (
+                  <div className="price-value">€{formatNumber(trip.pricing?.total || 0)}</div>
+                  {(trip.pricing?.remaining ?? 0) >= 0 ? (
                     <div className="price-remaining positive">
-                      €{formatNumber(trip.pricing.remaining)} under budget ✓
+                      €{formatNumber(trip.pricing?.remaining || 0)} under budget ✓
                     </div>
                   ) : (
                     <div className="price-remaining negative">
-                      €{formatNumber(Math.abs(trip.pricing.remaining))} over budget
+                      €{formatNumber(Math.abs(trip.pricing?.remaining || 0))} over budget
                     </div>
                   )}
                 </div>
@@ -288,20 +289,21 @@ function Results({ recommendations, onReset }) {
                   <div className="price-item">
                     <span className="price-icon">✈️</span>
                     <span className="price-label">Flight</span>
-                    <span className="price-amount">€{formatNumber(trip.pricing.flight)}</span>
+                    <span className="price-amount">€{formatNumber(trip.pricing?.flight || 0)}</span>
                   </div>
                   <div className="price-item">
                     <span className="price-icon">🏨</span>
-                    <span className="price-label">Hotel ({trip.slot.duration - 1}n)</span>
-                    <span className="price-amount">€{formatNumber(trip.pricing.hotel)}</span>
+                    <span className="price-label">Hotel ({(trip.slot?.duration || 1) - 1}n)</span>
+                    <span className="price-amount">€{formatNumber(trip.pricing?.hotel || 0)}</span>
                   </div>
                   <div className="price-item">
                     <span className="price-icon">🎭</span>
                     <span className="price-label">Activities</span>
-                    <span className="price-amount">€{formatNumber(trip.pricing.activities)}</span>
+                    <span className="price-amount">€{formatNumber(trip.pricing?.activities || 0)}</span>
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Flight Info */}
               {trip.flightDetails && (
