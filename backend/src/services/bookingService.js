@@ -531,16 +531,19 @@ export async function searchHotels({
       throw new Error(`Hotel destination not found: ${destinationQuery}`);
     }
 
-    const dest = destResponse.data.data[0];
+    // Prefer CITY over COUNTRY for more relevant results
+    const cityDest = destResponse.data.data.find(d => d.dest_type === 'CITY');
+    const dest = cityDest || destResponse.data.data[0];
     const dest_id = dest.dest_id;
+    const search_type = dest.dest_type?.toUpperCase() || 'CITY';
 
-    console.log(`📍 Found hotel destination: ${dest.name} (${dest_id})`);
+    console.log(`📍 Found hotel destination: ${dest.name} (${dest_id}, type: ${search_type})`);
 
     // Step 2: Search hotels
     const hotelsResponse = await axios.get(`${BASE_URL}/api/v1/hotels/searchHotels`, {
       params: {
         dest_id,
-        search_type: 'CITY',
+        search_type,
         arrival_date: arrivalDate,
         departure_date: departureDate,
         adults,
