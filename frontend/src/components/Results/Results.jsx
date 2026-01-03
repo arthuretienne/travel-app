@@ -326,16 +326,45 @@ function Results({ recommendations, onReset }) {
               {/* Hotel Info */}
               {trip.hotelOptions && trip.hotelOptions.hotels && trip.hotelOptions.hotels[0] && (
               <div className="hotel-info-compact">
-                <div className="hotel-header">
-                  <span className="hotel-icon">🏨</span>
-                  <span className="hotel-name">{trip.hotelOptions.hotels[0].name}</span>
-                  {trip.hotelOptions.hotels[0].stars > 0 && (
-                    <span className="hotel-stars">{'⭐'.repeat(Math.min(trip.hotelOptions.hotels[0].stars, 5))}</span>
+                {/* Hotel Photo */}
+                {trip.hotelOptions.hotels[0].mainPhoto && (
+                  <div className="hotel-photo">
+                    <img
+                      src={trip.hotelOptions.hotels[0].mainPhoto}
+                      alt={trip.hotelOptions.hotels[0].name}
+                      onError={(e) => e.target.style.display = 'none'}
+                    />
+                  </div>
+                )}
+                <div className="hotel-content">
+                  <div className="hotel-header">
+                    <span className="hotel-icon">🏨</span>
+                    <span className="hotel-name">{trip.hotelOptions.hotels[0].name}</span>
+                    {trip.hotelOptions.hotels[0].stars > 0 && (
+                      <span className="hotel-stars">{'⭐'.repeat(Math.min(trip.hotelOptions.hotels[0].stars, 5))}</span>
+                    )}
+                  </div>
+                  {/* Rating */}
+                  {trip.hotelOptions.hotels[0].rating?.value > 0 && (
+                    <div className="hotel-rating">
+                      <span className="rating-badge">{trip.hotelOptions.hotels[0].rating.value.toFixed(1)}</span>
+                      <span className="rating-word">{trip.hotelOptions.hotels[0].rating.word}</span>
+                      {trip.hotelOptions.hotels[0].rating.count > 0 && (
+                        <span className="rating-count">({trip.hotelOptions.hotels[0].rating.count} reviews)</span>
+                      )}
+                    </div>
                   )}
-                </div>
-                <div className="hotel-details">
-                  €{formatNumber(trip.hotelOptions.hotels[0].price)}/night • {trip.hotelOptions.nights} nights
-                  {trip.hotelOptions.hotels[0].location && ` • ${trip.hotelOptions.hotels[0].location}`}
+                  <div className="hotel-details">
+                    <span className="hotel-price">€{formatNumber(trip.hotelOptions.hotels[0].price)}/night</span>
+                    <span className="hotel-separator">•</span>
+                    <span>{trip.hotelOptions.nights} nights</span>
+                    {trip.hotelOptions.hotels[0].checkInTime && (
+                      <>
+                        <span className="hotel-separator">•</span>
+                        <span className="hotel-checkin">Check-in {trip.hotelOptions.hotels[0].checkInTime}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               )}
