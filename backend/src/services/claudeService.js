@@ -685,22 +685,22 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
     console.log(`🧪 TESTING MODE: Cache disabled, generating fresh destinations`);
   }
 
-  // Fetch user's past recommendations for diversity (last 30 days)
+  // Fetch user's past recommendations for diversity (last 180 days = 6 months)
   let pastDestinations = [...excludeDestinations];
   if (userId) {
     try {
       const recentRecommendations = await prisma.recommendation.findMany({
         where: {
           search: { userId },
-          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+          createdAt: { gte: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000) }
         },
         select: { city: true },
         distinct: ['city'],
-        take: 20
+        take: 50 // Increased to track more history
       });
       const dbCities = recentRecommendations.map(r => r.city);
       pastDestinations = [...new Set([...pastDestinations, ...dbCities])];
-      console.log(`📊 Found ${dbCities.length} past destinations to avoid for diversity`);
+      console.log(`📊 Found ${dbCities.length} past destinations to avoid (6-month history)`);
     } catch (error) {
       console.warn('⚠️  Could not fetch past recommendations:', error.message);
     }
@@ -720,41 +720,79 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
   const budgetLevel = budget < 500 ? 'budget' : budget < 1000 ? 'mid-range' : 'comfortable';
   const onboarding = userProfile.onboardingPreferences || {};
 
-  const prompt = `You are a creative travel expert. Generate ${count} UNIQUE destinations for this specific traveler.
+  // Build personality-based destination guidance
+  const crowdTolerance = onboarding.crowdTolerance || 'medium';
+  const idealRhythm = onboarding.idealRhythm || 'balanced';
+  const ecoSensitivity = onboarding.ecoSensitivity || 'medium';
 
-🎲 SEED: ${randomSeed} - Use this to randomize your choices!
+  // Personality-based hints that dynamically guide Claude
+  const personalityGuidance = [];
+  if (crowdTolerance === 'low') {
+    personalityGuidance.push('Avoid overcrowded tourist hotspots - prefer lesser-known alternatives');
+  }
+  if (idealRhythm === 'slow') {
+    personalityGuidance.push('Choose relaxed, laid-back destinations over hectic cities');
+  } else if (idealRhythm === 'intense') {
+    personalityGuidance.push('Choose vibrant, activity-rich cities with lots to do');
+  }
+  if (ecoSensitivity === 'high') {
+    personalityGuidance.push('Prioritize eco-friendly destinations with sustainable tourism');
+  }
+  if (onboarding.culturalAdaptability === 'high') {
+    personalityGuidance.push('Can handle culturally challenging destinations - include exotic options');
+  } else if (onboarding.culturalAdaptability === 'low') {
+    personalityGuidance.push('Prefer culturally familiar destinations (Western Europe, etc.)');
+  }
 
-👤 THIS TRAVELER:
-- Style: ${style} (${style === 'routard' ? 'backpacker, authentic local experiences' : style === 'aventurier' ? 'adventure seeker, off-beaten-path' : style === 'confort' ? 'comfort traveler, quality hotels' : 'balanced explorer'})
-- Activities: ${activities.join(', ') || 'open to everything'}
-- Budget: €${budget} (${budgetLevel})
-- Why they travel: ${onboarding.whyTravel || 'discover new places'}
+  const personalityHints = personalityGuidance.length > 0
+    ? `\n🧠 PERSONALITY-BASED GUIDANCE:\n${personalityGuidance.map(h => `- ${h}`).join('\n')}`
+    : '';
+
+  // Diversity scoring hints based on past recommendations count
+  const diversityHint = pastDestinations.length > 10
+    ? 'This user has searched many times - prioritize SURPRISING, unexpected destinations they haven\'t seen!'
+    : pastDestinations.length > 5
+    ? 'Be creative and avoid obvious choices like Paris, Barcelona, Rome.'
+    : 'Mix well-known and hidden gems.';
+
+  const prompt = `You are a creative travel expert who NEVER repeats the same recommendations.
+
+🎲 RANDOMIZATION SEED: ${randomSeed}
+Use this seed to make DIFFERENT choices each time. Don't always pick the most famous cities!
+
+👤 TRAVELER PROFILE:
+- Travel style: ${style} (${style === 'routard' ? 'backpacker seeking authentic local experiences, hostels, street food' : style === 'aventurier' ? 'adventure seeker, loves off-beaten-path, unique experiences' : style === 'confort' ? 'comfort traveler, quality hotels, refined experiences' : 'balanced explorer open to variety'})
+- Favorite activities: ${activities.join(', ') || 'open to everything'}
+- Budget: €${budget} total (${budgetLevel})
+- Travel motivation: ${onboarding.whyTravel || 'discover new places'}
 - Main goal: ${onboarding.mainGoal || 'exploration'}
-- Personality: ${onboarding.personality || 'curious'}
-${onboarding.topActivities?.length ? `- Top activities: ${onboarding.topActivities.join(', ')}` : ''}
+- Personality type: ${onboarding.personality || 'curious'}
+${onboarding.topActivities?.length ? `- Must-do activities: ${onboarding.topActivities.join(', ')}` : ''}
 
-📍 From: ${origin} | Duration: ${duration} days
-${exclusionText}
-🎯 YOUR MISSION:
-Think like a REAL travel agent who knows THIS person. What would YOU recommend to THEM specifically?
+📍 Departure: ${origin} | Trip length: ${duration} days | Season: ${currentMonth}
+${exclusionText}${personalityHints}
 
-- ${style === 'routard' ? 'Focus on authentic, budget-friendly destinations with local vibes' : ''}
-- ${style === 'aventurier' ? 'Surprise them with adventurous, lesser-known destinations' : ''}
-- ${activities.includes('plage') ? 'Include coastal/beach destinations' : ''}
-- ${activities.includes('culture') ? 'Include culturally rich cities' : ''}
-- ${activities.includes('nature') ? 'Include nature/outdoor destinations' : ''}
-- ${activities.includes('gastronomie') ? 'Include food capitals' : ''}
+🎯 DIVERSITY RULES (CRITICAL):
+1. ${diversityHint}
+2. NEVER suggest "obvious" destinations (Paris, Barcelona, Rome, London, Amsterdam) unless they PERFECTLY match the profile
+3. Think REGIONALLY: Balkans, Baltics, Caucasus, North Africa, Middle East, Central Europe, Scandinavia...
+4. For each slot, ask yourself: "Would a CREATIVE travel agent suggest this, or is it too predictable?"
+5. Match destinations to THIS traveler's personality:
+${style === 'routard' ? '   → Routard: Belgrade, Tbilisi, Sarajevo, Fes, Lviv, Riga, Sofia, Tirana...' : ''}
+${style === 'aventurier' ? '   → Aventurier: Reykjavik, Tromsø, Cappadocia, Petra, Atlas Mountains, Scottish Highlands...' : ''}
+${style === 'confort' ? '   → Confort: Vienna, Prague, Dubrovnik, Amalfi, San Sebastian, Nice, Malta...' : ''}
+${activities.includes('plage') ? '   → Beach lover: Montenegro coast, Albanian Riviera, Algarve, Cyprus, Crete, Sardinia...' : ''}
+${activities.includes('nature') ? '   → Nature seeker: Slovenia, Norway fjords, Scottish Highlands, Swiss Alps, Azores...' : ''}
+${activities.includes('culture') ? '   → Culture enthusiast: Istanbul, Krakow, Budapest, Seville, Florence, St Petersburg...' : ''}
+${activities.includes('gastronomie') ? '   → Foodie: Lyon, Bologna, San Sebastian, Istanbul, Tbilisi, Oaxaca...' : ''}
 
-⚠️ CONSTRAINTS:
-- Each city MUST have an international airport (flights from ${origin})
+⚠️ HARD CONSTRAINTS:
+- Each city MUST have an international airport reachable from ${origin}
 - All ${count} cities in DIFFERENT countries
-- Mix: some popular + some hidden gems
-- Season: ${currentMonth} - consider weather!
+- Consider ${currentMonth} weather conditions
 
-🌍 THINK GLOBALLY: Europe, Morocco, Turkey, Georgia, Jordan... anywhere reachable within budget!
-
-OUTPUT: Return ONLY a JSON array of city names, nothing else.
-["City1", "City2", "City3", "City4", "City5", "City6"]`;
+OUTPUT: Return ONLY a JSON array of ${count} city names.
+["City1", "City2", ...]`;
 
   try {
     logger.logClaudeAPI({
