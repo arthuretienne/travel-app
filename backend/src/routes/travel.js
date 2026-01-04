@@ -668,14 +668,26 @@ router.post('/recommendations',
                 ? `${Math.floor(trip.flight.outbound.duration / 60)}h${trip.flight.outbound.duration % 60}m`
                 : trip.flight.outbound.duration || 'N/A',
               stops: trip.flight.outbound.stops || 0,
-              segments: [{
-                carrier: trip.flight.outbound.airline || 'Airline',
-                carrierLogo: trip.flight.outbound.airlineLogo,
-                departureTime: trip.flight.outbound.departureTime,
-                arrivalTime: trip.flight.outbound.arrivalTime,
-                origin: trip.flight.outbound.departureAirport || originCity,
-                destination: trip.flight.outbound.arrivalAirport || trip.destination.iata,
-              }]
+              // Use actual segments from API for multi-leg flights
+              segments: trip.flight.outbound.segments?.length > 0
+                ? trip.flight.outbound.segments.map(seg => ({
+                    carrier: seg.airline || 'Airline',
+                    carrierLogo: seg.airlineLogo,
+                    departureTime: seg.departureTime,
+                    arrivalTime: seg.arrivalTime,
+                    origin: seg.departureAirport,
+                    destination: seg.arrivalAirport,
+                    duration: seg.duration,
+                    flightNumber: seg.flightNumber,
+                  }))
+                : [{
+                    carrier: trip.flight.outbound.airline || 'Airline',
+                    carrierLogo: trip.flight.outbound.airlineLogo,
+                    departureTime: trip.flight.outbound.departureTime,
+                    arrivalTime: trip.flight.outbound.arrivalTime,
+                    origin: trip.flight.outbound.departureAirport || originCity,
+                    destination: trip.flight.outbound.arrivalAirport || trip.destination.iata,
+                  }]
             },
             return: trip.flight.return ? {
               departureTime: trip.flight.return.departureTime,
@@ -686,18 +698,38 @@ router.post('/recommendations',
                 ? `${Math.floor(trip.flight.return.duration / 60)}h${trip.flight.return.duration % 60}m`
                 : trip.flight.return.duration || 'N/A',
               stops: trip.flight.return.stops || 0,
-              segments: [{
-                carrier: trip.flight.return.airline || 'Airline',
-                carrierLogo: trip.flight.return.airlineLogo,
-                departureTime: trip.flight.return.departureTime,
-                arrivalTime: trip.flight.return.arrivalTime,
-                origin: trip.flight.return.departureAirport || trip.destination.iata,
-                destination: trip.flight.return.arrivalAirport || originCity,
-              }]
+              // Use actual segments from API for multi-leg flights
+              segments: trip.flight.return.segments?.length > 0
+                ? trip.flight.return.segments.map(seg => ({
+                    carrier: seg.airline || 'Airline',
+                    carrierLogo: seg.airlineLogo,
+                    departureTime: seg.departureTime,
+                    arrivalTime: seg.arrivalTime,
+                    origin: seg.departureAirport,
+                    destination: seg.arrivalAirport,
+                    duration: seg.duration,
+                    flightNumber: seg.flightNumber,
+                  }))
+                : [{
+                    carrier: trip.flight.return.airline || 'Airline',
+                    carrierLogo: trip.flight.return.airlineLogo,
+                    departureTime: trip.flight.return.departureTime,
+                    arrivalTime: trip.flight.return.arrivalTime,
+                    origin: trip.flight.return.departureAirport || trip.destination.iata,
+                    destination: trip.flight.return.arrivalAirport || originCity,
+                  }]
             } : null,
             totalPrice: trip.flight.totalCost || trip.budget.flight,
             pricePerPerson: trip.flight.totalCost || trip.budget.flight,
-            airline: trip.flight.outbound.airline || 'Airline',
+            // Collect all unique airlines from outbound segments
+            airlines: [...new Set([
+              ...(trip.flight.outbound.segments?.map(s => s.airline) || [trip.flight.outbound.airline]),
+            ].filter(Boolean))],
+            // Collect all unique airlines from return segments
+            returnAirlines: trip.flight.return ? [...new Set([
+              ...(trip.flight.return.segments?.map(s => s.airline) || [trip.flight.return.airline]),
+            ].filter(Boolean))] : [],
+            airline: trip.flight.outbound.airline || 'Airline', // Keep for backwards compat
             cabinClass: 'ECONOMY',
             isEstimate: !trip.flight.outbound.departureTime
           } : null,

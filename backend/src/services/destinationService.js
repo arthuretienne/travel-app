@@ -378,6 +378,9 @@ export async function optimizeDestination({
     const estimatedDailyActivities = Math.round(dailyCostIndex * 1.2); // Daily activity budget
     const estimatedActivitiesBudget = estimatedDailyActivities * duration;
 
+    // Log destination data for debugging
+    console.log(`📍 Destination data: city=${destDest.cityName || destDest.name}, country=${destDest.countryName || destDest.country || 'Unknown'}`);
+
     const result = {
       destination: {
         name: destDest.cityName || destDest.name,  // Use cityName for clean display

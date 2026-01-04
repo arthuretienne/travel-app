@@ -308,17 +308,44 @@ function Results({ recommendations, onReset }) {
               {/* Flight Info */}
               {trip.flightDetails && (
               <div className="flight-info-compact">
-                <div className="flight-route">
-                  <span className="airport">{trip.flightDetails.outbound?.segments?.[0]?.origin || 'PAR'}</span>
-                  <div className="flight-line">
-                    <span className="flight-icon">✈️</span>
-                    <span className="flight-duration">{trip.flightDetails.outbound?.duration || '2h'}</span>
+                <div className="flight-section">
+                  <div className="flight-label">OUTBOUND</div>
+                  <div className="flight-route">
+                    <span className="flight-time">{trip.flightDetails.outbound?.departureTime ? new Date(trip.flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                    <span className="airport">{trip.flightDetails.outbound?.departureAirport || 'PAR'}</span>
+                    <div className="flight-line">
+                      <span className="flight-duration">{trip.flightDetails.outbound?.duration || '2h'} • {trip.flightDetails.outbound?.stops || 0} stop{(trip.flightDetails.outbound?.stops || 0) !== 1 ? 's' : ''}</span>
+                    </div>
+                    <span className="flight-time">{trip.flightDetails.outbound?.arrivalTime ? new Date(trip.flightDetails.outbound.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                    <span className="airport">{trip.flightDetails.outbound?.arrivalAirport || trip.destination.iataCode}</span>
                   </div>
-                  <span className="airport">{trip.flightDetails.outbound?.segments?.[0]?.destination || trip.destination.iataCode}</span>
+                  <div className="airline-info">
+                    {trip.flightDetails.airlines?.length > 0
+                      ? trip.flightDetails.airlines.join(' + ')
+                      : trip.flightDetails.airline || 'Airline'}
+                  </div>
                 </div>
-                <div className="airline-info">
-                  {trip.flightDetails.airline || 'Airline'} • €{formatNumber(trip.flightDetails.totalPrice)} round-trip
-                  {trip.flightDetails.outbound?.departureTime && ` • Departs ${new Date(trip.flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
+                {trip.flightDetails.return && (
+                  <div className="flight-section">
+                    <div className="flight-label">RETURN</div>
+                    <div className="flight-route">
+                      <span className="flight-time">{trip.flightDetails.return?.departureTime ? new Date(trip.flightDetails.return.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                      <span className="airport">{trip.flightDetails.return?.departureAirport || trip.destination.iataCode}</span>
+                      <div className="flight-line">
+                        <span className="flight-duration">{trip.flightDetails.return?.duration || '2h'} • {trip.flightDetails.return?.stops || 0} stop{(trip.flightDetails.return?.stops || 0) !== 1 ? 's' : ''}</span>
+                      </div>
+                      <span className="flight-time">{trip.flightDetails.return?.arrivalTime ? new Date(trip.flightDetails.return.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                      <span className="airport">{trip.flightDetails.return?.arrivalAirport || 'PAR'}</span>
+                    </div>
+                    <div className="airline-info">
+                      {trip.flightDetails.returnAirlines?.length > 0
+                        ? trip.flightDetails.returnAirlines.join(' + ')
+                        : trip.flightDetails.airline || 'Airline'}
+                    </div>
+                  </div>
+                )}
+                <div className="flight-price">
+                  €{formatNumber(trip.flightDetails.totalPrice)} round-trip
                 </div>
               </div>
               )}

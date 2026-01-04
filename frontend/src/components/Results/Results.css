@@ -407,36 +407,103 @@
   position: relative;
 }
 
+.flight-info-compact {
+  background: #fff7ed;
+  border: 2px solid #fed7aa;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.flight-section {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #fed7aa;
+}
+
+.flight-section:last-of-type {
+  border-bottom: none;
+}
+
+.flight-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ea580c;
+  background: #ffedd5;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 0.5rem;
+}
+
+.flight-route {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.flight-time {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.airport {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.flight-line {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-width: 100px;
+  margin: 0 0.5rem;
+}
+
 .flight-line::before {
   content: '';
   position: absolute;
-  left: 30px;
+  left: 0;
   right: 0;
   top: 50%;
   height: 2px;
-  background: #fb923c;
+  background: linear-gradient(to right, #fb923c, #ea580c);
 }
 
-.flight-icon {
-  font-size: 1.5rem;
-  z-index: 1;
-  background: #fff7ed;
+.flight-line::after {
+  content: '✈️';
+  position: absolute;
+  right: 0;
+  font-size: 1rem;
 }
 
 .flight-duration {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: #666;
-  position: absolute;
-  right: 0;
-  top: -20px;
   background: #fff7ed;
-  padding: 0 0.5rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  z-index: 1;
 }
 
 .airline-info {
-  text-align: center;
+  font-size: 0.8rem;
   color: #666;
-  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.flight-price {
+  text-align: center;
+  font-weight: 600;
+  color: #ea580c;
+  font-size: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #fed7aa;
+  margin-top: 0.5rem;
 }
 
 /* Hotel Info Compact */
