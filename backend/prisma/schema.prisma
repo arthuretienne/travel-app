@@ -165,6 +165,41 @@ model Recommendation {
 }
 
 // ========================================
+// ALGORITHM ANALYSIS (track destination diversity)
+// ========================================
+
+model AlgorithmResult {
+  id        String   @id @default(cuid())
+
+  // User context
+  userId    String?
+
+  // What Claude suggested
+  claudeDestinations  String[] // Raw list from Claude AI
+
+  // What was actually shown to user (after flight/hotel filtering)
+  finalDestinations   String[]
+
+  // User profile summary (for analysis)
+  userProfile         Json
+
+  // Performance metrics
+  claudeLatencyMs     Int?
+  totalLatencyMs      Int?
+
+  // Scenario
+  scenario            String // "WITH_DESTINATION" or "WITHOUT_DESTINATION"
+  origin              String
+  budget              Int
+  duration            Int
+
+  createdAt           DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ========================================
 // SAVED TRIPS
 // ========================================
 

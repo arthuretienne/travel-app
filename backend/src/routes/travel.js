@@ -707,12 +707,18 @@ router.post('/recommendations',
             checkOut: trip.dates.return,
             nights: trip.hotel.totalNights || (trip.dates.duration ? trip.dates.duration - 1 : 3),
             hotels: [{
+              id: trip.hotel.id,
               name: trip.hotel.name,
               stars: trip.hotel.stars || 0,
               price: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, (trip.dates.duration || 4) - 1)),
               pricePerNight: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, (trip.dates.duration || 4) - 1)),
+              totalPrice: trip.hotel.totalPrice,
               location: trip.hotel.location || trip.destination.name,
               amenities: trip.hotel.amenities || [],
+              rating: trip.hotel.rating, // { value, count, word }
+              mainPhoto: trip.hotel.mainPhoto,
+              checkInTime: trip.hotel.checkInTime,
+              checkOutTime: trip.hotel.checkOutTime,
             }],
             averagePrice: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, (trip.dates.duration || 4) - 1))
           } : null,
@@ -724,6 +730,37 @@ router.post('/recommendations',
 
       // Sort by score
       results.sort((a, b) => b.score.total - a.score.total);
+
+      // Log hotel data for debugging
+      results.forEach((r, idx) => {
+        const hotel = r.hotelOptions?.hotels?.[0];
+        console.log(`📊 Hotel ${idx + 1} (${r.destination.city}): ${hotel?.name || 'N/A'} | rating: ${hotel?.rating?.value || 'N/A'} | photo: ${hotel?.mainPhoto ? 'YES' : 'NO'}`);
+      });
+
+      // Track algorithm results for diversity analysis
+      try {
+        await prisma.algorithmResult.create({
+          data: {
+            userId: req.user?.id,
+            claudeDestinations: topDestinations.map(d => d.name),
+            finalDestinations: results.map(r => r.destination.city),
+            userProfile: {
+              activities: userProfile.basic?.activities,
+              style: userProfile.basic?.style,
+              personality: userProfile.onboardingPreferences?.personality,
+              topActivities: userProfile.onboardingPreferences?.topActivities,
+              globalStyle: userProfile.onboardingPreferences?.globalStyle,
+            },
+            scenario: 'WITHOUT_DESTINATION',
+            origin: originCity,
+            budget: budget,
+            duration: duration,
+          }
+        });
+        console.log('📈 Algorithm result tracked for diversity analysis');
+      } catch (trackError) {
+        console.warn('⚠️  Failed to track algorithm result:', trackError.message);
+      }
 
       console.log(`✅ Returning ${results.length} diverse trip recommendations`);
 
@@ -762,6 +799,61 @@ router.get('/test', async (req, res) => {
       streamingRecommendations: 'POST /api/travel/recommendations/stream'
     }
   });
+});
+
+// Endpoint to analyze destination diversity
+router.get('/algorithm-stats', async (req, res) => {
+  try {
+    const results = await prisma.algorithmResult.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100
+    });
+
+    // Count destination frequency
+    const claudeFrequency = {};
+    const finalFrequency = {};
+
+    results.forEach(r => {
+      r.claudeDestinations.forEach(d => {
+        claudeFrequency[d] = (claudeFrequency[d] || 0) + 1;
+      });
+      r.finalDestinations.forEach(d => {
+        finalFrequency[d] = (finalFrequency[d] || 0) + 1;
+      });
+    });
+
+    // Sort by frequency
+    const sortedClaude = Object.entries(claudeFrequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20);
+    const sortedFinal = Object.entries(finalFrequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20);
+
+    res.json({
+      success: true,
+      totalSearches: results.length,
+      claudeTopDestinations: sortedClaude.map(([city, count]) => ({
+        city,
+        count,
+        percentage: Math.round((count / results.length) * 100)
+      })),
+      finalTopDestinations: sortedFinal.map(([city, count]) => ({
+        city,
+        count,
+        percentage: Math.round((count / results.length) * 100)
+      })),
+      recentSearches: results.slice(0, 10).map(r => ({
+        date: r.createdAt,
+        claude: r.claudeDestinations,
+        final: r.finalDestinations,
+        profile: r.userProfile
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching algorithm stats:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 /**
