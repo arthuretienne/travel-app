@@ -748,51 +748,55 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
     ? `\n🧠 PERSONALITY-BASED GUIDANCE:\n${personalityGuidance.map(h => `- ${h}`).join('\n')}`
     : '';
 
-  // Diversity scoring hints based on past recommendations count
-  const diversityHint = pastDestinations.length > 10
-    ? 'This user has searched many times - prioritize SURPRISING, unexpected destinations they haven\'t seen!'
-    : pastDestinations.length > 5
-    ? 'Be creative and avoid obvious choices like Paris, Barcelona, Rome.'
-    : 'Mix well-known and hidden gems.';
+  // Generate random region focus for this search (forces variety)
+  const regions = [
+    { name: 'Western Europe', countries: 'Spain, Portugal, France, Italy, Belgium, Netherlands' },
+    { name: 'Central Europe', countries: 'Germany, Austria, Switzerland, Czech Republic, Poland, Hungary' },
+    { name: 'Eastern Europe', countries: 'Romania, Bulgaria, Serbia, Croatia, Slovenia, Slovakia' },
+    { name: 'Balkans', countries: 'Montenegro, Albania, North Macedonia, Bosnia, Kosovo' },
+    { name: 'Baltics & Nordics', countries: 'Estonia, Latvia, Lithuania, Finland, Sweden, Norway, Denmark' },
+    { name: 'British Isles', countries: 'UK, Ireland, Scotland' },
+    { name: 'Mediterranean', countries: 'Greece, Cyprus, Malta, Southern Italy, Corsica' },
+    { name: 'Middle East & Caucasus', countries: 'Turkey, Georgia, Armenia, Jordan, Israel, UAE' },
+    { name: 'North Africa', countries: 'Morocco, Tunisia, Egypt' },
+  ];
 
-  const prompt = `You are a creative travel expert who NEVER repeats the same recommendations.
+  // Pick 3 random regions to focus on (changes each search)
+  const shuffledRegions = regions.sort(() => Math.random() - 0.5);
+  const focusRegions = shuffledRegions.slice(0, 3);
 
-🎲 RANDOMIZATION SEED: ${randomSeed}
-Use this seed to make DIFFERENT choices each time. Don't always pick the most famous cities!
+  const prompt = `You are an UNPREDICTABLE travel expert. Your goal is to SURPRISE the user with destinations they haven't considered.
 
-👤 TRAVELER PROFILE:
-- Travel style: ${style} (${style === 'routard' ? 'backpacker seeking authentic local experiences, hostels, street food' : style === 'aventurier' ? 'adventure seeker, loves off-beaten-path, unique experiences' : style === 'confort' ? 'comfort traveler, quality hotels, refined experiences' : 'balanced explorer open to variety'})
-- Favorite activities: ${activities.join(', ') || 'open to everything'}
-- Budget: €${budget} total (${budgetLevel})
-- Travel motivation: ${onboarding.whyTravel || 'discover new places'}
-- Main goal: ${onboarding.mainGoal || 'exploration'}
-- Personality type: ${onboarding.personality || 'curious'}
-${onboarding.topActivities?.length ? `- Must-do activities: ${onboarding.topActivities.join(', ')}` : ''}
+🎲 SESSION ID: ${randomSeed} - Use this to randomize your choices. Pick DIFFERENT cities than you normally would!
 
-📍 Departure: ${origin} | Trip length: ${duration} days | Season: ${currentMonth}
+👤 TRAVELER:
+- Style: ${style}
+- Activities: ${activities.join(', ') || 'open to everything'}
+- Budget: €${budget} (${budgetLevel})
+- Goal: ${onboarding.mainGoal || 'exploration'}
+${onboarding.topActivities?.length ? `- Must-do: ${onboarding.topActivities.join(', ')}` : ''}
+
+📍 From: ${origin} | Duration: ${duration} days | Month: ${currentMonth}
 ${exclusionText}${personalityHints}
 
-🎯 DIVERSITY RULES (CRITICAL):
-1. ${diversityHint}
-2. NEVER suggest "obvious" destinations (Paris, Barcelona, Rome, London, Amsterdam) unless they PERFECTLY match the profile
-3. Think REGIONALLY: Balkans, Baltics, Caucasus, North Africa, Middle East, Central Europe, Scandinavia...
-4. For each slot, ask yourself: "Would a CREATIVE travel agent suggest this, or is it too predictable?"
-5. Match destinations to THIS traveler's personality:
-${style === 'routard' ? '   → Routard: Belgrade, Tbilisi, Sarajevo, Fes, Lviv, Riga, Sofia, Tirana...' : ''}
-${style === 'aventurier' ? '   → Aventurier: Reykjavik, Tromsø, Cappadocia, Petra, Atlas Mountains, Scottish Highlands...' : ''}
-${style === 'confort' ? '   → Confort: Vienna, Prague, Dubrovnik, Amalfi, San Sebastian, Nice, Malta...' : ''}
-${activities.includes('plage') ? '   → Beach lover: Montenegro coast, Albanian Riviera, Algarve, Cyprus, Crete, Sardinia...' : ''}
-${activities.includes('nature') ? '   → Nature seeker: Slovenia, Norway fjords, Scottish Highlands, Swiss Alps, Azores...' : ''}
-${activities.includes('culture') ? '   → Culture enthusiast: Istanbul, Krakow, Budapest, Seville, Florence, St Petersburg...' : ''}
-${activities.includes('gastronomie') ? '   → Foodie: Lyon, Bologna, San Sebastian, Istanbul, Tbilisi, Oaxaca...' : ''}
+🌍 FOR THIS SEARCH, PRIORITIZE THESE REGIONS:
+1. ${focusRegions[0].name} (${focusRegions[0].countries})
+2. ${focusRegions[1].name} (${focusRegions[1].countries})
+3. ${focusRegions[2].name} (${focusRegions[2].countries})
 
-⚠️ HARD CONSTRAINTS:
-- Each city MUST have an international airport reachable from ${origin}
-- All ${count} cities in DIFFERENT countries
-- Consider ${currentMonth} weather conditions
+🚫 BANNED CITIES (too predictable or overused):
+Paris, Barcelona, Rome, London, Amsterdam, Lisbon, Prague, Budapest, Vienna, Marrakech, Tbilisi, Istanbul, Dubrovnik
 
-OUTPUT: Return ONLY a JSON array of ${count} city names.
-["City1", "City2", ...]`;
+✅ REQUIREMENTS:
+- ${count} cities from ${count} DIFFERENT countries
+- Each must have flights from ${origin}
+- Good weather in ${currentMonth}
+- Match the traveler's style and budget
+- At least 2 cities should be "unexpected" choices most travelers haven't heard of
+
+💡 THINK: What would a LOCAL travel blogger recommend? Not TripAdvisor's top 10!
+
+Return ONLY a JSON array: ["City1", "City2", ...]`;
 
   try {
     logger.logClaudeAPI({
