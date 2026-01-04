@@ -685,30 +685,47 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
     console.log(`🧪 TESTING MODE: Cache disabled, generating fresh destinations`);
   }
 
-  // Fetch user's past recommendations for diversity (last 180 days = 6 months)
+  // Fetch user's LAST 10 searches to exclude those destinations
   let pastDestinations = [...excludeDestinations];
   if (userId) {
     try {
+      // Get from AlgorithmResult (new table - most reliable)
+      const algorithmResults = await prisma.algorithmResult.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { finalDestinations: true, claudeDestinations: true }
+      });
+
+      // Collect all destinations from last 10 searches
+      algorithmResults.forEach(r => {
+        pastDestinations.push(...(r.finalDestinations || []));
+        pastDestinations.push(...(r.claudeDestinations || []));
+      });
+
+      // Also check Recommendation table as backup
       const recentRecommendations = await prisma.recommendation.findMany({
         where: {
           search: { userId },
-          createdAt: { gte: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000) }
+          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } // Last 30 days
         },
         select: { city: true },
         distinct: ['city'],
-        take: 50 // Increased to track more history
+        take: 30
       });
-      const dbCities = recentRecommendations.map(r => r.city);
-      pastDestinations = [...new Set([...pastDestinations, ...dbCities])];
-      console.log(`📊 Found ${dbCities.length} past destinations to avoid (6-month history)`);
+      pastDestinations.push(...recentRecommendations.map(r => r.city));
+
+      // Remove duplicates
+      pastDestinations = [...new Set(pastDestinations)];
+      console.log(`📊 Found ${pastDestinations.length} past destinations to exclude for this user`);
     } catch (error) {
       console.warn('⚠️  Could not fetch past recommendations:', error.message);
     }
   }
 
-  // Build exclusion text for prompt
+  // Build exclusion text for prompt - ONLY user's past destinations, no arbitrary bans
   const exclusionText = pastDestinations.length > 0
-    ? `\n🚫 ALREADY RECOMMENDED (DO NOT SUGGEST AGAIN):\n${pastDestinations.join(', ')}\n`
+    ? `\n🚫 THIS USER HAS ALREADY SEEN THESE DESTINATIONS - DO NOT SUGGEST:\n${pastDestinations.join(', ')}\n`
     : '';
 
   // Current month for seasonal context
@@ -779,22 +796,20 @@ ${onboarding.topActivities?.length ? `- Must-do: ${onboarding.topActivities.join
 📍 From: ${origin} | Duration: ${duration} days | Month: ${currentMonth}
 ${exclusionText}${personalityHints}
 
-🌍 FOR THIS SEARCH, PRIORITIZE THESE REGIONS:
+🌍 FOR THIS SEARCH, EXPLORE THESE REGIONS:
 1. ${focusRegions[0].name} (${focusRegions[0].countries})
 2. ${focusRegions[1].name} (${focusRegions[1].countries})
 3. ${focusRegions[2].name} (${focusRegions[2].countries})
-
-🚫 BANNED CITIES (too predictable or overused):
-Paris, Barcelona, Rome, London, Amsterdam, Lisbon, Prague, Budapest, Vienna, Marrakech, Tbilisi, Istanbul, Dubrovnik
 
 ✅ REQUIREMENTS:
 - ${count} cities from ${count} DIFFERENT countries
 - Each must have flights from ${origin}
 - Good weather in ${currentMonth}
 - Match the traveler's style and budget
-- At least 2 cities should be "unexpected" choices most travelers haven't heard of
+- Mix famous destinations with hidden gems
+- Include at least 1 "unexpected" destination most travelers don't know
 
-💡 THINK: What would a LOCAL travel blogger recommend? Not TripAdvisor's top 10!
+💡 Be creative! Think like a travel blogger who wants to surprise their audience.
 
 Return ONLY a JSON array: ["City1", "City2", ...]`;
 
