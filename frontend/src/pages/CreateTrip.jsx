@@ -383,57 +383,76 @@ function CreateTrip() {
           const decoder = new TextDecoder();
           let buffer = '';
 
+          // Helper to process SSE chunks
+          const processChunk = (chunk) => {
+            if (!chunk.trim()) return false;
+
+            const eventMatch = chunk.match(/event: (\w+)/);
+            const dataMatch = chunk.match(/data: (.+)/);
+
+            if (eventMatch && dataMatch) {
+              const eventType = eventMatch[1];
+              try {
+                const eventData = JSON.parse(dataMatch[1]);
+
+                if (eventType === 'status') {
+                  // Update loading stage based on backend status
+                  if (eventData.stage === 'discovering') setLoadingStage('searching');
+                  if (eventData.stage === 'discovered') setLoadingStage('flights');
+                } else if (eventType === 'recommendation') {
+                  // A recommendation is ready - extract data from wrapper
+                  if (eventData.data) {
+                    streamingResults.push(eventData.data);
+                    setLoadingStage('optimizing');
+                    console.log(`✅ Received recommendation ${eventData.index}/${eventData.total}`);
+                  }
+                } else if (eventType === 'complete') {
+                  // All done
+                  console.log(`✅ Streaming complete: ${streamingResults.length} results`);
+                  return true; // Signal completion
+                } else if (eventType === 'error') {
+                  throw new Error(eventData.message || 'Streaming error');
+                }
+              } catch (parseError) {
+                console.warn('SSE parse error:', parseError);
+              }
+            }
+            return false;
+          };
+
+          let isComplete = false;
+
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+
+            if (done) {
+              // Process any remaining buffer when stream ends
+              if (buffer.trim()) {
+                const finalChunks = buffer.split('\n\n');
+                for (const chunk of finalChunks) {
+                  if (processChunk(chunk)) {
+                    isComplete = true;
+                  }
+                }
+              }
+              break;
+            }
 
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n\n');
             buffer = lines.pop() || '';
 
             for (const chunk of lines) {
-              if (!chunk.trim()) continue;
-
-              const eventMatch = chunk.match(/event: (\w+)/);
-              const dataMatch = chunk.match(/data: (.+)/);
-
-              if (eventMatch && dataMatch) {
-                const eventType = eventMatch[1];
-                try {
-                  const eventData = JSON.parse(dataMatch[1]);
-
-                  if (eventType === 'status') {
-                    // Update loading stage based on backend status
-                    if (eventData.stage === 'discovering') setLoadingStage('searching');
-                    if (eventData.stage === 'discovered') setLoadingStage('flights');
-                  } else if (eventType === 'recommendation') {
-                    // A recommendation is ready - extract data from wrapper
-                    if (eventData.data) {
-                      streamingResults.push(eventData.data);
-                      setLoadingStage('optimizing');
-                      console.log(`✅ Received recommendation ${eventData.index}/${eventData.total}`);
-                    }
-                  } else if (eventType === 'complete') {
-                    // All done - navigate to results
-                    console.log(`✅ Streaming complete: ${streamingResults.length} results`);
-                    if (streamingResults.length > 0) {
-                      navigate('/results', { state: { recommendations: streamingResults } });
-                      return;
-                    }
-                  } else if (eventType === 'error') {
-                    throw new Error(eventData.message || 'Streaming error');
-                  }
-                } catch (parseError) {
-                  console.warn('SSE parse error:', parseError);
-                }
+              if (processChunk(chunk)) {
+                isComplete = true;
               }
             }
           }
 
-          // If we got results, navigate
+          // Navigate to results if we got any
           if (streamingResults.length > 0) {
             navigate('/results', { state: { recommendations: streamingResults } });
-          } else {
+          } else if (!isComplete) {
             throw new Error('No recommendations received');
           }
         } else {
