@@ -11,6 +11,7 @@ import {
   X, Loader2
 } from 'lucide-react';
 import { SearchLoadingScreen } from '../components/SkeletonLoaders';
+import DestinationAutocomplete from '../components/DestinationAutocomplete';
 
 const TRAVEL_VIBES = [
   { label: 'Adventure & Nature', value: 'adventure', icon: Mountain },
@@ -76,7 +77,10 @@ function CreateTrip() {
     endDate: '',
     travelers: 1,
     travelVibe: 'cultural',
-    destination: '', // Optional: specific destination
+    destination: '', // Optional: specific destination (display name)
+    destinationId: null, // API destination ID for accurate search
+    destinationCode: null, // Airport/city code
+    destinationCountry: null, // Country name
 
     // Optional filters
     preferredWeather: 'any',
@@ -318,6 +322,9 @@ function CreateTrip() {
         const payload = {
           basic: {
             ...(formData.destination && { destination: formData.destination }), // Add destination if provided
+            ...(formData.destinationId && { destinationId: formData.destinationId }), // API destination ID
+            ...(formData.destinationCode && { destinationCode: formData.destinationCode }), // Airport code
+            ...(formData.destinationCountry && { destinationCountry: formData.destinationCountry }), // Country
             budget: formData.budget || 1500,
             style: formData.travelVibe,
             activities: formData.mustHaves.length > 0 ? formData.mustHaves : ['cultural', 'nature'],
@@ -818,15 +825,21 @@ function CreateTrip() {
               Specific Destination (Optional)
             </label>
             <p className="text-sm text-text-secondary mb-3">
-              💡 Leave empty to let AI suggest destinations, or enter a city/country for a personalized itinerary
+              💡 Leave empty to let AI suggest destinations, or search for a city
             </p>
             {errors.destination && <p className="text-red-500 text-sm mb-2">{errors.destination}</p>}
-            <input
-              type="text"
+            <DestinationAutocomplete
               value={formData.destination}
-              onChange={(e) => handleChange('destination', e.target.value)}
-              placeholder="e.g., Barcelona, Tokyo, Thailand..."
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              onChange={(data) => {
+                setFormData(prev => ({
+                  ...prev,
+                  destination: data.destination,
+                  destinationId: data.destinationId,
+                  destinationCode: data.destinationCode,
+                  destinationCountry: data.destinationCountry,
+                }));
+              }}
+              placeholder="Search: Bali, Tokyo, Barcelona..."
             />
           </div>
         </div>

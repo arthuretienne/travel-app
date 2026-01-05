@@ -202,6 +202,7 @@ function generateDateCandidates(userDepartureDate, duration) {
  */
 export async function optimizeDestination({
   destination,
+  destinationId = null, // Pre-resolved API destination ID (from autocomplete)
   userProfile,
   budget,
   origin,
@@ -214,7 +215,16 @@ export async function optimizeDestination({
     // STEP 1: Get destination IDs
     console.log('📍 Step 1: Getting destination IDs...');
     const originDest = await bookingService.getDestinationId(origin);
-    const destDest = await bookingService.getDestinationId(destination);
+
+    // Use pre-resolved destinationId if provided (avoids Bali→Balice type errors)
+    let destDest;
+    if (destinationId) {
+      console.log(`✅ Using pre-resolved destination ID: ${destinationId}`);
+      destDest = { id: destinationId, name: destination, cityName: destination };
+    } else {
+      console.log(`🔍 Resolving destination name: ${destination}`);
+      destDest = await bookingService.getDestinationId(destination);
+    }
 
     // STEP 2: Generate date candidates and search flights in parallel
     const dateCandidates = generateDateCandidates(departureDate, duration);

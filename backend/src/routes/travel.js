@@ -83,6 +83,66 @@ function calculateScoreFromTrip(trip, userBudget) {
 const router = express.Router();
 
 // ==========================================
+// DESTINATION AUTOCOMPLETE ENDPOINT
+// ==========================================
+router.get('/destinations/search', async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.length < 2) {
+      return res.json({ success: true, destinations: [] });
+    }
+
+    console.log(`🔍 Autocomplete search: "${query}"`);
+
+    // Search flight destinations
+    const response = await fetch(`https://booking-com15.p.rapidapi.com/api/v1/flights/searchDestination?query=${encodeURIComponent(query)}`, {
+      headers: {
+        'x-rapidapi-key': process.env.BOOKING_API_KEY || 'b723f67a8cmshf49874500229ca8p12d559jsnedd1aee8f4ea',
+        'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
+      }
+    });
+
+    const data = await response.json();
+
+    if (!data?.status || !data?.data?.length) {
+      return res.json({ success: true, destinations: [] });
+    }
+
+    // Format results for frontend
+    const destinations = data.data.map(d => ({
+      id: d.id,
+      name: d.name,
+      type: d.type,
+      code: d.code,
+      city: d.cityName || d.name.split(' ')[0],
+      country: d.countryName || d.country,
+      // Display label for dropdown
+      label: `${d.cityName || d.name}, ${d.countryName || d.country}`,
+    }));
+
+    // Sort: prefer airports/cities in Indonesia if "bali" is in query
+    // to fix the Bali vs Balice issue
+    if (query.toLowerCase().includes('bali')) {
+      destinations.sort((a, b) => {
+        const aIsIndonesia = a.country?.toLowerCase().includes('indonesia') ? 0 : 1;
+        const bIsIndonesia = b.country?.toLowerCase().includes('indonesia') ? 0 : 1;
+        return aIsIndonesia - bIsIndonesia;
+      });
+    }
+
+    res.json({
+      success: true,
+      destinations: destinations.slice(0, 6) // Limit to 6 results
+    });
+
+  } catch (error) {
+    console.error('Autocomplete error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==========================================
 // TEST ENDPOINT: Test algorithm with random profiles
 // ==========================================
 router.get('/test-algorithm', async (req, res) => {
@@ -214,13 +274,18 @@ router.post('/recommendations',
       console.log('🎯 WITH DESTINATION workflow - Optimizing specific trip');
 
       const destination = userProfile.basic.destination;
+      const destinationId = userProfile.basic.destinationId; // From autocomplete
       const budget = userProfile.basic.budget;
       const duration = userProfile.availability?.duration || 7;
 
-      // Step 1: Optimize trip with Air Scraper
-      console.log(`🔍 Step 1: Optimizing ${destination} trip with Air Scraper...`);
+      // Step 1: Optimize trip with Booking.com API
+      console.log(`🔍 Step 1: Optimizing ${destination} trip...`);
+      if (destinationId) {
+        console.log(`   Using pre-resolved destination ID: ${destinationId}`);
+      }
       const optimizedTrip = await destinationService.optimizeDestination({
         destination,
+        destinationId, // Pass the pre-resolved ID to avoid name ambiguity
         userProfile,
         budget,
         origin: originCity,
