@@ -158,20 +158,18 @@ export default function DestinationAutocomplete({
               <div className="flex items-center gap-3">
                 {/* Icon based on type */}
                 <span className="text-lg">
-                  {dest.type === 'CITY' ? '🏙️' : dest.type === 'AIRPORT' ? '✈️' : '📍'}
+                  {dest.type === 'city' ? '🏙️' : dest.type === 'region' ? '🗺️' : '📍'}
                 </span>
 
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-text-main truncate">
-                    {dest.city || dest.name}
+                    {dest.name}
                   </div>
                   <div className="text-sm text-text-secondary flex items-center gap-2">
                     <span>{dest.country}</span>
-                    {dest.code && (
-                      <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">
-                        {dest.code}
-                      </span>
-                    )}
+                    <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded capitalize">
+                      {dest.type}
+                    </span>
                   </div>
                 </div>
               </div>

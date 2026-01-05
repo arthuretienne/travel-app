@@ -202,7 +202,7 @@ function generateDateCandidates(userDepartureDate, duration) {
  */
 export async function optimizeDestination({
   destination,
-  destinationId = null, // Pre-resolved API destination ID (from autocomplete)
+  destinationId = null, // Hotel destination ID (for hotel search, not flights)
   userProfile,
   budget,
   origin,
@@ -212,19 +212,20 @@ export async function optimizeDestination({
   console.log(`🎯 NEW WORKFLOW: Optimizing ${destination} trip for €${budget} budget`);
 
   try {
-    // STEP 1: Get destination IDs
-    console.log('📍 Step 1: Getting destination IDs...');
+    // STEP 1: Get flight destination IDs (airport/city)
+    // Note: destinationId from autocomplete is a HOTEL dest_id, not a flight ID
+    // We always resolve the destination name via Flight API to get the correct airport
+    console.log('📍 Step 1: Getting flight destination IDs...');
     const originDest = await bookingService.getDestinationId(origin);
 
-    // Use pre-resolved destinationId if provided (avoids Bali→Balice type errors)
-    let destDest;
-    if (destinationId) {
-      console.log(`✅ Using pre-resolved destination ID: ${destinationId}`);
-      destDest = { id: destinationId, name: destination, cityName: destination };
-    } else {
-      console.log(`🔍 Resolving destination name: ${destination}`);
-      destDest = await bookingService.getDestinationId(destination);
-    }
+    // Always resolve via flight API - the destination name is now accurate (from autocomplete)
+    // e.g., "Bali, Indonesia" will correctly find DPS airport instead of Balice
+    console.log(`🔍 Resolving flight destination for: ${destination}`);
+    const destDest = await bookingService.getDestinationId(destination);
+    console.log(`✅ Found airport: ${destDest.name} (${destDest.id})`);
+
+    // Store hotel destination ID for later hotel search
+    const hotelDestinationId = destinationId;
 
     // STEP 2: Generate date candidates and search flights in parallel
     const dateCandidates = generateDateCandidates(departureDate, duration);

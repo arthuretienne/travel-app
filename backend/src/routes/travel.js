@@ -84,6 +84,8 @@ const router = express.Router();
 
 // ==========================================
 // DESTINATION AUTOCOMPLETE ENDPOINT
+// Uses Hotel API which returns cities/regions (not airports)
+// Backend will find appropriate airport when searching flights
 // ==========================================
 router.get('/destinations/search', async (req, res) => {
   try {
@@ -95,8 +97,9 @@ router.get('/destinations/search', async (req, res) => {
 
     console.log(`🔍 Autocomplete search: "${query}"`);
 
-    // Search flight destinations
-    const response = await fetch(`https://booking-com15.p.rapidapi.com/api/v1/flights/searchDestination?query=${encodeURIComponent(query)}`, {
+    // Use HOTEL destination API - returns cities/regions instead of airports
+    // This is better UX: user selects "Bali, Indonesia" not "Ngurah Rai Airport"
+    const response = await fetch(`https://booking-com15.p.rapidapi.com/api/v1/hotels/searchDestination?query=${encodeURIComponent(query)}`, {
       headers: {
         'x-rapidapi-key': process.env.BOOKING_API_KEY || 'b723f67a8cmshf49874500229ca8p12d559jsnedd1aee8f4ea',
         'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
@@ -109,27 +112,21 @@ router.get('/destinations/search', async (req, res) => {
       return res.json({ success: true, destinations: [] });
     }
 
-    // Format results for frontend
-    const destinations = data.data.map(d => ({
-      id: d.id,
-      name: d.name,
-      type: d.type,
-      code: d.code,
-      city: d.cityName || d.name.split(' ')[0],
-      country: d.countryName || d.country,
-      // Display label for dropdown
-      label: `${d.cityName || d.name}, ${d.countryName || d.country}`,
-    }));
+    // Filter out airports - only show cities and regions
+    const filtered = data.data.filter(d =>
+      d.dest_type !== 'airport' && d.dest_type !== 'AIRPORT'
+    );
 
-    // Sort: prefer airports/cities in Indonesia if "bali" is in query
-    // to fix the Bali vs Balice issue
-    if (query.toLowerCase().includes('bali')) {
-      destinations.sort((a, b) => {
-        const aIsIndonesia = a.country?.toLowerCase().includes('indonesia') ? 0 : 1;
-        const bIsIndonesia = b.country?.toLowerCase().includes('indonesia') ? 0 : 1;
-        return aIsIndonesia - bIsIndonesia;
-      });
-    }
+    // Format results for frontend
+    const destinations = filtered.map(d => ({
+      id: d.dest_id,
+      name: d.name,
+      type: d.dest_type, // 'city', 'region', etc.
+      city: d.city_name || d.name,
+      country: d.country,
+      // Display label for dropdown
+      label: `${d.name}, ${d.country}`,
+    }));
 
     res.json({
       success: true,
