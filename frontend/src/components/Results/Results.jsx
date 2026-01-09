@@ -350,6 +350,36 @@ function Results({ recommendations, onReset }) {
               </div>
               )}
 
+              {/* Ground Transport Info (if flying to nearby airport) */}
+              {trip.groundTransport && (
+              <div className="transport-info-compact">
+                <div className="transport-header">
+                  <span className="transport-icon">
+                    {trip.groundTransport.type === 'train' ? '🚄' :
+                     trip.groundTransport.type === 'bus' ? '🚌' :
+                     trip.groundTransport.type === 'ferry' ? '⛴️' :
+                     trip.groundTransport.type === 'car' ? '🚗' : '🚐'}
+                  </span>
+                  <span className="transport-title">
+                    {trip.groundTransport.type.charAt(0).toUpperCase() + trip.groundTransport.type.slice(1)} to {trip.groundTransport.to.split(',')[0]}
+                  </span>
+                </div>
+                <div className="transport-details">
+                  <span className="transport-route">
+                    From {trip.groundTransport.from} Airport
+                  </span>
+                  <span className="transport-separator">•</span>
+                  <span className="transport-duration">{trip.groundTransport.duration}</span>
+                  <span className="transport-separator">•</span>
+                  <span className="transport-cost">~€{trip.groundTransport.estimatedCostRoundTrip} round-trip</span>
+                </div>
+                <div className="transport-note">
+                  <span className="note-icon">ℹ️</span>
+                  <span>Nearest airport - no direct flights to {trip.groundTransport.to.split(',')[0]}</span>
+                </div>
+              </div>
+              )}
+
               {/* Hotel Info */}
               {trip.hotelOptions && trip.hotelOptions.hotels && trip.hotelOptions.hotels[0] && (
               <div className="hotel-info-compact">

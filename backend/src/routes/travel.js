@@ -342,6 +342,8 @@ router.post('/recommendations',
           matchReason: destinationInsights?.matchReason,
           seasonReason: destinationInsights?.seasonReason,
           highlights: destinationInsights?.highlights || [],
+          // If flying to nearby airport, include that info
+          nearestAirport: optimizedTrip.destination.nearestAirport,
         },
         slot: {
           startDate: optimizedTrip.dates.departure,
@@ -352,12 +354,15 @@ router.post('/recommendations',
         pricing: {
           flight: optimizedTrip.budget.flight,
           hotel: optimizedTrip.budget.hotel,
+          groundTransport: optimizedTrip.budget.groundTransport || 0,
           activities: optimizedTrip.budget.activities, // Estimated based on destination
           dailyActivities: optimizedTrip.budget.dailyActivities,
-          total: optimizedTrip.budget.flight + optimizedTrip.budget.hotel + optimizedTrip.budget.activities,
+          total: optimizedTrip.budget.flight + optimizedTrip.budget.hotel + (optimizedTrip.budget.groundTransport || 0) + optimizedTrip.budget.activities,
           remaining: optimizedTrip.budget.remaining,
           currency: 'EUR'
         },
+        // Ground transport info (if flying to nearby airport instead of destination)
+        groundTransport: optimizedTrip.groundTransport,
         flightDetails: {
           outbound: {
             departureTime: optimizedTrip.flight.outbound.departureTime,

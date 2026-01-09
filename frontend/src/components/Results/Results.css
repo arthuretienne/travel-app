@@ -506,6 +506,76 @@
   margin-top: 0.5rem;
 }
 
+/* Ground Transport Info (for nearby airport) */
+.transport-info-compact {
+  background: #fef3c7;
+  border: 2px solid #fcd34d;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.transport-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.transport-icon {
+  font-size: 1.25rem;
+}
+
+.transport-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.transport-details {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  color: #b45309;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.transport-separator {
+  color: #d97706;
+  margin: 0 0.25rem;
+}
+
+.transport-route {
+  font-weight: 500;
+}
+
+.transport-duration {
+  font-weight: 600;
+}
+
+.transport-cost {
+  font-weight: 600;
+  color: #92400e;
+}
+
+.transport-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #78350f;
+  background: #fef9c3;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  margin-top: 0.5rem;
+}
+
+.note-icon {
+  font-size: 0.85rem;
+}
+
 /* Hotel Info Compact */
 .hotel-info-compact {
   background: #f0fdf4;
