@@ -1142,12 +1142,18 @@ router.post('/recommendations/stream',
                 checkOut: trip.dates.return,
                 nights: trip.hotel.totalNights || (trip.dates.duration ? trip.dates.duration - 1 : 3),
                 hotels: [{
+                  id: trip.hotel.id,
                   name: trip.hotel.name || 'Hotel',
                   stars: trip.hotel.stars || 0,
                   price: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, (trip.dates.duration || 4) - 1)),
                   pricePerNight: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, (trip.dates.duration || 4) - 1)),
+                  totalPrice: trip.hotel.totalPrice,
                   location: trip.hotel.location || trip.destination.name,
                   amenities: trip.hotel.amenities || [],
+                  rating: trip.hotel.rating, // { value, count, word }
+                  mainPhoto: trip.hotel.mainPhoto,
+                  checkInTime: trip.hotel.checkInTime,
+                  checkOutTime: trip.hotel.checkOutTime,
                 }],
                 averagePrice: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, (trip.dates.duration || 4) - 1))
               },
