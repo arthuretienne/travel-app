@@ -370,132 +370,16 @@ function CreateTrip() {
         const useStreaming = !formData.destination; // Only stream for discovery mode
 
         if (useStreaming) {
-          // Streaming mode - results appear progressively as they arrive
-          const streamingResults = [];
-          let hasNavigated = false;
-          let expectedTotal = 3;
-
-          const response = await fetch(`${API_URL}/api/travel/recommendations/stream`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
+          // Navigate to Results page immediately with search payload
+          // Results page will handle the streaming directly
+          navigate('/results', {
+            state: {
+              streamingMode: true,
+              searchPayload: payload,
+              token: token
+            }
           });
-
-          if (!response.ok) {
-            throw new Error('Streaming request failed');
-          }
-
-          const reader = response.body.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-
-          // Helper to process SSE chunks
-          const processChunk = (chunk) => {
-            if (!chunk.trim()) return false;
-
-            const eventMatch = chunk.match(/event: (\w+)/);
-            const dataMatch = chunk.match(/data: (.+)/);
-
-            if (eventMatch && dataMatch) {
-              const eventType = eventMatch[1];
-              try {
-                const eventData = JSON.parse(dataMatch[1]);
-
-                if (eventType === 'status') {
-                  // Update loading stage based on backend status
-                  if (eventData.stage === 'discovering') setLoadingStage('searching');
-                  if (eventData.stage === 'discovered') {
-                    setLoadingStage('flights');
-                    if (eventData.destinations) {
-                      expectedTotal = eventData.destinations.length;
-                    }
-                  }
-                } else if (eventType === 'recommendation') {
-                  // A recommendation is ready - extract data from wrapper
-                  if (eventData.data) {
-                    streamingResults.push(eventData.data);
-                    setLoadingStage('optimizing');
-                    console.log(`✅ Received recommendation ${eventData.index}/${eventData.total}`);
-
-                    // PROGRESSIVE LOADING: Navigate on FIRST result!
-                    // Pass streaming flag so Results page knows more are coming
-                    if (!hasNavigated) {
-                      hasNavigated = true;
-                      navigate('/results', {
-                        state: {
-                          recommendations: [...streamingResults],
-                          isStreaming: true,
-                          expectedTotal: eventData.total || expectedTotal
-                        },
-                        replace: true // Replace so back button works correctly
-                      });
-                    } else {
-                      // Update existing results page with new data
-                      // Use a custom event to notify Results component
-                      window.dispatchEvent(new CustomEvent('streamingResult', {
-                        detail: {
-                          result: eventData.data,
-                          index: eventData.index,
-                          total: eventData.total
-                        }
-                      }));
-                    }
-                  }
-                } else if (eventType === 'complete') {
-                  // All done - notify Results page streaming is complete
-                  console.log(`✅ Streaming complete: ${streamingResults.length} results`);
-                  window.dispatchEvent(new CustomEvent('streamingComplete', {
-                    detail: { totalResults: streamingResults.length }
-                  }));
-                  return true; // Signal completion
-                } else if (eventType === 'error') {
-                  throw new Error(eventData.message || 'Streaming error');
-                }
-              } catch (parseError) {
-                console.warn('SSE parse error:', parseError);
-              }
-            }
-            return false;
-          };
-
-          let isComplete = false;
-
-          while (true) {
-            const { done, value } = await reader.read();
-
-            if (done) {
-              // Process any remaining buffer when stream ends
-              if (buffer.trim()) {
-                const finalChunks = buffer.split('\n\n');
-                for (const chunk of finalChunks) {
-                  if (processChunk(chunk)) {
-                    isComplete = true;
-                  }
-                }
-              }
-              break;
-            }
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n\n');
-            buffer = lines.pop() || '';
-
-            for (const chunk of lines) {
-              if (processChunk(chunk)) {
-                isComplete = true;
-              }
-            }
-          }
-
-          // If we never navigated and have results, do it now
-          if (!hasNavigated && streamingResults.length > 0) {
-            navigate('/results', { state: { recommendations: streamingResults } });
-          } else if (!hasNavigated && !isComplete) {
-            throw new Error('No recommendations received');
-          }
+          return; // Exit early - Results page handles the rest
         } else {
           // Regular mode for specific destination
           const stageTimer1 = setTimeout(() => setLoadingStage('flights'), 3000);

@@ -347,19 +347,6 @@ CRITICAL INSTRUCTIONS:
    - "Populaire": 30% hidden gems, 70% known
 8. Ensure trips don't overlap in dates
 
-💡 INSPIRATION - HIDDEN GEMS BY CATEGORY (use these as examples, not exhaustive):
-Budget Beach Escapes: Albanian Riviera (Ksamil), Romania (Constanta), Bulgaria (Sozopol), Tunisia (Djerba), Croatia (Vis Island)
-Culture Off-Path: Georgia (Tbilisi), Armenia (Yerevan), Albania (Berat), North Macedonia (Ohrid), Bosnia (Mostar), Moldova (Chișinău)
-Nature Adventures: Azores (Portugal), Faroe Islands, Slovenia (Triglav), Albania (Theth), Madeira, Corsica wild trails
-Mountain Retreats: Dolomites (Italy - NOT Cortina), Tatra Mountains (Poland/Slovakia), Picos de Europa (Spain), Rila (Bulgaria)
-Island Gems: Crete villages (not Heraklion), Sardinia interior, Malta (Gozo), Sicily (Ragusa), Canary Islands (La Palma)
-City Discoveries: Plovdiv, Gdansk, Tallinn, Riga, Brno, Cluj-Napoca, Sarajevo, Kotor, Funchal
-Desert/Unique: Jordan (Wadi Rum), Morocco (Sahara), Lanzarote, Tunisia (Matmata), Egypt (Siwa Oasis)
-9. Respect departure flexibility:
-   - "semaine" = prefer weekday departures (Monday-Thursday)
-   - "weekend" = prefer weekend departures (Friday-Sunday)
-   - "peu-importe" = any day is fine
-
 🎯 STRUCTURED ACTIVITIES GENERATION (MANDATORY):
 For each destination, generate 5-8 concrete, bookable activities that:
 1. MATCH user's top activities preferences (${onboardingPreferences.topActivities?.join(', ') || 'various activities'})

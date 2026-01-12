@@ -26,6 +26,7 @@ function Results() {
   // Streaming state - shows skeleton cards for pending results
   const [isStreaming, setIsStreaming] = useState(false);
   const [expectedTotal, setExpectedTotal] = useState(3);
+  const [streamingStatus, setStreamingStatus] = useState(''); // Status message during streaming
 
   // Check if we're proposing for a group trip
   const forGroupTrip = location.state?.forGroupTrip;
@@ -43,18 +44,122 @@ function Results() {
     setCurrentIndex(index);
   };
 
+  // Start streaming if we have streamingMode
   useEffect(() => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+    // Handle streaming mode from CreateTrip
+    if (location.state?.streamingMode && location.state?.searchPayload) {
+      const { searchPayload, token } = location.state;
+
+      setIsStreaming(true);
+      setLoading(false); // Show the page immediately
+      setStreamingStatus('Finding perfect destinations...');
+
+      // Start streaming fetch
+      const startStreaming = async () => {
+        try {
+          const response = await fetch(`${API_URL}/api/travel/recommendations/stream`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(searchPayload),
+          });
+
+          if (!response.ok) {
+            throw new Error('Streaming request failed');
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) {
+              // Process any remaining buffer
+              if (buffer.trim()) {
+                processSSEChunks(buffer.split('\n\n'));
+              }
+              break;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+            const chunks = buffer.split('\n\n');
+            buffer = chunks.pop() || ''; // Keep incomplete chunk in buffer
+
+            processSSEChunks(chunks);
+          }
+
+          setIsStreaming(false);
+          setStreamingStatus('');
+
+        } catch (err) {
+          console.error('Streaming error:', err);
+          setError(err.message);
+          setIsStreaming(false);
+        }
+      };
+
+      // Process SSE chunks
+      const processSSEChunks = (chunks) => {
+        for (const chunk of chunks) {
+          if (!chunk.trim()) continue;
+
+          const eventMatch = chunk.match(/event: (\w+)/);
+          const dataMatch = chunk.match(/data: (.+)/s);
+
+          if (eventMatch && dataMatch) {
+            const eventType = eventMatch[1];
+            try {
+              const eventData = JSON.parse(dataMatch[1]);
+
+              if (eventType === 'status') {
+                if (eventData.stage === 'discovering') {
+                  setStreamingStatus('Finding perfect destinations...');
+                } else if (eventData.stage === 'discovered') {
+                  setStreamingStatus(`Found ${eventData.destinations?.length || 3} destinations, searching flights...`);
+                  setExpectedTotal(eventData.destinations?.length || 3);
+                }
+              } else if (eventType === 'recommendation') {
+                if (eventData.data) {
+                  console.log(`✅ Received destination ${eventData.index}/${eventData.total}: ${eventData.data.destination?.city}`);
+                  setStreamingStatus(`Loading destination ${eventData.index}/${eventData.total}...`);
+
+                  setRecommendations(prev => {
+                    // Avoid duplicates
+                    const exists = prev.some(r => r.destination?.city === eventData.data.destination?.city);
+                    if (exists) return prev;
+                    return [...prev, eventData.data];
+                  });
+                  setExpectedTotal(eventData.total);
+                }
+              } else if (eventType === 'complete') {
+                console.log('✅ Streaming complete');
+                setIsStreaming(false);
+                setStreamingStatus('');
+              } else if (eventType === 'error') {
+                throw new Error(eventData.message || 'Streaming error');
+              }
+            } catch (parseError) {
+              console.warn('SSE parse error:', parseError, chunk);
+            }
+          }
+        }
+      };
+
+      startStreaming();
+      return;
+    }
+
     // If recommendations are passed via state, use them directly
     if (location.state?.recommendations) {
       setRecommendations(location.state.recommendations);
-      setCurrentIndex(0); // Reset to first destination
+      setCurrentIndex(0);
       setLoading(false);
-
-      // Check if this is a streaming session
-      if (location.state?.isStreaming) {
-        setIsStreaming(true);
-        setExpectedTotal(location.state.expectedTotal || 3);
-      }
     } else if (searchId) {
       // Otherwise fetch from API using searchId
       fetchRecommendations();
@@ -62,36 +167,7 @@ function Results() {
       setLoading(false);
       setError('No recommendations available');
     }
-  }, [searchId, location.state]);
-
-  // Listen for streaming events from CreateTrip page
-  useEffect(() => {
-    const handleStreamingResult = (event) => {
-      const { result, index, total } = event.detail;
-      console.log(`📦 Results page received result ${index}/${total}`);
-
-      setRecommendations(prev => {
-        // Check if we already have this result (by city name to avoid duplicates)
-        const exists = prev.some(r => r.destination?.city === result.destination?.city);
-        if (exists) return prev;
-        return [...prev, result];
-      });
-      setExpectedTotal(total);
-    };
-
-    const handleStreamingComplete = () => {
-      console.log('✅ Results page: streaming complete');
-      setIsStreaming(false);
-    };
-
-    window.addEventListener('streamingResult', handleStreamingResult);
-    window.addEventListener('streamingComplete', handleStreamingComplete);
-
-    return () => {
-      window.removeEventListener('streamingResult', handleStreamingResult);
-      window.removeEventListener('streamingComplete', handleStreamingComplete);
-    };
-  }, []);
+  }, [location.state, searchId]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -337,11 +413,13 @@ function Results() {
                       <strong className="text-primary">{recommendations.length}/{expectedTotal} destinations</strong> found
                       <span className="ml-2 inline-flex items-center gap-1">
                         <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                        Loading more...
+                        {streamingStatus || 'Loading more...'}
                       </span>
                     </>
-                  ) : (
+                  ) : recommendations.length > 0 ? (
                     <>We crafted <strong className="text-primary">{recommendations.length} exceptional destinations</strong> tailored just for you</>
+                  ) : (
+                    <>Searching for your perfect destinations...</>
                   )}
                 </p>
               </>
@@ -400,6 +478,33 @@ function Results() {
                 className="w-2 h-2 bg-gray-200 rounded-full animate-pulse"
               />
             ))}
+          </div>
+        )}
+
+        {/* Streaming Skeleton - Show while waiting for first result */}
+        {isStreaming && recommendations.length === 0 && (
+          <div className="bg-white rounded-3xl overflow-hidden shadow-card border border-gray-100 p-8">
+            <div className="flex flex-col lg:flex-row gap-8 animate-pulse">
+              {/* Image skeleton */}
+              <div className="lg:w-1/3 h-64 bg-gray-200 rounded-2xl"></div>
+              {/* Content skeleton */}
+              <div className="lg:w-2/3 space-y-4">
+                <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                <div className="h-20 bg-gray-200 rounded w-full mt-4"></div>
+                <div className="flex gap-4 mt-6">
+                  <div className="h-24 bg-gray-200 rounded w-1/3"></div>
+                  <div className="h-24 bg-gray-200 rounded w-1/3"></div>
+                  <div className="h-24 bg-gray-200 rounded w-1/3"></div>
+                </div>
+              </div>
+            </div>
+            <div className="text-center mt-6 text-text-secondary">
+              <div className="inline-flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                {streamingStatus || 'Loading your perfect destinations...'}
+              </div>
+            </div>
           </div>
         )}
 

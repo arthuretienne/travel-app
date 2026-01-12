@@ -247,7 +247,7 @@ export function generateDestinationRecommendation({
 
   return {
     role: 'user',
-    content: `Generate a SHORT travel recommendation for ${destination.name}, ${destination.country || ''} (${dates.duration} days).
+    content: `Generate a travel recommendation for ${destination.name}, ${destination.country || ''} (${dates.duration} days).
 
 USER: ${style} traveler, loves ${interests.length > 0 ? interests.join(', ') : 'culture, nature'}
 SEASON: ${seasonalInsights.monthName} - ${seasonalInsights.weather.description}
@@ -256,9 +256,14 @@ BUDGET: €${budget.remaining} for activities (flights+hotel already booked)
 Return ONLY this JSON (no markdown):
 {
   "tagline": "Max 10 words catchy phrase about ${destination.name}",
-  "matchReason": "1-2 sentences why ${destination.name} matches this traveler. Be specific about the destination!",
-  "seasonReason": "1 sentence about ${seasonalInsights.monthName} in ${destination.name} - mention specific events, weather perks, currency advantages, or seasonal highlights",
-  "highlights": ["3 SPECIFIC must-do activities unique to ${destination.name} - include real place names like 'Mario Kart in Shibuya', 'Lumphini Park morning tai chi', 'Fushimi Inari sunrise hike'"]
+  "matchReason": "1-2 sentences why ${destination.name} matches this traveler. Be specific!",
+  "seasonReason": "1 sentence about ${seasonalInsights.monthName} in ${destination.name}",
+  "highlights": [
+    "5-6 SPECIFIC activities unique to ${destination.name}",
+    "Use REAL place names (not 'visit museum' but 'Prado Museum skip-the-line tour')",
+    "Mix: 2 cultural, 1 food experience, 1 nature/outdoor, 1 local hidden gem",
+    "Examples: 'Sunset tapas tour in El Born', 'Kayak in Calanques at dawn', 'Street food walk in Trastevere'"
+  ]
 }`
   };
 }
