@@ -251,20 +251,27 @@ export function generateDestinationRecommendation({
 
 USER: ${style} traveler, loves ${interests.length > 0 ? interests.join(', ') : 'culture, nature'}
 SEASON: ${seasonalInsights.monthName} - ${seasonalInsights.weather.description}
-BUDGET: €${budget.remaining} for activities (flights+hotel already booked)
 
 Return ONLY this JSON (no markdown):
 {
   "tagline": "Max 10 words catchy phrase about ${destination.name}",
   "matchReason": "1-2 sentences why ${destination.name} matches this traveler. Be specific!",
   "seasonReason": "1 sentence about ${seasonalInsights.monthName} in ${destination.name}",
-  "highlights": [
-    "5-6 SPECIFIC activities unique to ${destination.name}",
-    "Use REAL place names (not 'visit museum' but 'Prado Museum skip-the-line tour')",
-    "Mix: 2 cultural, 1 food experience, 1 nature/outdoor, 1 local hidden gem",
-    "Examples: 'Sunset tapas tour in El Born', 'Kayak in Calanques at dawn', 'Street food walk in Trastevere'"
+  "activities": [
+    {
+      "name": "Specific activity name with real place (e.g., 'Louvre Museum skip-the-line tour')",
+      "price": 25,
+      "type": "culture|food|nature|nightlife|tour"
+    }
   ]
-}`
+}
+
+ACTIVITIES RULES:
+- Generate 5-6 activities for ${dates.duration} days
+- Use REAL prices in EUR (Louvre=€22, Prado=€15, free walking tour=€0, food tour=€40-80)
+- Mix: 2 cultural (museums/monuments), 1 food experience, 1 nature/outdoor, 1-2 local gems
+- Include at least 1 FREE activity (park, viewpoint, neighborhood walk)
+- Prices should reflect ${destination.name}'s cost of living (Western Europe=higher, Eastern Europe/Asia=lower)`
   };
 }
 

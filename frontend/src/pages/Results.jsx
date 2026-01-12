@@ -833,7 +833,7 @@ function Results() {
                   )}
 
                   {/* Activities & Highlights */}
-                  {(trip.destination?.highlights?.length > 0 || trip.pricing?.activities > 0) && (
+                  {(trip.destination?.activities?.length > 0 || trip.destination?.highlights?.length > 0 || trip.pricing?.activities > 0) && (
                     <div className="mb-6 bg-purple-50/50 rounded-xl p-4 border border-purple-100">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-bold text-purple-900 flex items-center gap-2">
@@ -842,11 +842,32 @@ function Results() {
                         </h4>
                         <div className="text-right">
                           <span className="text-lg font-bold text-purple-900">€{Math.round(trip.pricing?.activities || 0)}</span>
-                          <span className="text-xs text-purple-700 block">estimated</span>
+                          <span className="text-xs text-purple-700 block">total</span>
                         </div>
                       </div>
-                      {/* Personalized highlights from Claude AI */}
-                      {trip.destination?.highlights?.length > 0 ? (
+                      {/* Activities with prices (new format) */}
+                      {trip.destination?.activities?.length > 0 ? (
+                        <div className="space-y-2">
+                          {trip.destination.activities.slice(0, 6).map((activity, i) => (
+                            <div key={i} className="bg-white rounded-lg px-3 py-2 border border-purple-100 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="text-purple-500 flex-shrink-0">
+                                  {activity.type === 'culture' ? '🏛️' :
+                                   activity.type === 'food' ? '🍽️' :
+                                   activity.type === 'nature' ? '🌿' :
+                                   activity.type === 'nightlife' ? '🌙' :
+                                   activity.type === 'tour' ? '🚶' : '✦'}
+                                </span>
+                                <span className="text-sm text-gray-800 truncate">{activity.name}</span>
+                              </div>
+                              <span className={`text-sm font-medium flex-shrink-0 ${activity.price === 0 ? 'text-green-600' : 'text-purple-700'}`}>
+                                {activity.price === 0 ? 'Free' : `€${activity.price}`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : trip.destination?.highlights?.length > 0 ? (
+                        /* Fallback to highlights (old format without prices) */
                         <div className="space-y-2">
                           {trip.destination.highlights.slice(0, 6).map((highlight, i) => (
                             <div key={i} className="bg-white rounded-lg px-3 py-2 border border-purple-100 flex items-center gap-2">
@@ -860,9 +881,6 @@ function Results() {
                           Explore local attractions, food tours, and cultural experiences
                         </p>
                       )}
-                      <p className="text-xs text-purple-600 mt-3 text-center">
-                        ~€{Math.round((trip.pricing?.activities || 0) / (trip.slot?.duration || 7))}/day for experiences
-                      </p>
                     </div>
                   )}
 

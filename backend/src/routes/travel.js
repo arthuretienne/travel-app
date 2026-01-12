@@ -1084,9 +1084,22 @@ router.post('/recommendations/stream',
               originCity
             );
 
-            // Calculate realistic activities budget (30€/day estimate)
+            // Calculate activities cost from Claude's recommendations (with prices)
             const nights = trip.hotel.totalNights || (trip.dates.duration ? trip.dates.duration - 1 : 3);
-            const estimatedActivitiesCost = Math.round(30 * trip.dates.duration); // ~30€/day for activities
+
+            // Parse activities from recommendation (new format with prices)
+            const activities = recommendation?.activities || [];
+            const activitiesWithPrices = activities.map(act => ({
+              name: typeof act === 'string' ? act : act.name,
+              price: typeof act === 'object' ? (act.price || 0) : 0,
+              type: typeof act === 'object' ? act.type : 'activity'
+            }));
+
+            // Calculate total from actual activity prices, fallback to 25€/day estimate
+            const estimatedActivitiesCost = activitiesWithPrices.length > 0
+              ? activitiesWithPrices.reduce((sum, act) => sum + (act.price || 0), 0)
+              : Math.round(25 * trip.dates.duration);
+
             const actualTotal = trip.budget.flight + trip.budget.hotel + estimatedActivitiesCost;
             const actualRemaining = budget - actualTotal;
 
@@ -1100,7 +1113,11 @@ router.post('/recommendations/stream',
                 tagline: recommendation?.tagline,
                 matchReason: recommendation?.matchReason || `Perfect for ${userProfile.basic.activities?.join(', ') || 'your interests'}`,
                 seasonReason: recommendation?.seasonReason,
-                highlights: recommendation?.highlights || []
+                // Support both old format (highlights array of strings) and new format (activities with prices)
+                highlights: activitiesWithPrices.length > 0
+                  ? activitiesWithPrices.map(a => a.name)
+                  : (recommendation?.highlights || []),
+                activities: activitiesWithPrices // Full activity data with prices
               },
               slot: {
                 startDate: trip.dates.departure,
