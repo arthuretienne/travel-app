@@ -23,6 +23,10 @@ function Results() {
   const [proposingTripId, setProposingTripId] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Streaming state - shows skeleton cards for pending results
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [expectedTotal, setExpectedTotal] = useState(3);
+
   // Check if we're proposing for a group trip
   const forGroupTrip = location.state?.forGroupTrip;
 
@@ -45,6 +49,12 @@ function Results() {
       setRecommendations(location.state.recommendations);
       setCurrentIndex(0); // Reset to first destination
       setLoading(false);
+
+      // Check if this is a streaming session
+      if (location.state?.isStreaming) {
+        setIsStreaming(true);
+        setExpectedTotal(location.state.expectedTotal || 3);
+      }
     } else if (searchId) {
       // Otherwise fetch from API using searchId
       fetchRecommendations();
@@ -53,6 +63,35 @@ function Results() {
       setError('No recommendations available');
     }
   }, [searchId, location.state]);
+
+  // Listen for streaming events from CreateTrip page
+  useEffect(() => {
+    const handleStreamingResult = (event) => {
+      const { result, index, total } = event.detail;
+      console.log(`📦 Results page received result ${index}/${total}`);
+
+      setRecommendations(prev => {
+        // Check if we already have this result (by city name to avoid duplicates)
+        const exists = prev.some(r => r.destination?.city === result.destination?.city);
+        if (exists) return prev;
+        return [...prev, result];
+      });
+      setExpectedTotal(total);
+    };
+
+    const handleStreamingComplete = () => {
+      console.log('✅ Results page: streaming complete');
+      setIsStreaming(false);
+    };
+
+    window.addEventListener('streamingResult', handleStreamingResult);
+    window.addEventListener('streamingComplete', handleStreamingComplete);
+
+    return () => {
+      window.removeEventListener('streamingResult', handleStreamingResult);
+      window.removeEventListener('streamingComplete', handleStreamingComplete);
+    };
+  }, []);
 
   // Keyboard navigation
   useEffect(() => {
@@ -293,7 +332,17 @@ function Results() {
               <>
                 <h1 className="text-3xl font-bold text-text-main mb-2">Your Perfect Trips</h1>
                 <p className="text-text-secondary">
-                  We crafted <strong className="text-primary">{recommendations.length} exceptional destinations</strong> tailored just for you
+                  {isStreaming ? (
+                    <>
+                      <strong className="text-primary">{recommendations.length}/{expectedTotal} destinations</strong> found
+                      <span className="ml-2 inline-flex items-center gap-1">
+                        <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                        Loading more...
+                      </span>
+                    </>
+                  ) : (
+                    <>We crafted <strong className="text-primary">{recommendations.length} exceptional destinations</strong> tailored just for you</>
+                  )}
                 </p>
               </>
             )}
@@ -329,8 +378,9 @@ function Results() {
         </div>
 
         {/* Carousel Navigation Dots */}
-        {recommendations.length > 1 && (
+        {(recommendations.length > 1 || isStreaming) && (
           <div className="flex items-center justify-center gap-2 mb-6">
+            {/* Show dots for loaded recommendations */}
             {recommendations.map((_, index) => (
               <button
                 key={index}
@@ -341,6 +391,13 @@ function Results() {
                     : 'w-2 h-2 bg-gray-300 rounded-full hover:bg-gray-400'
                 }`}
                 aria-label={`Go to destination ${index + 1}`}
+              />
+            ))}
+            {/* Show skeleton dots for pending results */}
+            {isStreaming && Array.from({ length: expectedTotal - recommendations.length }).map((_, index) => (
+              <div
+                key={`skeleton-${index}`}
+                className="w-2 h-2 bg-gray-200 rounded-full animate-pulse"
               />
             ))}
           </div>

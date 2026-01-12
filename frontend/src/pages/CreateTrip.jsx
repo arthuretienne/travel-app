@@ -370,8 +370,10 @@ function CreateTrip() {
         const useStreaming = !formData.destination; // Only stream for discovery mode
 
         if (useStreaming) {
-          // Streaming mode - results appear progressively
+          // Streaming mode - results appear progressively as they arrive
           const streamingResults = [];
+          let hasNavigated = false;
+          let expectedTotal = 3;
 
           const response = await fetch(`${API_URL}/api/travel/recommendations/stream`, {
             method: 'POST',
@@ -405,17 +407,49 @@ function CreateTrip() {
                 if (eventType === 'status') {
                   // Update loading stage based on backend status
                   if (eventData.stage === 'discovering') setLoadingStage('searching');
-                  if (eventData.stage === 'discovered') setLoadingStage('flights');
+                  if (eventData.stage === 'discovered') {
+                    setLoadingStage('flights');
+                    if (eventData.destinations) {
+                      expectedTotal = eventData.destinations.length;
+                    }
+                  }
                 } else if (eventType === 'recommendation') {
                   // A recommendation is ready - extract data from wrapper
                   if (eventData.data) {
                     streamingResults.push(eventData.data);
                     setLoadingStage('optimizing');
                     console.log(`✅ Received recommendation ${eventData.index}/${eventData.total}`);
+
+                    // PROGRESSIVE LOADING: Navigate on FIRST result!
+                    // Pass streaming flag so Results page knows more are coming
+                    if (!hasNavigated) {
+                      hasNavigated = true;
+                      navigate('/results', {
+                        state: {
+                          recommendations: [...streamingResults],
+                          isStreaming: true,
+                          expectedTotal: eventData.total || expectedTotal
+                        },
+                        replace: true // Replace so back button works correctly
+                      });
+                    } else {
+                      // Update existing results page with new data
+                      // Use a custom event to notify Results component
+                      window.dispatchEvent(new CustomEvent('streamingResult', {
+                        detail: {
+                          result: eventData.data,
+                          index: eventData.index,
+                          total: eventData.total
+                        }
+                      }));
+                    }
                   }
                 } else if (eventType === 'complete') {
-                  // All done
+                  // All done - notify Results page streaming is complete
                   console.log(`✅ Streaming complete: ${streamingResults.length} results`);
+                  window.dispatchEvent(new CustomEvent('streamingComplete', {
+                    detail: { totalResults: streamingResults.length }
+                  }));
                   return true; // Signal completion
                 } else if (eventType === 'error') {
                   throw new Error(eventData.message || 'Streaming error');
@@ -456,10 +490,10 @@ function CreateTrip() {
             }
           }
 
-          // Navigate to results if we got any
-          if (streamingResults.length > 0) {
+          // If we never navigated and have results, do it now
+          if (!hasNavigated && streamingResults.length > 0) {
             navigate('/results', { state: { recommendations: streamingResults } });
-          } else if (!isComplete) {
+          } else if (!hasNavigated && !isComplete) {
             throw new Error('No recommendations received');
           }
         } else {

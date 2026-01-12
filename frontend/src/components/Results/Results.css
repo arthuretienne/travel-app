@@ -506,6 +506,189 @@
   margin-top: 0.5rem;
 }
 
+/* New Flight Segments Styles */
+.flight-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.flight-total-duration {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stops-badge {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.direct-badge {
+  background: #dcfce7;
+  color: #166534;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.flight-segments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.segment-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.flight-segment {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+}
+
+.segment-airline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 120px;
+}
+
+.airline-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.airline-icon {
+  font-size: 1.25rem;
+}
+
+.airline-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.airline-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+
+.flight-number {
+  font-size: 0.7rem;
+  color: #666;
+  font-family: monospace;
+}
+
+.segment-route {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.segment-endpoint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 50px;
+}
+
+.segment-time {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.segment-airport {
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: 500;
+  font-family: monospace;
+}
+
+.segment-line {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-width: 80px;
+  height: 24px;
+}
+
+.segment-line::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 20px;
+  top: 50%;
+  height: 2px;
+  background: linear-gradient(to right, #fb923c, #ea580c);
+}
+
+.segment-line::after {
+  content: '✈';
+  position: absolute;
+  right: 0;
+  font-size: 0.9rem;
+  color: #ea580c;
+}
+
+.segment-duration {
+  font-size: 0.7rem;
+  color: #666;
+  background: #fff7ed;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+/* Layover Indicator */
+.layover-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #fef9c3;
+  border-left: 3px solid #eab308;
+  margin: 0.25rem 0 0.25rem 1rem;
+  border-radius: 0 6px 6px 0;
+}
+
+.layover-icon {
+  font-size: 0.9rem;
+}
+
+.layover-text {
+  font-size: 0.8rem;
+  color: #854d0e;
+  font-weight: 500;
+}
+
 /* Ground Transport Info (for nearby airport) */
 .transport-info-compact {
   background: #fef3c7;
@@ -645,6 +828,18 @@
   font-size: 0.9rem;
 }
 
+.rating-badge.exceptional {
+  background: #7c3aed;
+}
+
+.rating-badge.excellent {
+  background: #166534;
+}
+
+.rating-badge.good {
+  background: #0284c7;
+}
+
 .rating-word {
   color: #166534;
   font-weight: 600;
@@ -676,6 +871,11 @@
 
 .hotel-checkin {
   color: #6b7280;
+}
+
+.hotel-total {
+  font-weight: 600;
+  color: #166534;
 }
 
 /* Action Buttons */
@@ -911,6 +1111,47 @@
   .details-content {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
+  }
+
+  /* Mobile flight segments */
+  .flight-segment {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .segment-airline {
+    min-width: auto;
+    justify-content: center;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed #fed7aa;
+  }
+
+  .airline-name {
+    max-width: none;
+  }
+
+  .segment-route {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .segment-line {
+    min-width: 60px;
+  }
+
+  .layover-indicator {
+    margin-left: 0;
+  }
+
+  .hotel-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .hotel-separator {
+    display: none;
   }
 }
 

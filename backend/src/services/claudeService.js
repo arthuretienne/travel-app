@@ -725,7 +725,7 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
 
   // Build exclusion text for prompt - ONLY user's past destinations, no arbitrary bans
   const exclusionText = pastDestinations.length > 0
-    ? `\n🚫 THIS USER HAS ALREADY SEEN THESE DESTINATIONS - DO NOT SUGGEST:\n${pastDestinations.join(', ')}\n`
+    ? `\n🚫 EXCLUDED (user already saw these): ${pastDestinations.join(', ')}\n`
     : '';
 
   // Current month for seasonal context
@@ -734,84 +734,142 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
   // Extract key user preferences for better personalization
   const style = userProfile.basic?.style || 'explorer';
   const activities = userProfile.basic?.activities || [];
-  const budgetLevel = budget < 500 ? 'budget' : budget < 1000 ? 'mid-range' : 'comfortable';
+  const budgetLevel = budget < 500 ? 'budget' : budget < 1000 ? 'mid-range' : budget < 2000 ? 'comfortable' : 'luxury';
   const onboarding = userProfile.onboardingPreferences || {};
 
-  // Build personality-based destination guidance
-  const crowdTolerance = onboarding.crowdTolerance || 'medium';
-  const idealRhythm = onboarding.idealRhythm || 'balanced';
-  const ecoSensitivity = onboarding.ecoSensitivity || 'medium';
+  // ========================================
+  // ACTIVITY-BASED REGION MAPPING
+  // This ensures beach lovers get beach destinations, not mountains!
+  // ========================================
+  const activityRegionMap = {
+    // Beach & Water activities
+    'beach': ['Mediterranean Beaches', 'Atlantic Islands', 'Caribbean & Tropics', 'Southeast Asia Beaches'],
+    'plage': ['Mediterranean Beaches', 'Atlantic Islands', 'Caribbean & Tropics', 'Southeast Asia Beaches'],
+    'water-sports': ['Mediterranean Beaches', 'Atlantic Islands', 'Caribbean & Tropics'],
+    'snorkeling': ['Mediterranean Beaches', 'Caribbean & Tropics', 'Southeast Asia Beaches', 'Indian Ocean'],
+    'diving': ['Mediterranean Beaches', 'Caribbean & Tropics', 'Southeast Asia Beaches', 'Indian Ocean'],
+    'swimming': ['Mediterranean Beaches', 'Atlantic Islands', 'Caribbean & Tropics'],
+    'relaxation': ['Mediterranean Beaches', 'Atlantic Islands', 'Spa & Wellness'],
+    'sunbathing': ['Mediterranean Beaches', 'Atlantic Islands', 'Caribbean & Tropics'],
 
-  // Personality-based hints that dynamically guide Claude
-  const personalityGuidance = [];
-  if (crowdTolerance === 'low') {
-    personalityGuidance.push('Avoid overcrowded tourist hotspots - prefer lesser-known alternatives');
-  }
-  if (idealRhythm === 'slow') {
-    personalityGuidance.push('Choose relaxed, laid-back destinations over hectic cities');
-  } else if (idealRhythm === 'intense') {
-    personalityGuidance.push('Choose vibrant, activity-rich cities with lots to do');
-  }
-  if (ecoSensitivity === 'high') {
-    personalityGuidance.push('Prioritize eco-friendly destinations with sustainable tourism');
-  }
-  if (onboarding.culturalAdaptability === 'high') {
-    personalityGuidance.push('Can handle culturally challenging destinations - include exotic options');
-  } else if (onboarding.culturalAdaptability === 'low') {
-    personalityGuidance.push('Prefer culturally familiar destinations (Western Europe, etc.)');
+    // Mountain & Nature activities
+    'hiking': ['Alpine Mountains', 'Nordic Nature', 'Balkans Mountains', 'Atlantic Islands'],
+    'randonnée': ['Alpine Mountains', 'Nordic Nature', 'Balkans Mountains'],
+    'mountains': ['Alpine Mountains', 'Nordic Nature', 'Balkans Mountains'],
+    'nature': ['Nordic Nature', 'Atlantic Islands', 'Balkans Mountains', 'National Parks'],
+    'skiing': ['Alpine Ski Resorts', 'Nordic Ski'],
+    'ski': ['Alpine Ski Resorts', 'Nordic Ski'],
+
+    // Culture & City activities
+    'culture': ['Historic Capitals', 'Art Cities', 'Ancient Civilizations'],
+    'museums': ['Historic Capitals', 'Art Cities'],
+    'history': ['Historic Capitals', 'Ancient Civilizations', 'Balkans Heritage'],
+    'architecture': ['Historic Capitals', 'Art Cities'],
+    'city': ['European Capitals', 'Vibrant Cities'],
+
+    // Food & Gastronomy
+    'food': ['Gastronomy Capitals', 'Wine Regions', 'Mediterranean Food'],
+    'gastronomy': ['Gastronomy Capitals', 'Wine Regions'],
+    'wine': ['Wine Regions', 'Mediterranean Food'],
+
+    // Adventure
+    'adventure': ['Adventure Destinations', 'Exotic Lands', 'Wild Nature'],
+    'outdoor': ['Nordic Nature', 'Adventure Destinations', 'National Parks'],
+  };
+
+  // Region definitions - COMPACT version (reduced tokens)
+  const regionDefinitions = {
+    'Mediterranean Beaches': 'Crete, Sardinia, Malta, Split, Dubrovnik, Santorini, Mykonos, Rhodes, Antalya, Bodrum',
+    'Atlantic Islands': 'Tenerife, Gran Canaria, Lanzarote, Madeira, Azores, Cape Verde',
+    'Caribbean & Tropics': 'Cancun, Tulum, Punta Cana, Cuba, Martinique, Guadeloupe',
+    'Southeast Asia Beaches': 'Bali, Phuket, Krabi, Koh Samui, Langkawi, Palawan',
+    'Indian Ocean': 'Maldives, Mauritius, Seychelles, Zanzibar',
+    'Alpine Mountains': 'Zermatt, Interlaken, Innsbruck, Chamonix, Dolomites',
+    'Nordic Nature': 'Bergen, Tromso, Lofoten, Reykjavik, Faroe Islands',
+    'Historic Capitals': 'Rome, Vienna, Prague, Budapest, Lisbon, Athens, Istanbul',
+    'Art Cities': 'Florence, Barcelona, Amsterdam, Berlin, Milan, Venice',
+    'Gastronomy Capitals': 'Lyon, Bologna, San Sebastian, Porto, Naples, Bangkok',
+    'Balkans Heritage': 'Sarajevo, Mostar, Kotor, Ohrid, Plovdiv, Tirana',
+    'Adventure Destinations': 'Marrakech, Petra, Tbilisi, Yerevan, Iceland',
+  };
+
+  // Determine which regions to focus on based on user's activities
+  let focusRegions = [];
+
+  // First, check if user has specific activity preferences
+  const userActivities = [
+    ...(activities || []),
+    ...(onboarding.topActivities || []),
+    onboarding.mainGoal || ''
+  ].map(a => a.toLowerCase().trim()).filter(Boolean);
+
+  console.log(`🎯 User activities detected: ${userActivities.join(', ') || 'none specified'}`);
+
+  // Map activities to regions
+  const matchedRegions = new Set();
+  userActivities.forEach(activity => {
+    Object.entries(activityRegionMap).forEach(([key, regions]) => {
+      if (activity.includes(key) || key.includes(activity)) {
+        regions.forEach(r => matchedRegions.add(r));
+      }
+    });
+  });
+
+  if (matchedRegions.size > 0) {
+    // User has specific activity preferences - use matched regions
+    focusRegions = Array.from(matchedRegions).slice(0, 4);
+    console.log(`🗺️ Activity-matched regions: ${focusRegions.join(', ')}`);
+  } else {
+    // No specific activities - pick diverse regions based on budget
+    if (budget >= 2000) {
+      focusRegions = ['Mediterranean Beaches', 'Southeast Asia Beaches', 'Indian Ocean', 'Historic Capitals'];
+    } else if (budget >= 1000) {
+      focusRegions = ['Mediterranean Beaches', 'Atlantic Islands', 'Historic Capitals', 'Balkans Heritage'];
+    } else {
+      focusRegions = ['Balkans Heritage', 'Historic Capitals', 'Mediterranean Beaches', 'Adventure Destinations'];
+    }
+    console.log(`🗺️ Budget-based regions (€${budget}): ${focusRegions.join(', ')}`);
   }
 
-  const personalityHints = personalityGuidance.length > 0
-    ? `\n🧠 PERSONALITY-BASED GUIDANCE:\n${personalityGuidance.map(h => `- ${h}`).join('\n')}`
+  // Build region guidance for prompt
+  const regionGuidance = focusRegions.map(region => {
+    const def = regionDefinitions[region];
+    return def ? `- ${region}: ${def}` : `- ${region}`;
+  }).join('\n');
+
+  // Build activity enforcement text
+  const activityEnforcement = userActivities.length > 0
+    ? `\n⚠️ CRITICAL ACTIVITY CONSTRAINT:\nUser wants: ${userActivities.join(', ').toUpperCase()}\n- EVERY destination MUST be excellent for these activities\n- Do NOT suggest cities that don't match (e.g., no mountain cities for beach lovers)\n- If user wants BEACH → suggest ONLY coastal/island destinations\n- If user wants HIKING → suggest ONLY mountain/nature destinations`
     : '';
 
-  // Generate random region focus for this search (forces variety)
-  const regions = [
-    { name: 'Western Europe', countries: 'Spain, Portugal, France, Italy, Belgium, Netherlands' },
-    { name: 'Central Europe', countries: 'Germany, Austria, Switzerland, Czech Republic, Poland, Hungary' },
-    { name: 'Eastern Europe', countries: 'Romania, Bulgaria, Serbia, Croatia, Slovenia, Slovakia' },
-    { name: 'Balkans', countries: 'Montenegro, Albania, North Macedonia, Bosnia, Kosovo' },
-    { name: 'Baltics & Nordics', countries: 'Estonia, Latvia, Lithuania, Finland, Sweden, Norway, Denmark' },
-    { name: 'British Isles', countries: 'UK, Ireland, Scotland' },
-    { name: 'Mediterranean', countries: 'Greece, Cyprus, Malta, Southern Italy, Corsica' },
-    { name: 'Middle East & Caucasus', countries: 'Turkey, Georgia, Armenia, Jordan, Israel, UAE' },
-    { name: 'North Africa', countries: 'Morocco, Tunisia, Egypt' },
-  ];
+  const prompt = `You are a travel expert matching destinations to user preferences.
 
-  // Pick 3 random regions to focus on (changes each search)
-  const shuffledRegions = regions.sort(() => Math.random() - 0.5);
-  const focusRegions = shuffledRegions.slice(0, 3);
+🎯 YOUR MISSION: Find ${count} destinations that PERFECTLY match this traveler's needs.
 
-  const prompt = `You are an UNPREDICTABLE travel expert. Your goal is to SURPRISE the user with destinations they haven't considered.
-
-🎲 SESSION ID: ${randomSeed} - Use this to randomize your choices. Pick DIFFERENT cities than you normally would!
-
-👤 TRAVELER:
-- Style: ${style}
-- Activities: ${activities.join(', ') || 'open to everything'}
+👤 TRAVELER PROFILE:
 - Budget: €${budget} (${budgetLevel})
-- Goal: ${onboarding.mainGoal || 'exploration'}
-${onboarding.topActivities?.length ? `- Must-do: ${onboarding.topActivities.join(', ')}` : ''}
+- Style: ${style}
+- Duration: ${duration} days
+- Origin: ${origin}
+- Month: ${currentMonth}
+${activityEnforcement}
+${exclusionText}
 
-📍 From: ${origin} | Duration: ${duration} days | Month: ${currentMonth}
-${exclusionText}${personalityHints}
+🗺️ FOCUS ON THESE REGIONS (matched to user's preferences):
+${regionGuidance}
 
-🌍 FOR THIS SEARCH, EXPLORE THESE REGIONS:
-1. ${focusRegions[0].name} (${focusRegions[0].countries})
-2. ${focusRegions[1].name} (${focusRegions[1].countries})
-3. ${focusRegions[2].name} (${focusRegions[2].countries})
+✅ STRICT REQUIREMENTS:
+1. ${count} cities from ${count} DIFFERENT countries
+2. ALL destinations must have flights from ${origin}
+3. ALL destinations must match the user's activity preferences
+4. Good weather for the activities in ${currentMonth}
+5. Mix 70% proven destinations + 30% hidden gems
+6. Stay within €${budget} total budget (flights + hotel + activities)
 
-✅ REQUIREMENTS:
-- ${count} cities from ${count} DIFFERENT countries
-- Each must have flights from ${origin}
-- Good weather in ${currentMonth}
-- Match the traveler's style and budget
-- Mix famous destinations with hidden gems
-- Include at least 1 "unexpected" destination most travelers don't know
+🎲 SESSION: ${randomSeed} - Vary your choices!
 
-💡 Be creative! Think like a travel blogger who wants to surprise their audience.
-
-Return ONLY a JSON array: ["City1", "City2", ...]`;
+Return ONLY a JSON array of city names: ["City1", "City2", ...]
+No explanation, no markdown, just the array.`;
 
   try {
     logger.logClaudeAPI({

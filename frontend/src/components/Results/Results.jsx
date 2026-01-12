@@ -13,6 +13,41 @@ function Results({ recommendations, onReset }) {
     return parseFloat((num ?? 0).toFixed(2));
   };
 
+  // Format duration from minutes to "Xh Ym" format
+  const formatDuration = (duration) => {
+    if (!duration) return 'N/A';
+    // If already formatted as string (e.g., "2h30m"), return as is
+    if (typeof duration === 'string') return duration;
+    // If number (minutes), convert to hours and minutes
+    const hours = Math.floor(duration / 60);
+    const mins = duration % 60;
+    return `${hours}h${mins > 0 ? mins + 'm' : ''}`;
+  };
+
+  // Calculate layover time between two segments
+  const calculateLayover = (arrivalTime, departureTime) => {
+    if (!arrivalTime || !departureTime) return null;
+    const arrival = new Date(arrivalTime);
+    const departure = new Date(departureTime);
+    const diffMs = departure - arrival;
+    if (diffMs <= 0) return null;
+    const minutes = Math.round(diffMs / (1000 * 60));
+    return formatDuration(minutes);
+  };
+
+  // Generate star rating based on hotel rating value (1-10 scale)
+  const getStarRating = (ratingValue, hotelStars) => {
+    // If hotel has explicit star rating, use it
+    if (hotelStars && hotelStars > 0) {
+      return hotelStars;
+    }
+    // Otherwise derive from review score (1-10 scale -> 1-5 stars)
+    if (ratingValue) {
+      return Math.round(ratingValue / 2);
+    }
+    return 0;
+  };
+
   const getDestinationImage = (photo, city, country) => {
     // Use photo from backend if available, otherwise fallback to Unsplash
     if (photo && photo.url) {
@@ -308,42 +343,201 @@ function Results({ recommendations, onReset }) {
               {/* Flight Info */}
               {trip.flightDetails && (
               <div className="flight-info-compact">
+                {/* OUTBOUND FLIGHT */}
                 <div className="flight-section">
                   <div className="flight-label">OUTBOUND</div>
-                  <div className="flight-route">
-                    <span className="flight-time">{trip.flightDetails.outbound?.departureTime ? new Date(trip.flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                    <span className="airport">{trip.flightDetails.outbound?.departureAirport || 'PAR'}</span>
-                    <div className="flight-line">
-                      <span className="flight-duration">{trip.flightDetails.outbound?.duration || '2h'} • {trip.flightDetails.outbound?.stops || 0} stop{(trip.flightDetails.outbound?.stops || 0) !== 1 ? 's' : ''}</span>
-                    </div>
-                    <span className="flight-time">{trip.flightDetails.outbound?.arrivalTime ? new Date(trip.flightDetails.outbound.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                    <span className="airport">{trip.flightDetails.outbound?.arrivalAirport || trip.destination.iataCode}</span>
+                  <div className="flight-header-row">
+                    <span className="flight-total-duration">
+                      {formatDuration(trip.flightDetails.outbound?.duration)} total
+                      {(trip.flightDetails.outbound?.stops || 0) > 0 && (
+                        <span className="stops-badge">{trip.flightDetails.outbound.stops} stop{trip.flightDetails.outbound.stops > 1 ? 's' : ''}</span>
+                      )}
+                      {(trip.flightDetails.outbound?.stops || 0) === 0 && (
+                        <span className="direct-badge">Direct</span>
+                      )}
+                    </span>
                   </div>
-                  <div className="airline-info">
-                    {trip.flightDetails.airlines?.length > 0
-                      ? trip.flightDetails.airlines.join(' + ')
-                      : trip.flightDetails.airline || 'Airline'}
+
+                  {/* Flight Segments */}
+                  <div className="flight-segments">
+                    {trip.flightDetails.outbound?.segments?.map((segment, segIdx) => {
+                      const segments = trip.flightDetails.outbound.segments;
+                      const nextSegment = segments[segIdx + 1];
+                      const layoverTime = nextSegment ? calculateLayover(segment.arrivalTime, nextSegment.departureTime) : null;
+
+                      return (
+                        <div key={segIdx} className="segment-wrapper">
+                          <div className="flight-segment">
+                            {/* Airline Logo & Info */}
+                            <div className="segment-airline">
+                              {segment.carrierLogo ? (
+                                <img src={segment.carrierLogo} alt={segment.carrier} className="airline-logo" />
+                              ) : (
+                                <span className="airline-icon">✈️</span>
+                              )}
+                              <div className="airline-details">
+                                <span className="airline-name">{segment.carrier || 'Airline'}</span>
+                                {segment.flightNumber && <span className="flight-number">{segment.flightNumber}</span>}
+                              </div>
+                            </div>
+
+                            {/* Route & Times */}
+                            <div className="segment-route">
+                              <div className="segment-endpoint">
+                                <span className="segment-time">
+                                  {segment.departureTime ? new Date(segment.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                </span>
+                                <span className="segment-airport">{segment.origin || segment.departureAirport}</span>
+                              </div>
+                              <div className="segment-line">
+                                <span className="segment-duration">{segment.duration ? formatDuration(segment.duration) : ''}</span>
+                              </div>
+                              <div className="segment-endpoint">
+                                <span className="segment-time">
+                                  {segment.arrivalTime ? new Date(segment.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                </span>
+                                <span className="segment-airport">{segment.destination || segment.arrivalAirport}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Layover indicator */}
+                          {layoverTime && (
+                            <div className="layover-indicator">
+                              <span className="layover-icon">⏱️</span>
+                              <span className="layover-text">{layoverTime} layover in {segment.destination || segment.arrivalAirport}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Fallback if no segments (old data format) */}
+                    {(!trip.flightDetails.outbound?.segments || trip.flightDetails.outbound.segments.length === 0) && (
+                      <div className="flight-segment">
+                        <div className="segment-airline">
+                          <span className="airline-icon">✈️</span>
+                          <span className="airline-name">{trip.flightDetails.airline || 'Airline'}</span>
+                        </div>
+                        <div className="segment-route">
+                          <div className="segment-endpoint">
+                            <span className="segment-time">
+                              {trip.flightDetails.outbound?.departureTime ? new Date(trip.flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </span>
+                            <span className="segment-airport">{trip.flightDetails.outbound?.departureAirport || 'PAR'}</span>
+                          </div>
+                          <div className="segment-line">
+                            <span className="segment-duration">{formatDuration(trip.flightDetails.outbound?.duration)}</span>
+                          </div>
+                          <div className="segment-endpoint">
+                            <span className="segment-time">
+                              {trip.flightDetails.outbound?.arrivalTime ? new Date(trip.flightDetails.outbound.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </span>
+                            <span className="segment-airport">{trip.flightDetails.outbound?.arrivalAirport || trip.destination.iataCode}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* RETURN FLIGHT */}
                 {trip.flightDetails.return && (
                   <div className="flight-section">
                     <div className="flight-label">RETURN</div>
-                    <div className="flight-route">
-                      <span className="flight-time">{trip.flightDetails.return?.departureTime ? new Date(trip.flightDetails.return.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                      <span className="airport">{trip.flightDetails.return?.departureAirport || trip.destination.iataCode}</span>
-                      <div className="flight-line">
-                        <span className="flight-duration">{trip.flightDetails.return?.duration || '2h'} • {trip.flightDetails.return?.stops || 0} stop{(trip.flightDetails.return?.stops || 0) !== 1 ? 's' : ''}</span>
-                      </div>
-                      <span className="flight-time">{trip.flightDetails.return?.arrivalTime ? new Date(trip.flightDetails.return.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                      <span className="airport">{trip.flightDetails.return?.arrivalAirport || 'PAR'}</span>
+                    <div className="flight-header-row">
+                      <span className="flight-total-duration">
+                        {formatDuration(trip.flightDetails.return?.duration)} total
+                        {(trip.flightDetails.return?.stops || 0) > 0 && (
+                          <span className="stops-badge">{trip.flightDetails.return.stops} stop{trip.flightDetails.return.stops > 1 ? 's' : ''}</span>
+                        )}
+                        {(trip.flightDetails.return?.stops || 0) === 0 && (
+                          <span className="direct-badge">Direct</span>
+                        )}
+                      </span>
                     </div>
-                    <div className="airline-info">
-                      {trip.flightDetails.returnAirlines?.length > 0
-                        ? trip.flightDetails.returnAirlines.join(' + ')
-                        : trip.flightDetails.airline || 'Airline'}
+
+                    {/* Return Flight Segments */}
+                    <div className="flight-segments">
+                      {trip.flightDetails.return?.segments?.map((segment, segIdx) => {
+                        const segments = trip.flightDetails.return.segments;
+                        const nextSegment = segments[segIdx + 1];
+                        const layoverTime = nextSegment ? calculateLayover(segment.arrivalTime, nextSegment.departureTime) : null;
+
+                        return (
+                          <div key={segIdx} className="segment-wrapper">
+                            <div className="flight-segment">
+                              <div className="segment-airline">
+                                {segment.carrierLogo ? (
+                                  <img src={segment.carrierLogo} alt={segment.carrier} className="airline-logo" />
+                                ) : (
+                                  <span className="airline-icon">✈️</span>
+                                )}
+                                <div className="airline-details">
+                                  <span className="airline-name">{segment.carrier || 'Airline'}</span>
+                                  {segment.flightNumber && <span className="flight-number">{segment.flightNumber}</span>}
+                                </div>
+                              </div>
+
+                              <div className="segment-route">
+                                <div className="segment-endpoint">
+                                  <span className="segment-time">
+                                    {segment.departureTime ? new Date(segment.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </span>
+                                  <span className="segment-airport">{segment.origin || segment.departureAirport}</span>
+                                </div>
+                                <div className="segment-line">
+                                  <span className="segment-duration">{segment.duration ? formatDuration(segment.duration) : ''}</span>
+                                </div>
+                                <div className="segment-endpoint">
+                                  <span className="segment-time">
+                                    {segment.arrivalTime ? new Date(segment.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </span>
+                                  <span className="segment-airport">{segment.destination || segment.arrivalAirport}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {layoverTime && (
+                              <div className="layover-indicator">
+                                <span className="layover-icon">⏱️</span>
+                                <span className="layover-text">{layoverTime} layover in {segment.destination || segment.arrivalAirport}</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Fallback if no segments */}
+                      {(!trip.flightDetails.return?.segments || trip.flightDetails.return.segments.length === 0) && (
+                        <div className="flight-segment">
+                          <div className="segment-airline">
+                            <span className="airline-icon">✈️</span>
+                            <span className="airline-name">{trip.flightDetails.airline || 'Airline'}</span>
+                          </div>
+                          <div className="segment-route">
+                            <div className="segment-endpoint">
+                              <span className="segment-time">
+                                {trip.flightDetails.return?.departureTime ? new Date(trip.flightDetails.return.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
+                              </span>
+                              <span className="segment-airport">{trip.flightDetails.return?.departureAirport || trip.destination.iataCode}</span>
+                            </div>
+                            <div className="segment-line">
+                              <span className="segment-duration">{formatDuration(trip.flightDetails.return?.duration)}</span>
+                            </div>
+                            <div className="segment-endpoint">
+                              <span className="segment-time">
+                                {trip.flightDetails.return?.arrivalTime ? new Date(trip.flightDetails.return.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
+                              </span>
+                              <span className="segment-airport">{trip.flightDetails.return?.arrivalAirport || 'PAR'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
+
                 <div className="flight-price">
                   €{formatNumber(trip.flightDetails.totalPrice)} round-trip
                 </div>
@@ -397,24 +591,46 @@ function Results({ recommendations, onReset }) {
                   <div className="hotel-header">
                     <span className="hotel-icon">🏨</span>
                     <span className="hotel-name">{trip.hotelOptions.hotels[0].name}</span>
-                    {trip.hotelOptions.hotels[0].stars > 0 && (
-                      <span className="hotel-stars">{'⭐'.repeat(Math.min(trip.hotelOptions.hotels[0].stars, 5))}</span>
-                    )}
+                    {/* Dynamic stars based on hotel stars or derived from rating */}
+                    {(() => {
+                      const stars = getStarRating(
+                        trip.hotelOptions.hotels[0].rating?.value,
+                        trip.hotelOptions.hotels[0].stars
+                      );
+                      return stars > 0 ? (
+                        <span className="hotel-stars">{'⭐'.repeat(Math.min(stars, 5))}</span>
+                      ) : null;
+                    })()}
                   </div>
-                  {/* Rating */}
+                  {/* Rating with review count */}
                   {trip.hotelOptions.hotels[0].rating?.value > 0 && (
                     <div className="hotel-rating">
-                      <span className="rating-badge">{trip.hotelOptions.hotels[0].rating.value.toFixed(1)}</span>
-                      <span className="rating-word">{trip.hotelOptions.hotels[0].rating.word}</span>
+                      <span className={`rating-badge ${
+                        trip.hotelOptions.hotels[0].rating.value >= 9 ? 'exceptional' :
+                        trip.hotelOptions.hotels[0].rating.value >= 8 ? 'excellent' :
+                        trip.hotelOptions.hotels[0].rating.value >= 7 ? 'good' : ''
+                      }`}>
+                        {trip.hotelOptions.hotels[0].rating.value.toFixed(1)}
+                      </span>
+                      <span className="rating-word">{trip.hotelOptions.hotels[0].rating.word || (
+                        trip.hotelOptions.hotels[0].rating.value >= 9 ? 'Exceptional' :
+                        trip.hotelOptions.hotels[0].rating.value >= 8 ? 'Excellent' :
+                        trip.hotelOptions.hotels[0].rating.value >= 7 ? 'Very Good' :
+                        trip.hotelOptions.hotels[0].rating.value >= 6 ? 'Good' : 'Pleasant'
+                      )}</span>
                       {trip.hotelOptions.hotels[0].rating.count > 0 && (
-                        <span className="rating-count">({trip.hotelOptions.hotels[0].rating.count} reviews)</span>
+                        <span className="rating-count">
+                          ({trip.hotelOptions.hotels[0].rating.count.toLocaleString()} reviews)
+                        </span>
                       )}
                     </div>
                   )}
                   <div className="hotel-details">
-                    <span className="hotel-price">€{formatNumber(trip.hotelOptions.hotels[0].price)}/night</span>
+                    <span className="hotel-price">€{formatNumber(trip.hotelOptions.hotels[0].price || trip.hotelOptions.hotels[0].pricePerNight)}/night</span>
                     <span className="hotel-separator">•</span>
                     <span>{trip.hotelOptions.nights} nights</span>
+                    <span className="hotel-separator">•</span>
+                    <span className="hotel-total">€{formatNumber((trip.hotelOptions.hotels[0].price || trip.hotelOptions.hotels[0].pricePerNight) * trip.hotelOptions.nights)} total</span>
                     {trip.hotelOptions.hotels[0].checkInTime && (
                       <>
                         <span className="hotel-separator">•</span>
