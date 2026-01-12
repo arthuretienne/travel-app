@@ -770,12 +770,23 @@ function Results() {
                         </div>
                       </div>
                       <div className="space-y-3">
-                        {trip.hotelOptions.hotels.slice(0, 2).map((hotel, hotelIndex) => (
+                        {trip.hotelOptions.hotels.slice(0, 1).map((hotel, hotelIndex) => (
                           <div key={hotelIndex} className="bg-white rounded-lg p-3 border border-green-100">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1">
-                                <div className="font-semibold text-gray-900">{hotel.name || 'Hotel'}</div>
-                                <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-start gap-3">
+                              {/* Hotel Photo */}
+                              {hotel.mainPhoto && (
+                                <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                                  <img
+                                    src={hotel.mainPhoto}
+                                    alt={hotel.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => e.target.style.display = 'none'}
+                                  />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-gray-900 truncate">{hotel.name || 'Hotel'}</div>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
                                   {/* Star rating */}
                                   {hotel.stars > 0 && (
                                     <div className="flex text-amber-400">
@@ -784,26 +795,31 @@ function Results() {
                                       ))}
                                     </div>
                                   )}
-                                  {/* Location */}
-                                  {hotel.location && (
-                                    <span className="text-xs text-gray-500 flex items-center gap-1">
-                                      <MapPin size={10} />
-                                      {hotel.location}
+                                  {/* Review rating */}
+                                  {hotel.rating?.value > 0 && (
+                                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                      hotel.rating.value >= 9 ? 'bg-green-100 text-green-800' :
+                                      hotel.rating.value >= 8 ? 'bg-blue-100 text-blue-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {hotel.rating.value.toFixed(1)} {hotel.rating.word || ''}
+                                    </span>
+                                  )}
+                                  {hotel.rating?.count > 0 && (
+                                    <span className="text-xs text-gray-500">
+                                      ({hotel.rating.count.toLocaleString()} reviews)
                                     </span>
                                   )}
                                 </div>
-                                {/* Amenities */}
-                                {hotel.amenities && hotel.amenities.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-2">
-                                    {hotel.amenities.slice(0, 3).map((amenity, i) => (
-                                      <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                                        {amenity}
-                                      </span>
-                                    ))}
-                                  </div>
+                                {/* Location */}
+                                {hotel.location && (
+                                  <span className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                                    <MapPin size={10} />
+                                    {hotel.location}
+                                  </span>
                                 )}
                               </div>
-                              <div className="text-right">
+                              <div className="text-right flex-shrink-0">
                                 <div className="font-bold text-green-800">
                                   €{Math.round(hotel.price || hotel.pricePerNight || trip.hotelOptions.averagePrice || 0)}
                                 </div>
@@ -816,51 +832,36 @@ function Results() {
                     </div>
                   )}
 
-                  {/* Activities Budget */}
-                  {trip.pricing?.activities > 0 && (
+                  {/* Activities & Highlights */}
+                  {(trip.destination?.highlights?.length > 0 || trip.pricing?.activities > 0) && (
                     <div className="mb-6 bg-purple-50/50 rounded-xl p-4 border border-purple-100">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-bold text-purple-900 flex items-center gap-2">
                           <Sparkles size={16} className="text-purple-600" />
-                          Activities & Experiences
+                          Must-Do Experiences
                         </h4>
                         <div className="text-right">
                           <span className="text-lg font-bold text-purple-900">€{Math.round(trip.pricing?.activities || 0)}</span>
-                          <span className="text-xs text-purple-700 block">available</span>
+                          <span className="text-xs text-purple-700 block">estimated</span>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-white rounded-lg p-2 border border-purple-100 flex items-center gap-2">
-                          <span className="text-lg">🏛️</span>
-                          <div>
-                            <div className="text-xs font-medium text-gray-900">Museums & Culture</div>
-                            <div className="text-xs text-gray-500">€10-25 per visit</div>
-                          </div>
+                      {/* Personalized highlights from Claude AI */}
+                      {trip.destination?.highlights?.length > 0 ? (
+                        <div className="space-y-2">
+                          {trip.destination.highlights.slice(0, 6).map((highlight, i) => (
+                            <div key={i} className="bg-white rounded-lg px-3 py-2 border border-purple-100 flex items-center gap-2">
+                              <span className="text-purple-500">✦</span>
+                              <span className="text-sm text-gray-800">{highlight}</span>
+                            </div>
+                          ))}
                         </div>
-                        <div className="bg-white rounded-lg p-2 border border-purple-100 flex items-center gap-2">
-                          <span className="text-lg">🍽️</span>
-                          <div>
-                            <div className="text-xs font-medium text-gray-900">Local Cuisine</div>
-                            <div className="text-xs text-gray-500">€15-40 per meal</div>
-                          </div>
-                        </div>
-                        <div className="bg-white rounded-lg p-2 border border-purple-100 flex items-center gap-2">
-                          <span className="text-lg">🚶</span>
-                          <div>
-                            <div className="text-xs font-medium text-gray-900">Walking Tours</div>
-                            <div className="text-xs text-gray-500">€15-30 per tour</div>
-                          </div>
-                        </div>
-                        <div className="bg-white rounded-lg p-2 border border-purple-100 flex items-center gap-2">
-                          <span className="text-lg">🌅</span>
-                          <div>
-                            <div className="text-xs font-medium text-gray-900">Day Trips</div>
-                            <div className="text-xs text-gray-500">€40-80 per trip</div>
-                          </div>
-                        </div>
-                      </div>
+                      ) : (
+                        <p className="text-sm text-purple-700 text-center py-2">
+                          Explore local attractions, food tours, and cultural experiences
+                        </p>
+                      )}
                       <p className="text-xs text-purple-600 mt-3 text-center">
-                        ~€{Math.round((trip.pricing?.activities || 0) / (trip.slot?.duration || 7))} daily budget for experiences
+                        ~€{Math.round((trip.pricing?.activities || 0) / (trip.slot?.duration || 7))}/day for experiences
                       </p>
                     </div>
                   )}
@@ -910,7 +911,7 @@ function Results() {
           </div>
         )}
 
-        {recommendations.length === 0 && (
+        {recommendations.length === 0 && !isStreaming && (
           <div className="bg-white rounded-3xl p-16 text-center shadow-card border border-gray-100">
             <div className="inline-flex p-6 bg-gray-50 text-gray-400 rounded-full mb-6">
               <Frown size={48} />

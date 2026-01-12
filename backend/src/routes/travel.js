@@ -1084,14 +1084,23 @@ router.post('/recommendations/stream',
               originCity
             );
 
-            // Build result
+            // Calculate realistic activities budget (30€/day estimate)
+            const nights = trip.hotel.totalNights || (trip.dates.duration ? trip.dates.duration - 1 : 3);
+            const estimatedActivitiesCost = Math.round(30 * trip.dates.duration); // ~30€/day for activities
+            const actualTotal = trip.budget.flight + trip.budget.hotel + estimatedActivitiesCost;
+            const actualRemaining = budget - actualTotal;
+
+            // Build result with all data properly mapped
             const result = {
               destination: {
                 city: trip.destination.name,
-                country: recommendation?.destinationName || trip.destination.name,
+                country: trip.destination.country || recommendation?.destinationName || trip.destination.name,
                 iataCode: trip.destination.iata,
                 photo: photoResult,
-                matchReason: recommendation?.tagline || `Perfect for ${userProfile.basic.activities?.join(', ') || 'your interests'}`
+                tagline: recommendation?.tagline,
+                matchReason: recommendation?.matchReason || `Perfect for ${userProfile.basic.activities?.join(', ') || 'your interests'}`,
+                seasonReason: recommendation?.seasonReason,
+                highlights: recommendation?.highlights || []
               },
               slot: {
                 startDate: trip.dates.departure,
@@ -1102,9 +1111,9 @@ router.post('/recommendations/stream',
               pricing: {
                 flight: trip.budget.flight,
                 hotel: trip.budget.hotel,
-                activities: trip.budget.remaining,
-                total: trip.budget.total,
-                remaining: trip.budget.remaining,
+                activities: estimatedActivitiesCost,
+                total: actualTotal,
+                remaining: actualRemaining,
                 currency: 'EUR'
               },
               flightDetails: {
@@ -1117,10 +1126,26 @@ router.post('/recommendations/stream',
                     ? `${Math.floor(trip.flight.outbound.duration / 60)}h${trip.flight.outbound.duration % 60}m`
                     : trip.flight.outbound.duration || 'N/A',
                   stops: trip.flight.outbound.stops || 0,
-                  segments: [{
-                    carrier: trip.flight.outbound.airline || 'Airline',
-                    carrierLogo: trip.flight.outbound.airlineLogo,
-                  }]
+                  // Full segments with all details
+                  segments: trip.flight.outbound.segments?.length > 0
+                    ? trip.flight.outbound.segments.map(seg => ({
+                        carrier: seg.airline || 'Airline',
+                        carrierLogo: seg.airlineLogo,
+                        departureTime: seg.departureTime,
+                        arrivalTime: seg.arrivalTime,
+                        origin: seg.departureAirport,
+                        destination: seg.arrivalAirport,
+                        duration: seg.duration,
+                        flightNumber: seg.flightNumber,
+                      }))
+                    : [{
+                        carrier: trip.flight.outbound.airline || 'Airline',
+                        carrierLogo: trip.flight.outbound.airlineLogo,
+                        departureTime: trip.flight.outbound.departureTime,
+                        arrivalTime: trip.flight.outbound.arrivalTime,
+                        origin: trip.flight.outbound.departureAirport,
+                        destination: trip.flight.outbound.arrivalAirport,
+                      }]
                 },
                 return: trip.flight.return ? {
                   departureTime: trip.flight.return.departureTime,
@@ -1131,10 +1156,25 @@ router.post('/recommendations/stream',
                     ? `${Math.floor(trip.flight.return.duration / 60)}h${trip.flight.return.duration % 60}m`
                     : trip.flight.return.duration || 'N/A',
                   stops: trip.flight.return.stops || 0,
-                  segments: [{
-                    carrier: trip.flight.return.airline || 'Airline',
-                    carrierLogo: trip.flight.return.airlineLogo,
-                  }]
+                  segments: trip.flight.return.segments?.length > 0
+                    ? trip.flight.return.segments.map(seg => ({
+                        carrier: seg.airline || 'Airline',
+                        carrierLogo: seg.airlineLogo,
+                        departureTime: seg.departureTime,
+                        arrivalTime: seg.arrivalTime,
+                        origin: seg.departureAirport,
+                        destination: seg.arrivalAirport,
+                        duration: seg.duration,
+                        flightNumber: seg.flightNumber,
+                      }))
+                    : [{
+                        carrier: trip.flight.return.airline || 'Airline',
+                        carrierLogo: trip.flight.return.airlineLogo,
+                        departureTime: trip.flight.return.departureTime,
+                        arrivalTime: trip.flight.return.arrivalTime,
+                        origin: trip.flight.return.departureAirport,
+                        destination: trip.flight.return.arrivalAirport,
+                      }]
                 } : null,
                 totalPrice: trip.flight.totalCost,
                 airline: trip.flight.outbound.airline || 'Airline',
@@ -1145,13 +1185,13 @@ router.post('/recommendations/stream',
                 destination: trip.destination.name,
                 checkIn: trip.dates.departure,
                 checkOut: trip.dates.return,
-                nights: trip.hotel.totalNights || (trip.dates.duration ? trip.dates.duration - 1 : 3),
+                nights: nights,
                 hotels: [{
                   id: trip.hotel.id,
                   name: trip.hotel.name || 'Hotel',
                   stars: trip.hotel.stars || 0,
-                  price: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, (trip.dates.duration || 4) - 1)),
-                  pricePerNight: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, (trip.dates.duration || 4) - 1)),
+                  price: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, nights)),
+                  pricePerNight: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, nights)),
                   totalPrice: trip.hotel.totalPrice,
                   location: trip.hotel.location || trip.destination.name,
                   amenities: trip.hotel.amenities || [],
@@ -1160,7 +1200,7 @@ router.post('/recommendations/stream',
                   checkInTime: trip.hotel.checkInTime,
                   checkOutTime: trip.hotel.checkOutTime,
                 }],
-                averagePrice: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, (trip.dates.duration || 4) - 1))
+                averagePrice: trip.hotel.pricePerNight || Math.round(trip.budget.hotel / Math.max(1, nights))
               },
               recommendation: recommendation,
               score: score,
