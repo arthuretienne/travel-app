@@ -182,12 +182,18 @@ router.get('/test-algorithm', async (req, res) => {
     console.log(`\n🧪 TESTING ALGORITHM with profile: ${testProfile.name}`);
     console.log('Profile:', JSON.stringify(testProfile, null, 2));
 
+    // Allow budget and maxFlightHours override via query param for testing
+    const budgetOverride = req.query.budget ? parseInt(req.query.budget) : null;
+    const maxFlightHoursOverride = req.query.maxFlightHours ? parseInt(req.query.maxFlightHours) : null;
+    const testBudget = budgetOverride || testProfile.basic.budget;
+
     const startTime = Date.now();
     const destinations = await generateDestinationShortlist(testProfile, {
-      budget: testProfile.basic.budget,
+      budget: testBudget,
       duration: 7,
       origin: req.query.origin || 'Paris',
-      count: 6
+      count: 6,
+      maxFlightHours: maxFlightHoursOverride
     });
     const duration = Date.now() - startTime;
 

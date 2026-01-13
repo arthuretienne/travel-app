@@ -259,19 +259,29 @@ Return ONLY this JSON (no markdown):
   "seasonReason": "1 sentence about ${seasonalInsights.monthName} in ${destination.name}",
   "activities": [
     {
-      "name": "Specific activity name with real place (e.g., 'Louvre Museum skip-the-line tour')",
+      "name": "Specific activity name with real place",
       "price": 25,
-      "type": "culture|food|nature|nightlife|tour"
+      "type": "culture|food|nature|nightlife|tour",
+      "tip": "Optional insider tip or money-saving advice"
     }
-  ]
+  ],
+  "budgetTips": "2-3 money-saving tips for ${destination.name} (cheap eats, free days, transport hacks)"
 }
 
 ACTIVITIES RULES:
-- Generate 5-6 activities for ${dates.duration} days
-- Use REAL prices in EUR (Louvre=€22, Prado=€15, free walking tour=€0, food tour=€40-80)
-- Mix: 2 cultural (museums/monuments), 1 food experience, 1 nature/outdoor, 1-2 local gems
-- Include at least 1 FREE activity (park, viewpoint, neighborhood walk)
-- Prices should reflect ${destination.name}'s cost of living (Western Europe=higher, Eastern Europe/Asia=lower)`
+- Generate 5-6 QUALITY activities only (no generic filler!)
+- Would a LOCAL recommend this? Not just tourist traps!
+- REAL prices in EUR reflecting ${destination.name}'s cost of living
+- Required mix:
+  * 2 FREE activities (viewpoints, markets, parks, free walking tours)
+  * 2-3 paid but worth it (€10-50: museums, food tours)
+  * 1 splurge-worthy experience if budget allows
+- Add "tip" for activities where you know a money-saving trick or local secret
+- Examples of good tips:
+  * "Free entry first Sunday of month"
+  * "Book online to skip €5 queue fee"
+  * "Best at sunset, arrive 30min early for good spot"
+  * "Skip the restaurant, eat at the market stalls for 1/3 price"`
   };
 }
 

@@ -347,22 +347,30 @@ CRITICAL INSTRUCTIONS:
    - "Populaire": 30% hidden gems, 70% known
 8. Ensure trips don't overlap in dates
 
-🎯 STRUCTURED ACTIVITIES GENERATION (MANDATORY):
-For each destination, generate 5-8 concrete, bookable activities that:
-1. MATCH user's top activities preferences (${onboardingPreferences.topActivities?.join(', ') || 'various activities'})
-2. Are REALISTIC and actually available in that destination
-3. Cover different times of day (morning, afternoon, evening)
-4. Mix FREE activities (parks, walking tours) and PAID activities (museums, excursions)
-5. Include SPECIFIC names (not generic "visit museum" → "Louvre Museum Tour")
-6. Price activities realistically (€5-150 range depending on type)
-7. Categories: Culture, Nature, Food, Adventure, Relaxation, Nightlife
-8. Examples:
-   - Culture: "Guided walking tour of Old Town" (Half-day, €25, Morning)
-   - Nature: "Hike to scenic viewpoint" (2h, €0, Morning/Afternoon)
-   - Food: "Traditional cooking class" (3h, €60, Afternoon)
-   - Adventure: "Paragliding experience" (2h, €120, Morning)
-   - Relaxation: "Spa and thermal baths" (Half-day, €40, Anytime)
-   - Nightlife: "Rooftop bar with city views" (2h, €20, Evening)
+🎯 QUALITY ACTIVITIES (5-6 per destination):
+Generate ONLY activities that are TRULY worth doing - no generic filler!
+
+ACTIVITY SELECTION CRITERIA:
+1. Would a LOCAL recommend this? (not just tourist traps)
+2. Is it UNIQUE to this destination? (no generic "city walking tour")
+3. Does it match user's interests: ${onboardingPreferences.topActivities?.join(', ') || 'various activities'}
+4. Good value for money (quality experience, not overpriced)
+
+BUDGET-ADAPTED ACTIVITIES (user budget: €${basic.budget}):
+${basic.budget < 600 ? `- FOCUS on FREE/cheap activities: free walking tours, public beaches, viewpoints, local markets, street food
+- Include "insider tips" for saving money (free museum days, happy hours, local lunch spots)
+- Prioritize authentic local experiences over expensive tourist attractions` :
+basic.budget < 1000 ? `- MIX of free activities and affordable paid experiences
+- Include 1-2 splurge-worthy experiences that are really worth it
+- Mention budget-friendly alternatives when relevant` :
+`- Can include premium experiences (private tours, fine dining, exclusive access)
+- Still prioritize quality over price - expensive doesn't always mean better
+- Include some authentic local experiences alongside luxury options`}
+
+REQUIRED MIX:
+- 2 FREE activities (viewpoints, beaches, markets, free tours)
+- 2-3 MID-RANGE activities (€10-50: museums, food tours, day trips)
+- 1 SPECIAL experience (€50-150: unique experience worth the splurge)
 
 OUTPUT FORMAT (JSON only, no markdown, no code blocks):
 {
@@ -384,9 +392,11 @@ OUTPUT FORMAT (JSON only, no markdown, no code blocks):
           "duration": "2h" | "Half-day" | "Full-day",
           "estimatedPrice": 25,
           "category": "Culture" | "Nature" | "Food" | "Adventure" | "Relaxation" | "Nightlife",
-          "when": "Morning" | "Afternoon" | "Evening" | "Anytime"
+          "when": "Morning" | "Afternoon" | "Evening" | "Anytime",
+          "insiderTip": "Optional: money-saving tip or local secret (max 80 chars)"
         }
-      ]
+      ],
+      "budgetTips": "2-3 money-saving tips specific to this destination (max 150 chars)"
     }
   ]
 }
@@ -397,8 +407,10 @@ IMPORTANT RULES:
 - estimatedBudget should fit within user's total budget of €${basic.budget}
 - seasonReason should explain why THESE SPECIFIC DATES are perfect (not just "good weather")
 - Dates must be realistic and within the planning window
-- suggestedActivities: MUST include 5-8 specific, realistic activities matching user's top activities preferences
-- Activity prices should be realistic (FREE for parks/viewpoints, €5-50 for museums, €50-150 for experiences)
+- suggestedActivities: 5-6 QUALITY activities only (no filler!)
+- Activity prices: €0 for free, €5-50 for mid-range, €50-150 for special experiences
+- insiderTip: Add for activities where you know a money-saving trick or local secret
+- budgetTips: 2-3 destination-specific tips (cheap eats, free days, transport hacks)
 - Activity duration: "2h", "3h", "Half-day", "Full-day"
 - Activity when: "Morning", "Afternoon", "Evening", "Anytime"
 - Return ONLY valid JSON, absolutely no markdown formatting or code blocks
@@ -654,7 +666,8 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
     origin = 'Paris',
     count = 6,
     excludeDestinations = [], // Previously recommended destinations to exclude
-    userId = null // For fetching past recommendations
+    userId = null, // For fetching past recommendations
+    maxFlightHours = null // User's max flight duration preference
   } = options;
 
   // Generate a random seed for this session to encourage variety
@@ -710,9 +723,22 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
     }
   }
 
-  // Build exclusion text for prompt - ONLY user's past destinations, no arbitrary bans
-  const exclusionText = pastDestinations.length > 0
-    ? `\n🚫 EXCLUDED (user already saw these): ${pastDestinations.join(', ')}\n`
+  // Add some globally over-suggested destinations to exclusion (rotate based on day)
+  // This prevents ALL users from seeing the same "Claude favorites" every time
+  const overSuggestedPools = [
+    ['Funchal', 'Tbilisi', 'Innsbruck'], // Pool A
+    ['Marrakech', 'Tenerife', 'Reykjavik'], // Pool B
+    ['Porto', 'Split', 'Budapest'], // Pool C
+  ];
+  // Rotate which pool to exclude based on random seed
+  const poolIndex = randomSeed % overSuggestedPools.length;
+  const globalExclusions = overSuggestedPools[poolIndex];
+
+  const allExclusions = [...new Set([...pastDestinations, ...globalExclusions])];
+
+  // Build exclusion text for prompt
+  const exclusionText = allExclusions.length > 0
+    ? `\n🚫 DO NOT SUGGEST: ${allExclusions.join(', ')}\n`
     : '';
 
   // Current month for seasonal context
@@ -724,66 +750,7 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
   const budgetLevel = budget < 500 ? 'budget' : budget < 1000 ? 'mid-range' : budget < 2000 ? 'comfortable' : 'luxury';
   const onboarding = userProfile.onboardingPreferences || {};
 
-  // ========================================
-  // ACTIVITY-BASED REGION MAPPING
-  // This ensures beach lovers get beach destinations, not mountains!
-  // ========================================
-  const activityRegionMap = {
-    // Beach & Water activities
-    'beach': ['Mediterranean Beaches', 'Atlantic Islands', 'Caribbean & Tropics', 'Southeast Asia Beaches'],
-    'plage': ['Mediterranean Beaches', 'Atlantic Islands', 'Caribbean & Tropics', 'Southeast Asia Beaches'],
-    'water-sports': ['Mediterranean Beaches', 'Atlantic Islands', 'Caribbean & Tropics'],
-    'snorkeling': ['Mediterranean Beaches', 'Caribbean & Tropics', 'Southeast Asia Beaches', 'Indian Ocean'],
-    'diving': ['Mediterranean Beaches', 'Caribbean & Tropics', 'Southeast Asia Beaches', 'Indian Ocean'],
-    'swimming': ['Mediterranean Beaches', 'Atlantic Islands', 'Caribbean & Tropics'],
-    'relaxation': ['Mediterranean Beaches', 'Atlantic Islands', 'Spa & Wellness'],
-    'sunbathing': ['Mediterranean Beaches', 'Atlantic Islands', 'Caribbean & Tropics'],
-
-    // Mountain & Nature activities
-    'hiking': ['Alpine Mountains', 'Nordic Nature', 'Balkans Mountains', 'Atlantic Islands'],
-    'randonnée': ['Alpine Mountains', 'Nordic Nature', 'Balkans Mountains'],
-    'mountains': ['Alpine Mountains', 'Nordic Nature', 'Balkans Mountains'],
-    'nature': ['Nordic Nature', 'Atlantic Islands', 'Balkans Mountains', 'National Parks'],
-    'skiing': ['Alpine Ski Resorts', 'Nordic Ski'],
-    'ski': ['Alpine Ski Resorts', 'Nordic Ski'],
-
-    // Culture & City activities
-    'culture': ['Historic Capitals', 'Art Cities', 'Ancient Civilizations'],
-    'museums': ['Historic Capitals', 'Art Cities'],
-    'history': ['Historic Capitals', 'Ancient Civilizations', 'Balkans Heritage'],
-    'architecture': ['Historic Capitals', 'Art Cities'],
-    'city': ['European Capitals', 'Vibrant Cities'],
-
-    // Food & Gastronomy
-    'food': ['Gastronomy Capitals', 'Wine Regions', 'Mediterranean Food'],
-    'gastronomy': ['Gastronomy Capitals', 'Wine Regions'],
-    'wine': ['Wine Regions', 'Mediterranean Food'],
-
-    // Adventure
-    'adventure': ['Adventure Destinations', 'Exotic Lands', 'Wild Nature'],
-    'outdoor': ['Nordic Nature', 'Adventure Destinations', 'National Parks'],
-  };
-
-  // Region definitions - COMPACT version (reduced tokens)
-  const regionDefinitions = {
-    'Mediterranean Beaches': 'Crete, Sardinia, Malta, Split, Dubrovnik, Santorini, Mykonos, Rhodes, Antalya, Bodrum',
-    'Atlantic Islands': 'Tenerife, Gran Canaria, Lanzarote, Madeira, Azores, Cape Verde',
-    'Caribbean & Tropics': 'Cancun, Tulum, Punta Cana, Cuba, Martinique, Guadeloupe',
-    'Southeast Asia Beaches': 'Bali, Phuket, Krabi, Koh Samui, Langkawi, Palawan',
-    'Indian Ocean': 'Maldives, Mauritius, Seychelles, Zanzibar',
-    'Alpine Mountains': 'Zermatt, Interlaken, Innsbruck, Chamonix, Dolomites',
-    'Nordic Nature': 'Bergen, Tromso, Lofoten, Reykjavik, Faroe Islands',
-    'Historic Capitals': 'Rome, Vienna, Prague, Budapest, Lisbon, Athens, Istanbul',
-    'Art Cities': 'Florence, Barcelona, Amsterdam, Berlin, Milan, Venice',
-    'Gastronomy Capitals': 'Lyon, Bologna, San Sebastian, Porto, Naples, Bangkok',
-    'Balkans Heritage': 'Sarajevo, Mostar, Kotor, Ohrid, Plovdiv, Tirana',
-    'Adventure Destinations': 'Marrakech, Petra, Tbilisi, Yerevan, Iceland',
-  };
-
-  // Determine which regions to focus on based on user's activities
-  let focusRegions = [];
-
-  // First, check if user has specific activity preferences
+  // Extract user activities for context (NO city examples - let Claude use its knowledge!)
   const userActivities = [
     ...(activities || []),
     ...(onboarding.topActivities || []),
@@ -792,71 +759,97 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
 
   console.log(`🎯 User activities detected: ${userActivities.join(', ') || 'none specified'}`);
 
-  // Map activities to regions
-  const matchedRegions = new Set();
-  userActivities.forEach(activity => {
-    Object.entries(activityRegionMap).forEach(([key, regions]) => {
-      if (activity.includes(key) || key.includes(activity)) {
-        regions.forEach(r => matchedRegions.add(r));
-      }
-    });
-  });
+  // Build activity context with STRICT requirements for certain activities
+  let activityContext = 'Open to all types of experiences';
+  let activityConstraint = '';
 
-  if (matchedRegions.size > 0) {
-    // User has specific activity preferences - use matched regions
-    focusRegions = Array.from(matchedRegions).slice(0, 4);
-    console.log(`🗺️ Activity-matched regions: ${focusRegions.join(', ')}`);
-  } else {
-    // No specific activities - pick diverse regions based on budget
-    if (budget >= 2000) {
-      focusRegions = ['Mediterranean Beaches', 'Southeast Asia Beaches', 'Indian Ocean', 'Historic Capitals'];
-    } else if (budget >= 1000) {
-      focusRegions = ['Mediterranean Beaches', 'Atlantic Islands', 'Historic Capitals', 'Balkans Heritage'];
-    } else {
-      focusRegions = ['Balkans Heritage', 'Historic Capitals', 'Mediterranean Beaches', 'Adventure Destinations'];
+  if (userActivities.length > 0) {
+    activityContext = `Main interests: ${userActivities.join(', ').toUpperCase()}`;
+
+    // Add strict constraints for specific activity types
+    const hasBeach = userActivities.some(a => ['plage', 'beach', 'swimming', 'sunbathing', 'snorkeling'].includes(a));
+    const hasHiking = userActivities.some(a => ['hiking', 'randonnée', 'mountains', 'trekking'].includes(a));
+    const hasSki = userActivities.some(a => ['ski', 'skiing', 'snowboard'].includes(a));
+
+    if (hasBeach) {
+      activityConstraint = `\n⚠️ CRITICAL: User wants BEACH/SEA activities. ONLY suggest coastal cities or islands with beaches. NO landlocked cities like Budapest, Vienna, Prague!`;
+    } else if (hasHiking) {
+      activityConstraint = `\n⚠️ CRITICAL: User wants HIKING/MOUNTAINS. Prioritize destinations near mountains or national parks with good trails.`;
+    } else if (hasSki) {
+      activityConstraint = `\n⚠️ CRITICAL: User wants SKI/SNOW. ONLY suggest destinations with ski resorts accessible in winter.`;
     }
-    console.log(`🗺️ Budget-based regions (€${budget}): ${focusRegions.join(', ')}`);
   }
 
-  // Build region guidance for prompt
-  const regionGuidance = focusRegions.map(region => {
-    const def = regionDefinitions[region];
-    return def ? `- ${region}: ${def}` : `- ${region}`;
-  }).join('\n');
+  // Adapt geographic scope based on budget AND flight duration preference
+  let geographicGuidance = '';
 
-  // Build activity enforcement text
-  const activityEnforcement = userActivities.length > 0
-    ? `\n⚠️ CRITICAL ACTIVITY CONSTRAINT:\nUser wants: ${userActivities.join(', ').toUpperCase()}\n- EVERY destination MUST be excellent for these activities\n- Do NOT suggest cities that don't match (e.g., no mountain cities for beach lovers)\n- If user wants BEACH → suggest ONLY coastal/island destinations\n- If user wants HIKING → suggest ONLY mountain/nature destinations`
-    : '';
+  // If user has a max flight hours constraint, this OVERRIDES budget-based distance suggestions
+  if (maxFlightHours && maxFlightHours <= 4) {
+    // User wants SHORT flights - focus on nearby but PREMIUM experiences
+    geographicGuidance = `🌍 SHORT FLIGHTS ONLY (max ${maxFlightHours}h from ${origin}):
+- ONLY suggest destinations reachable in ${maxFlightHours} hours or less from ${origin}
+- User prefers COMFORT over distance - respect this preference!
+- With €${budget} budget: focus on PREMIUM/LUXURY experiences at nearby destinations
+- Suggest: upscale hotels, fine dining, exclusive experiences
+- Examples from ${origin}: ${maxFlightHours <= 2 ? 'neighboring countries only' : 'same continent, nearby regions'}`;
+  } else if (maxFlightHours && maxFlightHours <= 6) {
+    // Medium-haul preferred
+    geographicGuidance = `🌍 MEDIUM-HAUL FLIGHTS (max ${maxFlightHours}h from ${origin}):
+- Prefer destinations reachable in ${maxFlightHours} hours or less
+- Can include some closer long-haul if within time limit
+- Budget €${budget} allows for quality experiences`;
+  } else if (budget < 600) {
+    geographicGuidance = `🌍 BUDGET CONSTRAINT (€${budget}):
+- Focus on destinations reachable CHEAPLY from ${origin}
+- Prioritize: nearby countries, budget airline routes, low cost of living
+- Short flights = more budget for experiences`;
+  } else if (budget < 1200) {
+    geographicGuidance = `🌍 MODERATE BUDGET (€${budget}):
+- Can reach medium-haul destinations from ${origin}
+- Mix nearby destinations with 1-2 further options
+- Consider good value destinations with reasonable flight costs`;
+  } else if (budget < 2000) {
+    geographicGuidance = `🌍 COMFORTABLE BUDGET (€${budget}):
+- Can reach worldwide destinations from ${origin}
+- Include at least 2 LONG-HAUL destinations (different continent)
+- Mix: 2-3 nearby + 3-4 far away (Asia, Americas, Oceania, Africa)`;
+  } else {
+    geographicGuidance = `🌍 LUXURY BUDGET (€${budget}):
+- PRIORITIZE dream destinations far from ${origin}!
+- Include at least 3-4 LONG-HAUL destinations (Bali, Maldives, Japan, Australia, Polynesia, Caribbean, etc.)
+- This budget can reach ANYWHERE in the world - be ambitious!
+- Don't waste a €${budget} budget on nearby destinations the user could visit cheaply`;
+  }
 
-  const prompt = `You are a travel expert matching destinations to user preferences.
+  const prompt = `You are a world travel expert. Recommend ${count} destinations that PERFECTLY match this traveler.
 
-🎯 YOUR MISSION: Find ${count} destinations that PERFECTLY match this traveler's needs.
-
-👤 TRAVELER PROFILE:
-- Budget: €${budget} (${budgetLevel})
-- Style: ${style}
+👤 TRAVELER:
+- Budget: €${budget} total (flights from ${origin} + ${duration-1} nights hotel + activities)
 - Duration: ${duration} days
-- Origin: ${origin}
-- Month: ${currentMonth}
-${activityEnforcement}
+- Travel month: ${currentMonth}
+- Style: ${style}
+- ${activityContext}
+${activityConstraint}
 ${exclusionText}
 
-🗺️ FOCUS ON THESE REGIONS (matched to user's preferences):
-${regionGuidance}
+${geographicGuidance}
 
-✅ STRICT REQUIREMENTS:
+✅ REQUIREMENTS:
 1. ${count} cities from ${count} DIFFERENT countries
-2. ALL destinations must have flights from ${origin}
-3. ALL destinations must match the user's activity preferences
-4. Good weather for the activities in ${currentMonth}
-5. Mix 70% proven destinations + 30% hidden gems
-6. Stay within €${budget} total budget (flights + hotel + activities)
+2. Flights must exist from ${origin} (direct or max 1 stop)
+3. Match traveler's interests perfectly
+4. Good weather in ${currentMonth}
+5. Realistic for €${budget} budget
 
-🎲 SESSION: ${randomSeed} - Vary your choices!
+🎯 MAXIMIZE VARIETY:
+- Suggest ${count + 4} destinations (more than needed) so we can randomize
+- Include a MIX of: 1/3 popular, 1/3 emerging, 1/3 hidden gems
+- Think globally - not just the usual European destinations
+- What would SURPRISE someone who travels often?
 
-Return ONLY a JSON array of city names: ["City1", "City2", ...]
-No explanation, no markdown, just the array.`;
+🎲 SEED: ${randomSeed}
+
+Return ONLY a JSON array of ${count + 4} cities: ["City1", "City2", ...]`;
 
   try {
     logger.logClaudeAPI({
@@ -906,15 +899,36 @@ No explanation, no markdown, just the array.`;
       throw new Error('Invalid destination shortlist format');
     }
 
-    console.log(`✅ Generated ${destinations.length} personalized destinations:`, destinations);
+    console.log(`✅ Claude returned ${destinations.length} destinations:`, destinations);
+
+    // Shuffle and pick only what we need (adds randomness on our side)
+    const shuffled = destinations.sort(() => Math.random() - 0.5);
+    const finalDestinations = shuffled.slice(0, count);
+
+    console.log(`🎲 After shuffle, selected ${finalDestinations.length}:`, finalDestinations);
+
+    // Log detailed justification for debugging
+    console.log('\n📍 ========== DESTINATION JUSTIFICATION ==========');
+    console.log(`📍 User Profile Summary:`);
+    console.log(`   - Style: ${style}`);
+    console.log(`   - Activities: ${userActivities.join(', ') || 'none specified'}`);
+    console.log(`   - Budget: €${budget} (${budgetLevel})`);
+    console.log(`   - Duration: ${duration} days`);
+    console.log(`   - Origin: ${origin}`);
+    console.log(`📍 Activity constraint: ${activityConstraint || 'none'}`);
+    console.log(`📍 Excluded (past recommendations): ${pastDestinations.length} destinations`);
+    console.log(`📍 Random seed: ${randomSeed}`);
+    console.log(`📍 Claude suggestions: ${destinations.join(', ')}`);
+    console.log(`📍 Final (shuffled): ${finalDestinations.join(', ')}`);
+    console.log('📍 ==================================================\n');
 
     // Cache results only if not in testing mode
     if (!TESTING_MODE && excludeDestinations.length === 0) {
-      cache.set(cacheKey, destinations, 30); // 30 min cache in production
+      cache.set(cacheKey, finalDestinations, 30); // 30 min cache in production
       console.log(`💾 Cached destination shortlist for 30min`);
     }
 
-    return destinations;
+    return finalDestinations;
 
   } catch (error) {
     console.error('Failed to generate destination shortlist:', error.message);
