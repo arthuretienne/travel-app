@@ -479,14 +479,43 @@ export async function optimizeDestination({
     let suggestedHotel;
     let hotelSearchResults = null;
 
+    // Extract user preferences for hotel search
+    const accommodationPref = userProfile?.onboardingPreferences?.accommodationPref || null;
+    const materialComfort = userProfile?.onboardingPreferences?.materialComfort || 50;
+    const travelers = userProfile?.constraints?.travelers || 1;
+    // Parse travelers: could be "2 adults" or "2 adults, 1 child" or just a number
+    let adults = 1;
+    let children = 0;
+    let rooms = 1;
+
+    if (typeof travelers === 'number') {
+      adults = travelers;
+    } else if (typeof travelers === 'string') {
+      const adultMatch = travelers.match(/(\d+)\s*adult/i);
+      const childMatch = travelers.match(/(\d+)\s*child/i);
+      if (adultMatch) adults = parseInt(adultMatch[1]);
+      if (childMatch) children = parseInt(childMatch[1]);
+    }
+
+    // Calculate rooms: 1 room per 2 adults, families stay together
+    rooms = Math.ceil(adults / 2);
+    if (children > 0 && rooms === 1) rooms = 1; // Family in same room
+
+    console.log(`   👥 Travelers: ${adults} adults${children ? `, ${children} children` : ''} → ${rooms} room(s)`);
+    console.log(`   🏨 Preference: ${accommodationPref || 'default'}, Comfort: ${materialComfort}/100`);
+
     try {
       hotelSearchResults = await bookingService.searchHotels({
         destinationQuery: destination,
         arrivalDate: selectedDepartureDate,
         departureDate: selectedReturnDate,
-        adults: 1,
-        rooms: 1,
-        currency: 'EUR'
+        adults,
+        children,
+        rooms,
+        currency: 'EUR',
+        accommodationPref,
+        materialComfort,
+        maxPrice: remainingForAccommodation, // Use remaining budget as max price
       });
 
       if (hotelSearchResults.count === 0) {

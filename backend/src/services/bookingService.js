@@ -103,6 +103,88 @@ function extractCityName(apiName, originalQuery) {
 }
 
 /**
+ * Known destination mappings for problematic queries
+ * Maps common names to their correct search term for flights API
+ */
+const DESTINATION_CORRECTIONS = {
+  'bali': 'Denpasar',           // Bali → DPS (not Kraków-Balice!)
+  'phuket': 'Phuket',           // Works but ensure we get Thailand
+  'maldives': 'Male',           // Capital of Maldives
+  'santorini': 'Santorini',     // Greek island
+  'ibiza': 'Ibiza',             // Spanish island
+  'mallorca': 'Palma de Mallorca',
+  'majorca': 'Palma de Mallorca',
+  'sicily': 'Catania',          // Main airport in Sicily
+  'sardinia': 'Cagliari',       // Main airport in Sardinia
+  'corsica': 'Ajaccio',         // Main airport in Corsica
+  'mauritius': 'Port Louis',    // Capital of Mauritius
+  'seychelles': 'Mahe',         // Main island
+  'zanzibar': 'Zanzibar',       // Tanzania
+  'canary islands': 'Tenerife', // Main island
+  'azores': 'Ponta Delgada',    // Main island
+  'madeira': 'Funchal',         // Main city
+  'crete': 'Heraklion',         // Main airport in Crete
+  'rhodes': 'Rhodes',           // Greek island
+  'corfu': 'Corfu',             // Greek island
+  'mykonos': 'Mykonos',         // Greek island
+};
+
+/**
+ * Check if a destination result matches the expected query
+ * Prevents mismatches like "Bali" → "Kraków-Balice"
+ */
+function isDestinationMatch(result, queryName) {
+  const query = queryName.toLowerCase().trim();
+  const resultName = (result.name || '').toLowerCase();
+  const resultCountry = (result.countryName || result.country || '').toLowerCase();
+
+  // Extract base query (remove country suffix like "Bali, Indonesia")
+  const baseQuery = query.split(',')[0].trim();
+
+  // Known country associations for common destinations
+  const expectedCountries = {
+    'bali': 'indonesia',
+    'denpasar': 'indonesia',
+    'phuket': 'thailand',
+    'bangkok': 'thailand',
+    'tokyo': 'japan',
+    'maldives': 'maldives',
+    'male': 'maldives',
+    'marrakech': 'morocco',
+    'dubai': 'united arab emirates',
+    'cape town': 'south africa',
+    'zanzibar': 'tanzania',
+    'mauritius': 'mauritius',
+    'seychelles': 'seychelles',
+  };
+
+  // If we know the expected country, verify it matches
+  const expectedCountry = expectedCountries[baseQuery];
+  if (expectedCountry && !resultCountry.includes(expectedCountry)) {
+    console.log(`   ⚠️ Country mismatch: "${resultName}" is in ${resultCountry}, expected ${expectedCountry}`);
+    return false;
+  }
+
+  // Check if the result name contains the query (or vice versa)
+  // But avoid partial matches like "Bali" matching "Balice"
+  if (resultName.includes(baseQuery) || baseQuery.includes(resultName.split(' ')[0])) {
+    // Verify it's not a false positive (like Balice for Bali)
+    if (baseQuery === 'bali' && resultName.includes('balice')) {
+      return false; // Reject Kraków-Balice for Bali query
+    }
+    return true;
+  }
+
+  // For airports, check if the airport is in the expected location
+  // E.g., "Ngurah Rai International Airport" for "Bali" query is OK
+  if (result.type === 'AIRPORT' && expectedCountry) {
+    return resultCountry.includes(expectedCountry);
+  }
+
+  return false;
+}
+
+/**
  * Search destination and get ID (with Redis caching)
  * @param {string} destinationName - City or destination name
  * @returns {Promise<Object>} Destination with id, name, type, country
@@ -110,18 +192,26 @@ function extractCityName(apiName, originalQuery) {
 export async function getDestinationId(destinationName) {
   // Convert IATA codes to city names (Booking.com doesn't recognize IATA codes)
   const upperName = destinationName.toUpperCase();
-  const resolvedName = IATA_TO_CITY[upperName] || destinationName;
+  let resolvedName = IATA_TO_CITY[upperName] || destinationName;
 
-  if (resolvedName !== destinationName) {
+  // Apply destination corrections for known problematic queries
+  const lowerName = resolvedName.toLowerCase().split(',')[0].trim();
+  if (DESTINATION_CORRECTIONS[lowerName]) {
+    const corrected = DESTINATION_CORRECTIONS[lowerName];
+    console.log(`🔄 Correcting destination "${resolvedName}" → "${corrected}" (known mapping)`);
+    resolvedName = corrected;
+  }
+
+  if (resolvedName !== destinationName && !DESTINATION_CORRECTIONS[lowerName]) {
     console.log(`🔄 Resolved IATA code "${destinationName}" → "${resolvedName}"`);
   }
 
-  const cacheKey = `booking:destination:${resolvedName.toLowerCase()}`;
+  const cacheKey = `booking:destination:${destinationName.toLowerCase()}`;
 
   // Check cache first (30 days TTL)
   const cached = cache.get(cacheKey);
   if (cached) {
-    console.log(`✅ Cache HIT for "${resolvedName}" → ${cached.id}`);
+    console.log(`✅ Cache HIT for "${destinationName}" → ${cached.id}`);
     return cached;
   }
 
@@ -142,19 +232,56 @@ export async function getDestinationId(destinationName) {
       throw new Error(`No destination found for "${resolvedName}"`);
     }
 
-    // Prefer CITY over AIRPORT
-    const city = response.data.data.find(d => d.type === 'CITY') || response.data.data[0];
+    const results = response.data.data;
+
+    // Smart destination selection:
+    // 1. First try to find a CITY that matches the query
+    // 2. Then try any result that matches the expected country
+    // 3. Fall back to first result only if it passes validation
+
+    let selectedDest = null;
+
+    // Priority 1: CITY type that matches query
+    const matchingCity = results.find(d => d.type === 'CITY' && isDestinationMatch(d, destinationName));
+    if (matchingCity) {
+      selectedDest = matchingCity;
+      console.log(`   ✅ Found matching CITY: ${selectedDest.name}`);
+    }
+
+    // Priority 2: Any type that matches query (airport, etc.)
+    if (!selectedDest) {
+      const matchingAny = results.find(d => isDestinationMatch(d, destinationName));
+      if (matchingAny) {
+        selectedDest = matchingAny;
+        console.log(`   ✅ Found matching ${selectedDest.type}: ${selectedDest.name}`);
+      }
+    }
+
+    // Priority 3: First CITY (if no match found but might be correct)
+    if (!selectedDest) {
+      const firstCity = results.find(d => d.type === 'CITY');
+      if (firstCity) {
+        console.log(`   ⚠️ No exact match, using first CITY: ${firstCity.name} (${firstCity.countryName || firstCity.country})`);
+        selectedDest = firstCity;
+      }
+    }
+
+    // Priority 4: First result (last resort)
+    if (!selectedDest) {
+      selectedDest = results[0];
+      console.log(`   ⚠️ No CITY found, using first result: ${selectedDest.name} (${selectedDest.countryName || selectedDest.country})`);
+    }
 
     const destination = {
-      id: city.id,
-      name: city.name,
-      code: city.code,
-      type: city.type,
-      country: city.country,
-      countryName: city.countryName,
+      id: selectedDest.id,
+      name: selectedDest.name,
+      code: selectedDest.code,
+      type: selectedDest.type,
+      country: selectedDest.country,
+      countryName: selectedDest.countryName,
       // Add cityName for hotel/attraction searches
-      cityName: extractCityName(city.name, resolvedName),
-      flightCode: city.id, // Explicit flight code for clarity
+      cityName: extractCityName(selectedDest.name, destinationName),
+      flightCode: selectedDest.id, // Explicit flight code for clarity
       originalQuery: destinationName // Keep original query for reference
     };
 
@@ -486,14 +613,94 @@ function parseFlightOffers(flightOffers, currency, fromId, toId, departDate, ret
 }
 
 /**
- * Search hotels in a destination
+ * Map accommodation preference to hotel search parameters
+ * @param {string} accommodationPref - User's accommodation preference
+ * @param {number} materialComfort - 0-100 comfort slider
+ * @returns {Object} Search parameters for hotel filtering
+ */
+function getHotelSearchFilters(accommodationPref, materialComfort = 50) {
+  // Default filters
+  const filters = {
+    sort_by: 'popularity', // Default sort
+    minStars: 0,
+    maxStars: 5,
+    minRating: 0, // 0-10 scale
+  };
+
+  // Map accommodationPref to filters
+  switch (accommodationPref) {
+    case 'luxe':
+    case 'luxury':
+    case '5_star':
+      filters.sort_by = 'class_descending'; // Highest stars first
+      filters.minStars = 4;
+      filters.minRating = 8.0;
+      console.log('   🏰 Luxury preference: 4-5 star hotels, rating 8+');
+      break;
+
+    case 'confort':
+    case 'comfort':
+    case '4_star':
+    case '3_star':
+      filters.sort_by = 'review_score'; // Best rated first
+      filters.minStars = 3;
+      filters.minRating = 7.0;
+      console.log('   🏨 Comfort preference: 3-5 star hotels, rating 7+');
+      break;
+
+    case 'budget':
+    case 'backpacker':
+    case 'hostel':
+    case 'routard':
+      filters.sort_by = 'price'; // Cheapest first
+      filters.minRating = 6.0; // Still maintain minimum quality
+      console.log('   🎒 Budget preference: cheapest hotels, rating 6+');
+      break;
+
+    case 'airbnb':
+    case 'apartment':
+    case 'local':
+      // Booking.com doesn't have pure Airbnb, but apartments/homes
+      filters.sort_by = 'review_score';
+      filters.minRating = 7.5;
+      console.log('   🏠 Apartment preference: best rated apartments/homes');
+      break;
+
+    default:
+      // Use materialComfort slider if no preference specified
+      if (materialComfort >= 70) {
+        filters.sort_by = 'class_descending';
+        filters.minStars = 4;
+        filters.minRating = 8.0;
+        console.log(`   🏰 High comfort (${materialComfort}): 4-5 star hotels`);
+      } else if (materialComfort >= 40) {
+        filters.sort_by = 'review_score';
+        filters.minStars = 3;
+        filters.minRating = 7.0;
+        console.log(`   🏨 Medium comfort (${materialComfort}): 3+ star hotels`);
+      } else {
+        filters.sort_by = 'price';
+        filters.minRating = 6.0;
+        console.log(`   🎒 Low comfort (${materialComfort}): budget hotels`);
+      }
+  }
+
+  return filters;
+}
+
+/**
+ * Search hotels in a destination with user preferences
  * @param {Object} params
  * @param {string} params.destinationQuery - City name
  * @param {string} params.arrivalDate - Check-in date (YYYY-MM-DD)
  * @param {string} params.departureDate - Check-out date (YYYY-MM-DD)
  * @param {number} params.adults - Number of adults
+ * @param {number} params.children - Number of children (optional)
  * @param {number} params.rooms - Number of rooms
  * @param {string} params.currency - Currency code
+ * @param {string} params.accommodationPref - User's accommodation preference (luxe, confort, budget, etc.)
+ * @param {number} params.materialComfort - 0-100 comfort slider
+ * @param {number} params.maxPrice - Maximum total price for the stay
  * @returns {Promise<Object>} Hotel search results
  */
 export async function searchHotels({
@@ -501,10 +708,16 @@ export async function searchHotels({
   arrivalDate,
   departureDate,
   adults = 1,
+  children = 0,
   rooms = 1,
-  currency = 'EUR'
+  currency = 'EUR',
+  accommodationPref = null,
+  materialComfort = 50,
+  maxPrice = null,
 }) {
-  const cacheKey = `booking:hotels:${destinationQuery}:${arrivalDate}:${departureDate}:${adults}:${rooms}`;
+  // Include preference in cache key
+  const prefKey = accommodationPref || `comfort_${materialComfort}`;
+  const cacheKey = `booking:hotels:${destinationQuery}:${arrivalDate}:${departureDate}:${adults}:${children}:${rooms}:${prefKey}`;
 
   // Check cache
   const cached = cache.get(cacheKey);
@@ -514,6 +727,10 @@ export async function searchHotels({
   }
 
   console.log(`🏨 Searching hotels in ${destinationQuery}...`);
+  console.log(`   👥 ${adults} adults${children ? `, ${children} children` : ''}, ${rooms} room(s)`);
+
+  // Get filters based on user preferences
+  const filters = getHotelSearchFilters(accommodationPref, materialComfort);
 
   try {
     // Step 1: Get destination ID for hotels
@@ -531,29 +748,52 @@ export async function searchHotels({
       throw new Error(`Hotel destination not found: ${destinationQuery}`);
     }
 
-    // Prefer CITY over COUNTRY for more relevant results
-    const cityDest = destResponse.data.data.find(d => d.dest_type === 'CITY');
-    const dest = cityDest || destResponse.data.data[0];
+    // Prefer REGION for islands/areas (Bali, Tenerife) or CITY for cities
+    // This ensures we search the whole area, not just a sub-city
+    const regionDest = destResponse.data.data.find(d => d.dest_type === 'region');
+    const cityDest = destResponse.data.data.find(d => d.dest_type === 'city');
+
+    // For islands/areas, prefer region. For specific cities, prefer city.
+    const isIslandOrArea = ['bali', 'tenerife', 'mallorca', 'santorini', 'maldives', 'phuket', 'sicily', 'sardinia', 'corsica', 'crete']
+      .some(name => destinationQuery.toLowerCase().includes(name));
+
+    const dest = (isIslandOrArea && regionDest) ? regionDest : (cityDest || destResponse.data.data[0]);
     const dest_id = dest.dest_id;
     const search_type = dest.dest_type?.toUpperCase() || 'CITY';
 
-    console.log(`📍 Found hotel destination: ${dest.name} (${dest_id}, type: ${search_type})`);
+    console.log(`📍 Found hotel destination: ${dest.name || dest.city_name} (${dest_id}, type: ${search_type})`);
 
-    // Step 2: Search hotels
+    // Step 2: Build search parameters
+    const searchParams = {
+      dest_id,
+      search_type,
+      arrival_date: arrivalDate,
+      departure_date: departureDate,
+      adults,
+      room_qty: rooms,
+      page_number: 1,
+      units: 'metric',
+      temperature_unit: 'c',
+      languagecode: 'en-us',
+      currency_code: currency,
+      sort_by: filters.sort_by, // Apply user preference sort
+    };
+
+    // Add children if present
+    if (children > 0) {
+      searchParams.children_qty = children;
+      // Default child ages (API requires this)
+      const childAges = Array(children).fill('8').join(',');
+      searchParams.children_age = childAges;
+    }
+
+    // Add price filter if specified
+    if (maxPrice) {
+      searchParams.price_max = maxPrice;
+    }
+
     const hotelsResponse = await axios.get(`${BASE_URL}/api/v1/hotels/searchHotels`, {
-      params: {
-        dest_id,
-        search_type,
-        arrival_date: arrivalDate,
-        departure_date: departureDate,
-        adults,
-        room_qty: rooms,
-        page_number: 1,
-        units: 'metric',
-        temperature_unit: 'c',
-        languagecode: 'en-us',
-        currency_code: currency
-      },
+      params: searchParams,
       headers: {
         'x-rapidapi-key': BOOKING_API_KEY,
         'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
@@ -572,12 +812,32 @@ export async function searchHotels({
       };
     }
 
-    const hotelData = hotelsResponse.data.data.hotels;
+    let hotelData = hotelsResponse.data.data.hotels;
+
+    // Step 3: Apply post-filtering based on user preferences
+    // (API filters don't always work, so we filter client-side)
+    hotelData = hotelData.filter(hotel => {
+      const stars = hotel.property?.propertyClass || 0;
+      const rating = hotel.property?.reviewScore || 0;
+
+      // Apply minimum star filter
+      if (filters.minStars > 0 && stars < filters.minStars && stars > 0) {
+        return false;
+      }
+
+      // Apply minimum rating filter (only if hotel has reviews)
+      if (filters.minRating > 0 && rating > 0 && rating < filters.minRating) {
+        return false;
+      }
+
+      return true;
+    });
+
+    console.log(`   🔍 After preference filter: ${hotelData.length} hotels (from ${hotelsResponse.data.data.hotels.length})`);
 
     const hotels = hotelData.map(hotel => {
       // Price is in property.priceBreakdown.grossPrice.value
       const grossPrice = hotel.property?.priceBreakdown?.grossPrice?.value || 0;
-      const pricePerNight = grossPrice; // This is already the total price for the stay
 
       // Extract description from accessibilityLabel
       const description = hotel.accessibilityLabel || '';
@@ -600,7 +860,7 @@ export async function searchHotels({
           currency: hotel.property?.priceBreakdown?.grossPrice?.currency || currency,
           formatted: `${currency} ${Math.round(grossPrice)}`
         },
-        pricePerNight: pricePerNight,
+        pricePerNight: grossPrice,
         location: destinationQuery,
         photos: hotel.property?.photoUrls || [],
         mainPhoto: hotel.property?.photoUrls?.[0] || null,
@@ -614,8 +874,8 @@ export async function searchHotels({
           longitude: hotel.property?.longitude
         },
         blockId: hotel.property?.blockIds?.[0],
-        // Generate Booking.com URL
-        bookingUrl: `https://www.booking.com/hotel/es/${hotel.hotel_id}.html?checkin=${arrivalDate}&checkout=${departureDate}&group_adults=${adults}&no_rooms=${rooms}`
+        // Generate Booking.com URL with correct parameters
+        bookingUrl: `https://www.booking.com/hotel/${hotel.hotel_id}.html?checkin=${arrivalDate}&checkout=${departureDate}&group_adults=${adults}${children ? `&group_children=${children}` : ''}&no_rooms=${rooms}`
       };
     });
 
@@ -624,13 +884,19 @@ export async function searchHotels({
       arrivalDate,
       departureDate,
       hotels,
-      count: hotels.length
+      count: hotels.length,
+      filters: {
+        appliedPref: accommodationPref || `comfort_${materialComfort}`,
+        sortBy: filters.sort_by,
+        minStars: filters.minStars,
+        minRating: filters.minRating,
+      }
     };
 
     // Cache for 6 hours
     cache.set(cacheKey, result, CACHE_TTL.HOTEL_SEARCH);
 
-    console.log(`✅ Found ${hotels.length} hotels in ${destinationQuery}`);
+    console.log(`✅ Found ${hotels.length} hotels in ${destinationQuery} (sorted by ${filters.sort_by})`);
     return result;
 
   } catch (error) {
