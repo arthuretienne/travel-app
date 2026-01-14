@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { OptimalPeriodsWidget } from '../components/OptimalPeriodsWidget';
 import { DashboardCardSkeleton } from '../components/SkeletonLoaders';
-import { Plane, Globe, Target, AlertTriangle, Map, Calendar, Clock, DollarSign, Plus, ArrowRight, Users, Filter, MapPin } from 'lucide-react';
+import { Plane, Globe, Target, AlertTriangle, Map, Calendar, Clock, DollarSign, Plus, Users, MapPin, ChevronRight } from 'lucide-react';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -128,52 +128,59 @@ function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-subtle p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-text-main mb-1">Welcome back, {user?.firstName || 'Traveler'}!</h1>
-            <p className="text-text-secondary">Ready to plan your next adventure?</p>
+    <div className="min-h-screen bg-surface-subtle">
+      {/* Hero Header */}
+      <div className="bg-white border-b border-stone-100">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-12">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div>
+              <h1 className="font-display text-3xl md:text-4xl font-medium text-text-main mb-2">
+                Welcome back, {user?.firstName || 'Traveler'}
+              </h1>
+              <p className="text-text-secondary text-lg">Your travel dashboard</p>
+            </div>
+            <button
+              className="flex items-center gap-2 px-6 py-3.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
+              onClick={handleCreateTrip}
+            >
+              <Plus size={20} strokeWidth={2} />
+              New Trip
+            </button>
           </div>
-          <button
-            className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all"
-            onClick={handleCreateTrip}
-          >
-            <Plus size={20} />
-            Create a New Trip
-          </button>
         </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-2xl shadow-card border border-gray-100 flex items-center gap-4 transition-transform hover:-translate-y-1">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-              <Plane size={28} />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+          <div className="bg-white p-5 rounded-2xl border border-stone-100 flex items-center gap-4">
+            <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center">
+              <Plane size={22} />
             </div>
             <div>
-              <div className="text-2xl font-bold text-text-main leading-none mb-1">{savedTrips.length}</div>
-              <div className="text-sm font-medium text-text-secondary">Saved Trips</div>
+              <div className="text-2xl font-semibold text-text-main">{savedTrips.length}</div>
+              <div className="text-sm text-text-secondary">Saved Trips</div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-2xl shadow-card border border-gray-100 flex items-center gap-4 transition-transform hover:-translate-y-1">
-            <div className="p-3 bg-green-50 text-green-600 rounded-xl">
-              <Globe size={28} />
+          <div className="bg-white p-5 rounded-2xl border border-stone-100 flex items-center gap-4">
+            <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center">
+              <Globe size={22} />
             </div>
             <div>
-              <div className="text-2xl font-bold text-text-main leading-none mb-1">{new Set(savedTrips.map(t => t.country)).size}</div>
-              <div className="text-sm font-medium text-text-secondary">Countries</div>
+              <div className="text-2xl font-semibold text-text-main">{new Set(savedTrips.map(t => t.country)).size}</div>
+              <div className="text-sm text-text-secondary">Countries</div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-2xl shadow-card border border-gray-100 flex items-center gap-4 transition-transform hover:-translate-y-1">
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
-              <Target size={28} />
+          <div className="bg-white p-5 rounded-2xl border border-stone-100 flex items-center gap-4">
+            <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center">
+              <Target size={22} />
             </div>
             <div>
-              <div className="text-2xl font-bold text-text-main leading-none mb-1">
+              <div className="text-2xl font-semibold text-text-main">
                 {savedTrips.length > 0 ? Math.round(savedTrips.reduce((acc, t) => acc + (t.tripData?.score?.total || 0), 0) / savedTrips.length) : 0}%
               </div>
-              <div className="text-sm font-medium text-text-secondary">Avg. Match Score</div>
+              <div className="text-sm text-text-secondary">Avg. Match</div>
             </div>
           </div>
         </div>
@@ -186,63 +193,63 @@ function Dashboard() {
         {/* All Trips Section */}
         <div className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-text-main">My Trips</h2>
-            <div className="flex gap-2">
+            <h2 className="font-display text-2xl font-medium text-text-main">My Trips</h2>
+            <div className="flex gap-1 p-1 bg-stone-100 rounded-lg">
               <button
                 onClick={() => setActiveFilter('all')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeFilter === 'all' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeFilter === 'all' ? 'bg-white text-text-main shadow-sm' : 'text-text-secondary hover:text-text-main'
                 }`}
               >
-                All ({savedTrips.length + collaborativeTrips.length})
+                All
               </button>
               <button
                 onClick={() => setActiveFilter('solo')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeFilter === 'solo' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeFilter === 'solo' ? 'bg-white text-text-main shadow-sm' : 'text-text-secondary hover:text-text-main'
                 }`}
               >
-                Solo ({savedTrips.length})
+                Solo
               </button>
               <button
                 onClick={() => setActiveFilter('group')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeFilter === 'group' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeFilter === 'group' ? 'bg-white text-text-main shadow-sm' : 'text-text-secondary hover:text-text-main'
                 }`}
               >
-                Group ({collaborativeTrips.length})
+                Group
               </button>
             </div>
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               <DashboardCardSkeleton />
               <DashboardCardSkeleton />
               <DashboardCardSkeleton />
             </div>
           ) : error ? (
-            <div className="bg-white rounded-3xl shadow-card p-12 text-center border border-gray-100">
-              <div className="inline-flex p-4 bg-red-50 text-red-500 rounded-full mb-4">
-                <AlertTriangle size={32} />
+            <div className="bg-white rounded-2xl p-12 text-center border border-stone-100">
+              <div className="inline-flex p-4 bg-stone-50 text-text-secondary rounded-full mb-4">
+                <AlertTriangle size={28} />
               </div>
-              <p className="text-red-500 mb-6">Failed to load trips: {error}</p>
+              <p className="text-text-secondary mb-6">Failed to load trips: {error}</p>
               <button
-                className="px-6 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
+                className="px-5 py-2.5 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
                 onClick={fetchSavedTrips}
               >
-                Retry
+                Try again
               </button>
             </div>
           ) : (savedTrips.length === 0 && collaborativeTrips.length === 0) ? (
-            <div className="bg-white rounded-3xl shadow-card p-16 text-center border border-gray-100">
-              <div className="inline-flex p-6 bg-gray-50 text-gray-400 rounded-full mb-6">
-                <Map size={48} />
+            <div className="bg-white rounded-2xl p-12 md:p-16 text-center border border-stone-100">
+              <div className="inline-flex p-5 bg-primary-light text-primary rounded-2xl mb-6">
+                <Map size={36} />
               </div>
-              <h3 className="text-xl font-bold text-text-main mb-2">No trips yet</h3>
+              <h3 className="font-display text-xl font-medium text-text-main mb-2">No trips yet</h3>
               <p className="text-text-secondary mb-8">Start by creating your first trip</p>
               <button
-                className="px-8 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all"
+                className="px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
                 onClick={handleCreateTrip}
               >
                 Create Your First Trip
@@ -254,52 +261,47 @@ function Dashboard() {
             const groupTripsFiltered = activeFilter === 'solo' ? [] : collaborativeTrips;
 
             return (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {/* Solo Trips */}
                 {soloTripsFiltered.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {soloTripsFiltered.map((trip, index) => (
-                      <div key={`solo-${trip.id || index}`} className="bg-white rounded-2xl overflow-hidden shadow-card border border-gray-100 hover:shadow-xl hover:border-primary/30 transition-all group">
-                        <div className="bg-primary p-6 text-white flex justify-between items-start">
-                          <div>
-                            <h3 className="text-xl font-bold mb-1">{trip.city || 'Unknown'}</h3>
-                            <p className="text-white/90 text-sm">{trip.country || 'Unknown'}</p>
-                          </div>
-                          <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg font-bold text-sm">
-                            Solo
+                      <div
+                        key={`solo-${trip.id || index}`}
+                        className="bg-white rounded-2xl overflow-hidden border border-stone-100 hover:border-stone-200 transition-all cursor-pointer group"
+                        onClick={() => navigate(`/saved-trips/${trip.id}`)}
+                      >
+                        {/* Image or colored header */}
+                        <div className="relative h-32 bg-gradient-to-br from-primary to-teal-600">
+                          <div className="absolute inset-0 bg-black/10" />
+                          <div className="absolute bottom-4 left-4 right-4">
+                            <h3 className="text-xl font-semibold text-white mb-0.5">{trip.city || 'Unknown'}</h3>
+                            <p className="text-white/80 text-sm">{trip.country || 'Unknown'}</p>
                           </div>
                         </div>
 
-                        <div className="p-6 space-y-4">
-                          <div className="flex items-center gap-3 text-text-secondary">
-                            <Calendar size={18} className="text-gray-400" />
-                            <span className="font-medium text-text-main">
-                              {trip.startDate ? formatDate(trip.startDate) : 'Date TBD'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 text-text-secondary">
-                            <Clock size={18} className="text-gray-400" />
-                            <span className="font-medium text-text-main">
+                        <div className="p-5">
+                          <div className="flex items-center justify-between text-sm mb-3">
+                            <div className="flex items-center gap-2 text-text-secondary">
+                              <Calendar size={15} />
+                              <span>{trip.startDate ? formatDate(trip.startDate) : 'Date TBD'}</span>
+                            </div>
+                            <div className="text-text-secondary">
                               {trip.startDate && trip.endDate
                                 ? Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))
                                 : 0} days
-                            </span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3 text-text-secondary">
-                            <DollarSign size={18} className="text-gray-400" />
-                            <span className="font-medium text-text-main">
-                              {trip.tripData?.pricing?.total ? `€${Math.round(trip.tripData.pricing.total)}` : 'Price TBD'}
-                            </span>
-                          </div>
-                        </div>
 
-                        <div className="p-6 pt-0 border-t border-gray-50 mt-2">
-                          <button
-                            className="w-full py-3 mt-4 bg-primary text-white font-medium rounded-xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 shadow-lg shadow-primary/20 hover:bg-primary-hover"
-                            onClick={() => navigate(`/saved-trips/${trip.id}`)}
-                          >
-                            View Details
-                          </button>
+                          <div className="flex items-center justify-between">
+                            <div className="text-lg font-semibold text-text-main">
+                              {trip.tripData?.pricing?.total ? `€${Math.round(trip.tripData.pricing.total)}` : '—'}
+                            </div>
+                            <div className="flex items-center gap-1 text-primary text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                              View details
+                              <ChevronRight size={16} />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -308,56 +310,55 @@ function Dashboard() {
 
                 {/* Collaborative Trips */}
                 {groupTripsFiltered.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {groupTripsFiltered.map((trip) => (
-                      <div key={`group-${trip.id}`} className="bg-white rounded-2xl overflow-hidden shadow-card border border-gray-100 hover:shadow-xl hover:border-primary/30 transition-all group">
-                        <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-6 text-white flex justify-between items-start">
-                          <div>
-                            <h3 className="text-xl font-bold mb-1">{trip.name}</h3>
-                            <p className="text-white/90 text-sm flex items-center gap-1">
-                              <Users size={14} />
-                              {trip.members?.length || 0} membres
-                            </p>
+                      <div
+                        key={`group-${trip.id}`}
+                        className="bg-white rounded-2xl overflow-hidden border border-stone-100 hover:border-stone-200 transition-all cursor-pointer group"
+                        onClick={() => navigate(`/trips/${trip.id}`)}
+                      >
+                        {/* Group trip header */}
+                        <div className="relative h-32 bg-gradient-to-br from-indigo-500 to-purple-600">
+                          <div className="absolute inset-0 bg-black/10" />
+                          <div className="absolute top-4 right-4">
+                            <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full text-white text-xs font-medium">
+                              <Users size={12} />
+                              {trip.members?.length || 0}
+                            </div>
                           </div>
-                          <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg font-bold text-sm">
-                            Group
+                          <div className="absolute bottom-4 left-4 right-4">
+                            <h3 className="text-xl font-semibold text-white mb-0.5">{trip.name}</h3>
+                            {trip.finalDestination && (
+                              <p className="text-white/80 text-sm">{trip.finalDestination.city}, {trip.finalDestination.country}</p>
+                            )}
                           </div>
                         </div>
 
-                        <div className="p-6 space-y-4">
+                        <div className="p-5">
                           {trip.finalDestination ? (
-                            <>
-                              <div className="flex items-center gap-3 text-text-secondary">
-                                <MapPin size={18} className="text-gray-400" />
-                                <span className="font-medium text-text-main">
-                                  {trip.finalDestination.city}, {trip.finalDestination.country}
-                                </span>
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-2 text-text-secondary">
+                                <Calendar size={15} />
+                                <span>{trip.finalStartDate ? formatDate(trip.finalStartDate) : 'Date TBD'}</span>
                               </div>
-                              {trip.finalStartDate && (
-                                <div className="flex items-center gap-3 text-text-secondary">
-                                  <Calendar size={18} className="text-gray-400" />
-                                  <span className="font-medium text-text-main">
-                                    {formatDate(trip.finalStartDate)}
-                                  </span>
-                                </div>
-                              )}
-                            </>
+                              <div className="flex items-center gap-1 text-primary text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                View trip
+                                <ChevronRight size={16} />
+                              </div>
+                            </div>
                           ) : (
-                            <div className="text-sm text-gray-600">
-                              {trip.status === 'draft' && 'En cours de création'}
-                              {trip.status === 'voting' && 'Vote en cours'}
-                              {trip.proposedTrips?.length > 0 && `${trip.proposedTrips.length} destination(s) proposée(s)`}
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm text-text-secondary">
+                                {trip.status === 'draft' && 'Planning in progress'}
+                                {trip.status === 'voting' && 'Voting in progress'}
+                                {trip.proposedTrips?.length > 0 && `${trip.proposedTrips.length} destination(s)`}
+                              </div>
+                              <div className="flex items-center gap-1 text-primary text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                View trip
+                                <ChevronRight size={16} />
+                              </div>
                             </div>
                           )}
-                        </div>
-
-                        <div className="p-6 pt-0 border-t border-gray-50 mt-2">
-                          <button
-                            className="w-full py-3 mt-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 shadow-lg shadow-blue-500/20 hover:shadow-xl"
-                            onClick={() => navigate(`/trips/${trip.id}`)}
-                          >
-                            View Trip
-                          </button>
                         </div>
                       </div>
                     ))}
@@ -370,11 +371,11 @@ function Dashboard() {
 
         {/* CTA Section */}
         {savedTrips.length > 0 && (
-          <div className="bg-surface-subtle rounded-3xl p-12 text-center border border-blue-100">
-            <h3 className="text-2xl font-bold text-text-main mb-3">Looking for more adventures?</h3>
+          <div className="bg-white rounded-2xl p-10 md:p-12 text-center border border-stone-100">
+            <h3 className="font-display text-xl md:text-2xl font-medium text-text-main mb-2">Looking for more adventures?</h3>
             <p className="text-text-secondary mb-8">Create a new trip and discover your next destination</p>
             <button
-              className="px-8 py-3 bg-white text-primary font-semibold rounded-xl border border-primary hover:bg-primary hover:text-white transition-all"
+              className="px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
               onClick={handleCreateTrip}
             >
               Plan Another Trip
