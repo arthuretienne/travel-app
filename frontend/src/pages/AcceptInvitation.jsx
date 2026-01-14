@@ -92,7 +92,7 @@ export default function AcceptInvitation() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light via-white to-stone-50">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
           <p className="text-lg text-text-secondary">Loading invitation...</p>
@@ -103,7 +103,7 @@ export default function AcceptInvitation() {
 
   if (error && !invitation) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light via-white to-stone-50 p-4">
         <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center">
           <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-text-main mb-2">Invitation Not Found</h1>
@@ -121,7 +121,7 @@ export default function AcceptInvitation() {
 
   if (accepted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light via-white to-stone-50 p-4">
         <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-text-main mb-2">Welcome Aboard!</h1>
@@ -135,15 +135,15 @@ export default function AcceptInvitation() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light via-white to-stone-50 p-4">
       <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white text-center">
+        <div className="bg-gradient-to-r from-primary to-teal-600 p-8 text-white text-center">
           <div className="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Plane size={32} />
           </div>
           <h1 className="text-3xl font-bold mb-2">You're Invited!</h1>
-          <p className="text-blue-100">Join an exciting travel adventure</p>
+          <p className="text-white/80">Join an exciting travel adventure</p>
         </div>
 
         {/* Content */}
@@ -167,8 +167,8 @@ export default function AcceptInvitation() {
           {/* Features */}
           <div className="space-y-4 mb-8">
             <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Users size={20} className="text-blue-600" />
+              <div className="w-10 h-10 bg-primary-light rounded-lg flex items-center justify-center flex-shrink-0">
+                <Users size={20} className="text-primary" />
               </div>
               <div>
                 <h3 className="font-semibold text-text-main">Collaborate Together</h3>

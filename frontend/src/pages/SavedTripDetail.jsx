@@ -288,7 +288,7 @@ export default function SavedTripDetail() {
                   {trip.city}, {trip.country}
                 </h1>
               </div>
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-primary-light text-primary">
                 Solo Trip
               </span>
             </div>
@@ -366,82 +366,82 @@ export default function SavedTripDetail() {
             <div className="space-y-4">
               {/* Outbound Flight */}
               {flightDetails.outbound && (
-                <div className="p-4 bg-blue-50 rounded-xl">
+                <div className="p-4 bg-primary-light rounded-xl">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-blue-900">Outbound Flight</span>
-                    <span className="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
+                    <span className="text-sm font-semibold text-text-main">Outbound Flight</span>
+                    <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
                       {slot.startDate ? new Date(slot.startDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date TBD'}
                     </span>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-center">
-                      <div className="text-lg font-bold text-blue-900">
+                      <div className="text-lg font-bold text-text-main">
                         {flightDetails.outbound.departureTime ? new Date(flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                       </div>
-                      <div className="text-xs text-blue-600">{flightDetails.outbound.departureAirport || trip.city}</div>
+                      <div className="text-xs text-primary">{flightDetails.outbound.departureAirport || trip.city}</div>
                     </div>
                     <div className="flex-1 flex items-center gap-2">
-                      <div className="h-px bg-blue-300 flex-1"></div>
-                      <div className="text-xs text-blue-600 flex items-center gap-1 bg-blue-100 px-2 py-0.5 rounded-full">
+                      <div className="h-px bg-primary/30 flex-1"></div>
+                      <div className="text-xs text-primary flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-full">
                         <Plane size={10} className="rotate-90" />
                         {flightDetails.outbound.duration || 'Duration N/A'}
                       </div>
-                      <div className="h-px bg-blue-300 flex-1"></div>
+                      <div className="h-px bg-primary/30 flex-1"></div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-blue-900">
+                      <div className="text-lg font-bold text-text-main">
                         {flightDetails.outbound.arrivalTime ? new Date(flightDetails.outbound.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                       </div>
-                      <div className="text-xs text-blue-600">{flightDetails.outbound.arrivalAirport || destination.city}</div>
+                      <div className="text-xs text-primary">{flightDetails.outbound.arrivalAirport || destination.city}</div>
                     </div>
                   </div>
                   {/* Airline info */}
-                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-blue-200">
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-primary/20">
                     {flightDetails.outbound.segments?.[0]?.carrierLogo && (
                       <img src={flightDetails.outbound.segments[0].carrierLogo} alt={flightDetails.airline} className="h-5 w-auto" />
                     )}
-                    <span className="text-xs text-blue-700">{flightDetails.airline || 'Airline'} • {flightDetails.cabinClass || 'Economy'}</span>
+                    <span className="text-xs text-primary">{flightDetails.airline || 'Airline'} • {flightDetails.cabinClass || 'Economy'}</span>
                   </div>
                 </div>
               )}
 
               {/* Return Flight */}
               {flightDetails.return && (
-                <div className="p-4 bg-blue-50 rounded-xl">
+                <div className="p-4 bg-primary-light rounded-xl">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-blue-900">Return Flight</span>
-                    <span className="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
+                    <span className="text-sm font-semibold text-text-main">Return Flight</span>
+                    <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
                       {slot.endDate ? new Date(slot.endDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date TBD'}
                     </span>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-center">
-                      <div className="text-lg font-bold text-blue-900">
+                      <div className="text-lg font-bold text-text-main">
                         {flightDetails.return.departureTime ? new Date(flightDetails.return.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                       </div>
-                      <div className="text-xs text-blue-600">{flightDetails.return.departureAirport || destination.city}</div>
+                      <div className="text-xs text-primary">{flightDetails.return.departureAirport || destination.city}</div>
                     </div>
                     <div className="flex-1 flex items-center gap-2">
-                      <div className="h-px bg-blue-300 flex-1"></div>
-                      <div className="text-xs text-blue-600 flex items-center gap-1 bg-blue-100 px-2 py-0.5 rounded-full">
+                      <div className="h-px bg-primary/30 flex-1"></div>
+                      <div className="text-xs text-primary flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-full">
                         <Plane size={10} className="-rotate-90" />
                         {flightDetails.return.duration || 'Duration N/A'}
                       </div>
-                      <div className="h-px bg-blue-300 flex-1"></div>
+                      <div className="h-px bg-primary/30 flex-1"></div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-blue-900">
+                      <div className="text-lg font-bold text-text-main">
                         {flightDetails.return.arrivalTime ? new Date(flightDetails.return.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                       </div>
-                      <div className="text-xs text-blue-600">{flightDetails.return.arrivalAirport || trip.city}</div>
+                      <div className="text-xs text-primary">{flightDetails.return.arrivalAirport || trip.city}</div>
                     </div>
                   </div>
                   {/* Airline info */}
-                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-blue-200">
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-primary/20">
                     {flightDetails.return.segments?.[0]?.carrierLogo && (
                       <img src={flightDetails.return.segments[0].carrierLogo} alt={flightDetails.airline} className="h-5 w-auto" />
                     )}
-                    <span className="text-xs text-blue-700">{flightDetails.airline || 'Airline'} • {flightDetails.cabinClass || 'Economy'}</span>
+                    <span className="text-xs text-primary">{flightDetails.airline || 'Airline'} • {flightDetails.cabinClass || 'Economy'}</span>
                   </div>
                 </div>
               )}
@@ -492,7 +492,7 @@ export default function SavedTripDetail() {
                             </span>
                           )}
                           {hotel.rating?.value && (
-                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                               {hotel.rating.value}/10
                             </span>
                           )}
@@ -580,7 +580,7 @@ export default function SavedTripDetail() {
             {/* Transport Column */}
             <div className="p-6 border-b lg:border-b-0 lg:border-r border-gray-100">
               <div className="flex items-center gap-2 mb-4">
-                <Plane className="text-blue-600" size={20} />
+                <Plane className="text-primary" size={20} />
                 <h3 className="font-bold text-gray-900">Transport</h3>
               </div>
 
@@ -598,7 +598,7 @@ export default function SavedTripDetail() {
                         <Square size={18} className="text-gray-400" />
                       )}
                     </button>
-                    <Plane size={16} className="text-blue-600" />
+                    <Plane size={16} className="text-primary" />
                     <span className="font-semibold text-sm">Flight</span>
                     {trip.tripData.flightDetails.isEstimate && (
                       <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">Estimated</span>
@@ -615,7 +615,7 @@ export default function SavedTripDetail() {
                     href={links.skyscanner || `https://www.skyscanner.com/transport/flights/${encodeURIComponent(trip.city?.toLowerCase() || 'paris')}/`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-3 w-full py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 ml-0"
+                    className="mt-3 w-full py-2 px-4 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors flex items-center justify-center gap-2 ml-0"
                   >
                     Book Flight
                     <ExternalLink size={14} />
@@ -843,17 +843,17 @@ export default function SavedTripDetail() {
                     {inviteEmails.map((email) => (
                       <div
                         key={email}
-                        className="flex items-center justify-between p-2 bg-blue-50 rounded-lg"
+                        className="flex items-center justify-between p-2 bg-primary-light rounded-lg"
                       >
                         <div className="flex items-center gap-2">
-                          <Mail size={16} className="text-blue-600" />
-                          <span className="text-sm text-blue-900">{email}</span>
+                          <Mail size={16} className="text-primary" />
+                          <span className="text-sm text-text-main">{email}</span>
                         </div>
                         <button
                           onClick={() => removeInviteEmail(email)}
-                          className="p-1 hover:bg-blue-100 rounded transition-colors"
+                          className="p-1 hover:bg-primary/10 rounded transition-colors"
                         >
-                          <X size={16} className="text-blue-600" />
+                          <X size={16} className="text-primary" />
                         </button>
                       </div>
                     ))}
@@ -1026,7 +1026,7 @@ function TripEnhancementsSection({ trip, userName }) {
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Weather */}
         {weatherLoading ? (
-          <div className="bg-blue-50 rounded-xl p-4 animate-pulse">
+          <div className="bg-primary-light rounded-xl p-4 animate-pulse">
             <div className="h-4 bg-blue-200 rounded w-1/2 mb-2"></div>
             <div className="h-6 bg-blue-200 rounded w-3/4"></div>
           </div>

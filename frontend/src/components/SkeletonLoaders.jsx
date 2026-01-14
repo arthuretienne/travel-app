@@ -33,7 +33,7 @@ export function TripCardSkeleton() {
 
           {/* Why cards */}
           <div className="grid md:grid-cols-2 gap-4 mb-6">
-            <div className="h-24 bg-blue-50 rounded-xl animate-pulse" />
+            <div className="h-24 bg-primary-light rounded-xl animate-pulse" />
             <div className="h-24 bg-amber-50 rounded-xl animate-pulse" />
           </div>
 
@@ -63,7 +63,7 @@ export function TripCardSkeleton() {
           <div className="flex gap-3 mt-6 pt-6 border-t border-gray-100">
             <div className="flex-1 h-12 bg-gray-200 rounded-xl animate-pulse" />
             <div className="flex-1 h-12 bg-primary/20 rounded-xl animate-pulse" />
-            <div className="flex-1 h-12 bg-blue-200 rounded-xl animate-pulse" />
+            <div className="flex-1 h-12 bg-primary/20 rounded-xl animate-pulse" />
           </div>
         </div>
       </div>
@@ -181,7 +181,7 @@ export function SavedTripDetailSkeleton() {
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="space-y-3">
               <div className="h-10 w-64 bg-gray-200 rounded-lg" />
-              <div className="h-6 w-24 bg-blue-100 rounded-full" />
+              <div className="h-6 w-24 bg-primary/10 rounded-full" />
             </div>
             <div className="flex gap-2">
               <div className="h-10 w-32 bg-gray-200 rounded-lg" />
@@ -204,8 +204,8 @@ export function SavedTripDetailSkeleton() {
         <div className="bg-white rounded-2xl shadow-card p-6">
           <div className="h-6 w-24 bg-gray-200 rounded mb-4" />
           <div className="space-y-4">
-            <div className="h-24 bg-blue-50 rounded-xl" />
-            <div className="h-24 bg-blue-50 rounded-xl" />
+            <div className="h-24 bg-primary-light rounded-xl" />
+            <div className="h-24 bg-primary-light rounded-xl" />
           </div>
         </div>
 
@@ -217,7 +217,7 @@ export function SavedTripDetailSkeleton() {
 
         {/* Book your trip section */}
         <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-          <div className="h-20 bg-gradient-to-br from-blue-50 to-purple-50" />
+          <div className="h-20 bg-gradient-to-br from-primary-light to-stone-50" />
           <div className="grid lg:grid-cols-3 gap-0">
             <div className="p-6 border-r border-gray-100 space-y-4">
               <div className="h-6 w-24 bg-gray-200 rounded" />

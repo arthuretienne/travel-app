@@ -14,25 +14,25 @@ const PLAN_ICONS = {
 
 const PLAN_COLORS = {
   FREE: {
-    bg: 'bg-gray-50',
-    border: 'border-gray-200',
-    button: 'bg-gray-600 hover:bg-gray-700',
-    iconBg: 'bg-gray-100',
-    iconColor: 'text-gray-600',
+    bg: 'bg-stone-50',
+    border: 'border-stone-200',
+    button: 'bg-stone-600 hover:bg-stone-700',
+    iconBg: 'bg-stone-100',
+    iconColor: 'text-stone-600',
   },
   EXPLORER: {
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    button: 'bg-blue-600 hover:bg-blue-700',
-    iconBg: 'bg-blue-100',
-    iconColor: 'text-blue-600',
+    bg: 'bg-primary-light',
+    border: 'border-primary/30',
+    button: 'bg-primary hover:bg-primary-hover',
+    iconBg: 'bg-primary/10',
+    iconColor: 'text-primary',
   },
   WANDERER: {
-    bg: 'bg-purple-50',
-    border: 'border-purple-200',
-    button: 'bg-purple-600 hover:bg-purple-700',
-    iconBg: 'bg-purple-100',
-    iconColor: 'text-purple-600',
+    bg: 'bg-teal-50',
+    border: 'border-teal-300',
+    button: 'bg-teal-700 hover:bg-teal-800',
+    iconBg: 'bg-teal-100',
+    iconColor: 'text-teal-700',
   },
 };
 

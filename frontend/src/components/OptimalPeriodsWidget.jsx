@@ -205,7 +205,7 @@ export function OptimalPeriodsWidget() {
                 : 'text-gray-500 hover:text-gray-700'
               }`}
           >
-            <Target size={14} className={view === 'long' ? 'text-blue-500' : ''} />
+            <Target size={14} className={view === 'long' ? 'text-primary' : ''} />
             Long Term
           </button>
         </div>
@@ -241,11 +241,11 @@ export function OptimalPeriodsWidget() {
                   if (isEdge) {
                     cellClass += view === 'short'
                       ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200 scale-110 font-bold z-10"
-                      : "bg-blue-500 text-white shadow-lg shadow-blue-200 scale-110 font-bold z-10";
+                      : "bg-primary text-white shadow-lg shadow-primary/30 scale-110 font-bold z-10";
                   } else if (isSelected) {
                     cellClass += view === 'short'
                       ? "bg-emerald-100 text-emerald-700 font-semibold"
-                      : "bg-blue-100 text-blue-700 font-semibold";
+                      : "bg-primary/10 text-primary font-semibold";
                   } else if (isPast) {
                     cellClass += "text-gray-300 cursor-not-allowed";
                   } else {
@@ -290,7 +290,7 @@ export function OptimalPeriodsWidget() {
                 </div>
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                   <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Confidence</div>
-                  <div className="text-2xl font-bold text-blue-600 flex items-center gap-1">
+                  <div className="text-2xl font-bold text-primary flex items-center gap-1">
                     {currentPeriod.confidence}%
                     <CheckCircle2 size={16} />
                   </div>

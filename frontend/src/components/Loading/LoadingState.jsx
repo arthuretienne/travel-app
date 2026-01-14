@@ -39,7 +39,7 @@ export default function LoadingState() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center px-4 sm:px-6 md:px-8 py-12 sm:py-16 md:py-20">
+    <div className="min-h-screen bg-gradient-to-br from-primary-light via-white to-stone-50 flex items-center justify-center px-4 sm:px-6 md:px-8 py-12 sm:py-16 md:py-20">
       <div className="max-w-md w-full">
         {/* Main Animation */}
         <div className="text-center mb-16 sm:mb-20 md:mb-24">
@@ -60,7 +60,7 @@ export default function LoadingState() {
         <div className="mb-16 sm:mb-20 md:mb-24">
           <div className="bg-gray-200 rounded-full h-2 sm:h-2.5 overflow-hidden mb-3 sm:mb-4">
             <div 
-              className="bg-gradient-to-r from-purple-600 to-blue-600 h-full transition-all duration-300 ease-out rounded-full"
+              className="bg-gradient-to-r from-primary to-teal-600 h-full transition-all duration-300 ease-out rounded-full"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -88,7 +88,7 @@ export default function LoadingState() {
               key={i}
               className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-all duration-300 ${
                 i <= currentStep 
-                  ? 'bg-purple-600' 
+                  ? 'bg-primary' 
                   : 'bg-gray-300'
               }`}
             />

@@ -503,11 +503,11 @@ function CreateTrip() {
                 {formData.inviteEmails.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {formData.inviteEmails.map((email, index) => (
-                      <span key={index} className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm font-medium">
+                      <span key={index} className="inline-flex items-center gap-2 px-3 py-1 bg-primary-light border border-primary/20 text-primary rounded-lg text-sm font-medium">
                         {email}
                         <button
                           type="button"
-                          className="hover:text-blue-900"
+                          className="hover:text-primary-hover"
                           onClick={() => removeInviteEmail(email)}
                         >
                           <X size={14} />
@@ -662,7 +662,7 @@ function CreateTrip() {
             </div>
           </div>
 
-          <p className="text-sm text-text-secondary italic bg-blue-50 p-3 rounded-lg border border-blue-100">
+          <p className="text-sm text-text-secondary italic bg-primary-light p-3 rounded-lg border border-primary/10">
             💡 Leave dates empty to let AI find the best time for you based on your preferences.
           </p>
 

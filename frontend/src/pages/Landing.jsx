@@ -96,7 +96,7 @@ function Landing() {
           {/* Hero Visuals */}
           <div className="relative hidden lg:block h-[600px]">
             <div className="absolute top-10 left-10 w-72 bg-surface p-6 rounded-3xl shadow-card border border-gray-100 animate-float-slow z-20">
-              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-primary-light text-primary rounded-2xl flex items-center justify-center mb-4">
                 <Globe size={24} />
               </div>
               <h3 className="text-lg font-bold mb-1">Santorini, Greece</h3>
@@ -158,7 +158,7 @@ function Landing() {
                 icon: <Globe size={32} />,
                 title: "Global Discovery",
                 desc: "Uncover hidden gems and local favorites in any destination.",
-                color: "bg-blue-100 text-blue-600"
+                color: "bg-primary-light text-primary"
               }
             ].map((feature, i) => (
               <div key={i} className="p-8 rounded-3xl bg-surface-subtle hover:bg-white hover:shadow-xl transition-all duration-300 border border-transparent hover:border-gray-100 group">
