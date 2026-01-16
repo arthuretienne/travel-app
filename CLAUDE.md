@@ -116,3 +116,249 @@ When migrating to Render:
 3. **Exclusion List**: Track user's past destinations, exclude from recommendations
 4. **Temperature Tuning**: Increase Claude temperature for variety (0.8-0.9)
 5. **Booking API Pre-filter**: Only suggest cities Booking.com supports
+
+# Global Design System — AI Travel Planner SaaS
+
+## Product Intent
+This product reduces cognitive load and human friction in travel planning.
+Design must prioritize clarity, trust, and decision-making over inspiration or exploration.
+
+The UI should feel calm, structured, and efficient, while remaining warm and human.
+
+---
+
+## Visual Philosophy
+- Premium functional
+- Calm and airy
+- Warm minimalism
+- No visual noise
+- No decorative elements without purpose
+
+The interface should feel like a highly competent assistant, not a travel magazine.
+
+---
+
+## Color System
+
+### Core Rules
+- One signature color only
+- Neutrals dominate the interface
+- Color guides decisions, not emotions
+- No aggressive or saturated colors
+
+### Roles
+- Primary (Signature color — blue-green / teal tone)
+  - Primary CTAs
+  - Key highlights
+  - AI suggestions
+  - Active states
+
+- Neutral Backgrounds
+  - Off-white or very light gray for main backgrounds
+  - Light gray for cards and containers
+
+- Text
+  - Dark gray for primary text
+  - Medium gray for secondary text
+  - Light gray for hints and metadata
+
+- Status Colors
+  - Positive: soft green (used sparingly)
+  - Neutral: gray
+  - Negative: muted neutral (never red unless critical)
+
+No gradients, no decorative color usage.
+
+---
+
+## Typography
+
+### Font Strategy
+- Modern sans-serif only
+- High readability at small sizes
+- International-friendly
+- No decorative or display fonts
+
+### Hierarchy
+- Clear visual separation between:
+  - Page titles
+  - Section headers
+  - Body text
+  - Metadata
+
+Font weight and spacing are preferred over color for hierarchy.
+
+---
+
+## Spacing & Layout
+
+### Layout Rules
+- Generous spacing between sections
+- Clear content grouping
+- Avoid dense layouts
+- Prefer vertical scrolling over complex grids
+
+### Containers
+- Cards are the primary structural element
+- Rounded corners (subtle)
+- Soft shadows or borders only
+- No heavy outlines
+
+---
+
+## Interaction Principles
+
+### Primary Action Rule
+- One primary action per screen
+- Secondary actions are visually subdued
+- No competing CTAs
+
+### Feedback
+- Immediate and calm
+- Subtle transitions (fade, scale)
+- No flashy animations
+
+---
+
+## Core UI Components
+
+### Cards
+Used for:
+- Destination proposals
+- Preference summaries
+- Booking progress
+- AI recommendations
+
+Card content priority:
+1. Key decision information
+2. Supporting context
+3. Secondary details (collapsed or subtle)
+
+---
+
+### Destination Proposal Card
+Must always include:
+- Destination name
+- Date compatibility
+- Budget alignment
+- Activity fit
+- Group compatibility indicator
+
+CTA:
+- Single, clear action (e.g. “View this proposal”)
+
+---
+
+### Group Compatibility Summary
+Purpose:
+- Make consensus visible
+- Reduce emotional friction
+
+Rules:
+- Highlight what works first
+- Differences are shown neutrally
+- No blame or negative language
+
+Visuals:
+- Bars, chips, or simple indicators
+- No charts or complex visuals
+
+---
+
+### Availability Timeline
+Purpose:
+- Show common dates clearly
+- Enable quick validation
+
+Rules:
+- Clear visual confirmation when dates align
+- Neutral presentation when they do not
+- No calendar overload
+
+---
+
+### AI Assistant Blocks
+Purpose:
+- Explain reasoning
+- Suggest next actions
+
+Rules:
+- Discrete container
+- Calm tone
+- Concise explanations
+- Always optional
+
+AI never interrupts the user flow.
+
+---
+
+### Group Chat
+Purpose:
+- Coordination, not conversation
+
+Features:
+- Booking status indicators
+- Soft reminders
+- Clear progress visibility
+
+Tone:
+- Warm but structured
+- No pressure language
+
+---
+
+## States & Feedback
+
+### Success States
+- Calm positive reinforcement
+- Minimal visual emphasis
+- Optional subtle microcopy (max one emoji)
+
+Examples:
+- “Everyone is available 🎉”
+- “This option fits the group”
+
+---
+
+### Conflict or No-Match States
+Rules:
+- Neutral language
+- Solution-oriented
+- Never emotional
+
+Examples:
+- “Some preferences differ. These options are the closest matches.”
+- “No common dates found yet. Here are alternatives.”
+
+---
+
+## Motion & Animation
+- Subtle and purposeful
+- Used only for:
+  - State changes
+  - Success confirmation
+  - Flow continuity
+
+No decorative or looping animations.
+
+---
+
+## Accessibility & Usability
+- Strong contrast ratios
+- Clear tap targets
+- Predictable navigation
+- No hidden critical actions
+
+The UI should feel obvious without explanation.
+
+---
+
+## Design North Star
+If a design decision is unclear, choose:
+- Clarity over creativity
+- Calm over excitement
+- Structure over exploration
+- Decision over inspiration
+
+The interface should remove mental effort, not add to it.
+

@@ -12,7 +12,6 @@ import {
   Plane,
   Hotel,
   Sparkles,
-  ExternalLink,
   Users,
   Loader2,
   AlertCircle,
@@ -21,20 +20,7 @@ import {
   X,
   Mail,
   Send,
-  Building,
-  CheckSquare,
-  Square,
-  Star,
-  Sun,
-  CloudRain,
-  Cloudy,
-  CloudSnow,
-  Wind,
-  Droplet,
   Backpack,
-  Heart,
-  Circle,
-  Plus,
   CheckCircle2,
 } from 'lucide-react';
 import { CompleteTripPlanCard, PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
@@ -67,12 +53,6 @@ export default function SavedTripDetail() {
   const [currentEmail, setCurrentEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState(null);
-  const [bookingChecklist, setBookingChecklist] = useState({
-    flight: false,
-    transportAlternatives: {},
-    hotels: {},
-    activities: {},
-  });
 
   useEffect(() => {
     fetchTripDetails();
@@ -227,24 +207,6 @@ export default function SavedTripDetail() {
     }
   };
 
-  const toggleBookingItem = (category, itemId = null) => {
-    setBookingChecklist(prev => {
-      if (itemId === null) {
-        // Toggle simple boolean (flight)
-        return { ...prev, [category]: !prev[category] };
-      } else {
-        // Toggle nested object (hotels, activities, transportAlternatives)
-        return {
-          ...prev,
-          [category]: {
-            ...prev[category],
-            [itemId]: !prev[category][itemId],
-          },
-        };
-      }
-    });
-  };
-
   if (loading) {
     return <SavedTripDetailSkeleton />;
   }
@@ -279,19 +241,77 @@ export default function SavedTripDetail() {
     ? Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))
     : slot.duration || 0;
 
+  // Calculate booking URLs
+  const flightUrl = links.skyscanner || `https://www.skyscanner.com/transport/flights/${encodeURIComponent(trip.city?.toLowerCase() || 'paris')}/`;
+  const hotelUrl = links.booking || `https://www.booking.com/searchresults.html?ss=${encodeURIComponent((trip.city || '') + ', ' + (trip.country || ''))}${trip.startDate ? `&checkin=${trip.startDate}` : ''}${trip.endDate ? `&checkout=${trip.endDate}` : ''}&group_adults=1&no_rooms=1`;
+  const activitiesUrl = `https://www.getyourguide.com/s/?q=${encodeURIComponent(trip.city || '')}`;
+
   return (
     <div className="min-h-screen bg-surface-subtle">
+      {/* Sticky Booking Bar */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b border-stone-200 shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14">
+            {/* Left - Destination */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-text-secondary" />
+              </button>
+              <div className="hidden sm:block">
+                <span className="font-semibold text-text-main">{safeText(trip.city)}</span>
+                <span className="text-text-secondary mx-1.5">•</span>
+                <span className="text-sm text-text-secondary">
+                  {trip.startDate
+                    ? new Date(trip.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    : 'Dates TBD'}
+                  {trip.endDate && ` - ${new Date(trip.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                </span>
+              </div>
+            </div>
+
+            {/* Right - Booking CTAs */}
+            <div className="flex items-center gap-2">
+              <a
+                href={flightUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-text-main bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+              >
+                <Plane size={16} />
+                <span className="hidden sm:inline">Flights</span>
+              </a>
+              <a
+                href={hotelUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-text-main bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+              >
+                <Hotel size={16} />
+                <span className="hidden sm:inline">Hotels</span>
+              </a>
+              <a
+                href={activitiesUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
+              >
+                <Sparkles size={16} />
+                <span className="hidden sm:inline">Activities</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Spacer for sticky bar */}
+      <div className="h-14"></div>
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-text-secondary hover:text-text-main mb-6 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">Back to Dashboard</span>
-          </button>
-
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
@@ -589,226 +609,6 @@ export default function SavedTripDetail() {
           </div>
         )}
 
-        {/* Book Your Trip - 3 Column Layout */}
-        <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 border-b border-gray-100">
-            <h2 className="text-xl font-bold text-text-main mb-1">Book Your Trip</h2>
-            <p className="text-sm text-text-secondary">Everything you need to make your journey perfect</p>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-0">
-            {/* Transport Column */}
-            <div className="p-6 border-b lg:border-b-0 lg:border-r border-gray-100">
-              <div className="flex items-center gap-2 mb-4">
-                <Plane className="text-primary" size={20} />
-                <h3 className="font-bold text-gray-900">Transport</h3>
-              </div>
-
-              {/* Flight Details */}
-              {trip.tripData?.flightDetails && (
-                <div className="mb-4 p-4 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-2 mb-2">
-                    <button
-                      onClick={() => toggleBookingItem('flight')}
-                      className="flex-shrink-0 hover:scale-110 transition-transform"
-                    >
-                      {bookingChecklist.flight ? (
-                        <CheckSquare size={18} className="text-green-600" />
-                      ) : (
-                        <Square size={18} className="text-gray-400" />
-                      )}
-                    </button>
-                    <Plane size={16} className="text-primary" />
-                    <span className="font-semibold text-sm">Flight</span>
-                    {trip.tripData.flightDetails.isEstimate && (
-                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">Estimated</span>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-600 space-y-1 ml-7">
-                    <div>{safeText(trip.tripData.flightDetails.airline) || 'TBD'}</div>
-                    <div className="font-bold text-lg text-gray-900">€{trip.tripData.flightDetails.totalPrice}</div>
-                    {trip.tripData.flightDetails.outbound?.duration && (
-                      <div className="text-gray-500">Duration: {safeText(trip.tripData.flightDetails.outbound.duration)}</div>
-                    )}
-                  </div>
-                  <a
-                    href={links.skyscanner || `https://www.skyscanner.com/transport/flights/${encodeURIComponent(trip.city?.toLowerCase() || 'paris')}/`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 w-full py-2 px-4 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors flex items-center justify-center gap-2 ml-0"
-                  >
-                    Book Flight
-                    <ExternalLink size={14} />
-                  </a>
-                </div>
-              )}
-
-              {/* Alternative Transport */}
-              {trip.tripData?.transportAlternatives && trip.tripData.transportAlternatives.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Alternatives</div>
-                  {trip.tripData.transportAlternatives.map((alt, idx) => (
-                    <div key={idx} className="p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-1">
-                        <button
-                          onClick={() => toggleBookingItem('transportAlternatives', idx)}
-                          className="flex-shrink-0 hover:scale-110 transition-transform"
-                        >
-                          {bookingChecklist.transportAlternatives[idx] ? (
-                            <CheckSquare size={16} className="text-green-600" />
-                          ) : (
-                            <Square size={16} className="text-gray-400" />
-                          )}
-                        </button>
-                        <span className="text-sm font-medium flex-1">{safeText(alt.operator)}</span>
-                        {alt.isEstimate && <span className="text-xs text-gray-500">Estimé</span>}
-                      </div>
-                      <div className="text-lg font-bold text-gray-900 ml-6">€{alt.price}</div>
-                      {alt.duration && <div className="text-xs text-gray-500 ml-6">{Math.round(alt.duration / 60)}h</div>}
-                      <a
-                        href={alt.bookingUrl || 'https://www.trainline.com'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 w-full py-1.5 px-3 bg-gray-200 text-gray-800 text-xs font-medium rounded hover:bg-gray-300 transition-colors flex items-center justify-center gap-1"
-                      >
-                        Book {safeText(alt.type)}
-                        <ExternalLink size={12} />
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Accommodation Column */}
-            <div className="p-6 border-b lg:border-b-0 lg:border-r border-gray-100">
-              <div className="flex items-center gap-2 mb-4">
-                <Hotel className="text-green-600" size={20} />
-                <h3 className="font-bold text-gray-900">Accommodation</h3>
-              </div>
-
-              {trip.tripData?.hotelOptions?.hotels && trip.tripData.hotelOptions.hotels.length > 0 ? (
-                <div className="space-y-3">
-                  {trip.tripData.hotelOptions.hotels.slice(0, 3).map((hotel, idx) => (
-                    <div key={idx} className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                      <div className="flex items-center gap-2 mb-1">
-                        <button
-                          onClick={() => toggleBookingItem('hotels', idx)}
-                          className="flex-shrink-0 hover:scale-110 transition-transform"
-                        >
-                          {bookingChecklist.hotels[idx] ? (
-                            <CheckSquare size={18} className="text-green-600" />
-                          ) : (
-                            <Square size={18} className="text-gray-400" />
-                          )}
-                        </button>
-                        <div className="font-semibold text-sm text-gray-900 flex-1">{safeText(hotel.name)}</div>
-                      </div>
-                      <div className="flex items-center gap-1 mb-2 ml-7">
-                        {[...Array(Math.max(0, Math.min(5, Math.round(Number(hotel.rating) || 0))))].map((_, i) => (
-                          <Star key={i} size={12} className="text-yellow-500 fill-yellow-500" />
-                        ))}
-                        <span className="text-xs text-gray-500 ml-1">{safeText(hotel.rating) || 'N/A'}</span>
-                      </div>
-                      <div className="text-xs text-gray-600 mb-1 ml-7">
-                        €{Math.round(hotel.pricePerNight)}/night × {trip.tripData.hotelOptions.nights} nights
-                      </div>
-                      <div className="text-lg font-bold text-gray-900 mb-3 ml-7">
-                        €{Math.round(hotel.pricePerNight * trip.tripData.hotelOptions.nights)}
-                      </div>
-                      <a
-                        href={hotel.url || links.booking || `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(trip.city || '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full py-2 px-4 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                      >
-                        Book Hotel
-                        <ExternalLink size={14} />
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Hotel size={32} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No hotels loaded</p>
-                  <a
-                    href={links.booking || `https://www.booking.com/searchresults.html?ss=${encodeURIComponent((trip.city || '') + ', ' + (trip.country || ''))}${trip.startDate ? `&checkin=${trip.startDate}` : ''}${trip.endDate ? `&checkout=${trip.endDate}` : ''}&group_adults=1&no_rooms=1`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-block py-2 px-4 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    Search on Booking.com
-                  </a>
-                </div>
-              )}
-            </div>
-
-            {/* Activities Column */}
-            <div className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="text-purple-600" size={20} />
-                <h3 className="font-bold text-gray-900">Activities</h3>
-              </div>
-
-              {trip.tripData?.suggestedActivities && trip.tripData.suggestedActivities.length > 0 ? (
-                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                  {trip.tripData.suggestedActivities.map((activity, idx) => (
-                    <div key={idx} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="flex items-center gap-2 mb-1">
-                        <button
-                          onClick={() => toggleBookingItem('activities', idx)}
-                          className="flex-shrink-0 hover:scale-110 transition-transform"
-                        >
-                          {bookingChecklist.activities[idx] ? (
-                            <CheckSquare size={16} className="text-green-600" />
-                          ) : (
-                            <Square size={16} className="text-gray-400" />
-                          )}
-                        </button>
-                        <div className="font-semibold text-sm text-gray-900 flex-1">{safeText(activity.name)}</div>
-                      </div>
-                      <p className="text-xs text-gray-600 mb-2 ml-6">{safeText(activity.description)}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-500 mb-2 ml-6">
-                        <span>{safeText(activity.duration)}</span>
-                        <span className="font-semibold text-gray-900">
-                          {activity.estimatedPrice === 0 ? 'FREE' : `€${activity.estimatedPrice}`}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 ml-6">
-                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">{safeText(activity.category)}</span>
-                        <span className="text-xs text-gray-500">{safeText(activity.when)}</span>
-                      </div>
-                    </div>
-                  ))}
-                  <a
-                    href={`https://www.getyourguide.com/s/?q=${encodeURIComponent(trip.city)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 w-full py-2 px-4 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    Book Activities
-                    <ExternalLink size={14} />
-                  </a>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Sparkles size={32} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No activities suggested</p>
-                  <a
-                    href={`https://www.google.com/travel/things-to-do?dest_src=tc&dest_mid=/m/${encodeURIComponent(trip.city)}&q=${encodeURIComponent(trip.city + ' things to do')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-block py-2 px-4 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    Discover Activities
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* TRIP ENHANCEMENTS - Weather, Itinerary, Packing, Events */}
         <TripEnhancementsSection trip={trip} userName={user?.firstName || 'there'} />
       </div>
@@ -1046,9 +846,9 @@ function TripEnhancementsSection({ trip, userName }) {
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Weather */}
         {weatherLoading ? (
-          <div className="bg-primary-light rounded-xl p-4 animate-pulse">
-            <div className="h-4 bg-blue-200 rounded w-1/2 mb-2"></div>
-            <div className="h-6 bg-blue-200 rounded w-3/4"></div>
+          <div className="bg-primary-light rounded-xl p-4 animate-pulse border border-primary/10">
+            <div className="h-4 bg-primary-muted rounded w-1/2 mb-2"></div>
+            <div className="h-6 bg-primary-muted rounded w-3/4"></div>
           </div>
         ) : weather ? (
           <WeatherForecastCard weather={weather} destination={destination} />
@@ -1056,9 +856,9 @@ function TripEnhancementsSection({ trip, userName }) {
 
         {/* Packing */}
         {packingLoading ? (
-          <div className="bg-purple-50 rounded-xl p-4 animate-pulse">
-            <div className="h-4 bg-purple-200 rounded w-1/2 mb-2"></div>
-            <div className="h-6 bg-purple-200 rounded w-3/4"></div>
+          <div className="bg-primary-light rounded-xl p-4 animate-pulse border border-primary/10">
+            <div className="h-4 bg-primary-muted rounded w-1/2 mb-2"></div>
+            <div className="h-6 bg-primary-muted rounded w-3/4"></div>
           </div>
         ) : packing ? (
           <PackingTipsCard packing={packing} />
@@ -1067,11 +867,11 @@ function TripEnhancementsSection({ trip, userName }) {
 
       {/* Itinerary - Loads in background */}
       {itineraryLoading ? (
-        <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-2xl shadow-2xl border border-indigo-200 p-8">
+        <div className="bg-gradient-to-br from-primary-light via-white to-stone-50 rounded-2xl shadow-card border border-stone-200 p-8">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Creating Your Personalized Plan...</h3>
-            <p className="text-gray-600">
+            <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-text-main mb-2">Creating Your Personalized Plan...</h3>
+            <p className="text-text-secondary">
               Our AI is planning your perfect trip with flights, transfers, activities, and timing
             </p>
           </div>
@@ -1092,7 +892,7 @@ function TripEnhancementsSection({ trip, userName }) {
   );
 }
 
-// Weather Forecast Card Component - Simplified
+// Weather Forecast Card Component - Teal Design System
 function WeatherForecastCard({ weather, destination }) {
   // Get average conditions for trip period (first 5-7 days)
   const tripForecast = weather.forecast.slice(0, Math.min(5, weather.forecast.length));
@@ -1102,17 +902,23 @@ function WeatherForecastCard({ weather, destination }) {
   const maxRainChance = Math.max(...tripForecast.map(d => d.day.daily_chance_of_rain));
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl shadow-sm border border-blue-100 p-4">
+    <div className="bg-white rounded-xl shadow-card border border-stone-200 p-4 hover:border-primary/30 transition-colors">
       <div className="flex items-center gap-3">
-        <img src={weather.current.icon} alt={weather.current.condition} className="w-12 h-12" />
+        <div className="w-12 h-12 bg-primary-light rounded-lg flex items-center justify-center">
+          <img src={weather.current.icon} alt={weather.current.condition} className="w-10 h-10" />
+        </div>
         <div className="flex-1">
-          <h3 className="font-bold text-gray-900">Weather</h3>
-          <p className="text-sm text-gray-600">
+          <h3 className="font-semibold text-text-main">Weather Forecast</h3>
+          <p className="text-sm text-text-secondary">
             Currently {Math.round(weather.current.temp_c)}°C • {weather.current.condition}
           </p>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-text-light mt-1">
             Trip average: ~{avgTemp}°C
-            {maxRainChance > 30 && ` • ${maxRainChance}% rain chance`}
+            {maxRainChance > 30 && (
+              <span className="ml-2 px-1.5 py-0.5 bg-primary-light text-primary rounded text-xs">
+                {maxRainChance}% rain
+              </span>
+            )}
           </p>
         </div>
       </div>
@@ -1120,25 +926,27 @@ function WeatherForecastCard({ weather, destination }) {
   );
 }
 
-// Packing Tips Card Component - Simplified (1-2 key tips only)
+// Packing Tips Card Component - Teal Design System
 function PackingTipsCard({ packing }) {
   // Get only the MOST important tips (first 2 essentials)
   const keyEssentials = packing.essentials.slice(0, 2);
   const keyClothing = packing.clothing.slice(0, 1);
 
   return (
-    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl shadow-sm border border-purple-100 p-4">
+    <div className="bg-white rounded-xl shadow-card border border-stone-200 p-4 hover:border-primary/30 transition-colors">
       <div className="flex items-start gap-3">
-        <Backpack className="w-6 h-6 text-purple-600 flex-shrink-0" />
+        <div className="w-10 h-10 bg-primary-light rounded-lg flex items-center justify-center flex-shrink-0">
+          <Backpack className="w-5 h-5 text-primary" />
+        </div>
         <div className="flex-1">
-          <h3 className="font-bold text-gray-900 mb-2">Essential Packing</h3>
+          <h3 className="font-semibold text-text-main mb-2">Packing Essentials</h3>
           <div className="space-y-1.5 text-sm">
             {keyEssentials.map((item, idx) => {
               const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
               if (!text) return null;
               return (
-                <div key={idx} className="flex items-center gap-2 text-gray-700">
-                  <CheckCircle2 className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                <div key={idx} className="flex items-center gap-2 text-text-secondary">
+                  <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
                   <span>{text}</span>
                 </div>
               );
@@ -1147,18 +955,22 @@ function PackingTipsCard({ packing }) {
               const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
               if (!text) return null;
               return (
-                <div key={idx} className="flex items-center gap-2 text-gray-700">
-                  <CheckCircle2 className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                <div key={idx} className="flex items-center gap-2 text-text-secondary">
+                  <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
                   <span>{text}</span>
                 </div>
               );
             })}
           </div>
           {packing.weatherSummary && (
-            <p className="text-xs text-gray-500 mt-2">
-              {packing.weatherSummary.tempRange} •
-              {packing.weatherSummary.rainChance > 30 && ' Bring rain gear'}
-              {packing.weatherSummary.maxUV > 6 && ' High UV - SPF 50+'}
+            <p className="text-xs text-text-light mt-2">
+              {packing.weatherSummary.tempRange}
+              {packing.weatherSummary.rainChance > 30 && (
+                <span className="ml-1 px-1.5 py-0.5 bg-primary-light text-primary rounded">Rain gear</span>
+              )}
+              {packing.weatherSummary.maxUV > 6 && (
+                <span className="ml-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded">SPF 50+</span>
+              )}
             </p>
           )}
         </div>

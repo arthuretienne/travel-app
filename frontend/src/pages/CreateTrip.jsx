@@ -75,8 +75,12 @@ function CreateTrip() {
     duration: 7,
     startDate: '',
     endDate: '',
+    dateMode: 'flexible', // 'fixed' or 'flexible'
     travelers: 1,
     travelVibe: 'cultural',
+    travelVibeDescription: '', // Free text field for custom trip description
+    originCity: 'PAR', // Departure city code (loaded from preferences)
+    originCityName: 'Paris', // Display name for departure city
     destination: '', // Optional: specific destination (display name)
     destinationId: null, // API destination ID for accurate search
     destinationCode: null, // Airport/city code
@@ -107,19 +111,58 @@ function CreateTrip() {
     }
   }, [user]);
 
-  // Auto-calculate end date when start date or duration changes
+  // Auto-calculate based on date mode
   useEffect(() => {
-    if (formData.startDate && formData.duration) {
-      const start = new Date(formData.startDate);
-      const end = new Date(start);
-      end.setDate(start.getDate() + formData.duration - 1);
+    if (formData.dateMode === 'flexible') {
+      // In flexible mode: calculate end date from start date + duration
+      if (formData.startDate && formData.duration) {
+        const start = new Date(formData.startDate);
+        const end = new Date(start);
+        end.setDate(start.getDate() + formData.duration - 1);
 
-      const endDateStr = end.toISOString().split('T')[0];
-      if (endDateStr !== formData.endDate) {
-        setFormData(prev => ({ ...prev, endDate: endDateStr }));
+        const endDateStr = end.toISOString().split('T')[0];
+        if (endDateStr !== formData.endDate) {
+          setFormData(prev => ({ ...prev, endDate: endDateStr }));
+        }
+      }
+    } else if (formData.dateMode === 'fixed') {
+      // In fixed mode: calculate duration from start and end dates
+      if (formData.startDate && formData.endDate) {
+        const start = new Date(formData.startDate);
+        const end = new Date(formData.endDate);
+        const diffTime = end.getTime() - start.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+        if (diffDays > 0 && diffDays !== formData.duration) {
+          setFormData(prev => ({ ...prev, duration: diffDays }));
+        }
       }
     }
-  }, [formData.startDate, formData.duration]);
+  }, [formData.startDate, formData.endDate, formData.duration, formData.dateMode]);
+
+  // Map of common airport codes to city names
+  const ORIGIN_CITY_NAMES = {
+    'PAR': 'Paris',
+    'CDG': 'Paris CDG',
+    'ORY': 'Paris Orly',
+    'LON': 'London',
+    'LHR': 'London Heathrow',
+    'NYC': 'New York',
+    'JFK': 'New York JFK',
+    'LAX': 'Los Angeles',
+    'BCN': 'Barcelona',
+    'MAD': 'Madrid',
+    'ROM': 'Rome',
+    'AMS': 'Amsterdam',
+    'BER': 'Berlin',
+    'BRU': 'Brussels',
+    'LIS': 'Lisbon',
+    'MIL': 'Milan',
+    'VIE': 'Vienna',
+    'ZRH': 'Zurich',
+    'GVA': 'Geneva',
+    'DUB': 'Dublin',
+  };
 
   const loadUserPreferences = async () => {
     try {
@@ -134,6 +177,7 @@ function CreateTrip() {
       if (response.ok) {
         const data = await response.json();
         if (data.preferences) {
+          const originCode = data.preferences.originCity || 'PAR';
           setFormData(prev => ({
             ...prev,
             budget: data.preferences.budget || 1000,
@@ -141,6 +185,8 @@ function CreateTrip() {
             travelers: data.preferences.defaultTravelers || 1,
             maxFlightDuration: data.preferences.maxFlightHours || 6,
             mustHaves: data.preferences.activities || [],
+            originCity: originCode,
+            originCityName: ORIGIN_CITY_NAMES[originCode] || originCode,
           }));
         }
       }
@@ -235,6 +281,16 @@ function CreateTrip() {
       newErrors.duration = 'Duration must be between 1 and 30 days';
     }
 
+    // Fixed dates mode requires both start and end dates
+    if (formData.dateMode === 'fixed') {
+      if (!formData.startDate) {
+        newErrors.startDate = 'Start date is required for fixed dates';
+      }
+      if (!formData.endDate) {
+        newErrors.endDate = 'End date is required for fixed dates';
+      }
+    }
+
     if (formData.startDate && formData.endDate) {
       const start = new Date(formData.startDate);
       const end = new Date(formData.endDate);
@@ -327,6 +383,7 @@ function CreateTrip() {
             ...(formData.destinationCountry && { destinationCountry: formData.destinationCountry }), // Country
             budget: formData.budget || 1500,
             style: formData.travelVibe,
+            ...(formData.travelVibeDescription && { travelVibeDescription: formData.travelVibeDescription }), // Custom trip description
             activities: formData.mustHaves.length > 0 ? formData.mustHaves : ['cultural', 'nature'],
             maxFlightHours: formData.maxFlightDuration,
             destinationPreference: 'any',
@@ -352,11 +409,11 @@ function CreateTrip() {
             duration: formData.duration,
             timeHorizon: '6-mois',
             idealDuration: `${formData.duration}-jours`,
-            flexibleDates: true,
+            flexibleDates: formData.dateMode === 'flexible', // Use the date mode
             preferredMonths: [],
-            originCity: 'CDG',
+            originCity: formData.originCity || 'PAR', // Use origin city from preferences
             professionalStatus: 'salaried',
-            departureFlexibility: 'peu-importe',
+            departureFlexibility: formData.dateMode === 'flexible' ? 'peu-importe' : 'fixed',
           },
           chatbotPreferences: {
             tone: formData.chatbotTone,
@@ -594,77 +651,142 @@ function CreateTrip() {
             </div>
           </div>
 
-          {/* Duration */}
+          {/* Date Mode Toggle */}
           <div>
             <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
-              <Clock size={20} className="text-primary" />
-              Duration (days) <span className="text-red-500">*</span>
+              <Calendar size={20} className="text-primary" />
+              When do you want to travel?
             </label>
-            {errors.duration && <p className="text-red-500 text-sm mb-2">{errors.duration}</p>}
-            <div className="flex items-center gap-4">
+            <div className="flex gap-3 mb-6">
               <button
                 type="button"
-                className="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => handleChange('duration', Math.max(1, formData.duration - 1))}
-                disabled={formData.duration <= 1}
+                className={`flex-1 p-4 rounded-xl border-2 transition-all ${
+                  formData.dateMode === 'flexible'
+                    ? 'bg-primary-light border-primary text-primary'
+                    : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
+                }`}
+                onClick={() => handleChange('dateMode', 'flexible')}
               >
-                -
+                <div className="font-semibold mb-1">Flexible Dates</div>
+                <div className="text-sm opacity-80">I know the duration, AI finds the best time</div>
               </button>
-              <input
-                type="number"
-                min="1"
-                max="30"
-                value={formData.duration}
-                onChange={(e) => handleChange('duration', parseInt(e.target.value) || 1)}
-                className="w-20 p-3 text-center text-lg font-medium border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-              />
               <button
                 type="button"
-                className="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => handleChange('duration', Math.min(30, formData.duration + 1))}
-                disabled={formData.duration >= 30}
+                className={`flex-1 p-4 rounded-xl border-2 transition-all ${
+                  formData.dateMode === 'fixed'
+                    ? 'bg-primary-light border-primary text-primary'
+                    : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
+                }`}
+                onClick={() => handleChange('dateMode', 'fixed')}
               >
-                +
+                <div className="font-semibold mb-1">Fixed Dates</div>
+                <div className="text-sm opacity-80">I have specific travel dates</div>
               </button>
             </div>
+
+            {/* Flexible Mode: Duration + Optional Start Date */}
+            {formData.dateMode === 'flexible' && (
+              <div className="space-y-6 animate-fadeIn">
+                {/* Duration */}
+                <div>
+                  <label className="flex items-center gap-2 text-base font-medium text-text-main mb-3">
+                    <Clock size={18} className="text-primary" />
+                    Duration (days) <span className="text-red-500">*</span>
+                  </label>
+                  {errors.duration && <p className="text-red-500 text-sm mb-2">{errors.duration}</p>}
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      className="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => handleChange('duration', Math.max(1, formData.duration - 1))}
+                      disabled={formData.duration <= 1}
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      max="30"
+                      value={formData.duration}
+                      onChange={(e) => handleChange('duration', parseInt(e.target.value) || 1)}
+                      className="w-20 p-3 text-center text-lg font-medium border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                    <button
+                      type="button"
+                      className="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => handleChange('duration', Math.min(30, formData.duration + 1))}
+                      disabled={formData.duration >= 30}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Optional Start Date */}
+                <div>
+                  <label className="flex items-center gap-2 text-base font-medium text-text-main mb-3">
+                    <Calendar size={18} className="text-text-secondary" />
+                    Earliest departure (optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => handleChange('startDate', e.target.value)}
+                    className="w-full md:w-64 p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                  <p className="text-sm text-text-secondary mt-2">
+                    Leave empty to let AI find the best time based on your preferences
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Fixed Mode: Start Date + End Date */}
+            {formData.dateMode === 'fixed' && (
+              <div className="space-y-4 animate-fadeIn">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="flex items-center gap-2 text-base font-medium text-text-main mb-3">
+                      <Calendar size={18} className="text-primary" />
+                      Start Date <span className="text-red-500">*</span>
+                    </label>
+                    {errors.startDate && <p className="text-red-500 text-sm mb-2">{errors.startDate}</p>}
+                    <input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => handleChange('startDate', e.target.value)}
+                      className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2 text-base font-medium text-text-main mb-3">
+                      <Calendar size={18} className="text-primary" />
+                      End Date <span className="text-red-500">*</span>
+                    </label>
+                    {errors.endDate && <p className="text-red-500 text-sm mb-2">{errors.endDate}</p>}
+                    <input
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => handleChange('endDate', e.target.value)}
+                      className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      min={formData.startDate || new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                </div>
+
+                {/* Show calculated duration */}
+                {formData.startDate && formData.endDate && (
+                  <div className="flex items-center gap-2 text-sm text-text-secondary bg-gray-50 p-3 rounded-lg">
+                    <Clock size={16} />
+                    <span>Trip duration: <strong className="text-text-main">{formData.duration} days</strong></span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-
-          {/* Dates */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
-                <Calendar size={20} className="text-primary" />
-                Start Date
-              </label>
-              {errors.startDate && <p className="text-red-500 text-sm mb-2">{errors.startDate}</p>}
-              <input
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => handleChange('startDate', e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                min={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-
-            <div>
-              <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
-                <Calendar size={20} className="text-primary" />
-                End Date
-              </label>
-              {errors.endDate && <p className="text-red-500 text-sm mb-2">{errors.endDate}</p>}
-              <input
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => handleChange('endDate', e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                min={formData.startDate || new Date().toISOString().split('T')[0]}
-              />
-            </div>
-          </div>
-
-          <p className="text-sm text-text-secondary italic bg-primary-light p-3 rounded-lg border border-primary/10">
-            💡 Leave dates empty to let AI find the best time for you based on your preferences.
-          </p>
 
           {/* Travelers */}
           <div>
@@ -734,6 +856,58 @@ function CreateTrip() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Travel Vibe Description - Free text */}
+          <div>
+            <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-2">
+              <Sparkles size={20} className="text-primary" />
+              Describe your trip (optional)
+            </label>
+            <p className="text-sm text-text-secondary mb-4">
+              Tell us more about your trip - special occasion, who you're traveling with, what you're looking for...
+            </p>
+            <textarea
+              value={formData.travelVibeDescription}
+              onChange={(e) => handleChange('travelVibeDescription', e.target.value)}
+              placeholder="e.g., Romantic trip with my wife for her 50th birthday, looking for a peaceful place with good food and spa..."
+              className="w-full p-4 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none h-24"
+              maxLength={500}
+            />
+            <div className="flex justify-end mt-1">
+              <span className="text-xs text-text-secondary">{formData.travelVibeDescription.length}/500</span>
+            </div>
+          </div>
+
+          {/* Departure City */}
+          <div>
+            <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+              <Plane size={20} className="text-primary" />
+              Departure City
+            </label>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary-light rounded-lg flex items-center justify-center">
+                    <Plane size={20} className="text-primary" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-text-main">{formData.originCityName}</div>
+                    <div className="text-sm text-text-secondary">Code: {formData.originCity}</div>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/settings')}
+                className="px-4 py-3 text-sm font-medium text-primary border border-primary rounded-xl hover:bg-primary-light transition-colors"
+              >
+                Change
+              </button>
+            </div>
+            <p className="text-sm text-text-secondary mt-2">
+              This is set in your profile settings and used for flight searches
+            </p>
           </div>
 
           {/* Specific Destination (Optional) */}
