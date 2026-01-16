@@ -195,8 +195,14 @@ function Results() {
         throw new Error('Failed to save trip');
       }
 
+      const data = await response.json();
+
       if (!silent) {
-        alert('Trip saved successfully!');
+        if (data.alreadyExists) {
+          alert('This trip is already in your saved trips!');
+        } else {
+          alert('Trip saved successfully!');
+        }
       }
       return true;
     } catch (err) {

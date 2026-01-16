@@ -167,13 +167,33 @@ router.post('/trips/save', authenticateUser, async (req, res) => {
       });
     }
 
+    const parsedStartDate = new Date(startDate);
+    const parsedEndDate = new Date(endDate);
+
+    // Check if this exact trip already exists for this user
+    const existingTrip = await prisma.savedTrip.findFirst({
+      where: {
+        userId: req.user.id,
+        city,
+        country,
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
+      },
+    });
+
+    if (existingTrip) {
+      // Trip already exists, return it without creating duplicate
+      console.log('ℹ️ Trip already saved:', existingTrip.city, existingTrip.country);
+      return res.json({ savedTrip: existingTrip, alreadyExists: true });
+    }
+
     const savedTrip = await prisma.savedTrip.create({
       data: {
         userId: req.user.id,
         city,
         country,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
         status: status || 'wishlist',
         notes,
         tripData: tripData || {},
