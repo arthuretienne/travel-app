@@ -505,11 +505,15 @@ export default function SavedTripDetail() {
                         </div>
                         {hotel.amenities?.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-2">
-                            {hotel.amenities.slice(0, 4).map((amenity, i) => (
-                              <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                                {amenity}
-                              </span>
-                            ))}
+                            {hotel.amenities.slice(0, 4).map((amenity, i) => {
+                              const text = typeof amenity === 'string' ? amenity : (amenity?.word || amenity?.value || amenity?.name || '');
+                              if (!text) return null;
+                              return (
+                                <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                  {text}
+                                </span>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -1118,18 +1122,26 @@ function PackingTipsCard({ packing }) {
         <div className="flex-1">
           <h3 className="font-bold text-gray-900 mb-2">Essential Packing</h3>
           <div className="space-y-1.5 text-sm">
-            {keyEssentials.map((item, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-gray-700">
-                <CheckCircle2 className="w-4 h-4 text-purple-500 flex-shrink-0" />
-                <span>{item}</span>
-              </div>
-            ))}
-            {keyClothing.map((item, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-gray-700">
-                <CheckCircle2 className="w-4 h-4 text-purple-500 flex-shrink-0" />
-                <span>{item}</span>
-              </div>
-            ))}
+            {keyEssentials.map((item, idx) => {
+              const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
+              if (!text) return null;
+              return (
+                <div key={idx} className="flex items-center gap-2 text-gray-700">
+                  <CheckCircle2 className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                  <span>{text}</span>
+                </div>
+              );
+            })}
+            {keyClothing.map((item, idx) => {
+              const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
+              if (!text) return null;
+              return (
+                <div key={idx} className="flex items-center gap-2 text-gray-700">
+                  <CheckCircle2 className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                  <span>{text}</span>
+                </div>
+              );
+            })}
           </div>
           {packing.weatherSummary && (
             <p className="text-xs text-gray-500 mt-2">
