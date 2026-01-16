@@ -41,6 +41,17 @@ import { CompleteTripPlanCard, PersonalizedItineraryCard, LocalEventsCard } from
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+// Utility function to safely extract text from potentially object values
+const safeText = (value) => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'object') {
+    return value.word || value.value || value.name || value.text || value.label || JSON.stringify(value);
+  }
+  return String(value);
+};
+
 export default function SavedTripDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -285,7 +296,7 @@ export default function SavedTripDetail() {
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-4xl font-bold text-text-main">
-                  {trip.city}, {trip.country}
+                  {safeText(trip.city)}, {safeText(trip.country)}
                 </h1>
               </div>
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-primary-light text-primary">
@@ -484,22 +495,22 @@ export default function SavedTripDetail() {
                   <div key={idx} className="p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-primary/30 transition-colors">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
-                        <p className="font-semibold text-text-main">{hotel.name}</p>
+                        <p className="font-semibold text-text-main">{safeText(hotel.name)}</p>
                         <div className="flex items-center gap-2 mt-1">
                           {hotel.stars && (
                             <span className="text-xs text-amber-600 flex items-center gap-0.5">
-                              {'★'.repeat(hotel.stars)}
+                              {'★'.repeat(typeof hotel.stars === 'number' ? hotel.stars : 0)}
                             </span>
                           )}
                           {hotel.rating?.value && (
                             <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                              {hotel.rating.value}/10
+                              {safeText(hotel.rating.value)}/10
                             </span>
                           )}
                           {hotel.location && (
                             <span className="text-xs text-text-secondary flex items-center gap-1">
                               <MapPin size={10} />
-                              {hotel.location}
+                              {safeText(hotel.location)}
                             </span>
                           )}
                         </div>
@@ -559,12 +570,12 @@ export default function SavedTripDetail() {
         {tripData.matchReason && (
           <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
             <h2 className="text-lg font-bold text-text-main mb-4">Why This Destination?</h2>
-            <p className="text-text-secondary leading-relaxed">{tripData.matchReason}</p>
+            <p className="text-text-secondary leading-relaxed">{safeText(tripData.matchReason)}</p>
 
             {tripData.seasonReason && (
               <div className="mt-4 p-4 bg-amber-50 rounded-xl">
                 <p className="text-sm font-medium text-amber-900 mb-1">Best Season</p>
-                <p className="text-sm text-amber-700">{tripData.seasonReason}</p>
+                <p className="text-sm text-amber-700">{safeText(tripData.seasonReason)}</p>
               </div>
             )}
           </div>
@@ -574,7 +585,7 @@ export default function SavedTripDetail() {
         {trip.notes && (
           <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
             <h2 className="text-lg font-bold text-text-main mb-4">Notes</h2>
-            <p className="text-text-secondary whitespace-pre-wrap">{trip.notes}</p>
+            <p className="text-text-secondary whitespace-pre-wrap">{safeText(trip.notes)}</p>
           </div>
         )}
 
@@ -614,10 +625,10 @@ export default function SavedTripDetail() {
                     )}
                   </div>
                   <div className="text-xs text-gray-600 space-y-1 ml-7">
-                    <div>{trip.tripData.flightDetails.airline || 'TBD'}</div>
+                    <div>{safeText(trip.tripData.flightDetails.airline) || 'TBD'}</div>
                     <div className="font-bold text-lg text-gray-900">€{trip.tripData.flightDetails.totalPrice}</div>
                     {trip.tripData.flightDetails.outbound?.duration && (
-                      <div className="text-gray-500">Duration: {trip.tripData.flightDetails.outbound.duration}</div>
+                      <div className="text-gray-500">Duration: {safeText(trip.tripData.flightDetails.outbound.duration)}</div>
                     )}
                   </div>
                   <a
@@ -649,7 +660,7 @@ export default function SavedTripDetail() {
                             <Square size={16} className="text-gray-400" />
                           )}
                         </button>
-                        <span className="text-sm font-medium flex-1">{alt.operator}</span>
+                        <span className="text-sm font-medium flex-1">{safeText(alt.operator)}</span>
                         {alt.isEstimate && <span className="text-xs text-gray-500">Estimé</span>}
                       </div>
                       <div className="text-lg font-bold text-gray-900 ml-6">€{alt.price}</div>
@@ -660,7 +671,7 @@ export default function SavedTripDetail() {
                         rel="noopener noreferrer"
                         className="mt-2 w-full py-1.5 px-3 bg-gray-200 text-gray-800 text-xs font-medium rounded hover:bg-gray-300 transition-colors flex items-center justify-center gap-1"
                       >
-                        Book {alt.type}
+                        Book {safeText(alt.type)}
                         <ExternalLink size={12} />
                       </a>
                     </div>
@@ -691,13 +702,13 @@ export default function SavedTripDetail() {
                             <Square size={18} className="text-gray-400" />
                           )}
                         </button>
-                        <div className="font-semibold text-sm text-gray-900 flex-1">{hotel.name}</div>
+                        <div className="font-semibold text-sm text-gray-900 flex-1">{safeText(hotel.name)}</div>
                       </div>
                       <div className="flex items-center gap-1 mb-2 ml-7">
                         {[...Array(Math.max(0, Math.min(5, Math.round(Number(hotel.rating) || 0))))].map((_, i) => (
                           <Star key={i} size={12} className="text-yellow-500 fill-yellow-500" />
                         ))}
-                        <span className="text-xs text-gray-500 ml-1">{hotel.rating || 'N/A'}</span>
+                        <span className="text-xs text-gray-500 ml-1">{safeText(hotel.rating) || 'N/A'}</span>
                       </div>
                       <div className="text-xs text-gray-600 mb-1 ml-7">
                         €{Math.round(hotel.pricePerNight)}/night × {trip.tripData.hotelOptions.nights} nights
@@ -755,18 +766,18 @@ export default function SavedTripDetail() {
                             <Square size={16} className="text-gray-400" />
                           )}
                         </button>
-                        <div className="font-semibold text-sm text-gray-900 flex-1">{activity.name}</div>
+                        <div className="font-semibold text-sm text-gray-900 flex-1">{safeText(activity.name)}</div>
                       </div>
-                      <p className="text-xs text-gray-600 mb-2 ml-6">{activity.description}</p>
+                      <p className="text-xs text-gray-600 mb-2 ml-6">{safeText(activity.description)}</p>
                       <div className="flex items-center justify-between text-xs text-gray-500 mb-2 ml-6">
-                        <span>{activity.duration}</span>
+                        <span>{safeText(activity.duration)}</span>
                         <span className="font-semibold text-gray-900">
                           {activity.estimatedPrice === 0 ? 'FREE' : `€${activity.estimatedPrice}`}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 ml-6">
-                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">{activity.category}</span>
-                        <span className="text-xs text-gray-500">{activity.when}</span>
+                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">{safeText(activity.category)}</span>
+                        <span className="text-xs text-gray-500">{safeText(activity.when)}</span>
                       </div>
                     </div>
                   ))}
