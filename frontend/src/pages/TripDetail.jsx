@@ -1546,12 +1546,16 @@ function PackingTipsCard({ packing, destination }) {
               Essentials (Don't Forget!)
             </h3>
             <div className="bg-white rounded-lg p-3 space-y-1.5">
-              {packing.essentials.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="w-4 h-4 text-red-500 flex-shrink-0" />
-                  <span className="text-gray-700">{item}</span>
-                </div>
-              ))}
+              {packing.essentials.map((item, idx) => {
+                const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
+                if (!text) return null;
+                return (
+                  <div key={idx} className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    <span className="text-gray-700">{text}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -1559,12 +1563,16 @@ function PackingTipsCard({ packing, destination }) {
           <div>
             <h3 className="text-sm font-bold text-purple-700 mb-2">Clothing</h3>
             <div className="bg-white rounded-lg p-3 space-y-1.5">
-              {packing.clothing.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm">
-                  <Circle className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                  <span className="text-gray-700">{item}</span>
-                </div>
-              ))}
+              {packing.clothing.map((item, idx) => {
+                const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
+                if (!text) return null;
+                return (
+                  <div key={idx} className="flex items-center gap-2 text-sm">
+                    <Circle className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                    <span className="text-gray-700">{text}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -1573,12 +1581,16 @@ function PackingTipsCard({ packing, destination }) {
             <div>
               <h3 className="text-sm font-bold text-gray-600 mb-2">Optional (Nice to Have)</h3>
               <div className="bg-white rounded-lg p-3 space-y-1.5">
-                {packing.optional.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-sm">
-                    <Plus className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-600">{item}</span>
-                  </div>
-                ))}
+                {packing.optional.map((item, idx) => {
+                  const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
+                  if (!text) return null;
+                  return (
+                    <div key={idx} className="flex items-center gap-2 text-sm">
+                      <Plus className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <span className="text-gray-600">{text}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
