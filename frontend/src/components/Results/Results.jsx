@@ -236,14 +236,18 @@ function TripCard({
           <div className="mb-8">
             <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-3">Highlights</p>
             <div className="flex flex-wrap gap-2">
-              {destination.highlights.map((highlight, i) => (
-                <span
-                  key={i}
-                  className="px-3 py-1.5 bg-surface-muted text-text-secondary text-sm rounded-lg"
-                >
-                  {highlight}
-                </span>
-              ))}
+              {destination.highlights.map((highlight, i) => {
+                const text = typeof highlight === 'string' ? highlight : (highlight?.word || highlight?.value || highlight?.text || '');
+                if (!text) return null;
+                return (
+                  <span
+                    key={i}
+                    className="px-3 py-1.5 bg-surface-muted text-text-secondary text-sm rounded-lg"
+                  >
+                    {text}
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}

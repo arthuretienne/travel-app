@@ -229,11 +229,15 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
                       </div>
                       {day.highlights && day.highlights.length > 0 && (
                         <div className="flex gap-2">
-                          {day.highlights.slice(0, 2).map((highlight, hIdx) => (
-                            <span key={hIdx} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                              ✨ {highlight}
-                            </span>
-                          ))}
+                          {day.highlights.slice(0, 2).map((highlight, hIdx) => {
+                            const text = typeof highlight === 'string' ? highlight : (highlight?.word || highlight?.value || highlight?.text || '');
+                            if (!text) return null;
+                            return (
+                              <span key={hIdx} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                                ✨ {text}
+                              </span>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -315,11 +319,15 @@ export function PersonalizedItineraryCard({ itinerary, userName, activeDay, setA
               </div>
               {currentDay.highlights && currentDay.highlights.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {currentDay.highlights.map((highlight, idx) => (
-                    <span key={idx} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                      ✨ {highlight}
-                    </span>
-                  ))}
+                  {currentDay.highlights.map((highlight, idx) => {
+                    const text = typeof highlight === 'string' ? highlight : (highlight?.word || highlight?.value || highlight?.text || '');
+                    if (!text) return null;
+                    return (
+                      <span key={idx} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                        ✨ {text}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </div>

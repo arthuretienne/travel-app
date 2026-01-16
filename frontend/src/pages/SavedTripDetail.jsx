@@ -536,12 +536,17 @@ export default function SavedTripDetail() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {destination.highlights.map((highlight, idx) => (
-                <div key={idx} className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-purple-600 mt-2"></div>
-                  <span className="text-sm text-purple-900">{highlight}</span>
-                </div>
-              ))}
+              {destination.highlights.map((highlight, idx) => {
+                // Handle both string and object highlights {word, count, value}
+                const text = typeof highlight === 'string' ? highlight : (highlight?.word || highlight?.value || highlight?.text || '');
+                if (!text) return null;
+                return (
+                  <div key={idx} className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-purple-600 mt-2"></div>
+                    <span className="text-sm text-purple-900">{text}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
