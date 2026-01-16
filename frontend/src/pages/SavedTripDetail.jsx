@@ -685,7 +685,7 @@ export default function SavedTripDetail() {
                         <div className="font-semibold text-sm text-gray-900 flex-1">{hotel.name}</div>
                       </div>
                       <div className="flex items-center gap-1 mb-2 ml-7">
-                        {[...Array(Math.round(hotel.rating || 3))].map((_, i) => (
+                        {[...Array(Math.max(0, Math.min(5, Math.round(Number(hotel.rating) || 0))))].map((_, i) => (
                           <Star key={i} size={12} className="text-yellow-500 fill-yellow-500" />
                         ))}
                         <span className="text-xs text-gray-500 ml-1">{hotel.rating || 'N/A'}</span>
