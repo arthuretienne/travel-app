@@ -307,11 +307,15 @@ export function IntelligentDatePicker({ onSelectPeriod }) {
                   )}
 
                   <div className="pl-9 flex flex-wrap gap-1">
-                    {period.tags.map(tag => (
-                      <span key={tag} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full uppercase tracking-wider">
-                        {tag}
-                      </span>
-                    ))}
+                    {period.tags && Array.isArray(period.tags) && period.tags.map((tag, idx) => {
+                      const tagText = typeof tag === 'string' ? tag : (tag?.word || tag?.value || '');
+                      if (!tagText) return null;
+                      return (
+                        <span key={idx} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full uppercase tracking-wider">
+                          {tagText}
+                        </span>
+                      );
+                    })}
                   </div>
 
                   {!period.canAfford && (

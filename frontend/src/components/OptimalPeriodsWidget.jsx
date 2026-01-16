@@ -308,13 +308,18 @@ export function OptimalPeriodsWidget() {
                   </div>
                 </div>
 
-                {currentPeriod.tags && (
+                {currentPeriod.tags && Array.isArray(currentPeriod.tags) && (
                   <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-50">
-                    {currentPeriod.tags.map(tag => (
-                      <span key={tag} className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-md">
-                        #{tag}
-                      </span>
-                    ))}
+                    {currentPeriod.tags.map((tag, idx) => {
+                      // Handle both string tags and object tags {word, count, value}
+                      const tagText = typeof tag === 'string' ? tag : (tag?.word || tag?.value || '');
+                      if (!tagText) return null;
+                      return (
+                        <span key={idx} className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-md">
+                          #{tagText}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
               </div>
