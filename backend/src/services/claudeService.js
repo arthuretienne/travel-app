@@ -124,6 +124,9 @@ export async function generateDestinations(userProfile, userId = null, userName 
 function buildPrompt(profile, originCity = 'CDG') {
   const { basic, preferences, constraints, availability, onboardingPreferences } = profile;
 
+  // Extract the free text field (travelVibeDescription) - THIS IS THE MOST IMPORTANT USER INPUT
+  const userFreeText = basic?.travelVibeDescription || '';
+
   // Determine origin city name from IATA code for better readability
   const originCityMap = {
     'CDG': 'Paris', 'ORY': 'Paris', 'BVA': 'Paris',
@@ -259,6 +262,16 @@ Style: ${basic.style}
 Activities: ${basic.activities.join(', ')}
 Max flight duration: ${basic.maxFlightHours}h
 Destination preference: ${basic.destinationPreference}
+${userFreeText ? `
+🎯 USER'S SPECIFIC REQUEST (HIGHEST PRIORITY):
+"${userFreeText}"
+⚠️ THIS IS THE USER'S OWN WORDS - IT OVERRIDES OTHER PREFERENCES!
+- If they mention a specific destination → INCLUDE THAT DESTINATION
+- If they mention a specific occasion (birthday, anniversary, honeymoon) → MATCH THE VIBE
+- If they mention "romantic", "couples", "spa" → Prioritize romantic/luxury experiences
+- If they mention "adventure", "hiking" → Prioritize outdoor destinations
+- The free text is MORE IMPORTANT than the style/activities checkboxes above!
+` : ''}
 
 Climate: ${preferences.climate}
 Accommodation: ${preferences.accommodation}
@@ -273,7 +286,7 @@ Languages: ${constraints.languages}
 Security: ${constraints.security}
 Visa: ${constraints.visa}
 Mobility: ${constraints.mobility}
-Travelers: ${constraints.travelers}${onboardingSection}
+Travelers: ${basic?.travelers || constraints.travelers || 1}${(basic?.travelers === 2 || basic?.travelers === '2' || constraints.travelers === 2 || constraints.travelers === '2') ? ' (COUPLE TRIP - prioritize romantic/couples-friendly experiences, boutique hotels, intimate restaurants)' : ''}${onboardingSection}
 
 TRAVEL PLANNING WINDOW:
 Planning horizon: ${monthsAhead} months (from ${startDateStr} to ${endDateStr})

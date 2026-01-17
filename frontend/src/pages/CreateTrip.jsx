@@ -8,7 +8,7 @@ import {
   Martini, Waves, Sparkles, ShoppingBag, Smile, Briefcase,
   Glasses, DollarSign, Clock, Calendar, Users, Plus,
   Thermometer, Target, Ban, Plane, Bot, ChevronDown, ChevronRight,
-  X, Loader2
+  X, Loader2, Heart, UserPlus, Baby, Handshake, PenLine
 } from 'lucide-react';
 import { SearchLoadingScreen } from '../components/SkeletonLoaders';
 import DestinationAutocomplete from '../components/DestinationAutocomplete';
@@ -20,6 +20,28 @@ const TRAVEL_VIBES = [
   { label: 'Urban & Shopping', value: 'urban', icon: Building2 },
   { label: 'Food & Gastronomy', value: 'food', icon: Utensils },
 ];
+
+// Trip types with auto-fill defaults
+const TRIP_TYPES = [
+  { label: 'Solo', value: 'solo', icon: Users, defaultTravelers: 1, description: 'Just me' },
+  { label: 'Couple', value: 'couple', icon: Heart, defaultTravelers: 2, description: 'Romantic getaway' },
+  { label: 'Family', value: 'family', icon: Baby, defaultTravelers: 4, description: 'With kids' },
+  { label: 'Friends', value: 'friends', icon: UserPlus, defaultTravelers: 4, description: 'Group adventure' },
+  { label: 'Business', value: 'business', icon: Briefcase, defaultTravelers: 1, description: 'Work trip' },
+  { label: 'Other', value: 'other', icon: PenLine, defaultTravelers: 2, description: 'Tell us more' },
+];
+
+// Budget slider configuration
+const BUDGET_CONFIG = {
+  min: 200,
+  max: 5000,
+  step: 50,
+  presets: [
+    { label: 'Budget', value: 500, description: 'Économique', color: 'text-green-600' },
+    { label: 'Comfort', value: 1500, description: 'Bon rapport qualité/prix', color: 'text-blue-600' },
+    { label: 'Premium', value: 3000, description: 'Expérience haut de gamme', color: 'text-amber-600' },
+  ]
+};
 
 const BUDGET_PRESETS = [
   { label: '< €500', value: 500 },
@@ -71,12 +93,13 @@ function CreateTrip() {
 
   // Mandatory fields
   const [formData, setFormData] = useState({
-    budget: 1000,
+    budget: 1500,
     duration: 7,
     startDate: '',
     endDate: '',
     dateMode: 'flexible', // 'fixed' or 'flexible'
     travelers: 1,
+    tripType: 'solo', // NEW: solo, couple, family, friends, business
     travelVibe: 'cultural',
     travelVibeDescription: '', // Free text field for custom trip description
     originCity: 'PAR', // Departure city code (loaded from preferences)
@@ -100,6 +123,9 @@ function CreateTrip() {
     maxMembers: 8,
     requireAllVotes: false,
   });
+
+  // State for showing/hiding the free text description
+  const [showVibeDescription, setShowVibeDescription] = useState(false);
 
   const [errors, setErrors] = useState({});
   const [currentEmail, setCurrentEmail] = useState('');
@@ -201,6 +227,20 @@ function CreateTrip() {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
+    }
+  };
+
+  // Handle trip type change with auto-fill travelers
+  const handleTripTypeChange = (tripType) => {
+    const selectedType = TRIP_TYPES.find(t => t.value === tripType);
+    setFormData(prev => ({
+      ...prev,
+      tripType,
+      travelers: selectedType?.defaultTravelers || prev.travelers,
+    }));
+    // Auto-open the description field when "Other" is selected
+    if (tripType === 'other') {
+      setShowVibeDescription(true);
     }
   };
 
@@ -383,6 +423,7 @@ function CreateTrip() {
             ...(formData.destinationCountry && { destinationCountry: formData.destinationCountry }), // Country
             budget: formData.budget || 1500,
             style: formData.travelVibe,
+            tripType: formData.tripType, // NEW: solo, couple, family, friends, business
             ...(formData.travelVibeDescription && { travelVibeDescription: formData.travelVibeDescription }), // Custom trip description
             activities: formData.mustHaves.length > 0 ? formData.mustHaves : ['cultural', 'nature'],
             maxFlightHours: formData.maxFlightDuration,
@@ -627,27 +668,125 @@ function CreateTrip() {
             <h2 className="text-xl font-bold text-text-main">Essential Details</h2>
           </div>
 
-          {/* Budget */}
+          {/* 1. DESTINATION (moved to first position) */}
+          <div>
+            <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+              <Globe size={20} className="text-primary" />
+              Where do you want to go?
+            </label>
+            <p className="text-sm text-text-secondary mb-3">
+              Leave empty to let AI suggest destinations, or search for a specific city
+            </p>
+            {errors.destination && <p className="text-red-500 text-sm mb-2">{errors.destination}</p>}
+            <DestinationAutocomplete
+              value={formData.destination}
+              onChange={(data) => {
+                setFormData(prev => ({
+                  ...prev,
+                  destination: data.destination,
+                  destinationId: data.destinationId,
+                  destinationCode: data.destinationCode,
+                  destinationCountry: data.destinationCountry,
+                }));
+              }}
+              placeholder="Search: Bali, Tokyo, Barcelona... or leave empty for AI suggestions"
+            />
+          </div>
+
+          {/* 2. TRIP TYPE (new) */}
+          <div>
+            <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
+              <Users size={20} className="text-primary" />
+              Who's traveling?
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {TRIP_TYPES.map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`p-4 rounded-xl border transition-all flex flex-col items-center gap-2 ${formData.tripType === option.value
+                      ? 'bg-primary-light border-primary text-primary font-medium ring-2 ring-primary/20'
+                      : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50 hover:bg-gray-50'
+                    }`}
+                  onClick={() => handleTripTypeChange(option.value)}
+                >
+                  <option.icon size={24} />
+                  <span className="font-medium">{option.label}</span>
+                  <span className="text-xs opacity-70">{option.description}</span>
+                </button>
+              ))}
+            </div>
+            {/* Travelers count - auto-filled but adjustable */}
+            <div className="mt-4 flex items-center gap-4">
+              <span className="text-sm text-text-secondary">Number of travelers:</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-50"
+                  onClick={() => handleChange('travelers', Math.max(1, formData.travelers - 1))}
+                  disabled={formData.travelers <= 1}
+                >
+                  -
+                </button>
+                <span className="w-8 text-center font-semibold text-text-main">{formData.travelers}</span>
+                <button
+                  type="button"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-50"
+                  onClick={() => handleChange('travelers', Math.min(20, formData.travelers + 1))}
+                  disabled={formData.travelers >= 20}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. BUDGET with slider + presets */}
           <div>
             <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
               <DollarSign size={20} className="text-primary" />
               Budget per person
             </label>
             {errors.budget && <p className="text-red-500 text-sm mb-2">{errors.budget}</p>}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {BUDGET_PRESETS.map(option => (
+
+            {/* Quick presets */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              {BUDGET_CONFIG.presets.map(preset => (
                 <button
-                  key={option.value}
+                  key={preset.value}
                   type="button"
-                  className={`p-4 rounded-xl border transition-all ${formData.budget === option.value
-                      ? 'bg-primary-light border-primary text-primary font-medium ring-2 ring-primary/20'
+                  className={`p-3 rounded-xl border transition-all text-center ${formData.budget === preset.value
+                      ? 'bg-primary-light border-primary text-primary ring-2 ring-primary/20'
                       : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50 hover:bg-gray-50'
                     }`}
-                  onClick={() => handleChange('budget', option.value)}
+                  onClick={() => handleChange('budget', preset.value)}
                 >
-                  {option.label}
+                  <div className={`font-semibold ${preset.color}`}>{preset.label}</div>
+                  <div className="text-xs opacity-70">{preset.description}</div>
+                  <div className="text-sm font-medium mt-1">~€{preset.value}</div>
                 </button>
               ))}
+            </div>
+
+            {/* Fine-tune slider */}
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm text-text-secondary">Fine-tune your budget:</span>
+                <span className="text-xl font-bold text-primary">€{formData.budget}</span>
+              </div>
+              <input
+                type="range"
+                min={BUDGET_CONFIG.min}
+                max={BUDGET_CONFIG.max}
+                step={BUDGET_CONFIG.step}
+                value={formData.budget}
+                onChange={(e) => handleChange('budget', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+              />
+              <div className="flex justify-between text-xs text-text-secondary mt-2">
+                <span>€{BUDGET_CONFIG.min}</span>
+                <span>€{BUDGET_CONFIG.max}+</span>
+              </div>
             </div>
           </div>
 
@@ -788,51 +927,6 @@ function CreateTrip() {
             )}
           </div>
 
-          {/* Travelers */}
-          <div>
-            <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
-              <Users size={20} className="text-primary" />
-              Number of Travelers <span className="text-red-500">*</span>
-            </label>
-            {errors.travelers && <p className="text-red-500 text-sm mb-2">{errors.travelers}</p>}
-            <div className="flex flex-wrap items-center gap-6">
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  className="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => handleChange('travelers', Math.max(1, formData.travelers - 1))}
-                  disabled={formData.travelers <= 1}
-                >
-                  -
-                </button>
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={formData.travelers}
-                  onChange={(e) => handleChange('travelers', parseInt(e.target.value) || 1)}
-                  className="w-20 p-3 text-center text-lg font-medium border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-                <button
-                  type="button"
-                  className="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => handleChange('travelers', Math.min(20, formData.travelers + 1))}
-                  disabled={formData.travelers >= 20}
-                >
-                  +
-                </button>
-              </div>
-              <button
-                type="button"
-                className="flex items-center gap-2 px-4 py-3 bg-white border border-primary text-primary rounded-xl font-medium hover:bg-primary-light transition-colors"
-                onClick={() => alert('Share trip feature coming soon!')}
-              >
-                <Plus size={18} />
-                Share trip / Add friend
-              </button>
-            </div>
-          </div>
-
           {/* Travel Vibe */}
           <div>
             <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
@@ -858,25 +952,51 @@ function CreateTrip() {
             </div>
           </div>
 
-          {/* Travel Vibe Description - Free text */}
+          {/* Travel Vibe Description - Revealed on click */}
           <div>
-            <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-2">
-              <Sparkles size={20} className="text-primary" />
-              Describe your trip (optional)
-            </label>
-            <p className="text-sm text-text-secondary mb-4">
-              Tell us more about your trip - special occasion, who you're traveling with, what you're looking for...
-            </p>
-            <textarea
-              value={formData.travelVibeDescription}
-              onChange={(e) => handleChange('travelVibeDescription', e.target.value)}
-              placeholder="e.g., Romantic trip with my wife for her 50th birthday, looking for a peaceful place with good food and spa..."
-              className="w-full p-4 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none h-24"
-              maxLength={500}
-            />
-            <div className="flex justify-end mt-1">
-              <span className="text-xs text-text-secondary">{formData.travelVibeDescription.length}/500</span>
-            </div>
+            {!showVibeDescription ? (
+              <button
+                type="button"
+                onClick={() => setShowVibeDescription(true)}
+                className="flex items-center gap-2 px-4 py-3 text-primary border border-dashed border-primary/50 rounded-xl hover:bg-primary-light hover:border-primary transition-colors w-full justify-center"
+              >
+                <PenLine size={18} />
+                <span className="font-medium">Describe your vibe in your own words</span>
+              </button>
+            ) : (
+              <div className="animate-fadeIn">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="flex items-center gap-2 text-lg font-semibold text-text-main">
+                    <PenLine size={20} className="text-primary" />
+                    Your trip in your own words
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowVibeDescription(false);
+                      handleChange('travelVibeDescription', '');
+                    }}
+                    className="text-sm text-text-secondary hover:text-text-main"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <p className="text-sm text-text-secondary mb-3">
+                  Special occasion? Specific vibe? Tell us everything - this helps us find the perfect match!
+                </p>
+                <textarea
+                  value={formData.travelVibeDescription}
+                  onChange={(e) => handleChange('travelVibeDescription', e.target.value)}
+                  placeholder="e.g., Romantic trip with my wife for her 50th birthday, looking for a peaceful place with good food and spa..."
+                  className="w-full p-4 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none h-24"
+                  maxLength={500}
+                  autoFocus
+                />
+                <div className="flex justify-end mt-1">
+                  <span className="text-xs text-text-secondary">{formData.travelVibeDescription.length}/500</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Departure City */}
@@ -910,30 +1030,6 @@ function CreateTrip() {
             </p>
           </div>
 
-          {/* Specific Destination (Optional) */}
-          <div>
-            <label className="flex items-center gap-2 text-lg font-semibold text-text-main mb-4">
-              <Globe size={20} className="text-primary" />
-              Specific Destination (Optional)
-            </label>
-            <p className="text-sm text-text-secondary mb-3">
-              💡 Leave empty to let AI suggest destinations, or search for a city
-            </p>
-            {errors.destination && <p className="text-red-500 text-sm mb-2">{errors.destination}</p>}
-            <DestinationAutocomplete
-              value={formData.destination}
-              onChange={(data) => {
-                setFormData(prev => ({
-                  ...prev,
-                  destination: data.destination,
-                  destinationId: data.destinationId,
-                  destinationCode: data.destinationCode,
-                  destinationCountry: data.destinationCountry,
-                }));
-              }}
-              placeholder="Search: Bali, Tokyo, Barcelona..."
-            />
-          </div>
         </div>
 
         {/* OPTIONAL FILTERS - Collapsible */}

@@ -281,6 +281,12 @@ router.post('/recommendations',
       const budget = userProfile.basic.budget;
       const duration = userProfile.availability?.duration || 7;
 
+      // Extract trip context (free text from user)
+      const tripContext = userProfile.basic?.travelVibeDescription || null;
+      if (tripContext) {
+        console.log(`   🎯 Trip context from user: "${tripContext.substring(0, 80)}..."`);
+      }
+
       // Step 1: Optimize trip with Booking.com API
       console.log(`🔍 Step 1: Optimizing ${destination} trip...`);
       if (destinationId) {
@@ -293,7 +299,8 @@ router.post('/recommendations',
         budget,
         origin: originCity,
         duration,
-        departureDate: userProfile.availability?.startDate
+        departureDate: userProfile.availability?.startDate,
+        tripContext, // NEW: Pass user's free text for context-aware hotel selection
       });
 
       console.log(`✅ Trip optimized: €${optimizedTrip.flight.totalCost} flight + €${optimizedTrip.hotel.totalPrice} hotel`);
@@ -626,6 +633,12 @@ router.post('/recommendations',
 
       console.log(`✅ Discovered ${topDestinations.length} destinations`);
 
+      // Extract trip context for hotel scoring (same as WITH_DESTINATION)
+      const tripContextWithout = userProfile.basic?.travelVibeDescription || null;
+      if (tripContextWithout) {
+        console.log(`   🎯 Trip context for hotel selection: "${tripContextWithout.substring(0, 80)}..."`);
+      }
+
       // Step 2: Optimize top 3 destinations in PARALLEL
       console.log('⚡ Step 2: Optimizing top 3 destinations in parallel...');
       const optimizedTrips = await Promise.all(
@@ -636,7 +649,8 @@ router.post('/recommendations',
             budget,
             origin: originCity,
             duration,
-            departureDate: userProfile.availability?.startDate
+            departureDate: userProfile.availability?.startDate,
+            tripContext: tripContextWithout, // NEW: Pass user's free text for context-aware hotel selection
           }).catch(error => {
             console.warn(`⚠️  Failed to optimize ${dest.name}:`, error.message);
             return null;
@@ -1037,6 +1051,9 @@ router.post('/recommendations/stream',
       const destinationsToProcess = topDestinations.slice(0, 3);
       let completedCount = 0;
 
+      // Extract trip context for streaming (same as non-streaming)
+      const tripContextStreaming = userProfile.basic?.travelVibeDescription || null;
+
       // Process destinations in parallel but stream results as they complete
       await Promise.all(
         destinationsToProcess.map(async (dest, idx) => {
@@ -1048,7 +1065,8 @@ router.post('/recommendations/stream',
               budget,
               origin: originCity,
               duration,
-              departureDate: userProfile.availability?.startDate
+              departureDate: userProfile.availability?.startDate,
+              tripContext: tripContextStreaming, // NEW: Pass trip context for context-aware hotel selection
             });
 
             if (!trip) return;

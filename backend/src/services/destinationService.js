@@ -300,8 +300,26 @@ export async function optimizeDestination({
   origin,
   duration = 7,
   departureDate = null,
+  tripContext = null, // NEW: User's free text description for context-aware hotel selection
 }) {
   console.log(`🎯 NEW WORKFLOW: Optimizing ${destination} trip for €${budget} budget`);
+
+  // Extract number of travelers from userProfile EARLY (needed for flights AND hotels)
+  // IMPORTANT: Frontend sends travelers in basic.travelers, NOT constraints.travelers!
+  const travelers = userProfile?.basic?.travelers || userProfile?.constraints?.travelers || 1;
+  let numAdults = 1;
+  let numChildren = 0;
+
+  if (typeof travelers === 'number') {
+    numAdults = travelers;
+  } else if (typeof travelers === 'string') {
+    const adultMatch = travelers.match(/(\d+)\s*adult/i);
+    const childMatch = travelers.match(/(\d+)\s*child/i);
+    if (adultMatch) numAdults = parseInt(adultMatch[1]);
+    if (childMatch) numChildren = parseInt(childMatch[1]);
+  }
+
+  console.log(`   👥 Trip for ${numAdults} adult(s)${numChildren ? ` + ${numChildren} child(ren)` : ''} (source: basic.travelers=${userProfile?.basic?.travelers})`);
 
   try {
     // STEP 1: Get flight destination IDs (airport/city)
@@ -365,7 +383,7 @@ export async function optimizeDestination({
             toId: destDest.id,
             departDate: depDate,
             returnDate: returnDateStr,
-            adults: 1,
+            adults: numAdults, // Use actual number of travelers
             cabinClass: 'ECONOMY',
             currency: 'EUR'
           });
@@ -468,11 +486,50 @@ export async function optimizeDestination({
     console.log(`✅ Best flight: ${bestFlight.outbound.airline} - €${flightCost}`);
 
     // STEP 3: Calculate remaining budget for hotel
+    // Use tripType selector (explicit choice) + tripContext (free text) to determine hotel budget ratio
+    const tripTypeFromProfile = userProfile?.basic?.tripType || null;
+    const tripContextForBudget = tripContext || userProfile?.basic?.travelVibeDescription || '';
+    const tripContextLower = tripContextForBudget.toLowerCase();
+
+    // Detect if this is a special occasion / luxury / romantic trip
+    // First check explicit tripType, then fall back to keyword detection
+    let isRomanticTrip = tripTypeFromProfile === 'couple';
+    let isFamilyTrip = tripTypeFromProfile === 'family';
+    let isBusinessTrip = tripTypeFromProfile === 'business';
+
+    // Enhance with keyword detection from free text (can override or add to selector)
+    if (['romantic', 'romantique', 'couple', 'honeymoon', 'lune de miel', 'wife', 'femme', 'husband', 'mari', 'anniversary', 'anniversaire'].some(kw => tripContextLower.includes(kw))) {
+      isRomanticTrip = true;
+    }
+    const isLuxuryTrip = ['luxury', 'luxe', 'premium', '5 star', 'birthday', 'anniversaire', '50 ans', '40 ans', '30 ans', 'special'].some(kw => tripContextLower.includes(kw));
+    const isAdventureTrip = ['adventure', 'aventure', 'hiking', 'randonnée', 'backpack', 'budget'].some(kw => tripContextLower.includes(kw));
+
+    // Adjust hotel budget ratio based on trip type:
+    // - Romantic/Luxury: 85% for hotel (hotel is the priority)
+    // - Business: 80% for hotel (comfort matters)
+    // - Adventure/Budget: 50% for hotel (activities are the priority)
+    // - Family: 75% for hotel (comfort with kids)
+    // - Default: 70% for hotel
+    let hotelBudgetRatio = 0.70;
+    if (isRomanticTrip || isLuxuryTrip) {
+      hotelBudgetRatio = 0.85;
+      console.log(`   💕 Romantic/Luxury trip detected - prioritizing hotel quality (85% budget)`);
+    } else if (isBusinessTrip) {
+      hotelBudgetRatio = 0.80;
+      console.log(`   💼 Business trip detected - prioritizing comfort (80% budget)`);
+    } else if (isFamilyTrip) {
+      hotelBudgetRatio = 0.75;
+      console.log(`   👨‍👩‍👧‍👦 Family trip detected - balanced comfort (75% budget)`);
+    } else if (isAdventureTrip) {
+      hotelBudgetRatio = 0.50;
+      console.log(`   🏔️ Adventure trip detected - prioritizing activities (50% hotel budget)`);
+    }
+
     const remainingForAccommodation = budget - flightCost;
     const totalNights = duration;
-    const maxNightlyRate = (remainingForAccommodation / totalNights) * 0.7; // 70% for hotel
+    const maxNightlyRate = (remainingForAccommodation / totalNights) * hotelBudgetRatio;
 
-    console.log(`🏨 Budget for hotel: €${maxNightlyRate}/night × ${totalNights} nights`);
+    console.log(`🏨 Budget for hotel: €${Math.round(maxNightlyRate)}/night × ${totalNights} nights (${Math.round(hotelBudgetRatio * 100)}% ratio)`);
 
     // STEP 4: Search hotels using Booking.com API
     console.log(`🏨 Step 3: Searching hotels for ${selectedDepartureDate} to ${selectedReturnDate}...`);
@@ -482,40 +539,40 @@ export async function optimizeDestination({
     // Extract user preferences for hotel search
     const accommodationPref = userProfile?.onboardingPreferences?.accommodationPref || null;
     const materialComfort = userProfile?.onboardingPreferences?.materialComfort || 50;
-    const travelers = userProfile?.constraints?.travelers || 1;
-    // Parse travelers: could be "2 adults" or "2 adults, 1 child" or just a number
-    let adults = 1;
-    let children = 0;
-    let rooms = 1;
 
-    if (typeof travelers === 'number') {
-      adults = travelers;
-    } else if (typeof travelers === 'string') {
-      const adultMatch = travelers.match(/(\d+)\s*adult/i);
-      const childMatch = travelers.match(/(\d+)\s*child/i);
-      if (adultMatch) adults = parseInt(adultMatch[1]);
-      if (childMatch) children = parseInt(childMatch[1]);
-    }
+    // Use numAdults/numChildren already parsed at the beginning of the function
+    // Calculate rooms: 1 room per 2 adults, families stay together (couples share a room)
+    let rooms = Math.ceil(numAdults / 2);
+    if (numChildren > 0 && rooms === 1) rooms = 1; // Family in same room
 
-    // Calculate rooms: 1 room per 2 adults, families stay together
-    rooms = Math.ceil(adults / 2);
-    if (children > 0 && rooms === 1) rooms = 1; // Family in same room
-
-    console.log(`   👥 Travelers: ${adults} adults${children ? `, ${children} children` : ''} → ${rooms} room(s)`);
+    console.log(`   👥 Hotel search: ${numAdults} adults${numChildren ? `, ${numChildren} children` : ''} → ${rooms} room(s)`);
     console.log(`   🏨 Preference: ${accommodationPref || 'default'}, Comfort: ${materialComfort}/100`);
+
+    // Extract tripContext from userProfile if not passed directly
+    const effectiveTripContext = tripContext || userProfile?.basic?.travelVibeDescription || null;
+    // Extract tripType from userProfile (solo, couple, family, friends, business)
+    const effectiveTripType = userProfile?.basic?.tripType || null;
+
+    if (effectiveTripContext || effectiveTripType) {
+      const contextDesc = effectiveTripContext ? `"${effectiveTripContext.substring(0, 50)}..."` : '';
+      const typeDesc = effectiveTripType ? `type=${effectiveTripType}` : '';
+      console.log(`   🎯 Using trip context for hotel selection: ${[typeDesc, contextDesc].filter(Boolean).join(', ')}`);
+    }
 
     try {
       hotelSearchResults = await bookingService.searchHotels({
         destinationQuery: destination,
         arrivalDate: selectedDepartureDate,
         departureDate: selectedReturnDate,
-        adults,
-        children,
+        adults: numAdults,
+        children: numChildren,
         rooms,
         currency: 'EUR',
         accommodationPref,
         materialComfort,
         maxPrice: remainingForAccommodation, // Use remaining budget as max price
+        tripContext: effectiveTripContext, // Pass trip context for context-aware hotel selection
+        tripType: effectiveTripType, // NEW: Pass trip type for context-aware hotel selection
       });
 
       if (hotelSearchResults.count === 0) {
@@ -529,9 +586,19 @@ export async function optimizeDestination({
       });
 
       if (affordableHotels.length > 0) {
-        // Sort by rating and pick best one
-        affordableHotels.sort((a, b) => (b.rating?.value || 0) - (a.rating?.value || 0));
+        // Sort by: 1) contextScore (if trip context was applied), 2) rating
+        // This ensures romantic trips get romantic hotels, etc.
+        affordableHotels.sort((a, b) => {
+          // Primary: context score (higher = better match for trip type)
+          const contextDiff = (b.contextScore || 0) - (a.contextScore || 0);
+          if (contextDiff !== 0) return contextDiff;
+
+          // Secondary: rating (higher = better)
+          return (b.rating?.value || 0) - (a.rating?.value || 0);
+        });
+
         const bestHotel = affordableHotels[0];
+        console.log(`   🎯 Selected hotel based on context score: ${bestHotel.contextScore || 0}, rating: ${bestHotel.rating?.value || 'N/A'}`);
         const nightlyRate = bestHotel.price.amount / totalNights;
 
         suggestedHotel = {

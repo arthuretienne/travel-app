@@ -613,6 +613,168 @@ function parseFlightOffers(flightOffers, currency, fromId, toId, departDate, ret
 }
 
 /**
+ * Extract trip context keywords from user's free text description AND trip type selector
+ * Used for hotel scoring and filtering
+ * @param {string} tripContext - User's free text description (travelVibeDescription)
+ * @param {string} tripType - User's selected trip type (solo, couple, family, friends, business)
+ * @returns {Object} Extracted context with keywords and scores
+ */
+function extractTripContext(tripContext, tripType = null) {
+  // Initialize with defaults
+  let isRomantic = false;
+  let isSpa = false;
+  let isBusiness = false;
+  let isFamily = false;
+  let isAdventure = false;
+  let isLuxury = false;
+  let matchedKeywords = [];
+
+  // First, apply trip type from selector (explicit user choice)
+  if (tripType) {
+    switch (tripType) {
+      case 'couple':
+        isRomantic = true;
+        matchedKeywords.push('couple');
+        break;
+      case 'family':
+        isFamily = true;
+        matchedKeywords.push('family');
+        break;
+      case 'business':
+        isBusiness = true;
+        matchedKeywords.push('business');
+        break;
+      case 'friends':
+        // Friends trips: prioritize social/fun amenities but no specific category
+        matchedKeywords.push('friends');
+        break;
+      // 'solo' doesn't set any specific flags
+    }
+  }
+
+  // Then, enhance with free text analysis if provided (can override or add to selector)
+  if (tripContext && typeof tripContext === 'string') {
+    const text = tripContext.toLowerCase();
+
+    // Detect trip type/vibe from keywords
+    const romanticKeywords = ['romantic', 'romantique', 'couple', 'honeymoon', 'lune de miel', 'anniversary', 'anniversaire', 'amoureux', 'love', 'wife', 'femme', 'husband', 'mari', 'girlfriend', 'copine', 'boyfriend', 'copain', 'valentine', 'saint-valentin'];
+    const spaKeywords = ['spa', 'wellness', 'bien-être', 'relax', 'détente', 'massage', 'zen', 'peaceful', 'calm', 'tranquille', 'repos'];
+    const businessKeywords = ['business', 'work', 'travail', 'conference', 'conférence', 'meeting', 'réunion', 'professionnel'];
+    const familyKeywords = ['family', 'famille', 'kids', 'enfants', 'children', 'baby', 'bébé'];
+    const adventureKeywords = ['adventure', 'aventure', 'hiking', 'randonnée', 'sport', 'active', 'actif', 'outdoor', 'plein air'];
+    const luxuryKeywords = ['luxury', 'luxe', 'premium', 'upscale', 'haut de gamme', '5 star', '5 étoiles', 'exclusive', 'exclusif', 'birthday', 'anniversaire', '50 ans', '40 ans', '30 ans'];
+
+    // Text analysis can enhance but also override if more specific
+    if (romanticKeywords.some(kw => text.includes(kw))) isRomantic = true;
+    if (spaKeywords.some(kw => text.includes(kw))) isSpa = true;
+    if (businessKeywords.some(kw => text.includes(kw))) isBusiness = true;
+    if (familyKeywords.some(kw => text.includes(kw))) isFamily = true;
+    if (adventureKeywords.some(kw => text.includes(kw))) isAdventure = true;
+    if (luxuryKeywords.some(kw => text.includes(kw))) isLuxury = true;
+
+    // Extract all matched keywords for hotel scoring
+    const allKeywords = [...romanticKeywords, ...spaKeywords, ...businessKeywords, ...familyKeywords, ...adventureKeywords, ...luxuryKeywords];
+    const textKeywords = allKeywords.filter(kw => text.includes(kw));
+    matchedKeywords = [...new Set([...matchedKeywords, ...textKeywords])]; // Dedupe
+  }
+
+  // If no context at all, return empty
+  if (!tripType && (!tripContext || typeof tripContext !== 'string')) {
+    return { keywords: [], isRomantic: false, isSpa: false, isBusiness: false, isFamily: false, isAdventure: false, isLuxury: false };
+  }
+
+  console.log(`   🎯 Trip context detected: type=${tripType || 'none'}, romantic=${isRomantic}, spa=${isSpa}, luxury=${isLuxury}, family=${isFamily}, adventure=${isAdventure}`);
+
+  return {
+    keywords: matchedKeywords,
+    isRomantic,
+    isSpa,
+    isBusiness,
+    isFamily,
+    isAdventure,
+    isLuxury,
+    tripType,
+    rawText: tripContext
+  };
+}
+
+/**
+ * Score a hotel based on trip context matching
+ * @param {Object} hotel - Hotel data from Booking.com API
+ * @param {Object} tripContext - Extracted trip context
+ * @returns {number} Score bonus (0-100) based on context match
+ */
+function scoreHotelByContext(hotel, tripContext) {
+  if (!tripContext || !tripContext.keywords?.length) {
+    return 0; // No context = no bonus
+  }
+
+  let score = 0;
+  const hotelName = (hotel.property?.name || '').toLowerCase();
+  const hotelAmenities = (hotel.property?.amenities || []).map(a => (typeof a === 'string' ? a : a.name || '').toLowerCase());
+  const hotelDescription = (hotel.accessibilityLabel || '').toLowerCase();
+  const allHotelText = `${hotelName} ${hotelAmenities.join(' ')} ${hotelDescription}`;
+
+  // Score based on trip context type
+  if (tripContext.isRomantic) {
+    // Romantic trip: prioritize boutique hotels, suites, romantic vibes
+    const romanticAmenities = ['spa', 'jacuzzi', 'suite', 'romantic', 'boutique', 'adults only', 'adult-only', 'honeymoon', 'champagne', 'rooftop', 'view', 'terrace', 'balcon', 'balcony'];
+    const romanticMatches = romanticAmenities.filter(a => allHotelText.includes(a)).length;
+    score += romanticMatches * 15;
+
+    // Penalize family-oriented hotels
+    const familyTerms = ['family', 'famille', 'kids', 'children', 'playground', 'family room', 'bunk bed'];
+    const familyMatches = familyTerms.filter(t => allHotelText.includes(t)).length;
+    score -= familyMatches * 10;
+
+    // Bonus for higher star ratings (romantic = usually want nicer hotels)
+    const stars = hotel.property?.propertyClass || 0;
+    if (stars >= 4) score += 20;
+    if (stars === 5) score += 15;
+  }
+
+  if (tripContext.isSpa) {
+    // Spa/wellness trip: prioritize spa facilities
+    const spaAmenities = ['spa', 'wellness', 'sauna', 'steam', 'massage', 'jacuzzi', 'hot tub', 'pool', 'piscine', 'fitness', 'gym', 'hammam'];
+    const spaMatches = spaAmenities.filter(a => allHotelText.includes(a)).length;
+    score += spaMatches * 20;
+  }
+
+  if (tripContext.isLuxury) {
+    // Luxury/special occasion: prioritize high-end properties
+    const luxuryAmenities = ['luxury', 'premium', 'suite', '5 star', 'palace', 'grand', 'royal', 'exclusive', 'concierge', 'butler', 'vip'];
+    const luxuryMatches = luxuryAmenities.filter(a => allHotelText.includes(a)).length;
+    score += luxuryMatches * 15;
+
+    // Strong bonus for 5-star hotels
+    const stars = hotel.property?.propertyClass || 0;
+    if (stars === 5) score += 30;
+    if (stars === 4) score += 15;
+
+    // Bonus for high ratings
+    const rating = hotel.property?.reviewScore || 0;
+    if (rating >= 9) score += 20;
+    if (rating >= 8.5) score += 10;
+  }
+
+  if (tripContext.isFamily) {
+    // Family trip: prioritize family-friendly amenities
+    const familyAmenities = ['family', 'kids', 'children', 'playground', 'family room', 'crib', 'baby', 'pool', 'kitchen', 'apartment'];
+    const familyMatches = familyAmenities.filter(a => allHotelText.includes(a)).length;
+    score += familyMatches * 15;
+  }
+
+  if (tripContext.isAdventure) {
+    // Adventure trip: location matters more than luxury
+    const adventureAmenities = ['bike', 'vélo', 'ski', 'hiking', 'outdoor', 'nature', 'mountain', 'beach', 'surf', 'dive'];
+    const adventureMatches = adventureAmenities.filter(a => allHotelText.includes(a)).length;
+    score += adventureMatches * 15;
+  }
+
+  return Math.max(0, Math.min(100, score)); // Cap between 0-100
+}
+
+/**
  * Map accommodation preference to hotel search parameters
  * @param {string} accommodationPref - User's accommodation preference
  * @param {number} materialComfort - 0-100 comfort slider
@@ -701,6 +863,8 @@ function getHotelSearchFilters(accommodationPref, materialComfort = 50) {
  * @param {string} params.accommodationPref - User's accommodation preference (luxe, confort, budget, etc.)
  * @param {number} params.materialComfort - 0-100 comfort slider
  * @param {number} params.maxPrice - Maximum total price for the stay
+ * @param {string} params.tripContext - User's free text description (travelVibeDescription) for context-aware filtering
+ * @param {string} params.tripType - User's selected trip type (solo, couple, family, friends, business)
  * @returns {Promise<Object>} Hotel search results
  */
 export async function searchHotels({
@@ -714,15 +878,20 @@ export async function searchHotels({
   accommodationPref = null,
   materialComfort = 50,
   maxPrice = null,
+  tripContext = null, // User's free text for context-aware hotel scoring
+  tripType = null, // NEW: User's selected trip type (solo, couple, family, friends, business)
 }) {
-  // Include preference in cache key
+  // Include preference AND tripContext AND tripType in cache key (different context = different sorting)
   const prefKey = accommodationPref || `comfort_${materialComfort}`;
-  const cacheKey = `booking:hotels:${destinationQuery}:${arrivalDate}:${departureDate}:${adults}:${children}:${rooms}:${prefKey}`;
+  // Create a simple hash of tripContext to include in cache key
+  const contextHash = tripContext ? tripContext.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '') : 'none';
+  const typeHash = tripType || 'any';
+  const cacheKey = `booking:hotels:${destinationQuery}:${arrivalDate}:${departureDate}:${adults}:${children}:${rooms}:${prefKey}:${contextHash}:${typeHash}`;
 
   // Check cache
   const cached = cache.get(cacheKey);
   if (cached) {
-    console.log(`✅ Hotel cache HIT: ${destinationQuery}`);
+    console.log(`✅ Hotel cache HIT: ${destinationQuery} (context: ${contextHash})`);
     return cached;
   }
 
@@ -835,6 +1004,40 @@ export async function searchHotels({
 
     console.log(`   🔍 After preference filter: ${hotelData.length} hotels (from ${hotelsResponse.data.data.hotels.length})`);
 
+    // Step 4: Extract trip context and score hotels accordingly
+    // Now includes both tripType (selector) and tripContext (free text)
+    const extractedContext = (tripContext || tripType) ? extractTripContext(tripContext, tripType) : null;
+
+    // If we have trip context (from selector or free text), score and sort hotels by context match
+    if (extractedContext && extractedContext.keywords.length > 0) {
+      const contextDesc = tripContext ? `"${tripContext.substring(0, 50)}..."` : `type=${tripType}`;
+      console.log(`   🎯 Scoring hotels by trip context: ${contextDesc}`);
+
+      // Add context score to each hotel
+      hotelData = hotelData.map(hotel => ({
+        ...hotel,
+        contextScore: scoreHotelByContext(hotel, extractedContext)
+      }));
+
+      // Sort by context score (highest first), then by rating
+      hotelData.sort((a, b) => {
+        // Primary: context score
+        if (b.contextScore !== a.contextScore) {
+          return b.contextScore - a.contextScore;
+        }
+        // Secondary: rating
+        const ratingA = a.property?.reviewScore || 0;
+        const ratingB = b.property?.reviewScore || 0;
+        return ratingB - ratingA;
+      });
+
+      // Log top 3 hotels with their context scores
+      console.log(`   🏆 Top hotels by context match:`);
+      hotelData.slice(0, 3).forEach((h, i) => {
+        console.log(`      ${i + 1}. ${h.property?.name} - context score: ${h.contextScore}, rating: ${h.property?.reviewScore || 'N/A'}`);
+      });
+    }
+
     const hotels = hotelData.map(hotel => {
       // Price is in property.priceBreakdown.grossPrice.value
       const grossPrice = hotel.property?.priceBreakdown?.grossPrice?.value || 0;
@@ -874,6 +1077,8 @@ export async function searchHotels({
           longitude: hotel.property?.longitude
         },
         blockId: hotel.property?.blockIds?.[0],
+        // Context score (how well hotel matches trip context like "romantic", "spa", etc.)
+        contextScore: hotel.contextScore || 0,
         // Generate Booking.com URL with correct parameters
         bookingUrl: `https://www.booking.com/hotel/${hotel.hotel_id}.html?checkin=${arrivalDate}&checkout=${departureDate}&group_adults=${adults}${children ? `&group_children=${children}` : ''}&no_rooms=${rooms}`
       };
@@ -890,7 +1095,18 @@ export async function searchHotels({
         sortBy: filters.sort_by,
         minStars: filters.minStars,
         minRating: filters.minRating,
-      }
+      },
+      // Include trip context info in result for debugging
+      tripContextApplied: extractedContext ? {
+        tripType: extractedContext.tripType,
+        isRomantic: extractedContext.isRomantic,
+        isSpa: extractedContext.isSpa,
+        isLuxury: extractedContext.isLuxury,
+        isFamily: extractedContext.isFamily,
+        isBusiness: extractedContext.isBusiness,
+        isAdventure: extractedContext.isAdventure,
+        keywords: extractedContext.keywords.slice(0, 5) // First 5 keywords
+      } : null
     };
 
     // Cache for 6 hours
