@@ -146,7 +146,7 @@ export function findFreePeriods(events, minDuration = 3) {
 
 /**
  * Analyze calendar to suggest optimal travel dates
- * Combines free periods with temporal optimization (off-peak periods)
+ * Combines free periods with holidays, vacations, and off-peak periods
  */
 export async function suggestTravelDatesFromCalendar(accessToken, refreshToken, tripDuration = 7) {
   const today = new Date();
@@ -161,43 +161,114 @@ export async function suggestTravelDatesFromCalendar(accessToken, refreshToken, 
   const freePeriods = findFreePeriods(events, tripDuration);
   console.log(`✅ Found ${freePeriods.length} free periods of ${tripDuration}+ days`);
 
-  // Import temporal optimization to cross-reference with off-peak periods
+  // Import utilities
   const { isDateInOffPeakPeriod } = await import('../utils/temporalOptimization.js');
+  const { analyzePeriodForTravel, getHolidaysInRange } = await import('../utils/holidays.js');
+
+  // Get all holidays and long weekends in range
+  const { holidays, vacations, longWeekends } = getHolidaysInRange(today, sixMonthsFromNow);
 
   // Score each free period
   const scoredPeriods = freePeriods.map(period => {
     const offPeakCheck = isDateInOffPeakPeriod(period.startDate);
+    const holidayAnalysis = analyzePeriodForTravel(period.startDate, period.endDate);
 
     return {
       ...period,
+      // Off-peak info
       isOffPeak: offPeakCheck.isOffPeak,
       offPeakReason: offPeakCheck.reason,
       priceMultiplier: offPeakCheck.discount || 1.0,
-      score: calculatePeriodScore(period, offPeakCheck),
+      // Holiday info
+      isSchoolVacation: holidayAnalysis.isSchoolVacation,
+      vacationName: holidayAnalysis.vacationName,
+      includesHoliday: holidayAnalysis.includesHoliday,
+      holidays: holidayAnalysis.holidays,
+      isLongWeekend: holidayAnalysis.isLongWeekend,
+      isPeakSeason: holidayAnalysis.isPeakSeason,
+      priceImpact: holidayAnalysis.priceImpact,
+      recommendation: holidayAnalysis.recommendation,
+      // Score
+      score: calculatePeriodScore(period, offPeakCheck, holidayAnalysis),
     };
   });
 
-  // Sort by score (best opportunities first)
-  scoredPeriods.sort((a, b) => b.score - a.score);
+  // Also add long weekend opportunities that fit within free periods
+  const longWeekendOpportunities = longWeekends
+    .filter(lw => {
+      // Check if this long weekend falls within any free period
+      const lwStart = new Date(lw.start);
+      const lwEnd = new Date(lw.end);
+      return freePeriods.some(fp => {
+        const fpStart = new Date(fp.startDate);
+        const fpEnd = new Date(fp.endDate);
+        return lwStart >= fpStart && lwEnd <= fpEnd;
+      });
+    })
+    .map(lw => ({
+      startDate: lw.start,
+      endDate: lw.end,
+      duration: lw.days,
+      source: 'long_weekend',
+      isLongWeekend: true,
+      holidays: lw.holidays,
+      reason: lw.reason,
+      recommendation: `Pont de ${lw.reason} - ${lw.days} jours de détente`,
+      priceImpact: 'medium',
+      score: 80 + lw.days * 5, // Bonus for long weekends
+    }));
 
-  return scoredPeriods.slice(0, 5); // Return top 5 suggestions
+  // Combine and sort by score
+  const allPeriods = [...scoredPeriods, ...longWeekendOpportunities];
+  allPeriods.sort((a, b) => b.score - a.score);
+
+  // Remove duplicates (long weekends that overlap with free periods)
+  const uniquePeriods = allPeriods.filter((period, index, self) =>
+    index === self.findIndex(p =>
+      p.startDate === period.startDate && p.endDate === period.endDate
+    )
+  );
+
+  return uniquePeriods.slice(0, 10); // Return top 10 suggestions
 }
 
 /**
  * Calculate score for a travel period
  * Higher score = better opportunity
  */
-function calculatePeriodScore(period, offPeakCheck) {
+function calculatePeriodScore(period, offPeakCheck, holidayAnalysis = {}) {
   let score = 0;
 
-  // Longer periods = more flexibility
-  score += period.duration * 2;
+  // Longer periods = more flexibility (but cap it)
+  score += Math.min(period.duration * 2, 30);
 
   // Off-peak periods = cheaper
   if (offPeakCheck.isOffPeak) {
     score += 50;
     // More discount = higher score
-    score += (1 - offPeakCheck.discount) * 100;
+    score += (1 - (offPeakCheck.discount || 1)) * 100;
+  }
+
+  // Long weekends are valuable (less time off work needed)
+  if (holidayAnalysis.isLongWeekend) {
+    score += 40;
+  }
+
+  // Holiday included = good opportunity
+  if (holidayAnalysis.includesHoliday) {
+    score += 20;
+  }
+
+  // Peak season penalty (prices are high)
+  if (holidayAnalysis.isPeakSeason) {
+    score -= 30;
+  }
+
+  // Price impact modifier
+  if (holidayAnalysis.priceImpact === 'low') {
+    score += 25;
+  } else if (holidayAnalysis.priceImpact === 'high') {
+    score -= 15;
   }
 
   return score;

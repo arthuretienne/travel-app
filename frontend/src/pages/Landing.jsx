@@ -2,6 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
 import { Plane, ArrowRight, Globe, Sparkles, Calendar, CreditCard, Users, ChevronRight, Star, MapPin } from 'lucide-react';
+import { getFeaturedDestinations, getDestinationImage } from '../utils/destinationImages';
 
 function Landing() {
   const navigate = useNavigate();
@@ -103,13 +104,19 @@ function Landing() {
               {/* Sample Result Cards */}
               <div className="grid md:grid-cols-3 gap-4">
                 {[
-                  { city: 'Lisbon', country: 'Portugal', price: 847, match: 96, img: '🇵🇹' },
-                  { city: 'Barcelona', country: 'Spain', price: 923, match: 94, img: '🇪🇸' },
-                  { city: 'Rome', country: 'Italy', price: 1105, match: 91, img: '🇮🇹' },
+                  { city: 'Lisbon', country: 'Portugal', price: 847, match: 96 },
+                  { city: 'Barcelona', country: 'Spain', price: 923, match: 94 },
+                  { city: 'Rome', country: 'Italy', price: 1105, match: 91 },
                 ].map((dest, i) => (
                   <div key={i} className="bg-white rounded-xl overflow-hidden border border-stone-100 hover:border-primary/30 hover:shadow-lg transition-all cursor-pointer group">
-                    <div className="h-24 bg-gradient-to-br from-primary to-teal-500 flex items-center justify-center text-4xl">
-                      {dest.img}
+                    <div className="h-32 overflow-hidden relative">
+                      <img
+                        src={getDestinationImage({ city: dest.city, country: dest.country })}
+                        alt={`${dest.city}, ${dest.country}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                     </div>
                     <div className="p-4">
                       <div className="flex items-start justify-between mb-2">

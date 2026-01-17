@@ -5,6 +5,7 @@ import { useUser, useAuth } from '@clerk/clerk-react';
 import { OptimalPeriodsWidget } from '../components/OptimalPeriodsWidget';
 import { DashboardCardSkeleton } from '../components/SkeletonLoaders';
 import { Plane, Globe, Target, AlertTriangle, Map, Calendar, Clock, DollarSign, Plus, Users, MapPin, ChevronRight } from 'lucide-react';
+import { getDestinationImage } from '../utils/destinationImages';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -271,9 +272,15 @@ function Dashboard() {
                         className="bg-white rounded-2xl overflow-hidden border border-stone-100 hover:border-stone-200 transition-all cursor-pointer group"
                         onClick={() => navigate(`/saved-trips/${trip.id}`)}
                       >
-                        {/* Image or colored header */}
-                        <div className="relative h-32 bg-gradient-to-br from-primary to-teal-600">
-                          <div className="absolute inset-0 bg-black/10" />
+                        {/* Destination image */}
+                        <div className="relative h-32 overflow-hidden">
+                          <img
+                            src={getDestinationImage({ city: trip.city, country: trip.country, tripData: trip.tripData })}
+                            alt={`${trip.city}, ${trip.country}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                           <div className="absolute bottom-4 left-4 right-4">
                             <h3 className="text-xl font-semibold text-white mb-0.5">{trip.city || 'Unknown'}</h3>
                             <p className="text-white/80 text-sm">{trip.country || 'Unknown'}</p>
@@ -317,9 +324,18 @@ function Dashboard() {
                         className="bg-white rounded-2xl overflow-hidden border border-stone-100 hover:border-stone-200 transition-all cursor-pointer group"
                         onClick={() => navigate(`/trips/${trip.id}`)}
                       >
-                        {/* Group trip header */}
-                        <div className="relative h-32 bg-gradient-to-br from-indigo-500 to-purple-600">
-                          <div className="absolute inset-0 bg-black/10" />
+                        {/* Group trip header with image */}
+                        <div className="relative h-32 overflow-hidden">
+                          <img
+                            src={trip.finalDestination
+                              ? getDestinationImage({ city: trip.finalDestination.city, country: trip.finalDestination.country })
+                              : 'https://images.pexels.com/photos/1008155/pexels-photo-1008155.jpeg?auto=compress&cs=tinysrgb&w=800'
+                            }
+                            alt={trip.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                           <div className="absolute top-4 right-4">
                             <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full text-white text-xs font-medium">
                               <Users size={12} />

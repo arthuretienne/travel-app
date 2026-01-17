@@ -258,4 +258,176 @@ router.get('/suggestions', authenticateUser, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/calendar/holidays
+ * Get French holidays and long weekends for next 6 months
+ * Public endpoint (no calendar connection required)
+ */
+router.get('/holidays', async (req, res) => {
+  try {
+    const { getHolidaysInRange, getFrenchSchoolVacations } = await import('../utils/holidays.js');
+
+    const today = new Date();
+    const sixMonthsFromNow = new Date();
+    sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+
+    const { holidays, vacations, longWeekends } = getHolidaysInRange(today, sixMonthsFromNow);
+
+    res.json({
+      success: true,
+      data: {
+        holidays,
+        vacations,
+        longWeekends,
+        period: {
+          start: today.toISOString().split('T')[0],
+          end: sixMonthsFromNow.toISOString().split('T')[0],
+        },
+      },
+      message: `Found ${holidays.length} holidays and ${longWeekends.length} long weekend opportunities`,
+    });
+  } catch (error) {
+    console.error('Holidays fetch error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch holidays',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/calendar/smart-dates
+ * Get smart travel date suggestions (without calendar - uses holidays only)
+ * Useful for suggesting trips around long weekends and off-peak periods
+ */
+router.get('/smart-dates', async (req, res) => {
+  try {
+    const { getHolidaysInRange, analyzePeriodForTravel } = await import('../utils/holidays.js');
+    const { isDateInOffPeakPeriod } = await import('../utils/temporalOptimization.js');
+
+    const today = new Date();
+    const sixMonthsFromNow = new Date();
+    sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+
+    const { holidays, vacations, longWeekends } = getHolidaysInRange(today, sixMonthsFromNow);
+
+    // Build smart suggestions combining long weekends and off-peak periods
+    const suggestions = [];
+
+    // Add long weekend opportunities
+    for (const lw of longWeekends) {
+      const offPeakCheck = isDateInOffPeakPeriod(lw.start);
+      suggestions.push({
+        type: 'long_weekend',
+        startDate: lw.start,
+        endDate: lw.end,
+        duration: lw.days,
+        reason: lw.reason,
+        holidays: lw.holidays,
+        isOffPeak: offPeakCheck.isOffPeak,
+        priceImpact: 'medium',
+        recommendation: `Pont de ${lw.reason} - idéal pour un week-end prolongé de ${lw.days} jours`,
+        score: 80 + lw.days * 5 + (offPeakCheck.isOffPeak ? 20 : 0),
+      });
+    }
+
+    // Add off-peak month suggestions
+    const offPeakMonths = [
+      { month: 1, name: 'Janvier', weeks: 2 },
+      { month: 2, name: 'Février (hors vacances)', weeks: 1 },
+      { month: 3, name: 'Mars', weeks: 2 },
+      { month: 9, name: 'Septembre', weeks: 3 },
+      { month: 10, name: 'Octobre (hors Toussaint)', weeks: 2 },
+      { month: 11, name: 'Novembre', weeks: 3 },
+    ];
+
+    const currentMonth = today.getMonth() + 1;
+
+    for (const period of offPeakMonths) {
+      // Only suggest future months
+      const year = period.month < currentMonth ? today.getFullYear() + 1 : today.getFullYear();
+      const startDate = new Date(year, period.month - 1, 10); // Mid-month start
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 7);
+
+      // Only add if within our 6-month window
+      if (startDate <= sixMonthsFromNow) {
+        suggestions.push({
+          type: 'off_peak',
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+          duration: 7,
+          reason: `Basse saison - ${period.name}`,
+          isOffPeak: true,
+          priceImpact: 'low',
+          recommendation: `${period.name} - meilleurs tarifs, moins de touristes`,
+          score: 70,
+        });
+      }
+    }
+
+    // Sort by score
+    suggestions.sort((a, b) => b.score - a.score);
+
+    res.json({
+      success: true,
+      suggestions: suggestions.slice(0, 15),
+      summary: {
+        totalHolidays: holidays.length,
+        longWeekends: longWeekends.length,
+        offPeakPeriods: offPeakMonths.length,
+      },
+      message: 'Smart travel date suggestions based on holidays and seasonal pricing',
+    });
+  } catch (error) {
+    console.error('Smart dates error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate smart date suggestions',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/calendar/analyze-period
+ * Analyze a specific date range for travel
+ */
+router.post('/analyze-period', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.body;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        error: 'startDate and endDate are required',
+      });
+    }
+
+    const { analyzePeriodForTravel } = await import('../utils/holidays.js');
+    const { isDateInOffPeakPeriod } = await import('../utils/temporalOptimization.js');
+
+    const analysis = analyzePeriodForTravel(startDate, endDate);
+    const offPeakCheck = isDateInOffPeakPeriod(startDate);
+
+    res.json({
+      success: true,
+      analysis: {
+        ...analysis,
+        isOffPeak: offPeakCheck.isOffPeak,
+        offPeakReason: offPeakCheck.reason,
+        estimatedPriceMultiplier: offPeakCheck.discount || (analysis.isPeakSeason ? 1.3 : 1.0),
+      },
+    });
+  } catch (error) {
+    console.error('Period analysis error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to analyze period',
+      message: error.message,
+    });
+  }
+});
+
 export default router;
