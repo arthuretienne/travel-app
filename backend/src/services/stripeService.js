@@ -17,13 +17,13 @@ export const PLANS = {
     currency: 'eur',
     interval: null,
     features: {
-      maxSearchesPerMonth: 5,
-      maxGroupTrips: 1,
-      maxMembersPerTrip: 3,
+      maxSearchesPerMonth: 10,
+      maxGroupTrips: 2,
+      maxMembersPerTrip: 5,
       aiRecommendations: true,
       flightSearch: true,
       hotelSearch: true,
-      collaborativeVoting: false,
+      collaborativeVoting: true, // Enabled for beta testing
       prioritySupport: false,
     },
   },
