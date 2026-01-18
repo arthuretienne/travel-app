@@ -79,6 +79,9 @@ app.get('/api/health', async (req, res) => {
         amadeusClientId: process.env.AMADEUS_CLIENT_ID ? '✅ SET' : '❌ MISSING',
         amadeusClientSecret: process.env.AMADEUS_CLIENT_SECRET ? '✅ SET' : '❌ MISSING',
         databaseUrl: process.env.DATABASE_URL ? '✅ SET' : '❌ MISSING',
+        googleClientId: process.env.GOOGLE_CLIENT_ID ? '✅ SET' : '❌ MISSING',
+        googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ? '✅ SET' : '❌ MISSING',
+        googleRedirectUri: process.env.GOOGLE_REDIRECT_URI ? '✅ SET' : '❌ MISSING',
       },
       timestamp: new Date().toISOString()
     });
