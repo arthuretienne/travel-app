@@ -153,10 +153,11 @@ export default function SavedTripDetail() {
       }
 
       const convertData = await convertResponse.json();
-      const groupTripId = convertData.data?.trip?.id;
+      const groupTripId = convertData.data?.id;
 
       if (!groupTripId) {
-        throw new Error('Group trip ID not found');
+        console.error('Convert response:', convertData);
+        throw new Error('Group trip ID not found in response');
       }
 
       // Step 2: Send invitations
