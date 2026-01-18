@@ -72,6 +72,14 @@ export async function checkSubscription(req, res, next) {
  */
 export function requireFeature(featureName) {
   return async (req, res, next) => {
+    // BETA MODE: Bypass all feature checks - Stripe disabled for testing
+    const BETA_MODE = process.env.BETA_MODE === 'true' || process.env.STRIPE_DISABLED === 'true' || true; // Always bypass for now
+
+    if (BETA_MODE) {
+      console.log(`🚀 BETA MODE: Bypassing feature check for ${featureName}`);
+      return next();
+    }
+
     try {
       if (!req.subscription) {
         await checkSubscription(req, res, () => {});
@@ -107,6 +115,14 @@ export function requireFeature(featureName) {
  */
 export function checkLimit(limitType, usageField) {
   return async (req, res, next) => {
+    // BETA MODE: Bypass all limits - Stripe disabled for testing
+    const BETA_MODE = process.env.BETA_MODE === 'true' || process.env.STRIPE_DISABLED === 'true' || true; // Always bypass for now
+
+    if (BETA_MODE) {
+      console.log(`🚀 BETA MODE: Bypassing limit check for ${limitType}`);
+      return next();
+    }
+
     try {
       // DEV MODE: Bypass all usage limits during development
       const DEV_MODE = process.env.DEV_MODE === 'true' || process.env.NODE_ENV === 'development';
@@ -157,6 +173,13 @@ export function checkLimit(limitType, usageField) {
  */
 export function incrementUsage(usageField) {
   return async (req, res, next) => {
+    // BETA MODE: Skip all usage tracking - Stripe disabled for testing
+    const BETA_MODE = process.env.BETA_MODE === 'true' || process.env.STRIPE_DISABLED === 'true' || true; // Always bypass for now
+
+    if (BETA_MODE) {
+      return next();
+    }
+
     // DEV MODE: Skip incrementing usage during development
     const DEV_MODE = process.env.DEV_MODE === 'true' || process.env.NODE_ENV === 'development';
 
