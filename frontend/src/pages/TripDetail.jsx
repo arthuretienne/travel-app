@@ -46,6 +46,8 @@ import {
   Heart,
 } from 'lucide-react';
 import { PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
+import StickyBookingProgress, { BookingChecklistCard } from '../components/StickyBookingProgress';
+import { generateAllBookingLinks, getIataCode } from '../utils/bookingLinks';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -263,16 +265,31 @@ export default function TripDetail() {
 
   return (
     <div className="min-h-screen bg-surface-subtle">
-      {/* Minimalist Header */}
+      {/* Sticky Booking Progress (only when confirmed) */}
+      {isConfirmed && trip.finalDestination && (
+        <StickyBookingProgress
+          city={trip.finalDestination.city}
+          country={trip.finalDestination.country}
+          startDate={trip.finalStartDate}
+          endDate={trip.finalEndDate}
+          adults={trip.members?.length || 1}
+          onBack={() => navigate('/dashboard')}
+        />
+      )}
+
+      {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-text-secondary hover:text-text-main mb-6 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">Back to Trips</span>
-          </button>
+          {/* Back button only when not confirmed (sticky has back button) */}
+          {!isConfirmed && (
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2 text-text-secondary hover:text-text-main mb-6 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="text-sm font-medium">Back to Trips</span>
+            </button>
+          )}
 
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -1018,294 +1035,81 @@ function VotingSection({ trip, fetchTripDetails }) {
 }
 
 // Booking Checklist Section - When destination is confirmed
-function BookingChecklistSection({ trip }) {
-  const [bookingChecklist, setBookingChecklist] = useState({
-    flight: false,
-    transportAlternatives: {},
-    hotels: {},
-    activities: {},
-  });
-
-  const toggleBookingItem = (category, itemId = null) => {
-    setBookingChecklist(prev => {
-      if (itemId === null) {
-        return { ...prev, [category]: !prev[category] };
-      } else {
-        return {
-          ...prev,
-          [category]: {
-            ...prev[category],
-            [itemId]: !prev[category][itemId],
-          },
-        };
-      }
-    });
-  };
-
+function BookingChecklistSection({ trip, fetchTripDetails }) {
   // Get trip data from finalDestination
   const tripData = trip.finalDestination || {};
   const city = tripData.city || 'Unknown';
   const country = tripData.country || 'Unknown';
 
+  // Generate optimized booking links
+  const links = generateAllBookingLinks({
+    destinationCity: city,
+    destinationIata: getIataCode(city, country),
+    destinationCountry: country,
+    startDate: trip.finalStartDate,
+    endDate: trip.finalEndDate,
+    adults: trip.members?.length || 1
+  });
+
   return (
     <>
-      {/* Group-specific features */}
-      <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-text-main">Booking Progress</h2>
-          <button className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 font-medium rounded-lg hover:bg-amber-200 transition-colors">
-            <Bell size={18} />
-            Remind Friends to Book
-          </button>
-        </div>
+      {/* Group Members Booking Status */}
+      {trip.members && trip.members.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-text-main">Suivi du groupe</h2>
+            <button className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 font-medium rounded-lg hover:bg-amber-200 transition-colors">
+              <Bell size={18} />
+              Rappeler les amis
+            </button>
+          </div>
 
-        {/* Members Booking Status */}
-        <div className="space-y-2">
-          <p className="text-sm text-text-secondary mb-3">Track who has completed their bookings:</p>
-          {trip.members?.map((member) => (
-            <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <img
-                  src={member.user?.imageUrl || `https://ui-avatars.com/api/?name=${member.user?.firstName}`}
-                  alt={member.user?.firstName}
-                  className="w-8 h-8 rounded-full"
-                />
-                <span className="font-medium text-text-main">
-                  {member.user?.firstName} {member.user?.lastName}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {member.hasBookedFlight && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">✈️ Flight</span>
-                )}
-                {member.hasBookedHotel && (
-                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">🏨 Hotel</span>
-                )}
-                {member.bookingConfirmed && (
-                  <CheckCircle2 size={18} className="text-green-600" />
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Book Your Trip - 3 Column Layout */}
-      <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
-        <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 border-b border-gray-100">
-          <h2 className="text-xl font-bold text-text-main mb-1">Book Your Trip</h2>
-          <p className="text-sm text-text-secondary">Everything you need to make your journey perfect</p>
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-0">
-          {/* Transport Column */}
-          <div className="p-6 border-b lg:border-b-0 lg:border-r border-gray-100">
-            <div className="flex items-center gap-2 mb-4">
-              <Plane className="text-blue-600" size={20} />
-              <h3 className="font-bold text-gray-900">Transport</h3>
-            </div>
-
-            {/* Flight Details */}
-            {tripData.flightDetails ? (
-              <div className="mb-4 p-4 bg-gray-50 rounded-xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <button
-                    onClick={() => toggleBookingItem('flight')}
-                    className="flex-shrink-0 hover:scale-110 transition-transform"
-                  >
-                    {bookingChecklist.flight ? (
-                      <CheckSquare size={18} className="text-green-600" />
-                    ) : (
-                      <Square size={18} className="text-gray-400" />
-                    )}
-                  </button>
-                  <Plane size={16} className="text-blue-600" />
-                  <span className="font-semibold text-sm">Flight</span>
+          <div className="space-y-2">
+            {trip.members.map((member) => (
+              <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={member.user?.imageUrl || `https://ui-avatars.com/api/?name=${member.user?.firstName}`}
+                    alt={member.user?.firstName}
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <span className="font-medium text-text-main">
+                    {member.user?.firstName} {member.user?.lastName}
+                  </span>
                 </div>
-                <div className="text-xs text-gray-600 space-y-1 ml-7">
-                  <div>{tripData.flightDetails.airline || 'TBD'}</div>
-                  <div className="font-bold text-lg text-gray-900">€{tripData.flightDetails.totalPrice}</div>
+                <div className="flex items-center gap-2">
+                  {member.hasBookedFlight && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded flex items-center gap-1">
+                      <Plane size={12} /> Vol
+                    </span>
+                  )}
+                  {member.hasBookedHotel && (
+                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded flex items-center gap-1">
+                      <Hotel size={12} /> Hotel
+                    </span>
+                  )}
+                  {member.bookingConfirmed && (
+                    <CheckCircle2 size={18} className="text-green-600" />
+                  )}
+                  {!member.hasBookedFlight && !member.hasBookedHotel && (
+                    <span className="text-xs text-text-secondary">En attente</span>
+                  )}
                 </div>
-                <a
-                  href={`https://www.skyscanner.com/transport/flights/${encodeURIComponent(city.toLowerCase())}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 w-full py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  Book Flight
-                  <ExternalLink size={14} />
-                </a>
               </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Plane size={32} className="mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No flight details available</p>
-              </div>
-            )}
-
-            {/* Alternative Transport */}
-            {tripData.transportAlternatives && tripData.transportAlternatives.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Alternatives</div>
-                {tripData.transportAlternatives.map((alt, idx) => (
-                  <div key={idx} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <button
-                        onClick={() => toggleBookingItem('transportAlternatives', idx)}
-                        className="flex-shrink-0 hover:scale-110 transition-transform"
-                      >
-                        {bookingChecklist.transportAlternatives[idx] ? (
-                          <CheckSquare size={16} className="text-green-600" />
-                        ) : (
-                          <Square size={16} className="text-gray-400" />
-                        )}
-                      </button>
-                      <span className="text-sm font-medium flex-1">{alt.operator}</span>
-                    </div>
-                    <div className="text-lg font-bold text-gray-900 ml-6">€{alt.price}</div>
-                    <a
-                      href={alt.bookingUrl || 'https://www.trainline.com'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 w-full py-1.5 px-3 bg-gray-200 text-gray-800 text-xs font-medium rounded hover:bg-gray-300 transition-colors flex items-center justify-center gap-1"
-                    >
-                      Book {alt.type}
-                      <ExternalLink size={12} />
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Accommodation Column */}
-          <div className="p-6 border-b lg:border-b-0 lg:border-r border-gray-100">
-            <div className="flex items-center gap-2 mb-4">
-              <Hotel className="text-green-600" size={20} />
-              <h3 className="font-bold text-gray-900">Accommodation</h3>
-            </div>
-
-            {tripData.hotelOptions?.hotels && tripData.hotelOptions.hotels.length > 0 ? (
-              <div className="space-y-3">
-                {tripData.hotelOptions.hotels.slice(0, 3).map((hotel, idx) => (
-                  <div key={idx} className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                    <div className="flex items-center gap-2 mb-1">
-                      <button
-                        onClick={() => toggleBookingItem('hotels', idx)}
-                        className="flex-shrink-0 hover:scale-110 transition-transform"
-                      >
-                        {bookingChecklist.hotels[idx] ? (
-                          <CheckSquare size={18} className="text-green-600" />
-                        ) : (
-                          <Square size={18} className="text-gray-400" />
-                        )}
-                      </button>
-                      <div className="font-semibold text-sm text-gray-900 flex-1">{hotel.name}</div>
-                    </div>
-                    <div className="flex items-center gap-1 mb-2 ml-7">
-                      {[...Array(Math.max(0, Math.min(5, Math.round(Number(hotel.rating) || 0))))].map((_, i) => (
-                        <Star key={i} size={12} className="text-yellow-500 fill-yellow-500" />
-                      ))}
-                      <span className="text-xs text-gray-500 ml-1">{hotel.rating || 'N/A'}</span>
-                    </div>
-                    <div className="text-xs text-gray-600 mb-1 ml-7">
-                      €{Math.round(hotel.pricePerNight)}/night × {tripData.hotelOptions.nights} nights
-                    </div>
-                    <div className="text-lg font-bold text-gray-900 mb-3 ml-7">
-                      €{Math.round(hotel.pricePerNight * tripData.hotelOptions.nights)}
-                    </div>
-                    <a
-                      href={hotel.url || `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-2 px-4 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                    >
-                      Book Hotel
-                      <ExternalLink size={14} />
-                    </a>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Hotel size={32} className="mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No hotels loaded</p>
-                <a
-                  href={`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city + ', ' + country)}${trip.finalStartDate ? `&checkin=${trip.finalStartDate}` : ''}${trip.finalEndDate ? `&checkout=${trip.finalEndDate}` : ''}&group_adults=${trip.members?.length || 1}&no_rooms=1`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 inline-block py-2 px-4 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Search on Booking.com
-                </a>
-              </div>
-            )}
-          </div>
-
-          {/* Activities Column */}
-          <div className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="text-purple-600" size={20} />
-              <h3 className="font-bold text-gray-900">Activities</h3>
-            </div>
-
-            {tripData.suggestedActivities && tripData.suggestedActivities.length > 0 ? (
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                {tripData.suggestedActivities.map((activity, idx) => (
-                  <div key={idx} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="flex items-center gap-2 mb-1">
-                      <button
-                        onClick={() => toggleBookingItem('activities', idx)}
-                        className="flex-shrink-0 hover:scale-110 transition-transform"
-                      >
-                        {bookingChecklist.activities[idx] ? (
-                          <CheckSquare size={16} className="text-green-600" />
-                        ) : (
-                          <Square size={16} className="text-gray-400" />
-                        )}
-                      </button>
-                      <div className="font-semibold text-sm text-gray-900 flex-1">{activity.name}</div>
-                    </div>
-                    <p className="text-xs text-gray-600 mb-2 ml-6">{activity.description}</p>
-                    <div className="flex items-center justify-between text-xs text-gray-500 mb-2 ml-6">
-                      <span>{activity.duration}</span>
-                      <span className="font-semibold text-gray-900">
-                        {activity.estimatedPrice === 0 ? 'FREE' : `€${activity.estimatedPrice}`}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 ml-6">
-                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">{activity.category}</span>
-                      <span className="text-xs text-gray-500">{activity.when}</span>
-                    </div>
-                  </div>
-                ))}
-                <a
-                  href={`https://www.getyourguide.com/s/?q=${encodeURIComponent(city)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 w-full py-2 px-4 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  Book Activities
-                  <ExternalLink size={14} />
-                </a>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Sparkles size={32} className="mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No activities suggested</p>
-                <a
-                  href={`https://www.google.com/travel/things-to-do?q=${encodeURIComponent(city + ' things to do')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 inline-block py-2 px-4 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  Discover Activities
-                </a>
-              </div>
-            )}
+            ))}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Booking Checklist Card using optimized links */}
+      <BookingChecklistCard
+        city={city}
+        country={country}
+        startDate={trip.finalStartDate}
+        endDate={trip.finalEndDate}
+        adults={trip.members?.length || 1}
+        members={trip.members || []}
+      />
     </>
   );
 }

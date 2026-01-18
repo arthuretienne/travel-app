@@ -24,6 +24,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { CompleteTripPlanCard, PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
+import StickyBookingProgress, { BookingChecklistCard } from '../components/StickyBookingProgress';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -241,73 +242,17 @@ export default function SavedTripDetail() {
     ? Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))
     : slot.duration || 0;
 
-  // Calculate booking URLs
-  const flightUrl = links.skyscanner || `https://www.skyscanner.com/transport/flights/${encodeURIComponent(trip.city?.toLowerCase() || 'paris')}/`;
-  const hotelUrl = links.booking || `https://www.booking.com/searchresults.html?ss=${encodeURIComponent((trip.city || '') + ', ' + (trip.country || ''))}${trip.startDate ? `&checkin=${trip.startDate}` : ''}${trip.endDate ? `&checkout=${trip.endDate}` : ''}&group_adults=1&no_rooms=1`;
-  const activitiesUrl = `https://www.getyourguide.com/s/?q=${encodeURIComponent(trip.city || '')}`;
-
   return (
     <div className="min-h-screen bg-surface-subtle">
-      {/* Sticky Booking Bar */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b border-stone-200 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14">
-            {/* Left - Destination */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-text-secondary" />
-              </button>
-              <div className="hidden sm:block">
-                <span className="font-semibold text-text-main">{safeText(trip.city)}</span>
-                <span className="text-text-secondary mx-1.5">•</span>
-                <span className="text-sm text-text-secondary">
-                  {trip.startDate
-                    ? new Date(trip.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                    : 'Dates TBD'}
-                  {trip.endDate && ` - ${new Date(trip.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
-                </span>
-              </div>
-            </div>
-
-            {/* Right - Booking CTAs */}
-            <div className="flex items-center gap-2">
-              <a
-                href={flightUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-text-main bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
-              >
-                <Plane size={16} />
-                <span className="hidden sm:inline">Flights</span>
-              </a>
-              <a
-                href={hotelUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-text-main bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
-              >
-                <Hotel size={16} />
-                <span className="hidden sm:inline">Hotels</span>
-              </a>
-              <a
-                href={activitiesUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
-              >
-                <Sparkles size={16} />
-                <span className="hidden sm:inline">Activities</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Spacer for sticky bar */}
-      <div className="h-14"></div>
+      {/* Sticky Booking Progress Bar */}
+      <StickyBookingProgress
+        city={safeText(trip.city)}
+        country={safeText(trip.country)}
+        startDate={trip.startDate}
+        endDate={trip.endDate}
+        adults={1}
+        onBack={() => navigate('/dashboard')}
+      />
 
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
@@ -379,6 +324,15 @@ export default function SavedTripDetail() {
 
       {/* Main Content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Booking Checklist Card */}
+        <BookingChecklistCard
+          city={safeText(trip.city)}
+          country={safeText(trip.country)}
+          startDate={trip.startDate}
+          endDate={trip.endDate}
+          adults={1}
+        />
+
         {/* Flight Details */}
         {flightDetails && (flightDetails.outbound || flightDetails.return) && (
           <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
