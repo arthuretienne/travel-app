@@ -3,6 +3,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateUser } from '../middleware/auth.js';
 import { checkLimit, incrementUsage, requireFeature } from '../middleware/checkSubscription.js';
+import { sendBookingReminder } from '../services/emailService.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -811,6 +812,142 @@ router.delete('/:id', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Error deleting trip:', error);
     res.status(500).json({ error: 'Failed to delete trip' });
+  }
+});
+
+/**
+ * POST /api/trips/:id/reminders
+ * Send booking reminder emails to members who haven't completed their bookings
+ */
+router.post('/:id/reminders', authenticateUser, async (req, res) => {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+    const { memberIds } = req.body; // Optional: specific members to remind
+
+    // Get trip with members and final destination
+    const trip = await prisma.collaborativeTrip.findUnique({
+      where: { id },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!trip) {
+      return res.status(404).json({ error: 'Trip not found' });
+    }
+
+    // Check if user is creator or organizer
+    const userMember = trip.members.find(m => m.userId === user.id);
+    const isCreator = trip.creatorId === user.id;
+    const isOrganizer = userMember?.role === 'organizer';
+
+    if (!isCreator && !isOrganizer) {
+      return res.status(403).json({ error: 'Only trip creator or organizers can send reminders' });
+    }
+
+    // Check if trip has a confirmed destination
+    if (!trip.finalDestination) {
+      return res.status(400).json({ error: 'Trip must have a confirmed destination to send reminders' });
+    }
+
+    const destination = `${trip.finalDestination.city}, ${trip.finalDestination.country}`;
+    const senderName = `${user.firstName || 'Un membre'} ${user.lastName || ''}`.trim();
+    const tripUrl = `${process.env.FRONTEND_URL || 'https://skusku.life'}/trip/${trip.id}`;
+
+    // Find members who need reminders
+    let membersToRemind = trip.members.filter(m => {
+      // Skip the sender
+      if (m.userId === user.id) return false;
+      // If specific memberIds provided, filter by them
+      if (memberIds && memberIds.length > 0) {
+        return memberIds.includes(m.id);
+      }
+      // Otherwise, include members who haven't completed booking
+      return !m.hasBookedFlight || !m.hasBookedHotel;
+    });
+
+    if (membersToRemind.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No members need reminders - everyone has completed their bookings!',
+        sentCount: 0,
+      });
+    }
+
+    // Send reminders
+    const results = await Promise.all(
+      membersToRemind.map(async (member) => {
+        if (!member.user?.email) {
+          return { memberId: member.id, success: false, error: 'No email address' };
+        }
+
+        const missingBookings = [];
+        if (!member.hasBookedFlight) missingBookings.push('flight');
+        if (!member.hasBookedHotel) missingBookings.push('hotel');
+
+        const result = await sendBookingReminder({
+          to: member.user.email,
+          memberName: member.user.firstName || 'Ami',
+          tripName: trip.name,
+          destination,
+          startDate: trip.finalStartDate,
+          endDate: trip.finalEndDate,
+          senderName,
+          tripUrl,
+          missingBookings,
+        });
+
+        return {
+          memberId: member.id,
+          memberName: `${member.user.firstName} ${member.user.lastName}`,
+          ...result,
+        };
+      })
+    );
+
+    const successCount = results.filter(r => r.success).length;
+    const failedCount = results.filter(r => !r.success).length;
+
+    // Create a system message in the trip chat
+    await prisma.tripMessage.create({
+      data: {
+        tripId: id,
+        authorId: user.id,
+        content: `📧 ${senderName} a envoyé un rappel de réservation à ${successCount} membre(s)`,
+        isSystemMessage: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: `Reminders sent to ${successCount} member(s)`,
+      sentCount: successCount,
+      failedCount,
+      details: results,
+    });
+  } catch (error) {
+    console.error('Error sending reminders:', error);
+    res.status(500).json({ error: 'Failed to send reminders' });
   }
 });
 

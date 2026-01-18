@@ -47,6 +47,8 @@ import {
 } from 'lucide-react';
 import { PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
 import StickyBookingProgress, { BookingChecklistCard } from '../components/StickyBookingProgress';
+import TripChat from '../components/TripChat';
+import FriendsManager from '../components/FriendsManager';
 import { generateAllBookingLinks, getIataCode } from '../utils/bookingLinks';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -62,6 +64,7 @@ export default function TripDetail() {
   const [trip, setTrip] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showFriendsManager, setShowFriendsManager] = useState(false);
   const [inviteEmails, setInviteEmails] = useState([]);
   const [currentEmail, setCurrentEmail] = useState('');
   const [inviting, setInviting] = useState(false);
@@ -438,7 +441,7 @@ export default function TripDetail() {
         {isVoting && <VotingSection trip={trip} fetchTripDetails={fetchTripDetails} />}
         {isConfirmed && (
           <>
-            <BookingChecklistSection trip={trip} fetchTripDetails={fetchTripDetails} />
+            <BookingChecklistSection trip={trip} fetchTripDetails={fetchTripDetails} getToken={getToken} />
             <TripEnhancementsSection trip={trip} userName={user?.firstName || 'there'} />
           </>
         )}
@@ -472,6 +475,21 @@ export default function TripDetail() {
               <p className="text-sm text-text-secondary">
                 Invite friends to join "<strong>{trip.name}</strong>" by entering their email addresses.
               </p>
+
+              {/* Quick add from friends list */}
+              <button
+                onClick={() => setShowFriendsManager(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-light text-primary font-medium rounded-xl hover:bg-primary/20 transition-colors"
+              >
+                <Users size={18} />
+                Inviter depuis mes amis
+              </button>
+
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-gray-200"></div>
+                <span className="text-xs text-text-secondary">ou</span>
+                <div className="flex-1 h-px bg-gray-200"></div>
+              </div>
 
               {/* Email Input */}
               <div>
@@ -555,6 +573,20 @@ export default function TripDetail() {
           </div>
         </div>
       )}
+
+      {/* Friends Manager Modal */}
+      <FriendsManager
+        isOpen={showFriendsManager}
+        onClose={() => setShowFriendsManager(false)}
+        onSelectFriend={(friend) => {
+          if (friend.email && !inviteEmails.includes(friend.email)) {
+            setInviteEmails([...inviteEmails, friend.email]);
+          }
+        }}
+      />
+
+      {/* Real-time Chat */}
+      <TripChat tripId={id} tripName={trip.name} />
     </div>
   );
 }
@@ -1035,7 +1067,10 @@ function VotingSection({ trip, fetchTripDetails }) {
 }
 
 // Booking Checklist Section - When destination is confirmed
-function BookingChecklistSection({ trip, fetchTripDetails }) {
+function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
+  const [sendingReminders, setSendingReminders] = useState(false);
+  const [reminderResult, setReminderResult] = useState(null);
+
   // Get trip data from finalDestination
   const tripData = trip.finalDestination || {};
   const city = tripData.city || 'Unknown';
@@ -1051,6 +1086,58 @@ function BookingChecklistSection({ trip, fetchTripDetails }) {
     adults: trip.members?.length || 1
   });
 
+  // Count members who need reminders
+  const membersNeedingReminder = trip.members?.filter(
+    m => !m.hasBookedFlight || !m.hasBookedHotel
+  ) || [];
+
+  // Send reminder emails to members who haven't booked
+  const handleSendReminders = async () => {
+    if (sendingReminders) return;
+
+    setSendingReminders(true);
+    setReminderResult(null);
+
+    try {
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/api/trips/${trip.id}/reminders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setReminderResult({
+          type: 'success',
+          message: data.sentCount > 0
+            ? `✅ ${data.sentCount} rappel(s) envoyé(s)!`
+            : '✨ Tout le monde a déjà réservé!'
+        });
+        // Refresh trip details to update chat
+        if (fetchTripDetails) fetchTripDetails();
+      } else {
+        setReminderResult({
+          type: 'error',
+          message: data.error || 'Erreur lors de l\'envoi'
+        });
+      }
+    } catch (error) {
+      console.error('Error sending reminders:', error);
+      setReminderResult({
+        type: 'error',
+        message: 'Erreur de connexion'
+      });
+    } finally {
+      setSendingReminders(false);
+      // Clear result after 5 seconds
+      setTimeout(() => setReminderResult(null), 5000);
+    }
+  };
+
   return (
     <>
       {/* Group Members Booking Status */}
@@ -1058,10 +1145,30 @@ function BookingChecklistSection({ trip, fetchTripDetails }) {
         <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-text-main">Suivi du groupe</h2>
-            <button className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 font-medium rounded-lg hover:bg-amber-200 transition-colors">
-              <Bell size={18} />
-              Rappeler les amis
-            </button>
+            <div className="flex items-center gap-2">
+              {reminderResult && (
+                <span className={`text-sm ${reminderResult.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                  {reminderResult.message}
+                </span>
+              )}
+              <button
+                onClick={handleSendReminders}
+                disabled={sendingReminders || membersNeedingReminder.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 font-medium rounded-lg hover:bg-amber-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendingReminders ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Bell size={18} />
+                )}
+                {sendingReminders ? 'Envoi...' : 'Rappeler les amis'}
+                {membersNeedingReminder.length > 0 && !sendingReminders && (
+                  <span className="bg-amber-800 text-white text-xs px-1.5 py-0.5 rounded-full">
+                    {membersNeedingReminder.length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2">

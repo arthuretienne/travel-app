@@ -4,6 +4,7 @@ import './env.js';
 
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
 import travelRoutes from './src/routes/travel.js';
 import userRoutes from './src/routes/user.js';
 import searchRoutes from './src/routes/searches.js';
@@ -16,11 +17,17 @@ import messagesRoutes from './src/routes/messages.js';
 import membersRoutes from './src/routes/members.js';
 import billingRoutes from './src/routes/billing.js';
 import tripEnhancementsRoutes from './src/routes/tripEnhancements.js';
+import friendsRoutes from './src/routes/friends.js';
 import prisma from './src/db/prisma.js';
 import { apiLimiter, strictLimiter, emailLimiter } from './src/middleware/rateLimiter.js';
+import { initializeSocketServer } from './src/services/socketService.js';
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 3001;
+
+// Initialize WebSocket server for real-time chat
+initializeSocketServer(httpServer);
 
 // Trust proxy - Required for Railway/Vercel deployments to properly handle X-Forwarded-For headers
 app.set('trust proxy', true);
@@ -62,6 +69,9 @@ app.use('/api/trips', votingRoutes);
 app.use('/api/trips', messagesRoutes);
 app.use('/api/trips', membersRoutes);
 app.use('/api/trips', invitationsRoutes);
+
+// Friends system
+app.use('/api/friends', friendsRoutes);
 app.use('/api/trips', tripEnhancementsRoutes);
 
 // Health check
@@ -111,9 +121,10 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 API endpoints available at http://localhost:${PORT}/api`);
+  console.log(`🔌 WebSocket server ready for real-time chat`);
   console.log(`✅ Database connected (Neon PostgreSQL)`);
   console.log(`✅ Cache service ready (Upstash Redis)`);
   console.log(`✅ Authentication ready (Clerk)`);
