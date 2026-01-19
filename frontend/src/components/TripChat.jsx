@@ -66,8 +66,9 @@ export default function TripChat({ tripId, tripName, embedded = false }) {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.data) {
-          loadInitialMessages(data.data);
+        // API returns { data: { messages: [...], hasMore: bool } }
+        if (data.success && data.data?.messages) {
+          loadInitialMessages(data.data.messages);
         }
       }
     } catch (err) {

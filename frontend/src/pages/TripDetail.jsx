@@ -1309,28 +1309,32 @@ function VotingSection({ trip, fetchTripDetails }) {
   const { getToken } = useAuth();
   const [voting, setVoting] = useState(false);
 
-  const handleVote = async (proposedTripId) => {
+  const handleVote = async (destinationId) => {
     try {
       setVoting(true);
       const token = await getToken();
 
+      // Backend expects: { votes: [{ destinationId, rank }] }
       const response = await fetch(`${API_URL}/api/trips/${trip.id}/vote`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ proposedTripId }),
+        body: JSON.stringify({
+          votes: [{ destinationId, rank: 1 }]
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to vote');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to vote');
       }
 
       await fetchTripDetails();
     } catch (err) {
       console.error('Error voting:', err);
-      alert('Failed to vote. Please try again.');
+      alert(err.message || 'Failed to vote. Please try again.');
     } finally {
       setVoting(false);
     }
@@ -1352,10 +1356,10 @@ function VotingSection({ trip, fetchTripDetails }) {
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h3 className="text-lg font-bold text-text-main">
-                  {proposed.tripData?.destination?.city}, {proposed.tripData?.destination?.country}
+                  {proposed.city || proposed.tripData?.destination?.city}, {proposed.country || proposed.tripData?.destination?.country}
                 </h3>
                 <p className="text-sm text-text-secondary">
-                  Proposed by {proposed.proposedBy?.firstName}
+                  Proposed by {proposed.proposer?.firstName || proposed.proposedBy?.firstName || 'Unknown'}
                 </p>
               </div>
               <button
@@ -1368,20 +1372,20 @@ function VotingSection({ trip, fetchTripDetails }) {
             </div>
 
             <div className="flex items-center gap-4 text-sm text-text-secondary">
-              {proposed.tripData?.slot?.startDate && (
+              {(proposed.startDate || proposed.tripData?.slot?.startDate) && (
                 <div className="flex items-center gap-2">
                   <Calendar size={16} />
                   <span>
-                    {new Date(proposed.tripData.slot.startDate).toLocaleDateString('en-US', {
+                    {new Date(proposed.startDate || proposed.tripData.slot.startDate).toLocaleDateString('fr-FR', {
                       month: 'short',
                       day: 'numeric',
                     })}
                   </span>
                 </div>
               )}
-              {proposed.tripData?.pricing?.total && (
+              {(proposed.estimatedCostPerPerson || proposed.tripData?.pricing?.total) && (
                 <div className="flex items-center gap-2">
-                  <span>€{Math.round(proposed.tripData.pricing.total)}</span>
+                  <span>€{Math.round(proposed.estimatedCostPerPerson || proposed.tripData.pricing.total)}/pers</span>
                 </div>
               )}
               <div className="flex items-center gap-2">
