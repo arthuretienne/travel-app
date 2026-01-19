@@ -92,6 +92,8 @@ app.get('/api/health', async (req, res) => {
         googleClientId: process.env.GOOGLE_CLIENT_ID ? '✅ SET' : '❌ MISSING',
         googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ? '✅ SET' : '❌ MISSING',
         googleRedirectUri: process.env.GOOGLE_REDIRECT_URI ? '✅ SET' : '❌ MISSING',
+        resendApiKey: process.env.RESEND_API_KEY ? '✅ SET' : '❌ MISSING',
+        emailFrom: process.env.EMAIL_FROM || '❌ NOT SET (using default)',
       },
       timestamp: new Date().toISOString()
     });

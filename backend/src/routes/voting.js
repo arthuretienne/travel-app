@@ -367,17 +367,19 @@ router.get('/:tripId/voting-results', authenticateUser, async (req, res) => {
     // Sort by score (highest first)
     results.sort((a, b) => b.score - a.score);
 
-    // Calculate voting progress
-    const totalMembers = trip.members.length;
+    // Calculate voting progress (include creator in count)
+    // Creator is NOT in members array, so we need to add 1
+    const totalVoters = trip.members.length + 1; // +1 for creator
     const votedMembers = new Set(
       trip.proposedTrips.flatMap((d) => d.votes.map((v) => v.userId))
     ).size;
-    const votingProgress = totalMembers > 0 ? (votedMembers / totalMembers) * 100 : 0;
+    const votingProgress = totalVoters > 0 ? (votedMembers / totalVoters) * 100 : 0;
 
     // Check if voting is complete
+    // For solo trips (only creator), voting is complete when creator votes
     const isVotingComplete = trip.requireAllVotes
-      ? votedMembers === totalMembers
-      : votedMembers >= Math.ceil(totalMembers / 2); // At least 50% voted
+      ? votedMembers === totalVoters
+      : votedMembers >= Math.ceil(totalVoters / 2) || (totalVoters === 1 && votedMembers === 1); // At least 50% voted, or solo trip with creator voted
 
     res.json({
       success: true,
@@ -385,7 +387,7 @@ router.get('/:tripId/voting-results', authenticateUser, async (req, res) => {
         results,
         summary: {
           totalDestinations: trip.proposedTrips.length,
-          totalMembers,
+          totalVoters,
           votedMembers,
           votingProgress: Math.round(votingProgress),
           isVotingComplete,

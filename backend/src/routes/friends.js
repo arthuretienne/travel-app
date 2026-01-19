@@ -154,7 +154,8 @@ router.post('/request', authenticateUser, async (req, res) => {
     if (!targetUser) {
       return res.status(404).json({
         error: 'User not found',
-        message: 'No user found with this email address',
+        message: `Aucun utilisateur trouvé avec l'email ${email}. Cette personne doit d'abord créer un compte sur Skusku pour que tu puisses l'ajouter en ami.`,
+        suggestion: 'invite',
       });
     }
 
