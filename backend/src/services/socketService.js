@@ -4,8 +4,14 @@
 import { Server } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
 import { verifyToken } from '@clerk/clerk-sdk-node';
+import Anthropic from '@anthropic-ai/sdk';
 
 const prisma = new PrismaClient();
+
+// Initialize Anthropic client for AI assistant
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
 // Store connected users: { tripId: { socketId: { userId, user } } }
 const tripRooms = new Map();
@@ -166,6 +172,11 @@ export function initializeSocketServer(httpServer) {
         io.to(tripId).emit('new-message', message);
 
         console.log(`💬 Message in ${tripId}: ${socket.user.firstName}: ${content.substring(0, 50)}...`);
+
+        // Check if message mentions the AI assistant
+        if (content.toLowerCase().includes('@assistant')) {
+          handleAIAssistant(tripId, content, socket.user, io);
+        }
       } catch (error) {
         console.error('Error sending message:', error);
         socket.emit('error', { message: 'Failed to send message' });
@@ -253,6 +264,165 @@ function getActiveUsers(tripId) {
   });
 
   return Array.from(uniqueUsers.values());
+}
+
+/**
+ * Handle AI assistant requests in chat
+ * Detects @assistant mentions and generates helpful responses
+ */
+async function handleAIAssistant(tripId, userMessage, fromUser, io) {
+  try {
+    console.log(`🤖 AI Assistant triggered in trip ${tripId}`);
+
+    // Get trip context
+    const trip = await prisma.collaborativeTrip.findUnique({
+      where: { id: tripId },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: { firstName: true, lastName: true },
+            },
+          },
+        },
+        proposedTrips: true,
+      },
+    });
+
+    if (!trip) {
+      console.error('Trip not found for AI assistant');
+      return;
+    }
+
+    // Get recent chat history for context
+    const recentMessages = await prisma.tripMessage.findMany({
+      where: { tripId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      include: {
+        author: {
+          select: { firstName: true },
+        },
+      },
+    });
+
+    // Build context for Claude
+    const tripContext = buildTripContext(trip);
+    const chatHistory = recentMessages
+      .reverse()
+      .map(m => `${m.author?.firstName || 'Anonyme'}: ${m.content}`)
+      .join('\n');
+
+    // Remove @assistant from the query
+    const cleanQuery = userMessage.replace(/@assistant/gi, '').trim();
+
+    // Generate AI response
+    const aiResponse = await generateAIResponse(tripContext, chatHistory, cleanQuery, fromUser.firstName);
+
+    // Save AI response as a system message
+    const assistantMessage = await prisma.tripMessage.create({
+      data: {
+        tripId,
+        content: aiResponse,
+        type: 'system',
+        guestName: '🤖 Assistant IA',
+      },
+    });
+
+    // Broadcast AI response
+    io.to(tripId).emit('new-message', {
+      ...assistantMessage,
+      isSystemMessage: true,
+      author: {
+        id: 'ai-assistant',
+        firstName: '🤖 Assistant',
+        lastName: 'IA',
+        imageUrl: null,
+      },
+    });
+
+    console.log(`🤖 AI responded in trip ${tripId}`);
+  } catch (error) {
+    console.error('AI Assistant error:', error);
+
+    // Send error message
+    io.to(tripId).emit('new-message', {
+      id: `error-${Date.now()}`,
+      content: "Désolé, je n'ai pas pu traiter votre demande. Réessayez dans un instant.",
+      isSystemMessage: true,
+      createdAt: new Date().toISOString(),
+      author: {
+        id: 'ai-assistant',
+        firstName: '🤖 Assistant',
+        lastName: 'IA',
+        imageUrl: null,
+      },
+    });
+  }
+}
+
+/**
+ * Build trip context for AI
+ */
+function buildTripContext(trip) {
+  const members = trip.members.map(m => m.user?.firstName || m.guestName || 'Invité').join(', ');
+  const destination = trip.finalDestination
+    ? `${trip.finalDestination.city}, ${trip.finalDestination.country}`
+    : 'Non définie';
+  const dates = trip.finalStartDate && trip.finalEndDate
+    ? `Du ${new Date(trip.finalStartDate).toLocaleDateString('fr-FR')} au ${new Date(trip.finalEndDate).toLocaleDateString('fr-FR')}`
+    : 'Non définies';
+  const status = trip.finalDestination ? 'Confirmé' : (trip.proposedTrips?.length > 0 ? 'En vote' : 'En planification');
+
+  return `
+Voyage de groupe: "${trip.name}"
+Statut: ${status}
+Destination: ${destination}
+Dates: ${dates}
+Participants: ${members}
+Nombre de participants: ${trip.members.length}
+`;
+}
+
+/**
+ * Generate AI response using Claude
+ */
+async function generateAIResponse(tripContext, chatHistory, userQuery, userName) {
+  const systemPrompt = `Tu es un assistant de voyage IA intégré dans le chat d'un groupe de voyageurs. Tu aides à planifier et organiser le voyage.
+
+CONTEXTE DU VOYAGE:
+${tripContext}
+
+HISTORIQUE RÉCENT DU CHAT:
+${chatHistory}
+
+RÈGLES:
+- Réponds en français, de manière concise et amicale
+- Utilise des emojis avec modération
+- Sois utile et pratique
+- Si on te demande de modifier l'itinéraire, suggère des changements mais précise que le créateur du voyage devra les valider
+- Tu peux suggérer des activités, restaurants, conseils pratiques
+- Reste dans le contexte du voyage planifié
+- Limite ta réponse à 200 mots maximum`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 300,
+      system: systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: `${userName} demande: ${userQuery}`,
+        },
+      ],
+    });
+
+    return response.content[0].text;
+  } catch (error) {
+    console.error('Claude API error:', error);
+    return "Désolé, je rencontre des difficultés techniques. Réessayez dans un moment.";
+  }
 }
 
 /**

@@ -44,6 +44,11 @@ import {
   CalendarDays,
   Music,
   Heart,
+  MessageCircle,
+  Settings,
+  ListChecks,
+  LayoutDashboard,
+  Bot,
 } from 'lucide-react';
 import { PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
 import StickyBookingProgress, { BookingChecklistCard } from '../components/StickyBookingProgress';
@@ -69,6 +74,11 @@ export default function TripDetail() {
   const [currentEmail, setCurrentEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState(null);
+
+  // Tab navigation for group trip sections
+  const [activeTab, setActiveTab] = useState('overview');
+  const [sendingReminder, setSendingReminder] = useState(false);
+  const [reminderMessage, setReminderMessage] = useState(null);
 
   useEffect(() => {
     fetchTripDetails();
@@ -200,6 +210,51 @@ export default function TripDetail() {
     } catch (err) {
       console.error('Error deleting trip:', err);
       alert('Failed to delete trip');
+    }
+  };
+
+  // Send reminder emails to members who haven't completed their bookings
+  const sendReminders = async () => {
+    if (sendingReminder) return;
+
+    setSendingReminder(true);
+    setReminderMessage(null);
+
+    try {
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/api/trips/${id}/reminders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setReminderMessage({
+          type: 'success',
+          text: data.sentCount > 0
+            ? `✅ ${data.sentCount} rappel(s) envoyé(s)!`
+            : '✨ Tout le monde a déjà réservé!'
+        });
+        fetchTripDetails();
+      } else {
+        setReminderMessage({
+          type: 'error',
+          text: data.error || 'Erreur lors de l\'envoi'
+        });
+      }
+    } catch (error) {
+      console.error('Error sending reminders:', error);
+      setReminderMessage({
+        type: 'error',
+        text: 'Erreur de connexion'
+      });
+    } finally {
+      setSendingReminder(false);
+      setTimeout(() => setReminderMessage(null), 5000);
     }
   };
 
@@ -372,78 +427,351 @@ export default function TripDetail() {
         </div>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex gap-1 overflow-x-auto py-2" aria-label="Tabs">
+            {[
+              { id: 'overview', label: 'Aperçu', icon: LayoutDashboard },
+              { id: 'participants', label: 'Participants', icon: Users, badge: trip.members?.length || 0 },
+              { id: 'chat', label: 'Chat', icon: MessageCircle },
+              { id: 'checklist', label: 'Checklist', icon: ListChecks },
+              { id: 'settings', label: 'Réglages', icon: Settings },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-text-secondary hover:bg-gray-100 hover:text-text-main'
+                }`}
+              >
+                <tab.icon size={18} />
+                {tab.label}
+                {tab.badge !== undefined && (
+                  <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                    activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </div>
+
       {/* Main Content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Participants Section */}
-        <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-text-main">Participants ({trip.members?.length || 0} + 1 creator)</h2>
-            {(userRole === 'creator' || userRole === 'organizer') && (
-              <button
-                onClick={() => setShowInviteModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
-              >
-                <UserPlus size={18} />
-                Invite Friends
-              </button>
+        {/* ============ OVERVIEW TAB ============ */}
+        {activeTab === 'overview' && (
+          <>
+            {/* Conditional Main Section based on trip status */}
+            {isPlanning && <PlanningSection trip={trip} navigate={navigate} />}
+            {isVoting && <VotingSection trip={trip} fetchTripDetails={fetchTripDetails} />}
+            {isConfirmed && (
+              <>
+                <BookingChecklistSection trip={trip} fetchTripDetails={fetchTripDetails} getToken={getToken} />
+                <TripEnhancementsSection trip={trip} userName={user?.firstName || 'there'} />
+              </>
             )}
-          </div>
+          </>
+        )}
 
-          <div className="space-y-3">
-            {trip.members?.map((member) => (
-              <div
-                key={member.id}
-                className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <img
-                      src={member.user?.imageUrl || `https://ui-avatars.com/api/?name=${member.user?.firstName}+${member.user?.lastName}`}
-                      alt={member.user?.firstName}
-                      className="w-12 h-12 rounded-full"
-                    />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-text-main">
-                      {member.user?.firstName} {member.user?.lastName}
-                    </p>
-                    <p className="text-sm text-text-secondary">
-                      {member.user?.email || 'Email not available'}
-                    </p>
-                  </div>
+        {/* ============ PARTICIPANTS TAB ============ */}
+        {activeTab === 'participants' && (
+          <div className="space-y-6">
+            {/* Members List */}
+            <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-text-main">
+                  Membres ({trip.members?.length || 0})
+                </h2>
+                <div className="flex items-center gap-2">
+                  {reminderMessage && (
+                    <span className={`text-sm ${reminderMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                      {reminderMessage.text}
+                    </span>
+                  )}
+                  {isConfirmed && (
+                    <button
+                      onClick={sendReminders}
+                      disabled={sendingReminder}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 font-medium rounded-lg hover:bg-amber-200 transition-colors disabled:opacity-50"
+                    >
+                      {sendingReminder ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <Bell size={18} />
+                      )}
+                      {sendingReminder ? 'Envoi...' : 'Rappeler'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowInviteModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
+                  >
+                    <UserPlus size={18} />
+                    Inviter
+                  </button>
                 </div>
-                <span className="text-xs font-medium px-3 py-1 bg-gray-100 text-gray-600 rounded-full capitalize">
-                  {member.role}
-                </span>
               </div>
-            ))}
-          </div>
 
-          {/* Pending Invitations */}
-          {trip.invitations && trip.invitations.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h3 className="text-sm font-semibold text-text-secondary mb-3">Pending Invitations ({trip.invitations.length})</h3>
-              <div className="space-y-2">
-                {trip.invitations.map((invitation) => (
-                  <div key={invitation.id} className="flex items-center gap-3 p-2 text-sm">
-                    <Mail size={16} className="text-gray-400" />
-                    <span className="text-text-secondary">{invitation.email}</span>
-                    <span className="ml-auto text-xs text-amber-600">Pending</span>
+              <div className="space-y-3">
+                {trip.members?.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={member.user?.imageUrl || `https://ui-avatars.com/api/?name=${member.user?.firstName}+${member.user?.lastName}`}
+                        alt={member.user?.firstName}
+                        className="w-12 h-12 rounded-full"
+                      />
+                      <div>
+                        <p className="font-semibold text-text-main">
+                          {member.user?.firstName} {member.user?.lastName}
+                        </p>
+                        <p className="text-sm text-text-secondary">
+                          {member.user?.email || 'Email not available'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isConfirmed && (
+                        <>
+                          {member.hasBookedFlight && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded flex items-center gap-1">
+                              <Plane size={12} /> Vol
+                            </span>
+                          )}
+                          {member.hasBookedHotel && (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded flex items-center gap-1">
+                              <Hotel size={12} /> Hôtel
+                            </span>
+                          )}
+                          {member.bookingConfirmed && (
+                            <CheckCircle2 size={18} className="text-green-600" />
+                          )}
+                        </>
+                      )}
+                      <span className="text-xs font-medium px-3 py-1 bg-gray-200 text-gray-600 rounded-full capitalize">
+                        {member.role}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Conditional Main Section */}
-        {isPlanning && <PlanningSection trip={trip} navigate={navigate} />}
-        {isVoting && <VotingSection trip={trip} fetchTripDetails={fetchTripDetails} />}
-        {isConfirmed && (
-          <>
-            <BookingChecklistSection trip={trip} fetchTripDetails={fetchTripDetails} getToken={getToken} />
-            <TripEnhancementsSection trip={trip} userName={user?.firstName || 'there'} />
-          </>
+            {/* Pending Invitations */}
+            {trip.invitations && trip.invitations.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
+                <h3 className="text-lg font-bold text-text-main mb-4">
+                  Invitations en attente ({trip.invitations.length})
+                </h3>
+                <div className="space-y-2">
+                  {trip.invitations.map((invitation) => (
+                    <div key={invitation.id} className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg">
+                      <Mail size={18} className="text-amber-600" />
+                      <span className="text-text-main">{invitation.email}</span>
+                      <span className="ml-auto text-xs font-medium text-amber-600 bg-amber-100 px-2 py-1 rounded">
+                        En attente
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quick Add Friends */}
+            <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
+              <h3 className="text-lg font-bold text-text-main mb-4">Inviter depuis mes amis</h3>
+              <button
+                onClick={() => setShowFriendsManager(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-4 bg-primary-light text-primary font-medium rounded-xl hover:bg-primary/20 transition-colors"
+              >
+                <Users size={20} />
+                Gérer mes amis & Inviter
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============ CHAT TAB ============ */}
+        {activeTab === 'chat' && (
+          <div className="space-y-6">
+            {/* AI Assistant Info */}
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl border border-purple-100 p-6">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-purple-600 rounded-xl text-white">
+                  <Bot size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-text-main mb-1">Assistant IA</h3>
+                  <p className="text-sm text-text-secondary">
+                    Mentionnez <span className="font-mono bg-purple-100 px-1 rounded">@assistant</span> dans le chat pour demander à l'IA de modifier l'itinéraire, suggérer des activités, ou répondre à vos questions sur le voyage.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Full Chat Component - Inline instead of floating */}
+            <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+              <div className="p-4 border-b border-gray-200 bg-gray-50">
+                <h3 className="font-bold text-text-main flex items-center gap-2">
+                  <MessageCircle size={20} className="text-primary" />
+                  Chat du groupe
+                </h3>
+              </div>
+              <div className="h-[500px]">
+                <TripChat tripId={id} tripName={trip.name} embedded={true} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============ CHECKLIST TAB ============ */}
+        {activeTab === 'checklist' && (
+          <div className="space-y-6">
+            {isConfirmed ? (
+              <>
+                {/* Group Booking Status */}
+                <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold text-text-main">Suivi des réservations</h2>
+                    <button
+                      onClick={sendReminders}
+                      disabled={sendingReminder}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 font-medium rounded-lg hover:bg-amber-200 transition-colors disabled:opacity-50"
+                    >
+                      {sendingReminder ? <Loader2 size={18} className="animate-spin" /> : <Bell size={18} />}
+                      {sendingReminder ? 'Envoi...' : 'Rappeler les retardataires'}
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {trip.members?.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={member.user?.imageUrl || `https://ui-avatars.com/api/?name=${member.user?.firstName}`}
+                            alt={member.user?.firstName}
+                            className="w-10 h-10 rounded-full"
+                          />
+                          <span className="font-medium text-text-main">
+                            {member.user?.firstName} {member.user?.lastName}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${
+                            member.hasBookedFlight ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            <Plane size={14} />
+                            {member.hasBookedFlight ? 'Vol réservé' : 'Vol en attente'}
+                          </div>
+                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${
+                            member.hasBookedHotel ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            <Hotel size={14} />
+                            {member.hasBookedHotel ? 'Hôtel réservé' : 'Hôtel en attente'}
+                          </div>
+                          {member.bookingConfirmed && (
+                            <CheckCircle2 size={20} className="text-green-600" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Booking Links */}
+                <BookingChecklistSection trip={trip} fetchTripDetails={fetchTripDetails} getToken={getToken} />
+              </>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-8 text-center">
+                <ListChecks size={48} className="text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-text-main mb-2">Checklist non disponible</h3>
+                <p className="text-text-secondary">
+                  La checklist de réservation sera disponible une fois la destination confirmée.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============ SETTINGS TAB ============ */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            {/* Trip Settings */}
+            <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
+              <h2 className="text-lg font-bold text-text-main mb-6">Paramètres du voyage</h2>
+
+              <div className="space-y-4">
+                {/* Trip Name */}
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <label className="text-sm font-medium text-text-secondary">Nom du voyage</label>
+                  <p className="text-lg font-semibold text-text-main mt-1">{trip.name}</p>
+                </div>
+
+                {/* Max Members */}
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <label className="text-sm font-medium text-text-secondary">Nombre max de participants</label>
+                  <p className="text-lg font-semibold text-text-main mt-1">{trip.maxMembers || 8} personnes</p>
+                </div>
+
+                {/* Vote Deadline */}
+                {trip.voteDeadline && (
+                  <div className="p-4 bg-gray-50 rounded-xl">
+                    <label className="text-sm font-medium text-text-secondary">Date limite de vote</label>
+                    <p className="text-lg font-semibold text-text-main mt-1">
+                      {new Date(trip.voteDeadline).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                )}
+
+                {/* Require All Votes */}
+                <div className="p-4 bg-gray-50 rounded-xl flex items-center justify-between">
+                  <div>
+                    <label className="text-sm font-medium text-text-secondary">Tous les votes requis</label>
+                    <p className="text-sm text-text-secondary mt-1">
+                      {trip.requireAllVotes
+                        ? 'Tous les membres doivent voter avant de finaliser'
+                        : 'Le vote peut être finalisé à tout moment'}
+                    </p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    trip.requireAllVotes ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {trip.requireAllVotes ? 'Oui' : 'Non'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Danger Zone */}
+            {userRole === 'creator' && (
+              <div className="bg-red-50 rounded-2xl border border-red-200 p-6">
+                <h3 className="text-lg font-bold text-red-900 mb-4">Zone de danger</h3>
+                <p className="text-sm text-red-700 mb-4">
+                  Ces actions sont irréversibles. Procédez avec précaution.
+                </p>
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <Trash2 size={18} />
+                  Supprimer ce voyage
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -585,8 +913,10 @@ export default function TripDetail() {
         }}
       />
 
-      {/* Real-time Chat */}
-      <TripChat tripId={id} tripName={trip.name} />
+      {/* Real-time Chat - Floating button (hide when on chat tab) */}
+      {activeTab !== 'chat' && (
+        <TripChat tripId={id} tripName={trip.name} />
+      )}
     </div>
   );
 }
