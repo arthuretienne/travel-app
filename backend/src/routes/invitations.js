@@ -1,7 +1,8 @@
 // backend/src/routes/invitations.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateUser } from '../middleware/auth.js';
+import { authenticateUser, optionalAuth } from '../middleware/auth.js';
+import { clerkClient } from '@clerk/clerk-sdk-node';
 import { emailLimiter } from '../middleware/rateLimiter.js';
 import crypto from 'crypto';
 import { sendTripInvitation } from '../services/emailService.js';
@@ -305,19 +306,84 @@ router.post('/:token/accept', async (req, res) => {
       return res.status(400).json({ error: 'Trip has reached maximum number of members' });
     }
 
-    // Check if user has an account
-    const existingUser = await prisma.user.findUnique({
-      where: { email: invitation.email },
-    });
+    // Check if user is authenticated (signed in with Clerk)
+    let authenticatedUser = null;
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const authToken = authHeader.substring(7);
+        const sessionClaims = await clerkClient.verifyToken(authToken);
+
+        if (sessionClaims && sessionClaims.sub) {
+          const clerkId = sessionClaims.sub;
+
+          // Try to find existing user
+          authenticatedUser = await prisma.user.findUnique({
+            where: { clerkId },
+          });
+
+          // If user doesn't exist, create them (sync from Clerk)
+          if (!authenticatedUser) {
+            const clerkUser = await clerkClient.users.getUser(clerkId);
+            const email = clerkUser.emailAddresses[0]?.emailAddress || '';
+
+            // Check if user exists with same email but different clerkId
+            const existingUserByEmail = await prisma.user.findUnique({
+              where: { email },
+            });
+
+            if (existingUserByEmail) {
+              // Update existing user with new clerkId
+              authenticatedUser = await prisma.user.update({
+                where: { email },
+                data: {
+                  clerkId,
+                  firstName: clerkUser.firstName || existingUserByEmail.firstName,
+                  lastName: clerkUser.lastName || existingUserByEmail.lastName,
+                  imageUrl: clerkUser.imageUrl || existingUserByEmail.imageUrl,
+                },
+              });
+              console.log('✅ User synced for invitation acceptance:', authenticatedUser.email);
+            } else {
+              // Create new user
+              authenticatedUser = await prisma.user.create({
+                data: {
+                  clerkId,
+                  email,
+                  firstName: clerkUser.firstName,
+                  lastName: clerkUser.lastName,
+                  imageUrl: clerkUser.imageUrl,
+                },
+              });
+              console.log('✅ New user created for invitation acceptance:', authenticatedUser.email);
+            }
+          }
+        }
+      } catch (authError) {
+        console.log('⚠️ Auth token verification failed:', authError.message);
+        // Continue without authenticated user (guest mode)
+      }
+    }
+
+    // Check if user is already a member
+    if (authenticatedUser) {
+      const isAlreadyMember = invitation.trip.members.some(
+        (m) => m.userId === authenticatedUser.id
+      );
+      if (isAlreadyMember) {
+        return res.status(400).json({ error: 'You are already a member of this trip' });
+      }
+    }
 
     let member;
 
-    if (existingUser) {
-      // User has account - create member with userId
+    if (authenticatedUser) {
+      // Authenticated user - create member with userId
       member = await prisma.tripMember.create({
         data: {
           tripId: invitation.tripId,
-          userId: existingUser.id,
+          userId: authenticatedUser.id,
           role: 'member',
         },
         include: {
@@ -332,11 +398,15 @@ router.post('/:token/accept', async (req, res) => {
           },
         },
       });
+      console.log(`✅ Member added to trip: ${authenticatedUser.email}`);
     } else {
-      // Guest mode - create member without userId
+      // Guest mode - create member without userId, with session token for chat access
       if (!guestName || guestName.trim().length === 0) {
         return res.status(400).json({ error: 'Guest name is required' });
       }
+
+      // Generate a unique session token for guest WebSocket authentication
+      const sessionToken = crypto.randomBytes(32).toString('hex');
 
       member = await prisma.tripMember.create({
         data: {
@@ -344,8 +414,10 @@ router.post('/:token/accept', async (req, res) => {
           guestEmail: invitation.email,
           guestName: guestName.trim(),
           role: 'guest',
+          sessionToken,
         },
       });
+      console.log(`✅ Guest member added to trip: ${guestName} (session: ${sessionToken.substring(0, 8)}...)`);
     }
 
     // Update invitation status
@@ -361,8 +433,8 @@ router.post('/:token/accept', async (req, res) => {
     await prisma.tripMessage.create({
       data: {
         tripId: invitation.tripId,
-        content: existingUser
-          ? `${existingUser.firstName || existingUser.email} joined the trip`
+        content: authenticatedUser
+          ? `${authenticatedUser.firstName || authenticatedUser.email} joined the trip`
           : `${guestName} joined the trip`,
         type: 'system',
       },
@@ -370,13 +442,13 @@ router.post('/:token/accept', async (req, res) => {
 
     // Log user action and workflow
     logger.logUserAction({
-      userId: existingUser?.id || 'guest',
-      userName: existingUser?.firstName || guestName,
+      userId: authenticatedUser?.id || 'guest',
+      userName: authenticatedUser?.firstName || guestName,
       action: 'Accept Trip Invitation',
       details: {
         tripId: invitation.tripId,
         tripName: invitation.trip.name,
-        isGuest: !existingUser,
+        isGuest: !authenticatedUser,
         email: invitation.email
       }
     });
@@ -386,7 +458,7 @@ router.post('/:token/accept', async (req, res) => {
       tripName: invitation.trip.name,
       fromState: 'invited',
       toState: 'member',
-      triggeredBy: existingUser?.email || guestName,
+      triggeredBy: authenticatedUser?.email || guestName,
       memberCount: invitation.trip.members.length + 1
     });
 

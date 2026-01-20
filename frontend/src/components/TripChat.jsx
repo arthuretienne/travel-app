@@ -14,11 +14,12 @@ import {
   Loader2,
 } from 'lucide-react';
 import useSocket from '../hooks/useSocket';
+import useGuestSocket from '../hooks/useGuestSocket';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-export default function TripChat({ tripId, tripName, embedded = false }) {
-  const { getToken } = useAuth();
+export default function TripChat({ tripId, tripName, embedded = false, guestSession = null }) {
+  const { getToken, isSignedIn } = useAuth();
   const { user } = useUser();
   const [isExpanded, setIsExpanded] = useState(embedded); // Auto-expand if embedded
   const [newMessage, setNewMessage] = useState('');
@@ -26,7 +27,14 @@ export default function TripChat({ tripId, tripName, embedded = false }) {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Use WebSocket hook
+  // Determine if we're in guest mode
+  const isGuestMode = !isSignedIn && guestSession?.sessionToken;
+
+  // Use appropriate WebSocket hook
+  const regularSocket = useSocket(isGuestMode ? null : tripId);
+  const guestSocket = useGuestSocket(isGuestMode ? tripId : null, guestSession);
+
+  // Select active socket based on mode
   const {
     isConnected,
     messages,
@@ -37,7 +45,15 @@ export default function TripChat({ tripId, tripName, embedded = false }) {
     startTyping,
     stopTyping,
     loadInitialMessages,
-  } = useSocket(tripId);
+  } = isGuestMode ? guestSocket : regularSocket;
+
+  // Get current user info for message display
+  const currentUserId = isGuestMode
+    ? `guest_${guestSession?.memberId}`
+    : user?.id;
+  const currentUserName = isGuestMode
+    ? guestSession?.guestName
+    : user?.firstName;
 
   // Load message history when chat is opened or mounted (for embedded)
   useEffect(() => {
@@ -57,11 +73,16 @@ export default function TripChat({ tripId, tripName, embedded = false }) {
   const loadMessageHistory = async () => {
     setLoadingHistory(true);
     try {
-      const token = await getToken();
+      // For guests, we can load history without auth (public trip access)
+      // For authenticated users, we use their token
+      const headers = {};
+      if (!isGuestMode) {
+        const token = await getToken();
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_URL}/api/trips/${tripId}/messages`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
 
       if (response.ok) {
@@ -131,6 +152,7 @@ export default function TripChat({ tripId, tripName, embedded = false }) {
 
   const messageGroups = groupMessagesByDate(messages);
 
+
   // Embedded mode - render inline without floating container
   if (embedded) {
     return (
@@ -187,7 +209,7 @@ export default function TripChat({ tripId, tripName, embedded = false }) {
                   </span>
                 </div>
                 {msgs.map((msg) => {
-                  const isOwn = msg.author?.id === user?.id || msg.authorId === user?.id;
+                  const isOwn = msg.author?.id === currentUserId || msg.authorId === currentUserId || (msg.isGuest && msg.author?.firstName === currentUserName);
                   const isSystem = msg.isSystemMessage;
 
                   if (isSystem) {
@@ -220,11 +242,10 @@ export default function TripChat({ tripId, tripName, embedded = false }) {
                             </p>
                           )}
                           <div
-                            className={`px-4 py-2.5 rounded-2xl ${
-                              isOwn
-                                ? 'bg-primary text-white rounded-br-md'
-                                : 'bg-white text-gray-800 rounded-bl-md shadow-sm'
-                            }`}
+                            className={`px-4 py-2.5 rounded-2xl ${isOwn
+                              ? 'bg-primary text-white rounded-br-md'
+                              : 'bg-white text-gray-800 rounded-bl-md shadow-sm'
+                              }`}
                           >
                             <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                           </div>
@@ -365,7 +386,7 @@ export default function TripChat({ tripId, tripName, embedded = false }) {
 
                   {/* Messages */}
                   {msgs.map((msg) => {
-                    const isOwn = msg.author?.id === user?.id || msg.authorId === user?.id;
+                    const isOwn = msg.author?.id === currentUserId || msg.authorId === currentUserId || (msg.isGuest && msg.author?.firstName === currentUserName);
                     const isSystem = msg.isSystemMessage;
 
                     if (isSystem) {
@@ -398,11 +419,10 @@ export default function TripChat({ tripId, tripName, embedded = false }) {
                               </p>
                             )}
                             <div
-                              className={`px-3 py-2 rounded-2xl ${
-                                isOwn
-                                  ? 'bg-primary text-white rounded-br-md'
-                                  : 'bg-white text-gray-800 rounded-bl-md shadow-sm'
-                              }`}
+                              className={`px-3 py-2 rounded-2xl ${isOwn
+                                ? 'bg-primary text-white rounded-br-md'
+                                : 'bg-white text-gray-800 rounded-bl-md shadow-sm'
+                                }`}
                             >
                               <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                             </div>
@@ -466,11 +486,10 @@ export default function TripChat({ tripId, tripName, embedded = false }) {
       {/* Toggle Button */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`p-4 rounded-full shadow-lg transition-all ${
-          isExpanded
-            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            : 'bg-primary text-white hover:bg-primary-hover'
-        }`}
+        className={`p-4 rounded-full shadow-lg transition-all ${isExpanded
+          ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          : 'bg-primary text-white hover:bg-primary-hover'
+          }`}
       >
         {isExpanded ? (
           <ChevronDown size={24} />

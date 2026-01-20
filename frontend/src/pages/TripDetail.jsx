@@ -80,6 +80,26 @@ export default function TripDetail() {
   const [sendingReminder, setSendingReminder] = useState(false);
   const [reminderMessage, setReminderMessage] = useState(null);
 
+  // Guest session detection - check if we have a valid guest session for this trip
+  const [guestSession, setGuestSession] = useState(null);
+
+  useEffect(() => {
+    // Check for guest session in localStorage
+    try {
+      const storedSession = localStorage.getItem('guestSession');
+      if (storedSession) {
+        const session = JSON.parse(storedSession);
+        // Only use the session if it's for this specific trip
+        if (session.tripId === id) {
+          setGuestSession(session);
+          console.log('🔐 Guest session found for this trip');
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing guest session:', e);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchTripDetails();
   }, [id]);
@@ -441,18 +461,16 @@ export default function TripDetail() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-primary text-white shadow-md'
-                    : 'text-text-secondary hover:bg-gray-100 hover:text-text-main'
-                }`}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${activeTab === tab.id
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-text-secondary hover:bg-gray-100 hover:text-text-main'
+                  }`}
               >
                 <tab.icon size={18} />
                 {tab.label}
                 {tab.badge !== undefined && (
-                  <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                    activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
-                  }`}>
+                  <span className={`px-1.5 py-0.5 text-xs rounded-full ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+                    }`}>
                     {tab.badge}
                   </span>
                 )}
@@ -627,7 +645,7 @@ export default function TripDetail() {
                 </h3>
               </div>
               <div className="h-[500px]">
-                <TripChat tripId={id} tripName={trip.name} embedded={true} />
+                <TripChat tripId={id} tripName={trip.name} embedded={true} guestSession={guestSession} />
               </div>
             </div>
           </div>
@@ -666,15 +684,13 @@ export default function TripDetail() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${
-                            member.hasBookedFlight ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                          }`}>
+                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedFlight ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                            }`}>
                             <Plane size={14} />
                             {member.hasBookedFlight ? 'Vol réservé' : 'Vol en attente'}
                           </div>
-                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${
-                            member.hasBookedHotel ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                          }`}>
+                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedHotel ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                            }`}>
                             <Hotel size={14} />
                             {member.hasBookedHotel ? 'Hôtel réservé' : 'Hôtel en attente'}
                           </div>
@@ -746,9 +762,8 @@ export default function TripDetail() {
                         : 'Le vote peut être finalisé à tout moment'}
                     </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    trip.requireAllVotes ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
-                  }`}>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${trip.requireAllVotes ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+                    }`}>
                     {trip.requireAllVotes ? 'Oui' : 'Non'}
                   </span>
                 </div>
@@ -915,7 +930,7 @@ export default function TripDetail() {
 
       {/* Real-time Chat - Floating button (hide when on chat tab) */}
       {activeTab !== 'chat' && (
-        <TripChat tripId={id} tripName={trip.name} />
+        <TripChat tripId={id} tripName={trip.name} guestSession={guestSession} />
       )}
     </div>
   );

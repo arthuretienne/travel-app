@@ -76,6 +76,19 @@ export default function AcceptInvitation() {
       }
 
       const data = await response.json();
+
+      // Store guest session for chat access (if guest mode)
+      if (!isSignedIn && data.data.member.sessionToken) {
+        const guestSession = {
+          tripId: data.data.trip.id,
+          memberId: data.data.member.id,
+          sessionToken: data.data.member.sessionToken,
+          guestName: guestName.trim(),
+        };
+        localStorage.setItem('guestSession', JSON.stringify(guestSession));
+        console.log('🔐 Guest session stored for chat access');
+      }
+
       setAccepted(true);
 
       // Redirect to trip after 2 seconds

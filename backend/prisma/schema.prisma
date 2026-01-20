@@ -334,8 +334,9 @@ model TripMember {
   user   User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // Guest info (if no account)
-  guestEmail String?
-  guestName  String?
+  guestEmail   String?
+  guestName    String?
+  sessionToken String? @unique // Token for guest WebSocket authentication
 
   // Role
   role String // "organizer" | "member" | "guest"

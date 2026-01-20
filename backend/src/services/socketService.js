@@ -38,7 +38,7 @@ export function initializeSocketServer(httpServer) {
     pingInterval: 25000,
   });
 
-  // Authentication middleware
+  // Authentication middleware - supports both Clerk tokens and guest session tokens
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth.token;
@@ -46,7 +46,43 @@ export function initializeSocketServer(httpServer) {
         return next(new Error('Authentication required'));
       }
 
-      // Verify Clerk token
+      // Check if this is a guest session token (format: "guest:{sessionToken}")
+      if (token.startsWith('guest:')) {
+        const sessionToken = token.substring(6); // Remove "guest:" prefix
+
+        // Find the guest member by session token
+        const member = await prisma.tripMember.findUnique({
+          where: { sessionToken },
+          select: {
+            id: true,
+            tripId: true,
+            guestName: true,
+            guestEmail: true,
+            role: true,
+          },
+        });
+
+        if (!member) {
+          return next(new Error('Invalid guest session'));
+        }
+
+        // Create a guest user object for the socket
+        socket.user = {
+          id: `guest_${member.id}`,
+          firstName: member.guestName,
+          lastName: '',
+          email: member.guestEmail,
+          imageUrl: null,
+          isGuest: true,
+          guestMemberId: member.id,
+          allowedTripId: member.tripId, // Guest can only join this specific trip
+        };
+
+        console.log(`🔌 Guest authenticated: ${member.guestName} (${member.id})`);
+        return next();
+      }
+
+      // Regular Clerk token authentication
       const session = await verifyToken(token, {
         secretKey: process.env.CLERK_SECRET_KEY,
       });
@@ -71,7 +107,7 @@ export function initializeSocketServer(httpServer) {
         return next(new Error('User not found'));
       }
 
-      socket.user = user;
+      socket.user = { ...user, isGuest: false };
       next();
     } catch (error) {
       console.error('Socket authentication error:', error.message);
@@ -86,19 +122,32 @@ export function initializeSocketServer(httpServer) {
     // Join a trip room
     socket.on('join-trip', async (tripId) => {
       try {
-        // Verify user has access to this trip
-        const membership = await prisma.tripMember.findFirst({
-          where: {
-            tripId,
-            userId: socket.user.id,
-          },
-        });
+        let hasAccess = false;
 
-        const trip = await prisma.collaborativeTrip.findUnique({
-          where: { id: tripId },
-        });
+        // Guest users: check if they're allowed to join this specific trip
+        if (socket.user.isGuest) {
+          hasAccess = socket.user.allowedTripId === tripId;
+          if (!hasAccess) {
+            socket.emit('error', { message: 'Access denied to this trip' });
+            return;
+          }
+        } else {
+          // Regular users: verify membership or creator status
+          const membership = await prisma.tripMember.findFirst({
+            where: {
+              tripId,
+              userId: socket.user.id,
+            },
+          });
 
-        if (!membership && trip?.creatorId !== socket.user.id) {
+          const trip = await prisma.collaborativeTrip.findUnique({
+            where: { id: tripId },
+          });
+
+          hasAccess = membership || trip?.creatorId === socket.user.id;
+        }
+
+        if (!hasAccess) {
           socket.emit('error', { message: 'Access denied to this trip' });
           return;
         }
@@ -134,7 +183,7 @@ export function initializeSocketServer(httpServer) {
           activeUsers: getActiveUsers(tripId),
         });
 
-        console.log(`👥 ${socket.user.firstName} joined trip room: ${tripId}`);
+        console.log(`👥 ${socket.user.firstName}${socket.user.isGuest ? ' (guest)' : ''} joined trip room: ${tripId}`);
       } catch (error) {
         console.error('Error joining trip room:', error);
         socket.emit('error', { message: 'Failed to join trip' });
@@ -148,30 +197,53 @@ export function initializeSocketServer(httpServer) {
           return socket.emit('error', { message: 'Message cannot be empty' });
         }
 
-        // Save message to database
-        const message = await prisma.tripMessage.create({
-          data: {
-            tripId,
-            authorId: socket.user.id,
-            content: content.trim(),
-          },
-          include: {
-            author: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                imageUrl: true,
+        let message;
+
+        if (socket.user.isGuest) {
+          // Guest message - use guestName, no authorId
+          message = await prisma.tripMessage.create({
+            data: {
+              tripId,
+              guestName: socket.user.firstName,
+              content: content.trim(),
+            },
+          });
+
+          // Add synthetic author info for frontend display
+          message.author = {
+            id: socket.user.id,
+            firstName: socket.user.firstName,
+            lastName: '',
+            email: socket.user.email,
+            imageUrl: null,
+          };
+          message.isGuest = true;
+        } else {
+          // Regular user message
+          message = await prisma.tripMessage.create({
+            data: {
+              tripId,
+              authorId: socket.user.id,
+              content: content.trim(),
+            },
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  imageUrl: true,
+                },
               },
             },
-          },
-        });
+          });
+        }
 
         // Broadcast to all users in the room (including sender)
         io.to(tripId).emit('new-message', message);
 
-        console.log(`💬 Message in ${tripId}: ${socket.user.firstName}: ${content.substring(0, 50)}...`);
+        console.log(`💬 Message in ${tripId}: ${socket.user.firstName}${socket.user.isGuest ? ' (guest)' : ''}: ${content.substring(0, 50)}...`);
 
         // Check if message mentions the AI assistant
         if (content.toLowerCase().includes('@assistant')) {
