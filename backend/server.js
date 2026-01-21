@@ -69,6 +69,7 @@ app.use('/api/trips', votingRoutes);
 app.use('/api/trips', messagesRoutes);
 app.use('/api/trips', membersRoutes);
 app.use('/api/trips', invitationsRoutes);
+app.use('/api/invitations', invitationsRoutes);
 
 // Friends system
 app.use('/api/friends', friendsRoutes);
