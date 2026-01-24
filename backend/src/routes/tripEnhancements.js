@@ -2,7 +2,7 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/auth.js';
 import { getWeatherForecast, getPackingRecommendations } from '../services/weatherService.js';
-import { generatePersonalizedItinerary, generatePackingFromItinerary } from '../services/itineraryService.js';
+import { generatePersonalizedItinerary, generatePackingFromItinerary, generateItineraryStreaming } from '../services/itineraryService.js';
 import { getLocalEvents, getAllCityEvents } from '../data/localEvents.js';
 import { broadcastTripUpdate } from '../services/socketService.js';
 import prisma from '../db/prisma.js';
@@ -289,6 +289,164 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Error generating itinerary:', error);
     res.status(500).json({ error: 'Failed to generate itinerary', message: error.message });
+  }
+});
+
+/**
+ * GET /api/trips/:id/itinerary/stream
+ * STREAMING: Generate personalized itinerary day by day
+ * Uses Server-Sent Events (SSE) to stream each day as it's generated
+ */
+router.get('/:id/itinerary/stream', authenticateUser, async (req, res) => {
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+
+  // Helper to send SSE event
+  const sendEvent = (type, data) => {
+    res.write(`event: ${type}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    const { id } = req.params;
+    const tripData = await getTripData(id, req.user.id);
+
+    if (!tripData) {
+      sendEvent('error', { message: 'Trip not found or access denied' });
+      res.end();
+      return;
+    }
+
+    const { trip, isSavedTrip, members, city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails } = tripData;
+
+    // Check if itinerary already exists in cache
+    const existingTripData = typeof trip.tripData === 'string' ? JSON.parse(trip.tripData) : (trip.tripData || {});
+    const cachedItinerary = existingTripData.cachedItinerary || trip.finalDestination?.cachedItinerary;
+
+    if (cachedItinerary && cachedItinerary.length > 0) {
+      console.log(`✅ [STREAM] Using cached itinerary for trip ${id}`);
+      // Send cached days one by one (simulated streaming for cached data)
+      sendEvent('status', { stage: 'cached', message: 'Loading saved itinerary...' });
+
+      for (let i = 0; i < cachedItinerary.length; i++) {
+        sendEvent('day', {
+          day: cachedItinerary[i],
+          dayNumber: i + 1,
+          totalDays: cachedItinerary.length
+        });
+      }
+
+      sendEvent('complete', {
+        itinerary: cachedItinerary,
+        packing: existingTripData.cachedPacking || trip.finalDestination?.cachedPacking,
+        cached: true
+      });
+      res.end();
+      return;
+    }
+
+    console.log(`🔄 [STREAM] Generating new itinerary for trip ${id}...`);
+    sendEvent('status', { stage: 'starting', message: 'Starting itinerary generation...' });
+
+    const destination = {
+      city,
+      country,
+      startDate,
+      endDate,
+      suggestedActivities,
+      flightDetails,
+      hotelDetails
+    };
+
+    // Get user preferences
+    const userPreferences = await prisma.userPreferences.findUnique({
+      where: { userId: req.user.id },
+    });
+
+    const userProfile = {
+      personality: userPreferences?.personality,
+      topActivities: userPreferences?.topActivities || [],
+      budget: userPreferences?.budget || 1500,
+      idealRhythm: userPreferences?.idealRhythm,
+    };
+
+    const userName = req.user.firstName || 'there';
+
+    // Generate itinerary with streaming callback
+    const itinerary = await generateItineraryStreaming(
+      destination,
+      userProfile,
+      userName,
+      isSavedTrip ? [] : members,
+      (dayData, dayNumber, totalDays) => {
+        // Stream each day as it's generated
+        sendEvent('day', {
+          day: dayData,
+          dayNumber,
+          totalDays
+        });
+      }
+    );
+
+    // Get weather and generate packing list
+    let packing = null;
+    try {
+      const weather = await getWeatherForecast(city, country);
+      packing = generatePackingFromItinerary(itinerary, weather, { city, country });
+      sendEvent('packing', { packing });
+    } catch (packingError) {
+      console.warn('⚠️ Failed to generate packing:', packingError.message);
+    }
+
+    // Save itinerary to cache
+    try {
+      const updatedTripData = {
+        ...existingTripData,
+        cachedItinerary: itinerary,
+        cachedPacking: packing,
+        itineraryCachedAt: new Date().toISOString()
+      };
+
+      if (isSavedTrip) {
+        await prisma.savedTrip.update({
+          where: { id },
+          data: { tripData: updatedTripData }
+        });
+      } else if (trip.finalDestination) {
+        await prisma.collaborativeTrip.update({
+          where: { id },
+          data: {
+            finalDestination: {
+              ...trip.finalDestination,
+              cachedItinerary: itinerary,
+              cachedPacking: packing,
+              itineraryCachedAt: new Date().toISOString()
+            }
+          }
+        });
+      }
+      console.log(`💾 [STREAM] Itinerary cached for trip ${id}`);
+    } catch (cacheError) {
+      console.warn('⚠️ Failed to cache itinerary:', cacheError.message);
+    }
+
+    // Send completion event
+    sendEvent('complete', {
+      itinerary,
+      packing,
+      city,
+      country,
+      cached: false
+    });
+    res.end();
+
+  } catch (error) {
+    console.error('Error streaming itinerary:', error);
+    sendEvent('error', { message: error.message });
+    res.end();
   }
 });
 

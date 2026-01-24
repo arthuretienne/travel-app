@@ -1687,80 +1687,179 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
 // ========================================
 // TRIP ENHANCEMENTS SECTION
 // Weather, Itinerary, Packing, Events
+// Uses SSE streaming for itinerary generation
 // ========================================
 function TripEnhancementsSection({ trip, userName }) {
   const { getToken } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [enhancements, setEnhancements] = useState(null);
+  const [weather, setWeather] = useState(null);
+  const [events, setEvents] = useState({ upcoming: [], regular: [] });
+  const [packing, setPacking] = useState(null);
+  const [itinerary, setItinerary] = useState([]);
+  const [loadingWeather, setLoadingWeather] = useState(true);
+  const [loadingItinerary, setLoadingItinerary] = useState(true);
+  const [generatingDay, setGeneratingDay] = useState(null);
+  const [totalDays, setTotalDays] = useState(0);
   const [error, setError] = useState(null);
   const [activeDay, setActiveDay] = useState(0);
+  const [aiLoadingText, setAiLoadingText] = useState('Planning your adventure');
+
+  // AI loading text animation
+  const loadingPhrases = [
+    'Planning your adventure',
+    'Finding hidden gems',
+    'Checking local favorites',
+    'Optimizing your schedule',
+    'Adding insider tips',
+    'Crafting the perfect day',
+    'Discovering must-see spots',
+    'Personalizing activities',
+  ];
 
   useEffect(() => {
-    fetchEnhancements();
-  }, [trip.id]);
+    let phraseIndex = 0;
+    const interval = setInterval(() => {
+      phraseIndex = (phraseIndex + 1) % loadingPhrases.length;
+      setAiLoadingText(loadingPhrases[phraseIndex]);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const fetchEnhancements = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Fetch weather and events (fast endpoints)
+  useEffect(() => {
+    const fetchFastData = async () => {
+      try {
+        const token = await getToken();
 
-      const token = await getToken();
-      const response = await fetch(`${API_URL}/api/trips/${trip.id}/enhancements`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+        // Fetch weather and events in parallel
+        const [weatherRes, eventsRes] = await Promise.all([
+          fetch(`${API_URL}/api/trips/${trip.id}/weather`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          }),
+          fetch(`${API_URL}/api/trips/${trip.id}/events`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          }),
+        ]);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Enhancement API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        });
-        throw new Error(errorData.error || 'Failed to load enhancements');
+        if (weatherRes.ok) {
+          const weatherData = await weatherRes.json();
+          setWeather(weatherData.data?.weather);
+        }
+
+        if (eventsRes.ok) {
+          const eventsData = await eventsRes.json();
+          setEvents(eventsData.data?.events || { upcoming: [], regular: [] });
+        }
+      } catch (err) {
+        console.error('Error fetching fast data:', err);
+      } finally {
+        setLoadingWeather(false);
       }
+    };
 
-      const data = await response.json();
-      console.log('✅ Enhancements loaded:', data);
-      setEnhancements(data.data);
-    } catch (err) {
-      console.error('Error fetching enhancements:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchFastData();
+  }, [trip.id, getToken]);
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-8">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-          <p className="text-text-secondary">Preparing your personalized trip plan...</p>
-          <p className="text-sm text-text-secondary mt-2">Checking weather, planning itinerary, finding events...</p>
-        </div>
-      </div>
-    );
-  }
+  // Stream itinerary using SSE
+  useEffect(() => {
+    let eventSource = null;
 
-  if (error) {
-    return (
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-amber-900 mb-1">Unable to load trip enhancements</h3>
-            <p className="text-sm text-amber-700">{error}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    const streamItinerary = async () => {
+      try {
+        const token = await getToken();
 
-  if (!enhancements) return null;
+        // Use EventSource with auth header via fetch
+        const response = await fetch(`${API_URL}/api/trips/${trip.id}/itinerary/stream`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'text/event-stream',
+          },
+        });
 
-  const { weather, packing, itinerary, events } = enhancements;
+        if (!response.ok) {
+          throw new Error('Failed to start itinerary stream');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          let eventType = '';
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              eventType = line.slice(7);
+            } else if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                switch (eventType) {
+                  case 'status':
+                    console.log('📊 Stream status:', data.message);
+                    break;
+
+                  case 'day':
+                    console.log(`📅 Received day ${data.dayNumber}/${data.totalDays}`);
+                    setTotalDays(data.totalDays);
+                    setGeneratingDay(data.dayNumber);
+                    setItinerary(prev => {
+                      // Add or update day
+                      const existing = prev.findIndex(d => d.day === data.dayNumber);
+                      if (existing >= 0) {
+                        const updated = [...prev];
+                        updated[existing] = data.day;
+                        return updated;
+                      }
+                      return [...prev, data.day].sort((a, b) => a.day - b.day);
+                    });
+                    break;
+
+                  case 'packing':
+                    console.log('🎒 Received packing data');
+                    setPacking(data.packing);
+                    break;
+
+                  case 'complete':
+                    console.log('✅ Itinerary stream complete');
+                    setLoadingItinerary(false);
+                    setGeneratingDay(null);
+                    if (data.packing) setPacking(data.packing);
+                    break;
+
+                  case 'error':
+                    console.error('❌ Stream error:', data.message);
+                    setError(data.message);
+                    setLoadingItinerary(false);
+                    break;
+                }
+              } catch (e) {
+                console.error('Error parsing SSE data:', e);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error streaming itinerary:', err);
+        setError(err.message);
+        setLoadingItinerary(false);
+      }
+    };
+
+    streamItinerary();
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, [trip.id, getToken]);
+
   const destination = trip.finalDestination;
 
   return (
@@ -1768,22 +1867,122 @@ function TripEnhancementsSection({ trip, userName }) {
       {/* Weather & Packing Section - Side by Side */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Weather Forecast */}
-        {weather && <WeatherForecastCard weather={weather} destination={destination} />}
+        {loadingWeather ? (
+          <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl shadow-card border border-blue-100 p-6">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              <span className="text-text-secondary">Loading weather...</span>
+            </div>
+          </div>
+        ) : weather ? (
+          <WeatherForecastCard weather={weather} destination={destination} />
+        ) : null}
 
         {/* Packing Tips */}
-        {packing && <PackingTipsCard packing={packing} destination={destination} />}
+        {packing ? (
+          <PackingTipsCard packing={packing} destination={destination} />
+        ) : loadingItinerary ? (
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl shadow-card border border-amber-100 p-6">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
+              <span className="text-text-secondary">Preparing packing list...</span>
+            </div>
+          </div>
+        ) : null}
       </div>
 
-      {/* Personalized Itinerary */}
-      {itinerary && itinerary.length > 0 && (
-        <PersonalizedItineraryCard
-          itinerary={itinerary}
-          userName={userName}
-          activeDay={activeDay}
-          setActiveDay={setActiveDay}
-          destination={destination}
-        />
-      )}
+      {/* Personalized Itinerary - Streaming */}
+      <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <Calendar className="w-6 h-6 text-primary" />
+              Your Personalized Itinerary
+            </h2>
+            {loadingItinerary && (
+              <div className="flex items-center gap-2 text-sm text-primary bg-primary/10 px-3 py-1.5 rounded-full">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+                <span className="animate-pulse">{aiLoadingText}...</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Day tabs */}
+        {(itinerary.length > 0 || generatingDay) && (
+          <div className="flex overflow-x-auto gap-2 p-4 border-b border-gray-100 bg-gray-50">
+            {itinerary.map((day, idx) => (
+              <button
+                key={day.day}
+                onClick={() => setActiveDay(idx)}
+                className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-all ${
+                  activeDay === idx
+                    ? 'bg-primary text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                Day {day.day}
+              </button>
+            ))}
+            {/* Loading placeholder for next day */}
+            {loadingItinerary && generatingDay && generatingDay > itinerary.length && (
+              <div className="flex-shrink-0 px-4 py-2 rounded-lg bg-primary/10 border border-primary/30 flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-primary font-medium">Day {generatingDay}</span>
+              </div>
+            )}
+            {/* Future days placeholder */}
+            {loadingItinerary && totalDays > 0 && Array.from({ length: Math.max(0, totalDays - Math.max(itinerary.length, generatingDay || 0)) }, (_, i) => (
+              <div
+                key={`future-${i}`}
+                className="flex-shrink-0 px-4 py-2 rounded-lg bg-gray-100 border border-gray-200 text-gray-400"
+              >
+                Day {Math.max(itinerary.length, generatingDay || 0) + i + 1}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Day content */}
+        <div className="p-6">
+          {itinerary.length === 0 && loadingItinerary ? (
+            <div className="text-center py-12">
+              <div className="relative inline-block">
+                <Sparkles className="w-16 h-16 text-primary animate-pulse mx-auto mb-4" />
+                <div className="absolute inset-0 w-16 h-16 mx-auto border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+              <p className="text-lg font-medium text-gray-900 mb-2">{aiLoadingText}...</p>
+              <p className="text-sm text-text-secondary">
+                Creating a personalized day-by-day itinerary just for you
+              </p>
+              <div className="flex justify-center gap-1 mt-4">
+                {[0, 1, 2].map(i => (
+                  <div
+                    key={i}
+                    className="w-2 h-2 bg-primary rounded-full animate-bounce"
+                    style={{ animationDelay: `${i * 0.15}s` }}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : itinerary.length > 0 ? (
+            <PersonalizedItineraryCard
+              itinerary={itinerary}
+              userName={userName}
+              activeDay={activeDay}
+              setActiveDay={setActiveDay}
+              destination={destination}
+              isStreaming={loadingItinerary}
+            />
+          ) : error ? (
+            <div className="text-center py-8">
+              <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+              <p className="text-gray-900 font-medium mb-1">Unable to generate itinerary</p>
+              <p className="text-sm text-text-secondary">{error}</p>
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       {/* Local Events */}
       {(events.upcoming.length > 0 || events.regular.length > 0) && (

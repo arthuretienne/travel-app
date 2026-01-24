@@ -264,10 +264,18 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
 }
 
 // Personalized Itinerary Card Component
-export function PersonalizedItineraryCard({ itinerary, userName, activeDay, setActiveDay, destination }) {
+// When isStreaming=true, renders just the day content (tabs are in parent)
+export function PersonalizedItineraryCard({ itinerary, userName, activeDay, setActiveDay, destination, isStreaming = false }) {
   if (!itinerary || itinerary.length === 0) return null;
 
   const currentDay = itinerary[activeDay];
+
+  // When streaming, just render the day content without wrapper
+  if (isStreaming) {
+    return currentDay ? (
+      <DayContent day={currentDay} userName={userName} />
+    ) : null;
+  }
 
   return (
     <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-card border border-green-100 overflow-hidden">
@@ -277,7 +285,7 @@ export function PersonalizedItineraryCard({ itinerary, userName, activeDay, setA
             <Navigation className="w-6 h-6 text-green-600" />
             Your Personalized Itinerary
           </h2>
-          <span className="text-sm text-gray-600">{destination.city}</span>
+          <span className="text-sm text-gray-600">{destination?.city}</span>
         </div>
 
         {/* Day Selector */}
@@ -299,101 +307,110 @@ export function PersonalizedItineraryCard({ itinerary, userName, activeDay, setA
 
         {/* Day Details */}
         {currentDay && (
-          <div className="space-y-4">
-            {/* Day Header */}
-            <div className="bg-white rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-bold text-gray-900">{currentDay.theme}</h3>
-                <span className="text-sm text-gray-600">
-                  {new Date(currentDay.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-                </span>
-              </div>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <span className="flex items-center gap-1">
-                  <TrendingUp className="w-4 h-4" />
-                  {currentDay.walkingDistance}
-                </span>
-                <span className="flex items-center gap-1">
-                  €{currentDay.totalCost} budget
-                </span>
-              </div>
-              {currentDay.highlights && currentDay.highlights.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {currentDay.highlights.map((highlight, idx) => {
-                    const text = typeof highlight === 'string' ? highlight : (highlight?.word || highlight?.value || highlight?.text || '');
-                    if (!text) return null;
-                    return (
-                      <span key={idx} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                        ✨ {text}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+          <DayContent day={currentDay} userName={userName} />
+        )}
+      </div>
+    </div>
+  );
+}
 
-            {/* Schedule */}
-            <div className="space-y-3">
-              {currentDay.schedule.map((item, idx) => (
-                <div key={idx} className="bg-white rounded-xl p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-start gap-4">
-                    {/* Time */}
-                    <div className="flex-shrink-0 w-20">
-                      <div className="text-sm font-bold text-green-700">{item.time}</div>
-                      <div className="text-xs text-gray-500">{item.duration}</div>
-                    </div>
+// Extracted Day Content Component for reuse
+function DayContent({ day: currentDay, userName }) {
+  if (!currentDay) return null;
 
-                    {/* Activity Icon */}
-                    <div className="flex-shrink-0 mt-1">
-                      {item.type === 'Food' && <Utensils className="w-5 h-5 text-orange-500" />}
-                      {item.type === 'Culture' && <MapPin className="w-5 h-5 text-purple-500" />}
-                      {item.type === 'Nature' && <Sun className="w-5 h-5 text-green-500" />}
-                      {item.type === 'Transport' && <Navigation className="w-5 h-5 text-blue-500" />}
-                      {!['Food', 'Culture', 'Nature', 'Transport'].includes(item.type) && (
-                        <Sparkles className="w-5 h-5 text-pink-500" />
-                      )}
-                    </div>
-
-                    {/* Details */}
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 mb-1">{item.activity}</h4>
-                      {item.location && (
-                        <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {item.location}
-                        </p>
-                      )}
-                      {item.transport && (
-                        <p className="text-xs text-blue-600 mb-2 flex items-center gap-1">
-                          <Navigation className="w-3 h-3" />
-                          {item.transport}
-                        </p>
-                      )}
-                      {item.tips && (
-                        <p className="text-sm text-green-700 bg-green-50 rounded-lg p-2 mt-2">
-                          💡 {item.tips}
-                        </p>
-                      )}
-                      {item.forWho && (
-                        <p className="text-xs text-purple-600 mt-2 italic">
-                          {item.forWho}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className={`text-xs font-semibold ${item.cost === 0 ? 'text-green-600' : 'text-gray-700'}`}>
-                          {item.cost === 0 ? 'FREE' : `€${item.cost}`}
-                        </span>
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                          {item.type}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+  return (
+    <div className="space-y-4">
+      {/* Day Header */}
+      <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-bold text-gray-900">{currentDay.theme}</h3>
+          <span className="text-sm text-gray-600">
+            {new Date(currentDay.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+          </span>
+        </div>
+        <div className="flex items-center gap-4 text-sm text-gray-600">
+          <span className="flex items-center gap-1">
+            <TrendingUp className="w-4 h-4" />
+            {currentDay.walkingDistance}
+          </span>
+          <span className="flex items-center gap-1">
+            €{currentDay.totalCost} budget
+          </span>
+        </div>
+        {currentDay.highlights && currentDay.highlights.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {currentDay.highlights.map((highlight, idx) => {
+              const text = typeof highlight === 'string' ? highlight : (highlight?.word || highlight?.value || highlight?.text || '');
+              if (!text) return null;
+              return (
+                <span key={idx} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                  {text}
+                </span>
+              );
+            })}
           </div>
         )}
+      </div>
+
+      {/* Schedule */}
+      <div className="space-y-3">
+        {currentDay.schedule?.map((item, idx) => (
+          <div key={idx} className="bg-white rounded-xl p-4 hover:shadow-md transition-shadow border border-gray-100">
+            <div className="flex items-start gap-4">
+              {/* Time */}
+              <div className="flex-shrink-0 w-20">
+                <div className="text-sm font-bold text-primary">{item.time}</div>
+                <div className="text-xs text-gray-500">{item.duration}</div>
+              </div>
+
+              {/* Activity Icon */}
+              <div className="flex-shrink-0 mt-1">
+                {item.type === 'Food' && <Utensils className="w-5 h-5 text-orange-500" />}
+                {item.type === 'Culture' && <MapPin className="w-5 h-5 text-purple-500" />}
+                {item.type === 'Nature' && <Sun className="w-5 h-5 text-green-500" />}
+                {item.type === 'Transport' && <Navigation className="w-5 h-5 text-blue-500" />}
+                {!['Food', 'Culture', 'Nature', 'Transport'].includes(item.type) && (
+                  <Sparkles className="w-5 h-5 text-pink-500" />
+                )}
+              </div>
+
+              {/* Details */}
+              <div className="flex-1">
+                <h4 className="font-semibold text-gray-900 mb-1">{item.activity}</h4>
+                {item.location && (
+                  <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {item.location}
+                  </p>
+                )}
+                {item.transport && (
+                  <p className="text-xs text-blue-600 mb-2 flex items-center gap-1">
+                    <Navigation className="w-3 h-3" />
+                    {item.transport}
+                  </p>
+                )}
+                {item.tips && (
+                  <p className="text-sm text-primary bg-primary/5 rounded-lg p-2 mt-2">
+                    {item.tips}
+                  </p>
+                )}
+                {item.forWho && (
+                  <p className="text-xs text-purple-600 mt-2 italic">
+                    {item.forWho}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 mt-2">
+                  <span className={`text-xs font-semibold ${item.cost === 0 ? 'text-green-600' : 'text-gray-700'}`}>
+                    {item.cost === 0 ? 'FREE' : `€${item.cost}`}
+                  </span>
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                    {item.type}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

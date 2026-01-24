@@ -204,6 +204,140 @@ OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
  * @param {Object} tripData - Trip destination info
  * @returns {Object} Packing recommendations
  */
+/**
+ * Generate itinerary day by day with streaming
+ * @param {Object} tripData - Trip destination data
+ * @param {Object} userProfile - User preferences
+ * @param {string} userName - User's first name
+ * @param {Array} members - Trip members
+ * @param {Function} onDay - Callback called when a day is generated
+ * @returns {Promise<Array>} Complete itinerary array
+ */
+export async function generateItineraryStreaming(tripData, userProfile, userName, members = [], onDay) {
+  const { city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails } = tripData;
+
+  console.log('📅 [STREAMING] Generating itinerary for:', { city, country, startDate, endDate });
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+  const memberCount = members.length + 1;
+  const groupText = memberCount > 1 ? `for ${userName} and ${memberCount - 1} friend${memberCount > 1 ? 's' : ''}` : `for ${userName}`;
+
+  const activitiesText = suggestedActivities?.length > 0
+    ? suggestedActivities.map(a => `- ${a.name} (${a.category || 'activity'}, ${a.duration || '2h'}, €${a.estimatedPrice || a.price || 0})`).join('\n')
+    : 'Activities based on user preferences';
+
+  // Build flight and hotel info
+  let flightInfoText = '';
+  if (flightDetails) {
+    const outbound = flightDetails.outbound || flightDetails;
+    const returnFlight = flightDetails.return || flightDetails.inbound;
+    flightInfoText = `
+FLIGHT INFORMATION:
+- Outbound: ${outbound?.departure || 'N/A'} → ${outbound?.arrival || city}
+  - Departure: ${outbound?.departureTime || startDate}
+  - Arrival: ${outbound?.arrivalTime || 'morning'}
+- Total flight cost: €${flightDetails.totalCost || flightDetails.price || 'N/A'}`;
+  }
+
+  let hotelInfoText = '';
+  if (hotelDetails) {
+    hotelInfoText = `
+HOTEL INFORMATION:
+- Hotel: ${hotelDetails.name || 'Booked accommodation'}
+- Location: ${hotelDetails.location || hotelDetails.address || city}
+- Check-in: ${hotelDetails.checkIn || startDate}
+- Check-out: ${hotelDetails.checkOut || endDate}`;
+  }
+
+  const personalityText = userProfile?.personality
+    ? `Traveler personality: ${userProfile.personality}`
+    : '';
+
+  const itinerary = [];
+
+  // Generate each day one by one
+  for (let dayNum = 1; dayNum <= days; dayNum++) {
+    const currentDate = new Date(start);
+    currentDate.setDate(currentDate.getDate() + dayNum - 1);
+    const dateStr = currentDate.toISOString().split('T')[0];
+
+    const isFirstDay = dayNum === 1;
+    const isLastDay = dayNum === days;
+
+    const dayPrompt = `You are creating DAY ${dayNum} of a ${days}-day trip ${groupText} to ${city}, ${country}.
+Date: ${dateStr}
+${personalityText}
+${isFirstDay ? `This is ARRIVAL day. ${flightInfoText}` : ''}
+${isLastDay ? 'This is DEPARTURE day - include checkout and airport transfer.' : ''}
+${hotelInfoText}
+
+Activities to possibly include: ${activitiesText}
+
+Create a SINGLE day schedule with 4-6 activities. Return ONLY valid JSON (no markdown):
+{
+  "day": ${dayNum},
+  "date": "${dateStr}",
+  "theme": "Short theme (3-4 words)",
+  "schedule": [
+    {
+      "time": "HH:MM AM/PM",
+      "duration": "Xh",
+      "activity": "Activity name",
+      "type": "Culture|Food|Nature|Adventure|Relaxation",
+      "location": "Location name",
+      "transport": "How to get there",
+      "cost": 0,
+      "tips": "One sentence tip for ${userName}"
+    }
+  ],
+  "totalCost": 50,
+  "walkingDistance": "5km",
+  "highlights": ["highlight1", "highlight2"]
+}`;
+
+    try {
+      console.log(`🤖 [STREAMING] Generating day ${dayNum}/${days}...`);
+
+      const message = await client.messages.create({
+        model: 'claude-3-5-haiku-latest',
+        max_tokens: 2000,
+        temperature: 0.7,
+        messages: [{ role: 'user', content: dayPrompt }]
+      });
+
+      let response = message.content[0].text.trim();
+
+      // Strip markdown if present
+      if (response.startsWith('```')) {
+        response = response.replace(/^```(?:json)?\n?/g, '').replace(/\n?```$/g, '').trim();
+      }
+
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const dayData = JSON.parse(jsonMatch[0]);
+        itinerary.push(dayData);
+
+        // Call the callback with the day data
+        if (onDay) {
+          onDay(dayData, dayNum, days);
+        }
+        console.log(`✅ [STREAMING] Day ${dayNum} completed`);
+      }
+    } catch (error) {
+      console.error(`❌ [STREAMING] Error generating day ${dayNum}:`, error.message);
+      // Send error but continue with other days
+      if (onDay) {
+        onDay({ day: dayNum, date: dateStr, theme: 'Error generating day', schedule: [], error: true }, dayNum, days);
+      }
+    }
+  }
+
+  return itinerary;
+}
+
 export function generatePackingFromItinerary(itinerary, weatherData, tripData) {
   // Extract all activity types from itinerary
   const activityTypes = new Set();
