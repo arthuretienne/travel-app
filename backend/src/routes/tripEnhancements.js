@@ -4,6 +4,7 @@ import { authenticateUser } from '../middleware/auth.js';
 import { getWeatherForecast, getPackingRecommendations } from '../services/weatherService.js';
 import { generatePersonalizedItinerary, generatePackingFromItinerary } from '../services/itineraryService.js';
 import { getLocalEvents, getAllCityEvents } from '../data/localEvents.js';
+import { broadcastTripUpdate } from '../services/socketService.js';
 import prisma from '../db/prisma.js';
 
 const router = express.Router();
@@ -487,6 +488,133 @@ router.get('/:id/enhancements', authenticateUser, async (req, res) => {
       error: 'Failed to generate trip enhancements',
       message: error.message,
     });
+  }
+});
+
+/**
+ * PATCH /api/trips/:id/itinerary/activities
+ * Modify activities in the cached itinerary
+ * Only trip creator can execute modifications
+ */
+router.patch('/:id/itinerary/activities', authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, dayNumber, activity, newActivity } = req.body;
+    // action: 'add' | 'remove' | 'modify'
+
+    if (!action || !dayNumber || !activity) {
+      return res.status(400).json({ error: 'Missing required fields: action, dayNumber, activity' });
+    }
+
+    const tripData = await getTripData(id, req.user.id);
+    if (!tripData) {
+      return res.status(404).json({ error: 'Trip not found or access denied' });
+    }
+
+    const { trip, isSavedTrip } = tripData;
+
+    // Check if user is creator (for collaborative trips)
+    if (!isSavedTrip && trip.creatorId !== req.user.id) {
+      return res.status(403).json({ error: 'Only trip creator can modify itinerary' });
+    }
+
+    // Get existing itinerary
+    let existingData;
+    if (isSavedTrip) {
+      existingData = typeof trip.tripData === 'string' ? JSON.parse(trip.tripData) : (trip.tripData || {});
+    } else {
+      existingData = trip.finalDestination || {};
+    }
+
+    let itinerary = existingData.cachedItinerary || [];
+
+    if (!Array.isArray(itinerary) || dayNumber < 1 || dayNumber > itinerary.length) {
+      return res.status(400).json({ error: `Invalid day number. Trip has ${itinerary.length} days.` });
+    }
+
+    const dayIndex = dayNumber - 1;
+
+    // Ensure activities array exists for the day
+    if (!itinerary[dayIndex].activities) {
+      itinerary[dayIndex].activities = [];
+    }
+
+    switch (action) {
+      case 'add':
+        itinerary[dayIndex].activities.push({
+          name: activity.name,
+          time: activity.time || null,
+          price: activity.price || null,
+          addedByAI: true,
+          addedAt: new Date().toISOString(),
+        });
+        break;
+
+      case 'remove':
+        itinerary[dayIndex].activities = itinerary[dayIndex].activities.filter(
+          (a) => a.name.toLowerCase() !== activity.name.toLowerCase()
+        );
+        break;
+
+      case 'modify':
+        if (!newActivity) {
+          return res.status(400).json({ error: 'newActivity is required for modify action' });
+        }
+        const actIndex = itinerary[dayIndex].activities.findIndex(
+          (a) => a.name.toLowerCase() === activity.name.toLowerCase()
+        );
+        if (actIndex !== -1) {
+          itinerary[dayIndex].activities[actIndex] = {
+            ...itinerary[dayIndex].activities[actIndex],
+            ...newActivity,
+            modifiedAt: new Date().toISOString(),
+          };
+        } else {
+          return res.status(404).json({ error: `Activity "${activity.name}" not found in day ${dayNumber}` });
+        }
+        break;
+
+      default:
+        return res.status(400).json({ error: 'Invalid action. Use: add, remove, or modify' });
+    }
+
+    // Save updated itinerary
+    const updatedData = { ...existingData, cachedItinerary: itinerary };
+
+    if (isSavedTrip) {
+      await prisma.savedTrip.update({
+        where: { id },
+        data: { tripData: updatedData },
+      });
+    } else {
+      await prisma.collaborativeTrip.update({
+        where: { id },
+        data: { finalDestination: updatedData },
+      });
+    }
+
+    // Broadcast update via socket for real-time sync
+    broadcastTripUpdate(id, 'itinerary_modified', {
+      dayNumber,
+      action,
+      activity: activity.name,
+      modifiedBy: req.user.firstName || req.user.email,
+    });
+
+    console.log(`✅ Itinerary modified: ${action} "${activity.name}" on day ${dayNumber}`);
+
+    res.json({
+      success: true,
+      data: {
+        dayNumber,
+        action,
+        activity: activity.name,
+        updatedDay: itinerary[dayIndex],
+      },
+    });
+  } catch (error) {
+    console.error('Error modifying itinerary:', error);
+    res.status(500).json({ error: 'Failed to modify itinerary', message: error.message });
   }
 });
 

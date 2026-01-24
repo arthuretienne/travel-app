@@ -487,7 +487,7 @@ export default function TripDetail() {
           <>
             {/* Conditional Main Section based on trip status */}
             {isPlanning && <PlanningSection trip={trip} navigate={navigate} />}
-            {isVoting && <VotingSection trip={trip} fetchTripDetails={fetchTripDetails} />}
+            {isVoting && <VotingSection trip={trip} fetchTripDetails={fetchTripDetails} user={user} isCreator={userRole === 'creator'} />}
             {isConfirmed && (
               <>
                 <BookingChecklistSection trip={trip} fetchTripDetails={fetchTripDetails} getToken={getToken} />
@@ -1320,9 +1320,77 @@ function PlanningSection({ trip, navigate }) {
 }
 
 // Voting Section - When destinations are proposed
-function VotingSection({ trip, fetchTripDetails }) {
+function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
   const { getToken } = useAuth();
   const [voting, setVoting] = useState(false);
+  const [votingProgress, setVotingProgress] = useState(null);
+
+  // Listen for real-time voting updates via socket
+  useEffect(() => {
+    const handleTripUpdate = (event) => {
+      const { type, data } = event.detail || {};
+      if (type === 'vote_submitted') {
+        setVotingProgress(data);
+      }
+      if (type === 'voting_complete' || type === 'destination_finalized') {
+        // Refresh to show BookingChecklistSection
+        fetchTripDetails();
+      }
+    };
+
+    window.addEventListener('trip-update', handleTripUpdate);
+    return () => window.removeEventListener('trip-update', handleTripUpdate);
+  }, [fetchTripDetails]);
+
+  // Calculate winning destination based on current votes
+  const getWinningDestinationId = () => {
+    if (!trip.proposedTrips?.length) return null;
+
+    const scored = trip.proposedTrips.map(dest => ({
+      id: dest.id,
+      score: (dest.votes || []).reduce((sum, v) => {
+        if (v.rank === 1) return sum + 5;
+        if (v.rank === 2) return sum + 3;
+        if (v.rank === 3) return sum + 1;
+        return sum;
+      }, 0),
+    }));
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0]?.id;
+  };
+
+  // Finalize voting (creator only)
+  const handleFinalizeVote = async () => {
+    const destinationId = getWinningDestinationId();
+    if (!destinationId) return;
+
+    try {
+      setVoting(true);
+      const token = await getToken();
+
+      const response = await fetch(`${API_URL}/api/trips/${trip.id}/finalize-vote`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ destinationId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to finalize vote');
+      }
+
+      await fetchTripDetails();
+    } catch (err) {
+      console.error('Error finalizing vote:', err);
+      alert(err.message || 'Failed to finalize vote.');
+    } finally {
+      setVoting(false);
+    }
+  };
 
   const handleVote = async (destinationId) => {
     try {
@@ -1386,6 +1454,21 @@ function VotingSection({ trip, fetchTripDetails }) {
               </button>
             </div>
 
+            {/* Match Reason - Why this destination fits */}
+            {(proposed.tripData?.matchReason || proposed.tripData?.destination?.matchReason) && (
+              <div className="mb-3 p-3 bg-primary-light/30 border border-primary/20 rounded-lg">
+                <p className="text-sm text-text-main flex items-start gap-2">
+                  <Sparkles size={16} className="text-primary mt-0.5 flex-shrink-0" />
+                  <span>{proposed.tripData?.matchReason || proposed.tripData?.destination?.matchReason}</span>
+                </p>
+                {(proposed.tripData?.seasonReason || proposed.tripData?.destination?.seasonReason) && (
+                  <p className="text-xs text-text-secondary mt-1 ml-6">
+                    {proposed.tripData?.seasonReason || proposed.tripData?.destination?.seasonReason}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center gap-4 text-sm text-text-secondary">
               {(proposed.startDate || proposed.tripData?.slot?.startDate) && (
                 <div className="flex items-center gap-2">
@@ -1411,6 +1494,37 @@ function VotingSection({ trip, fetchTripDetails }) {
           </div>
         ))}
       </div>
+
+      {/* Finalize Vote Button - Creator Only */}
+      {isCreator && trip.proposedTrips?.length > 0 && (
+        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <div className="flex items-start justify-between">
+            <div>
+              <h4 className="font-semibold text-amber-900 mb-1">Prêt à décider ?</h4>
+              <p className="text-sm text-amber-700">
+                En tant que créateur, tu peux finaliser le vote et sélectionner la destination gagnante.
+              </p>
+              {votingProgress && (
+                <p className="text-xs text-amber-600 mt-1">
+                  {votingProgress.votedMembers}/{votingProgress.totalVoters} ont voté ({votingProgress.votingProgress}%)
+                </p>
+              )}
+            </div>
+            <button
+              onClick={handleFinalizeVote}
+              disabled={voting || !trip.proposedTrips?.some(p => p.votes?.length > 0)}
+              className="px-4 py-2 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {voting ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <CheckCircle2 size={16} />
+              )}
+              Finaliser
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -346,14 +346,14 @@ async function handleAIAssistant(tripId, userMessage, fromUser, io) {
   try {
     console.log(`🤖 AI Assistant triggered in trip ${tripId}`);
 
-    // Get trip context
+    // Get trip context with member details
     const trip = await prisma.collaborativeTrip.findUnique({
       where: { id: tripId },
       include: {
         members: {
           include: {
             user: {
-              select: { firstName: true, lastName: true },
+              select: { id: true, firstName: true, lastName: true },
             },
           },
         },
@@ -365,6 +365,23 @@ async function handleAIAssistant(tripId, userMessage, fromUser, io) {
       console.error('Trip not found for AI assistant');
       return;
     }
+
+    // Fetch participant preferences for personality context (token-efficient)
+    const memberUserIds = trip.members.map((m) => m.userId).filter(Boolean);
+    if (trip.creatorId && !memberUserIds.includes(trip.creatorId)) {
+      memberUserIds.push(trip.creatorId);
+    }
+
+    const participantPreferences = await prisma.userPreferences.findMany({
+      where: { userId: { in: memberUserIds } },
+      select: {
+        userId: true,
+        personality: true,
+        topActivities: true,
+        idealRhythm: true,
+        globalStyle: true,
+      },
+    });
 
     // Get recent chat history for context
     const recentMessages = await prisma.tripMessage.findMany({
@@ -378,8 +395,8 @@ async function handleAIAssistant(tripId, userMessage, fromUser, io) {
       },
     });
 
-    // Build context for Claude
-    const tripContext = buildTripContext(trip);
+    // Build context for Claude with personality data
+    const tripContext = buildTripContext(trip, participantPreferences);
     const chatHistory = recentMessages
       .reverse()
       .map(m => `${m.author?.firstName || 'Anonyme'}: ${m.content}`)
@@ -434,9 +451,9 @@ async function handleAIAssistant(tripId, userMessage, fromUser, io) {
 }
 
 /**
- * Build trip context for AI
+ * Build trip context for AI with participant personalities
  */
-function buildTripContext(trip) {
+function buildTripContext(trip, participantPreferences = []) {
   const members = trip.members.map(m => m.user?.firstName || m.guestName || 'Invité').join(', ');
   const destination = trip.finalDestination
     ? `${trip.finalDestination.city}, ${trip.finalDestination.country}`
@@ -446,13 +463,40 @@ function buildTripContext(trip) {
     : 'Non définies';
   const status = trip.finalDestination ? 'Confirmé' : (trip.proposedTrips?.length > 0 ? 'En vote' : 'En planification');
 
+  // Build personality summary (token-efficient)
+  let personalitySummary = '';
+  if (participantPreferences.length > 0) {
+    const personalities = participantPreferences.map((p) => p.personality).filter(Boolean);
+    const styles = participantPreferences.map((p) => p.globalStyle).filter(Boolean);
+    const activities = [...new Set(participantPreferences.flatMap((p) => p.topActivities || []))].slice(0, 6);
+    const rhythms = [...new Set(participantPreferences.map((p) => p.idealRhythm).filter(Boolean))];
+
+    personalitySummary = `
+PROFILS DU GROUPE:
+- Personnalités: ${personalities.length > 0 ? personalities.join(', ') : 'Non renseignées'}
+- Styles de voyage: ${styles.length > 0 ? styles.join(', ') : 'Variés'}
+- Activités préférées: ${activities.length > 0 ? activities.join(', ') : 'Variées'}
+- Rythme souhaité: ${rhythms.length > 0 ? rhythms.join(', ') : 'Modéré'}`;
+  }
+
+  // Build itinerary summary if available
+  let itinerarySummary = '';
+  if (trip.finalDestination?.cachedItinerary && Array.isArray(trip.finalDestination.cachedItinerary)) {
+    const itinerary = trip.finalDestination.cachedItinerary;
+    itinerarySummary = `
+ITINÉRAIRE ACTUEL (${itinerary.length} jours):
+${itinerary.slice(0, 4).map((day, i) => `- Jour ${i + 1}: ${day.title || day.activities?.slice(0, 2).map(a => a.name).join(', ') || 'Activités prévues'}`).join('\n')}${itinerary.length > 4 ? '\n- ...' : ''}`;
+  }
+
   return `
 Voyage de groupe: "${trip.name}"
 Statut: ${status}
 Destination: ${destination}
 Dates: ${dates}
 Participants: ${members}
-Nombre de participants: ${trip.members.length}
+Nombre de participants: ${trip.members.length + 1}
+${personalitySummary}
+${itinerarySummary}
 `;
 }
 
@@ -468,12 +512,18 @@ ${tripContext}
 HISTORIQUE RÉCENT DU CHAT:
 ${chatHistory}
 
+CAPACITÉS:
+Tu peux suggérer des modifications à l'itinéraire. Utilise ces formats pour que le créateur puisse les appliquer:
+- Pour ajouter une activité: "[SUGGESTION] Jour X: Ajouter [Nom] - [Heure] - [Prix estimé]"
+- Pour remplacer: "[SUGGESTION] Jour X: Remplacer [Ancienne] par [Nouvelle]"
+
 RÈGLES:
 - Réponds en français, de manière concise et amicale
+- Adapte tes suggestions aux personnalités et préférences du groupe (si disponibles)
 - Utilise des emojis avec modération
-- Sois utile et pratique
-- Si on te demande de modifier l'itinéraire, suggère des changements mais précise que le créateur du voyage devra les valider
+- Sois utile et pratique avec des suggestions concrètes
 - Tu peux suggérer des activités, restaurants, conseils pratiques
+- Prends en compte le budget et le rythme souhaité du groupe
 - Reste dans le contexte du voyage planifié
 - Limite ta réponse à 200 mots maximum`;
 

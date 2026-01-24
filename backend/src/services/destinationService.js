@@ -239,15 +239,27 @@ export async function discoverDestinations({
  * Generate date candidates for multi-date search
  * OPTIMIZED: Reduced from 7 to 3 candidates for faster response (saves ~5-8s per destination)
  * Returns array of departure dates to check
+ * @param {string} userDepartureDate - User's requested departure date (YYYY-MM-DD)
+ * @param {number} duration - Trip duration in days
+ * @param {boolean} isFixedDate - If true, use ONLY the exact date (no flexibility)
  */
-function generateDateCandidates(userDepartureDate, duration) {
+function generateDateCandidates(userDepartureDate, duration, isFixedDate = false) {
   const candidates = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   if (userDepartureDate) {
-    // User specified a date - check ±1 day around it (was ±3, now ±1 for speed)
     const baseDate = new Date(userDepartureDate);
+
+    // FIXED DATES: Use EXACTLY the user's date, no flexibility
+    if (isFixedDate) {
+      if (baseDate >= today) {
+        candidates.push(baseDate.toISOString().split('T')[0]);
+      }
+      return candidates; // Return immediately with only the exact date
+    }
+
+    // FLEXIBLE DATES: Check ±1 day around it for best price
     for (let offset = -1; offset <= 1; offset++) {
       const candidate = new Date(baseDate);
       candidate.setDate(candidate.getDate() + offset);
@@ -301,6 +313,7 @@ export async function optimizeDestination({
   duration = 7,
   departureDate = null,
   tripContext = null, // NEW: User's free text description for context-aware hotel selection
+  isFixedDate = false, // If true, use exact dates without flexibility
 }) {
   console.log(`🎯 NEW WORKFLOW: Optimizing ${destination} trip for €${budget} budget`);
 
@@ -362,8 +375,9 @@ export async function optimizeDestination({
     }
 
     // STEP 2: Generate date candidates and search flights in parallel
-    const dateCandidates = generateDateCandidates(departureDate, duration);
-    console.log(`📅 Step 2: Checking ${dateCandidates.length} date options for best price...`);
+    // For fixed dates, only search the exact date requested
+    const dateCandidates = generateDateCandidates(departureDate, duration, isFixedDate);
+    console.log(`📅 Step 2: Checking ${dateCandidates.length} date option(s) ${isFixedDate ? '(FIXED DATE)' : 'for best price'}...`);
     console.log(`   Dates: ${dateCandidates.join(', ')}`);
 
     // Search flights for all date candidates in parallel (max 5 concurrent for speed)

@@ -2,6 +2,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateUser } from '../middleware/auth.js';
+import { broadcastTripUpdate, broadcastSystemMessage } from '../services/socketService.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -71,6 +72,13 @@ router.post('/:tripId/destinations', authenticateUser, async (req, res) => {
       return res.status(400).json({ error: 'End date must be after start date' });
     }
 
+    // Extract matchReason and seasonReason to top level for easy access
+    const enrichedTripData = tripData ? {
+      ...tripData,
+      matchReason: tripData.matchReason || tripData.destination?.matchReason,
+      seasonReason: tripData.seasonReason || tripData.destination?.seasonReason,
+    } : {};
+
     // Create proposed destination
     const proposedDestination = await prisma.proposedDestination.create({
       data: {
@@ -83,7 +91,7 @@ router.post('/:tripId/destinations', authenticateUser, async (req, res) => {
         endDate: end,
         duration,
         estimatedCostPerPerson: parseFloat(estimatedCostPerPerson),
-        tripData: tripData || {},
+        tripData: enrichedTripData,
       },
       include: {
         proposer: {
@@ -269,6 +277,54 @@ router.post('/:tripId/vote', authenticateUser, async (req, res) => {
         type: 'vote_update',
       },
     });
+
+    // Calculate voting progress and broadcast update
+    const totalVoters = trip.members.length + 1; // +1 for creator
+    const allVotes = await prisma.tripVote.findMany({
+      where: { tripId },
+      select: { userId: true },
+    });
+    const uniqueVoters = new Set(allVotes.map((v) => v.userId)).size;
+    const votingProgress = Math.round((uniqueVoters / totalVoters) * 100);
+    const isVotingComplete = trip.requireAllVotes
+      ? uniqueVoters === totalVoters
+      : uniqueVoters >= Math.ceil(totalVoters / 2) || (totalVoters === 1 && uniqueVoters === 1);
+
+    // Broadcast vote update via socket for real-time UI updates
+    broadcastTripUpdate(tripId, 'vote_submitted', {
+      oderId: user.id,
+      voterName: user.firstName || user.email,
+      votedMembers: uniqueVoters,
+      totalVoters,
+      votingProgress,
+      isVotingComplete,
+    });
+
+    // If voting is complete, also broadcast that
+    if (isVotingComplete) {
+      // Calculate winner
+      const results = await prisma.proposedDestination.findMany({
+        where: { tripId },
+        include: { votes: true },
+      });
+      const scored = results.map((dest) => ({
+        id: dest.id,
+        city: dest.city,
+        country: dest.country,
+        score: dest.votes.reduce((sum, v) => {
+          if (v.rank === 1) return sum + 5;
+          if (v.rank === 2) return sum + 3;
+          if (v.rank === 3) return sum + 1;
+          return sum;
+        }, 0),
+      }));
+      scored.sort((a, b) => b.score - a.score);
+
+      broadcastTripUpdate(tripId, 'voting_complete', {
+        winner: scored[0],
+        allResults: scored,
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -478,6 +534,20 @@ router.post('/:tripId/finalize-vote', authenticateUser, async (req, res) => {
 
     // TODO: Send email notifications to all members
     console.log('📧 TODO: Send voting results to all members');
+
+    // Broadcast destination finalized via socket for real-time UI updates
+    broadcastTripUpdate(tripId, 'destination_finalized', {
+      destination: {
+        city: selectedDestination.city,
+        country: selectedDestination.country,
+      },
+      tripStatus: 'destination_selected',
+      finalStartDate: selectedDestination.startDate,
+      finalEndDate: selectedDestination.endDate,
+    });
+
+    // Also broadcast a system message
+    broadcastSystemMessage(tripId, `Destination confirmed: ${selectedDestination.city}, ${selectedDestination.country}!`);
 
     res.json({
       success: true,

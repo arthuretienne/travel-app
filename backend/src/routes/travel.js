@@ -292,6 +292,10 @@ router.post('/recommendations',
       if (destinationId) {
         console.log(`   Using pre-resolved destination ID: ${destinationId}`);
       }
+      // Check if user wants fixed dates (no flexibility)
+      const isFixedDate = userProfile.availability?.departureFlexibility === 'fixed' ||
+                          userProfile.availability?.flexibleDates === false;
+
       const optimizedTrip = await destinationService.optimizeDestination({
         destination,
         destinationId, // Pass the pre-resolved ID to avoid name ambiguity
@@ -301,6 +305,7 @@ router.post('/recommendations',
         duration,
         departureDate: userProfile.availability?.startDate,
         tripContext, // NEW: Pass user's free text for context-aware hotel selection
+        isFixedDate, // Respect fixed dates if specified
       });
 
       console.log(`✅ Trip optimized: €${optimizedTrip.flight.totalCost} flight + €${optimizedTrip.hotel.totalPrice} hotel`);
@@ -641,6 +646,11 @@ router.post('/recommendations',
 
       // Step 2: Optimize top 3 destinations in PARALLEL
       console.log('⚡ Step 2: Optimizing top 3 destinations in parallel...');
+
+      // Check if user wants fixed dates (no flexibility)
+      const isFixedDateWithout = userProfile.availability?.departureFlexibility === 'fixed' ||
+                                  userProfile.availability?.flexibleDates === false;
+
       const optimizedTrips = await Promise.all(
         topDestinations.slice(0, 3).map(dest =>
           destinationService.optimizeDestination({
@@ -651,6 +661,7 @@ router.post('/recommendations',
             duration,
             departureDate: userProfile.availability?.startDate,
             tripContext: tripContextWithout, // NEW: Pass user's free text for context-aware hotel selection
+            isFixedDate: isFixedDateWithout, // Respect fixed dates if specified
           }).catch(error => {
             console.warn(`⚠️  Failed to optimize ${dest.name}:`, error.message);
             return null;
@@ -1054,6 +1065,10 @@ router.post('/recommendations/stream',
       // Extract trip context for streaming (same as non-streaming)
       const tripContextStreaming = userProfile.basic?.travelVibeDescription || null;
 
+      // Check if user wants fixed dates (no flexibility)
+      const isFixedDateStreaming = userProfile.availability?.departureFlexibility === 'fixed' ||
+                                    userProfile.availability?.flexibleDates === false;
+
       // Process destinations in parallel but stream results as they complete
       await Promise.all(
         destinationsToProcess.map(async (dest, idx) => {
@@ -1067,6 +1082,7 @@ router.post('/recommendations/stream',
               duration,
               departureDate: userProfile.availability?.startDate,
               tripContext: tripContextStreaming, // NEW: Pass trip context for context-aware hotel selection
+              isFixedDate: isFixedDateStreaming, // Respect fixed dates if specified
             });
 
             if (!trip) return;
