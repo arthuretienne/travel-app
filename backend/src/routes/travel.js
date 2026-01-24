@@ -1039,7 +1039,7 @@ router.post('/recommendations/stream',
       // Step 1: Discover destinations
       sendEvent('status', { stage: 'discovering', message: 'Finding perfect destinations...' });
 
-      const topDestinations = await destinationService.discoverDestinations({
+      const discoveryResult = await destinationService.discoverDestinations({
         userProfile,
         budget,
         origin: originCity,
@@ -1047,6 +1047,37 @@ router.post('/recommendations/stream',
         departureDate: userProfile.availability?.startDate,
         userId: req.user.id
       });
+
+      // Handle budget exceeded case (returns object with alternatives)
+      let topDestinations;
+      if (discoveryResult.budgetWarning) {
+        console.log('⚠️ Budget exceeded - sending alternatives to client');
+        sendEvent('budget_warning', {
+          message: discoveryResult.budgetWarning.message,
+          suggestions: discoveryResult.budgetWarning.suggestions,
+          flightOptions: discoveryResult.flightOptions?.map(d => ({
+            name: d.name,
+            price: d.price.amount,
+            priceDifference: d.priceDifference,
+            budgetAdvice: d.budgetAdvice
+          })),
+          trainAlternatives: discoveryResult.alternatives?.map(a => ({
+            name: a.name,
+            country: a.country,
+            transport: a.transport,
+            duration: a.duration,
+            price: a.totalTransportCost,
+            operator: a.operator,
+            hasBeach: a.hasBeach,
+            message: a.message
+          }))
+        });
+
+        // Still process the over-budget flights but mark them
+        topDestinations = discoveryResult.flightOptions || [];
+      } else {
+        topDestinations = Array.isArray(discoveryResult) ? discoveryResult : [];
+      }
 
       sendEvent('status', {
         stage: 'discovered',

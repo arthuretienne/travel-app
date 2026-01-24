@@ -24,6 +24,10 @@ function Results() {
   const [expectedTotal, setExpectedTotal] = useState(3);
   const [streamingStatus, setStreamingStatus] = useState('');
 
+  // Budget warning state (when flights exceed budget)
+  const [budgetWarning, setBudgetWarning] = useState(null);
+  const [trainAlternatives, setTrainAlternatives] = useState([]);
+
   // Check if we're proposing for a group trip
   const forGroupTrip = location.state?.forGroupTrip;
 
@@ -114,6 +118,18 @@ function Results() {
                   });
                   setExpectedTotal(eventData.total);
                 }
+              } else if (eventType === 'budget_warning') {
+                // Budget exceeded - show warning and alternatives
+                console.log('⚠️ Budget warning received:', eventData);
+                setBudgetWarning({
+                  message: eventData.message,
+                  suggestions: eventData.suggestions,
+                  flightOptions: eventData.flightOptions
+                });
+                if (eventData.trainAlternatives) {
+                  setTrainAlternatives(eventData.trainAlternatives);
+                }
+                setStreamingStatus('Budget exceeded - showing alternatives...');
               } else if (eventType === 'complete') {
                 setIsStreaming(false);
                 setStreamingStatus('');
@@ -426,8 +442,61 @@ function Results() {
 
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-6 py-10">
+        {/* Budget Warning Banner */}
+        {budgetWarning && (
+          <div className="mb-8 bg-amber-50 border border-amber-200 rounded-2xl p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-900 mb-2">{budgetWarning.message}</h3>
+                <ul className="text-sm text-amber-800 space-y-1 mb-4">
+                  {budgetWarning.suggestions?.map((suggestion, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="text-amber-500 mt-1">•</span>
+                      {suggestion}
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Train/Bus Alternatives */}
+                {trainAlternatives.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-amber-200">
+                    <h4 className="font-medium text-amber-900 mb-3 flex items-center gap-2">
+                      <span>🚂</span> Train & Bus Alternatives (cheaper!)
+                    </h4>
+                    <div className="grid gap-2">
+                      {trainAlternatives.map((alt, i) => (
+                        <div key={i} className="flex items-center justify-between bg-white rounded-lg p-3 border border-amber-100">
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg">{alt.transport === 'train' ? '🚂' : '🚌'}</span>
+                            <div>
+                              <p className="font-medium text-gray-900">{alt.name}, {alt.country}</p>
+                              <p className="text-xs text-gray-500">{alt.operator} • {alt.duration}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-green-600">€{alt.price}</p>
+                            <p className="text-xs text-gray-500">round trip</p>
+                          </div>
+                          {alt.hasBeach && (
+                            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">🏖️ Beach</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Streaming skeleton */}
-        {isStreaming && recommendations.length === 0 && (
+        {isStreaming && recommendations.length === 0 && !budgetWarning && (
           <div className="bg-white rounded-2xl shadow-card border border-stone-200/40 overflow-hidden">
             <div className="aspect-[21/9] bg-stone-100 animate-pulse" />
             <div className="p-8 space-y-4">

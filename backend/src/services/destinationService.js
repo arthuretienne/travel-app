@@ -203,15 +203,45 @@ export async function discoverDestinations({
     console.log(`✅ Found flights for ${destinationsWithFlights.length} destinations`);
 
     // STEP 4: Filter by budget and select best matches
-    const maxFlightBudget = budget * 0.6; // Reserve 60% for flights (round-trip)
+    const maxFlightBudget = budget * 0.5; // Reserve 50% for flights (more realistic for low budgets)
 
     const affordable = destinationsWithFlights.filter(d => d.price.amount <= maxFlightBudget);
 
     console.log(`✅ ${affordable.length} destinations within flight budget (€${maxFlightBudget})`);
 
-    if (affordable.length === 0) {
-      console.warn('⚠️  No destinations within budget, using fallback');
-      return await fallbackDestinations(origin, budget, userProfile);
+    // NEW: If no affordable flights, show best options anyway with alternatives
+    if (affordable.length === 0 && destinationsWithFlights.length > 0) {
+      console.warn('⚠️  No destinations within budget - showing best options with alternatives');
+
+      // Sort all destinations by price
+      destinationsWithFlights.sort((a, b) => a.price.amount - b.price.amount);
+
+      // Get cheapest options (even if over budget)
+      const overBudgetOptions = destinationsWithFlights.slice(0, 3).map(d => ({
+        ...d,
+        budgetExceeded: true,
+        priceDifference: d.price.amount - maxFlightBudget,
+        budgetAdvice: `Flights €${Math.round(d.price.amount - maxFlightBudget)} over budget. Consider: train/bus, flexible dates, or increase budget.`
+      }));
+
+      // Add train/bus alternatives for nearby destinations
+      const trainAlternatives = getTrainAlternatives(origin, budget);
+
+      console.log(`🚂 Adding ${trainAlternatives.length} train/bus alternatives`);
+
+      return {
+        flightOptions: overBudgetOptions,
+        alternatives: trainAlternatives,
+        budgetWarning: {
+          message: `Flight prices exceed your €${budget} budget. Here are your best options:`,
+          suggestions: [
+            'Consider train or bus for nearby destinations (often cheaper)',
+            'Try flexible dates (±3 days can save 30-50%)',
+            'Book further in advance (2-3 months)',
+            `Increase budget by €${Math.round(overBudgetOptions[0]?.priceDifference || 100)} for more options`
+          ]
+        }
+      };
     }
 
     // Sort by price (cheapest first)
@@ -849,6 +879,58 @@ function estimateCostOfLiving(country) {
   };
 
   return costIndex[country] || 80; // Default to medium
+}
+
+/**
+ * Get train/bus alternatives for budget travelers
+ * Returns alternative transport options from major cities
+ * Prices are estimates based on typical fares
+ */
+function getTrainAlternatives(origin, budget) {
+  // Train/bus alternatives from major European cities
+  const ALTERNATIVES = {
+    'Paris': [
+      { name: 'Brussels', country: 'Belgium', transport: 'train', duration: '1h22', price: 29, operator: 'Thalys', hasBeach: false },
+      { name: 'London', country: 'UK', transport: 'train', duration: '2h15', price: 50, operator: 'Eurostar', hasBeach: false },
+      { name: 'Amsterdam', country: 'Netherlands', transport: 'train', duration: '3h15', price: 35, operator: 'Thalys', hasBeach: false },
+      { name: 'Lyon', country: 'France', transport: 'train', duration: '2h00', price: 30, operator: 'TGV', hasBeach: false },
+      { name: 'Marseille', country: 'France', transport: 'train', duration: '3h20', price: 45, operator: 'TGV', hasBeach: true },
+      { name: 'Nice', country: 'France', transport: 'train', duration: '5h45', price: 60, operator: 'TGV', hasBeach: true },
+      { name: 'Barcelona', country: 'Spain', transport: 'train', duration: '6h30', price: 39, operator: 'AVE', hasBeach: true },
+      { name: 'Milan', country: 'Italy', transport: 'train', duration: '7h00', price: 29, operator: 'TGV', hasBeach: false },
+      { name: 'Bordeaux', country: 'France', transport: 'train', duration: '2h05', price: 35, operator: 'TGV', hasBeach: true },
+      // Bus alternatives (cheaper but slower)
+      { name: 'Brussels', country: 'Belgium', transport: 'bus', duration: '4h00', price: 9, operator: 'FlixBus', hasBeach: false },
+      { name: 'Amsterdam', country: 'Netherlands', transport: 'bus', duration: '6h30', price: 15, operator: 'FlixBus', hasBeach: false },
+      { name: 'Lyon', country: 'France', transport: 'bus', duration: '5h30', price: 12, operator: 'FlixBus', hasBeach: false },
+      { name: 'Barcelona', country: 'Spain', transport: 'bus', duration: '14h00', price: 35, operator: 'FlixBus', hasBeach: true },
+    ],
+    'CDG': [], // Will use Paris alternatives
+    'ORY': [], // Will use Paris alternatives
+  };
+
+  // Normalize origin
+  const normalizedOrigin = origin.includes('Paris') || origin === 'CDG' || origin === 'ORY' ? 'Paris' : origin;
+
+  const alternatives = ALTERNATIVES[normalizedOrigin] || ALTERNATIVES['Paris'];
+
+  // Filter by budget (transport should be max 30% of total budget for alternatives)
+  const maxTransportBudget = budget * 0.3;
+
+  const affordable = alternatives
+    .filter(a => a.price <= maxTransportBudget)
+    .map(a => ({
+      ...a,
+      totalTransportCost: a.price * 2, // Round trip
+      isAlternative: true,
+      transportType: a.transport,
+      message: `${a.transport === 'train' ? '🚂' : '🚌'} ${a.operator}: ${a.duration}, €${a.price * 2} round trip`
+    }));
+
+  // Sort by price
+  affordable.sort((a, b) => a.price - b.price);
+
+  return affordable.slice(0, 5);
 }
 
 /**

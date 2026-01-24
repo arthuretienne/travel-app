@@ -763,7 +763,11 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
   const budgetLevel = budget < 500 ? 'budget' : budget < 1000 ? 'mid-range' : budget < 2000 ? 'comfortable' : 'luxury';
   const onboarding = userProfile.onboardingPreferences || {};
 
-  // Extract user activities for context (NO city examples - let Claude use its knowledge!)
+  // CRITICAL: Extract the custom field (travelVibeDescription) - THIS IS THE USER'S MAIN INPUT
+  const customField = userProfile.basic?.travelVibeDescription || '';
+  const customFieldLower = customField.toLowerCase();
+
+  // Extract user activities for context - NOW INCLUDING CUSTOM FIELD
   const userActivities = [
     ...(activities || []),
     ...(onboarding.topActivities || []),
@@ -771,25 +775,65 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
   ].map(a => a.toLowerCase().trim()).filter(Boolean);
 
   console.log(`🎯 User activities detected: ${userActivities.join(', ') || 'none specified'}`);
+  console.log(`📝 Custom field: "${customField}"`);
+
+  // EXPANDED keyword detection - check both activities AND custom field
+  const BEACH_KEYWORDS = ['plage', 'beach', 'baigner', 'nager', 'mer', 'océan', 'ocean', 'sea', 'swimming', 'sunbathing', 'snorkeling', 'coastal', 'bord de mer', 'farniente', 'île', 'island'];
+  const HIKING_KEYWORDS = ['montagne', 'mountain', 'randonnée', 'hiking', 'trek', 'trekking', 'altitude', 'alpes', 'alps'];
+  const SKI_KEYWORDS = ['ski', 'skiing', 'snowboard', 'neige', 'snow', 'piste'];
+  const ROMANTIC_KEYWORDS = ['amoureux', 'romantic', 'couple', 'honeymoon', 'lune de miel', 'romantique', 'love'];
+  const CULTURE_KEYWORDS = ['culture', 'musée', 'museum', 'histoire', 'history', 'patrimoine', 'heritage', 'temples', 'architecture'];
+
+  // Check in both activities and custom field
+  const textToCheck = [...userActivities, customFieldLower].join(' ');
+
+  const hasBeach = BEACH_KEYWORDS.some(kw => textToCheck.includes(kw));
+  const hasHiking = HIKING_KEYWORDS.some(kw => textToCheck.includes(kw));
+  const hasSki = SKI_KEYWORDS.some(kw => textToCheck.includes(kw));
+  const hasRomantic = ROMANTIC_KEYWORDS.some(kw => textToCheck.includes(kw));
+  const hasCulture = CULTURE_KEYWORDS.some(kw => textToCheck.includes(kw));
+
+  // Detect geographic constraints from custom field
+  const SCHENGEN_KEYWORDS = ['schengen', 'europe', 'européen', 'european', 'ue', 'eu'];
+  const wantsSchengen = SCHENGEN_KEYWORDS.some(kw => customFieldLower.includes(kw)) || onboarding.visaPreference === 'sans-visa';
+
+  console.log(`🏖️  Beach detected: ${hasBeach}, 🏔️  Hiking: ${hasHiking}, ⛷️  Ski: ${hasSki}, 💕 Romantic: ${hasRomantic}, 🇪🇺 Schengen: ${wantsSchengen}`);
 
   // Build activity context with STRICT requirements for certain activities
   let activityContext = 'Open to all types of experiences';
   let activityConstraint = '';
 
-  if (userActivities.length > 0) {
-    activityContext = `Main interests: ${userActivities.join(', ').toUpperCase()}`;
+  if (userActivities.length > 0 || customField) {
+    const mainInterests = [...userActivities];
+    if (hasBeach) mainInterests.push('BEACH/SEA');
+    if (hasHiking) mainInterests.push('HIKING/MOUNTAINS');
+    if (hasRomantic) mainInterests.push('ROMANTIC');
+    if (hasCulture) mainInterests.push('CULTURE');
+
+    activityContext = `Main interests: ${mainInterests.join(', ').toUpperCase()}`;
+    if (customField) {
+      activityContext += `\nUser's exact request: "${customField}"`;
+    }
 
     // Add strict constraints for specific activity types
-    const hasBeach = userActivities.some(a => ['plage', 'beach', 'swimming', 'sunbathing', 'snorkeling'].includes(a));
-    const hasHiking = userActivities.some(a => ['hiking', 'randonnée', 'mountains', 'trekking'].includes(a));
-    const hasSki = userActivities.some(a => ['ski', 'skiing', 'snowboard'].includes(a));
-
     if (hasBeach) {
-      activityConstraint = `\n⚠️ CRITICAL: User wants BEACH/SEA activities. ONLY suggest coastal cities or islands with beaches. NO landlocked cities like Budapest, Vienna, Prague!`;
+      activityConstraint = `\n⚠️ CRITICAL: User wants BEACH/SEA activities. ONLY suggest coastal cities or islands with beaches.
+ABSOLUTELY NO landlocked cities like Budapest, Vienna, Prague, Belgrade, Sofia, Munich!
+REQUIRED: Cities must have direct beach access or be on an island.`;
     } else if (hasHiking) {
       activityConstraint = `\n⚠️ CRITICAL: User wants HIKING/MOUNTAINS. Prioritize destinations near mountains or national parks with good trails.`;
     } else if (hasSki) {
       activityConstraint = `\n⚠️ CRITICAL: User wants SKI/SNOW. ONLY suggest destinations with ski resorts accessible in winter.`;
+    }
+
+    // Add romantic constraint
+    if (hasRomantic) {
+      activityConstraint += `\n💕 ROMANTIC TRIP: Suggest destinations known for couples (charming cities, beaches, scenic views).`;
+    }
+
+    // Add Schengen constraint
+    if (wantsSchengen) {
+      activityConstraint += `\n🇪🇺 SCHENGEN ZONE ONLY: User specified European/Schengen destinations. ONLY suggest Schengen countries: Austria, Belgium, Croatia, Czech Republic, Denmark, Estonia, Finland, France, Germany, Greece, Hungary, Iceland, Italy, Latvia, Liechtenstein, Lithuania, Luxembourg, Malta, Netherlands, Norway, Poland, Portugal, Slovakia, Slovenia, Spain, Sweden, Switzerland.`;
     }
   }
 
