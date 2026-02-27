@@ -602,7 +602,7 @@ export async function generateDestinationRecommendationWithData(tripData, userId
 
     const message = await client.messages.create({
       model: 'claude-3-5-haiku-20241022', // Fast model for quick recommendations
-      max_tokens: 500, // Reduced - simplified prompt needs less tokens
+      max_tokens: 800, // Increased to accommodate personalized matchReason
       temperature: 0.7,
       messages: [promptMessage]
     });
@@ -689,7 +689,7 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
   // CACHE DISABLED FOR TESTING - Set TESTING_MODE = false in production
   const cacheKey = `destinations:${generateProfileHash(userProfile, options)}`;
   if (!TESTING_MODE) {
-    const cachedDestinations = cache.get(cacheKey);
+    const cachedDestinations = await cache.get(cacheKey);
     if (cachedDestinations && excludeDestinations.length === 0) {
       console.log(`⚡ Cache HIT for destination shortlist`);
       return cachedDestinations;
@@ -777,65 +777,63 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
   console.log(`🎯 User activities detected: ${userActivities.join(', ') || 'none specified'}`);
   console.log(`📝 Custom field: "${customField}"`);
 
-  // EXPANDED keyword detection - check both activities AND custom field
-  const BEACH_KEYWORDS = ['plage', 'beach', 'baigner', 'nager', 'mer', 'océan', 'ocean', 'sea', 'swimming', 'sunbathing', 'snorkeling', 'coastal', 'bord de mer', 'farniente', 'île', 'island'];
-  const HIKING_KEYWORDS = ['montagne', 'mountain', 'randonnée', 'hiking', 'trek', 'trekking', 'altitude', 'alpes', 'alps'];
-  const SKI_KEYWORDS = ['ski', 'skiing', 'snowboard', 'neige', 'snow', 'piste'];
-  const ROMANTIC_KEYWORDS = ['amoureux', 'romantic', 'couple', 'honeymoon', 'lune de miel', 'romantique', 'love'];
-  const CULTURE_KEYWORDS = ['culture', 'musée', 'museum', 'histoire', 'history', 'patrimoine', 'heritage', 'temples', 'architecture'];
-
-  // Check in both activities and custom field
+  // SIMPLIFIED: Let Claude interpret the request directly
+  // Only detect critical constraints that require HARD rules (beach=coastal, geographic zones)
   const textToCheck = [...userActivities, customFieldLower].join(' ');
 
-  const hasBeach = BEACH_KEYWORDS.some(kw => textToCheck.includes(kw));
-  const hasHiking = HIKING_KEYWORDS.some(kw => textToCheck.includes(kw));
-  const hasSki = SKI_KEYWORDS.some(kw => textToCheck.includes(kw));
-  const hasRomantic = ROMANTIC_KEYWORDS.some(kw => textToCheck.includes(kw));
-  const hasCulture = CULTURE_KEYWORDS.some(kw => textToCheck.includes(kw));
+  // CRITICAL SAFETY RAILS ONLY - prevents landlocked cities for water activities
+  // This is the ONE hard rule we enforce via keyword detection
+  const COASTAL_KEYWORDS = [
+    'plage', 'beach', 'baigner', 'nager', 'mer', 'bord de mer', 'île', 'island', 'coastal',
+    'surf', 'surfer', 'plongée', 'diving', 'snorkeling', 'kayak', 'voile', 'sailing',
+    'océan', 'ocean', 'littoral', 'côte', 'coast', 'maritime', 'nautique'
+  ];
+  const needsCoast = COASTAL_KEYWORDS.some(kw => textToCheck.includes(kw));
 
-  // Detect geographic constraints from custom field
-  const SCHENGEN_KEYWORDS = ['schengen', 'europe', 'européen', 'european', 'ue', 'eu'];
-  const wantsSchengen = SCHENGEN_KEYWORDS.some(kw => customFieldLower.includes(kw)) || onboarding.visaPreference === 'sans-visa';
+  // Build activity context - pass the raw request to Claude
+  let activityContext = customField
+    ? `🎯 USER'S REQUEST (interpret this carefully): "${customField}"`
+    : `Activities: ${userActivities.join(', ') || 'Open to all experiences'}`;
 
-  console.log(`🏖️  Beach detected: ${hasBeach}, 🏔️  Hiking: ${hasHiking}, ⛷️  Ski: ${hasSki}, 💕 Romantic: ${hasRomantic}, 🇪🇺 Schengen: ${wantsSchengen}`);
-
-  // Build activity context with STRICT requirements for certain activities
-  let activityContext = 'Open to all types of experiences';
+  // Only add CRITICAL constraints that prevent obvious errors
   let activityConstraint = '';
 
-  if (userActivities.length > 0 || customField) {
-    const mainInterests = [...userActivities];
-    if (hasBeach) mainInterests.push('BEACH/SEA');
-    if (hasHiking) mainInterests.push('HIKING/MOUNTAINS');
-    if (hasRomantic) mainInterests.push('ROMANTIC');
-    if (hasCulture) mainInterests.push('CULTURE');
-
-    activityContext = `Main interests: ${mainInterests.join(', ').toUpperCase()}`;
-    if (customField) {
-      activityContext += `\nUser's exact request: "${customField}"`;
-    }
-
-    // Add strict constraints for specific activity types
-    if (hasBeach) {
-      activityConstraint = `\n⚠️ CRITICAL: User wants BEACH/SEA activities. ONLY suggest coastal cities or islands with beaches.
-ABSOLUTELY NO landlocked cities like Budapest, Vienna, Prague, Belgrade, Sofia, Munich!
-REQUIRED: Cities must have direct beach access or be on an island.`;
-    } else if (hasHiking) {
-      activityConstraint = `\n⚠️ CRITICAL: User wants HIKING/MOUNTAINS. Prioritize destinations near mountains or national parks with good trails.`;
-    } else if (hasSki) {
-      activityConstraint = `\n⚠️ CRITICAL: User wants SKI/SNOW. ONLY suggest destinations with ski resorts accessible in winter.`;
-    }
-
-    // Add romantic constraint
-    if (hasRomantic) {
-      activityConstraint += `\n💕 ROMANTIC TRIP: Suggest destinations known for couples (charming cities, beaches, scenic views).`;
-    }
-
-    // Add Schengen constraint
-    if (wantsSchengen) {
-      activityConstraint += `\n🇪🇺 SCHENGEN ZONE ONLY: User specified European/Schengen destinations. ONLY suggest Schengen countries: Austria, Belgium, Croatia, Czech Republic, Denmark, Estonia, Finland, France, Germany, Greece, Hungary, Iceland, Italy, Latvia, Liechtenstein, Lithuania, Luxembourg, Malta, Netherlands, Norway, Poland, Portugal, Slovakia, Slovenia, Spain, Sweden, Switzerland.`;
-    }
+  // Coastal constraint is CRITICAL - prevents landlocked cities for water activities
+  if (needsCoast) {
+    activityConstraint = `\n⚠️ WATER/COASTAL ACTIVITY DETECTED: User wants beach/surf/diving/water sports. ONLY suggest COASTAL cities or islands. NO landlocked cities (Budapest, Vienna, Prague, Belgrade, Sofia, Munich, etc.)`;
   }
+
+  // Trip type context (from structured data, not keyword detection)
+  const tripType = userProfile.basic?.tripType;
+  if (tripType === 'family') {
+    activityConstraint += `\n👨‍👩‍👧‍👦 FAMILY TRIP: Avoid party destinations. Prioritize safe, kid-friendly places.`;
+  } else if (tripType === 'couple') {
+    activityConstraint += `\n💕 COUPLE TRIP: Prioritize romantic, charming destinations.`;
+  }
+
+  // Visa preference from onboarding (structured data)
+  if (onboarding.visaPreference === 'sans-visa') {
+    activityConstraint += `\n🇪🇺 VISA-FREE ONLY: User prefers destinations without visa requirements (Schengen for EU citizens).`;
+  }
+
+  console.log(`🏖️ Coastal constraint: ${needsCoast}, Trip type: ${tripType || 'not specified'}`);
+
+  // FLEXIBLE INTERPRETATION GUIDE - let Claude handle weird requests
+  const interpretationGuide = `
+🧠 INTERPRETATION GUIDE (for unusual requests):
+Read the user's request carefully and interpret their INTENT, not just keywords.
+Examples of how to interpret:
+- "fuir le froid" / "escape winter" → warm destinations (Canary Islands, Morocco, Thailand)
+- "aurores boréales" / "northern lights" → Norway, Iceland, Finland in winter
+- "fêter mon divorce" → fun, vibrant, social destinations (not romantic)
+- "accessible en fauteuil" → wheelchair-friendly cities with good infrastructure
+- "vraiment local, pas touristique" → off-the-beaten-path destinations
+- "me ressourcer" / "digital detox" → nature, quiet places, wellness retreats
+- "voir des temples" → Asia (Thailand, Cambodia, Japan, Bali)
+- "apprendre à surfer" → surf destinations (Portugal, Morocco, Bali, Sri Lanka)
+- Any mention of a CONTINENT or REGION → ONLY suggest places in that region!
+
+If the request is unusual or specific, PRIORITIZE matching the user's exact intent over generic recommendations.`;
 
   // Adapt geographic scope based on budget AND flight duration preference
   let geographicGuidance = '';
@@ -888,6 +886,7 @@ REQUIRED: Cities must have direct beach access or be on an island.`;
 - ${activityContext}
 ${activityConstraint}
 ${exclusionText}
+${interpretationGuide}
 
 ${geographicGuidance}
 

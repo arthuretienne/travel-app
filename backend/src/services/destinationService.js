@@ -122,22 +122,22 @@ export async function discoverDestinations({
 
     console.log(`✅ Claude suggested: ${shortlist.join(', ')}`);
 
-    // STEP 2: Get destination IDs (from cache or API)
-    console.log('📍 Step 2: Getting destination IDs (from cache)...');
+    // STEP 2: Get destination IDs in parallel (origin + all shortlist destinations at once)
+    console.log('📍 Step 2: Getting destination IDs in parallel...');
 
-    const originDest = await bookingService.getDestinationId(origin);
+    const [originDest, ...destinationResults] = await Promise.all([
+      bookingService.getDestinationId(origin),
+      ...shortlist.map(async (cityName) => {
+        try {
+          const dest = await bookingService.getDestinationId(cityName);
+          return { cityName, dest };
+        } catch (error) {
+          console.warn(`⚠️  Could not find destination ID for ${cityName}:`, error.message);
+          return null;
+        }
+      }),
+    ]);
 
-    const destinationPromises = shortlist.map(async (cityName) => {
-      try {
-        const dest = await bookingService.getDestinationId(cityName);
-        return { cityName, dest };
-      } catch (error) {
-        console.warn(`⚠️  Could not find destination ID for ${cityName}:`, error.message);
-        return null;
-      }
-    });
-
-    const destinationResults = await Promise.all(destinationPromises);
     const validDestinations = destinationResults.filter(d => d !== null);
 
     console.log(`✅ Found ${validDestinations.length}/${shortlist.length} destination IDs`);
@@ -365,9 +365,22 @@ export async function optimizeDestination({
   console.log(`   👥 Trip for ${numAdults} adult(s)${numChildren ? ` + ${numChildren} child(ren)` : ''} (source: basic.travelers=${userProfile?.basic?.travelers})`);
 
   try {
-    // STEP 1: Get flight destination IDs (airport/city)
-    console.log('📍 Step 1: Getting flight destination IDs...');
-    const originDest = await bookingService.getDestinationId(origin);
+    // STEP 1: Get flight destination IDs in parallel (origin + destination)
+    console.log('📍 Step 1: Getting flight destination IDs in parallel...');
+
+    // Check if this destination is known to need a nearby airport (synchronous)
+    const nearestAirportInfo = findNearestAirport(destination);
+
+    // Run origin and destination ID lookups simultaneously
+    const [originDestResult, destDestResult] = await Promise.allSettled([
+      bookingService.getDestinationId(origin),
+      bookingService.getDestinationId(destination),
+    ]);
+
+    if (originDestResult.status === 'rejected') {
+      throw new Error(`Could not resolve origin airport for: ${origin}`);
+    }
+    const originDest = originDestResult.value;
 
     // Try to find flights to the destination
     // If no flights found, check if we need to use a nearby airport
@@ -375,15 +388,11 @@ export async function optimizeDestination({
     let groundTransport = null;
     let actualFlightDestination = destination;
 
-    // First, check if this destination is known to need a nearby airport
-    const nearestAirportInfo = findNearestAirport(destination);
-
-    try {
-      console.log(`🔍 Resolving flight destination for: ${destination}`);
-      destDest = await bookingService.getDestinationId(destination);
-      console.log(`✅ Found airport: ${destDest.name} (${destDest.id})`);
-    } catch (error) {
-      console.warn(`⚠️ No airport found for ${destination}: ${error.message}`);
+    if (destDestResult.status === 'fulfilled') {
+      destDest = destDestResult.value;
+      console.log(`✅ Found airports: ${originDest.name} → ${destDest.name} (${destDest.id})`);
+    } else {
+      console.warn(`⚠️ No airport found for ${destination}: ${destDestResult.reason?.message}`);
 
       // If we have a known nearby airport, use it
       if (nearestAirportInfo) {

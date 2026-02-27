@@ -713,9 +713,243 @@ export async function sendVotingCompleteNotification({
   }
 }
 
+/**
+ * Send price drop alert email
+ */
+export async function sendPriceDropEmail({
+  to,
+  userName,
+  destination,
+  country,
+  origin,
+  departureDate,
+  returnDate,
+  originalPrice,
+  currentPrice,
+  targetPrice,
+  priceDrop,
+  percentDrop,
+  alertId
+}) {
+  console.log('\n📧 ========== EMAIL SERVICE: PRICE DROP ALERT ==========');
+  console.log('📧 Recipient:', to);
+  console.log('📧 Destination:', destination);
+  console.log('📧 Price drop:', `€${priceDrop} (-${percentDrop}%)`);
+
+  try {
+    if (!process.env.RESEND_API_KEY) {
+      console.warn('⚠️  RESEND_API_KEY not set, email not sent');
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '';
+      return new Date(dateStr).toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    };
+
+    const frontendUrl = process.env.FRONTEND_URL || 'https://skusku.life';
+    const bookingUrl = `${frontendUrl}/price-alerts?highlight=${alertId}`;
+
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'Skusku <noreply@skusku.life>',
+      to: [to],
+      subject: `🔔 Prix en baisse: ${destination} à €${Math.round(currentPrice)} (-${percentDrop}%)`,
+      html: `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              line-height: 1.6;
+              color: #1f2937;
+              background-color: #f5f7fa;
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              max-width: 600px;
+              margin: 40px auto;
+              background: white;
+              border-radius: 16px;
+              overflow: hidden;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            .header {
+              background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+              color: white;
+              padding: 40px 30px;
+              text-align: center;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 28px;
+            }
+            .content {
+              padding: 40px 30px;
+            }
+            .price-card {
+              background: #f0fdf4;
+              border: 2px solid #10b981;
+              border-radius: 16px;
+              padding: 24px;
+              margin: 20px 0;
+              text-align: center;
+            }
+            .destination-name {
+              font-size: 24px;
+              font-weight: bold;
+              color: #1f2937;
+              margin-bottom: 8px;
+            }
+            .route {
+              color: #6b7280;
+              font-size: 14px;
+              margin-bottom: 16px;
+            }
+            .price-container {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              gap: 20px;
+              margin: 20px 0;
+            }
+            .old-price {
+              font-size: 20px;
+              color: #9ca3af;
+              text-decoration: line-through;
+            }
+            .new-price {
+              font-size: 36px;
+              font-weight: bold;
+              color: #10b981;
+            }
+            .savings-badge {
+              display: inline-block;
+              background: #10b981;
+              color: white;
+              padding: 8px 16px;
+              border-radius: 20px;
+              font-weight: bold;
+              font-size: 16px;
+            }
+            .dates {
+              color: #6b7280;
+              font-size: 14px;
+              margin-top: 16px;
+            }
+            .cta-button {
+              display: inline-block;
+              background: #3b82f6;
+              color: white !important;
+              text-decoration: none;
+              padding: 16px 32px;
+              border-radius: 12px;
+              font-weight: bold;
+              font-size: 16px;
+              margin: 20px 0;
+            }
+            .button-container {
+              text-align: center;
+              margin: 30px 0;
+            }
+            .tip-box {
+              background: #fffbeb;
+              border-left: 4px solid #f59e0b;
+              padding: 15px 20px;
+              margin: 20px 0;
+              border-radius: 0 8px 8px 0;
+              font-size: 14px;
+            }
+            .footer {
+              background: #f9fafb;
+              padding: 20px 30px;
+              text-align: center;
+              color: #6b7280;
+              font-size: 12px;
+              border-top: 1px solid #e5e7eb;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🔔 Alerte Prix!</h1>
+              <p style="margin: 10px 0 0 0; opacity: 0.9;">Le prix de ton vol a baissé</p>
+            </div>
+
+            <div class="content">
+              <p>Hey ${userName}! 👋</p>
+              <p>Bonne nouvelle! Le prix du vol que tu surveilles vient de baisser:</p>
+
+              <div class="price-card">
+                <div class="destination-name">✈️ ${destination}${country ? `, ${country}` : ''}</div>
+                <div class="route">${origin} → ${destination}</div>
+
+                <div class="price-container">
+                  <span class="old-price">€${Math.round(originalPrice)}</span>
+                  <span class="new-price">€${Math.round(currentPrice)}</span>
+                </div>
+
+                <div class="savings-badge">
+                  -${percentDrop}% | Tu économises €${Math.round(priceDrop)}
+                </div>
+
+                <div class="dates">
+                  📅 ${formatDate(departureDate)} → ${formatDate(returnDate)}
+                </div>
+              </div>
+
+              <div class="tip-box">
+                💡 <strong>Conseil:</strong> Les prix des vols fluctuent souvent. Si ce prix te convient, réserve rapidement car il pourrait remonter!
+              </div>
+
+              <div class="button-container">
+                <a href="${bookingUrl}" class="cta-button">
+                  Voir et réserver maintenant
+                </a>
+              </div>
+
+              <p style="text-align: center; color: #6b7280; font-size: 12px;">
+                Prix initial: €${Math.round(originalPrice)} | Prix cible: €${Math.round(targetPrice)}
+              </p>
+            </div>
+
+            <div class="footer">
+              <p>Tu reçois cet email car tu as créé une alerte prix sur <strong>Skusku</strong></p>
+              <p style="margin-top: 10px;">
+                <a href="${frontendUrl}/price-alerts" style="color: #3b82f6;">Gérer mes alertes</a>
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('❌ Resend API error:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`✅ Price drop email sent to ${to}`);
+    return { success: true, data };
+  } catch (error) {
+    console.error('❌ Exception in sendPriceDropEmail:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 export default {
   sendTripInvitation,
   sendTripUpdateNotification,
   sendBookingReminder,
   sendVotingCompleteNotification,
+  sendPriceDropEmail,
 };

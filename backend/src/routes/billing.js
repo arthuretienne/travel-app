@@ -35,6 +35,56 @@ router.get('/plans', (req, res) => {
 });
 
 /**
+ * GET /api/billing/usage
+ * Get current user's usage stats (searches, limits)
+ */
+router.get('/usage', authenticateUser, async (req, res) => {
+  try {
+    let subscription = await prisma.subscription.findUnique({
+      where: { userId: req.user.id },
+    });
+
+    // Create default free subscription if doesn't exist
+    if (!subscription) {
+      subscription = await prisma.subscription.create({
+        data: {
+          userId: req.user.id,
+          plan: 'FREE',
+          status: 'active',
+        },
+      });
+    }
+
+    const planDetails = PLANS[subscription.plan] || PLANS.FREE;
+    const limit = planDetails.features.maxSearchesPerMonth;
+    const used = subscription.searchesThisMonth || 0;
+    const remaining = limit === -1 ? -1 : Math.max(0, limit - used);
+
+    res.json({
+      plan: subscription.plan,
+      searches: {
+        used,
+        limit,
+        remaining,
+        unlimited: limit === -1,
+        percentUsed: limit === -1 ? 0 : Math.round((used / limit) * 100),
+      },
+      groupTrips: {
+        created: subscription.groupTripsCreated || 0,
+        limit: planDetails.features.maxGroupTrips,
+        unlimited: planDetails.features.maxGroupTrips === -1,
+      },
+      canSearch: limit === -1 || used < limit,
+      needsUpgrade: limit !== -1 && used >= limit,
+      upgradeUrl: '/pricing',
+    });
+  } catch (error) {
+    console.error('❌ Error getting usage:', error);
+    res.status(500).json({ error: 'Failed to get usage stats' });
+  }
+});
+
+/**
  * GET /api/billing/subscription
  * Get current user's subscription details
  */
@@ -108,7 +158,6 @@ router.post('/checkout', authenticateUser, async (req, res) => {
     console.error('❌ Error creating checkout session:', error);
     res.status(500).json({
       error: 'Failed to create checkout session',
-      message: error.message,
     });
   }
 });
@@ -142,7 +191,6 @@ router.post('/portal', authenticateUser, async (req, res) => {
     console.error('❌ Error creating portal session:', error);
     res.status(500).json({
       error: 'Failed to create billing portal session',
-      message: error.message,
     });
   }
 });

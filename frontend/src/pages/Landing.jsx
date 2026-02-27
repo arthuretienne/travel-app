@@ -1,7 +1,8 @@
 // frontend/src/pages/Landing.jsx
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
+import { useTranslation } from 'react-i18next';
 import { Plane, ArrowRight, Globe, Sparkles, Calendar, CreditCard, Users, ChevronRight, Star, MapPin, Search, ExternalLink, Hotel } from 'lucide-react';
 import { getFeaturedDestinations, getDestinationImage } from '../utils/destinationImages';
 import { AIRPORTS, searchAirports, getPrimaryAirport } from '../data/airports';
@@ -19,8 +20,25 @@ const POPULAR_DESTINATIONS = [
   { city: 'Dubrovnik', country: 'Croatia', iata: 'DBV' },
 ];
 
+function LanguageSwitcher() {
+  const { i18n } = useTranslation();
+  const currentLang = i18n.language?.startsWith('fr') ? 'fr' : 'en';
+
+  return (
+    <button
+      onClick={() => i18n.changeLanguage(currentLang === 'fr' ? 'en' : 'fr')}
+      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-main border border-stone-200 rounded-lg transition-colors"
+      title={currentLang === 'fr' ? 'Switch to English' : 'Passer en français'}
+    >
+      <Globe size={14} />
+      {currentLang === 'fr' ? 'EN' : 'FR'}
+    </button>
+  );
+}
+
 function Landing() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -116,15 +134,16 @@ function Landing() {
           </div>
 
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             <SignedOut>
               <SignInButton mode="modal">
                 <button className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-main transition-colors">
-                  Sign in
+                  {t('nav.signIn')}
                 </button>
               </SignInButton>
               <SignInButton mode="modal">
                 <button className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors">
-                  Get started
+                  {t('nav.getStarted')}
                 </button>
               </SignInButton>
             </SignedOut>
@@ -133,7 +152,7 @@ function Landing() {
                 onClick={() => navigate('/dashboard')}
                 className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
               >
-                Dashboard
+                {t('nav.dashboard')}
               </button>
               <UserButton afterSignOutUrl="/" />
             </SignedIn>
@@ -147,22 +166,22 @@ function Landing() {
           <div className="max-w-3xl mx-auto text-center mb-16">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary-light text-primary text-sm font-medium rounded-full mb-6">
               <Sparkles size={14} />
-              AI-powered travel planning
+              {t('landing.badge')}
             </div>
 
             <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-medium tracking-tight text-text-main mb-6 leading-[1.1]">
-              Plan your perfect trip in minutes
+              {t('landing.title')}
             </h1>
 
             <p className="text-xl text-text-secondary max-w-2xl mx-auto mb-10">
-              Tell us your preferences. Our AI finds destinations, flights, and hotels that match your style and budget.
+              {t('landing.subtitle')}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <SignedOut>
                 <SignInButton mode="modal">
                   <button className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-lg font-medium rounded-xl hover:bg-primary-hover transition-colors">
-                    Start planning
+                    {t('landing.cta')}
                     <ArrowRight size={20} />
                   </button>
                 </SignInButton>
@@ -172,7 +191,7 @@ function Landing() {
                   onClick={() => navigate('/dashboard')}
                   className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-lg font-medium rounded-xl hover:bg-primary-hover transition-colors"
                 >
-                  Go to dashboard
+                  {t('landing.ctaDashboard')}
                   <ArrowRight size={20} />
                 </button>
               </SignedIn>
@@ -194,7 +213,7 @@ function Landing() {
                         value={searchQuery}
                         onChange={handleSearchChange}
                         onFocus={() => searchQuery.length >= 2 && setShowSuggestions(true)}
-                        placeholder="Ou voulez-vous aller ?"
+                        placeholder={t('landing.searchPlaceholder')}
                         className="w-full text-text-main placeholder:text-text-secondary bg-transparent outline-none"
                       />
                     </div>
@@ -207,7 +226,7 @@ function Landing() {
                     className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Search size={18} />
-                    <span className="hidden sm:inline">Rechercher</span>
+                    <span className="hidden sm:inline">{t('landing.searchButton')}</span>
                   </button>
                 </div>
 
@@ -239,7 +258,7 @@ function Landing() {
 
                 {/* Quick Access - Popular Destinations */}
                 <div className="flex flex-wrap gap-2 mt-3">
-                  <span className="text-xs text-text-secondary">Populaire:</span>
+                  <span className="text-xs text-text-secondary">{t('landing.popular')}</span>
                   {POPULAR_DESTINATIONS.slice(0, 4).map((dest, idx) => (
                     <button
                       key={idx}
@@ -297,10 +316,10 @@ function Landing() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="font-display text-3xl md:text-4xl font-medium text-text-main mb-4">
-              How it works
+              {t('landing.howItWorks')}
             </h2>
             <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-              Three simple steps to your next adventure
+              {t('landing.howSubtitle')}
             </p>
           </div>
 
@@ -309,20 +328,20 @@ function Landing() {
               {
                 step: '01',
                 icon: <Users size={24} />,
-                title: 'Tell us about yourself',
-                desc: 'Complete a quick profile with your travel style, budget, and preferences.'
+                title: t('landing.step1Title'),
+                desc: t('landing.step1Desc'),
               },
               {
                 step: '02',
                 icon: <Sparkles size={24} />,
-                title: 'Get AI recommendations',
-                desc: 'Our AI analyzes thousands of options to find destinations that match you perfectly.'
+                title: t('landing.step2Title'),
+                desc: t('landing.step2Desc'),
               },
               {
                 step: '03',
                 icon: <Plane size={24} />,
-                title: 'Book and go',
-                desc: 'Review real flights and hotels, then book directly with our partners.'
+                title: t('landing.step3Title'),
+                desc: t('landing.step3Desc'),
               }
             ].map((item, i) => (
               <div key={i} className="relative">
@@ -348,33 +367,33 @@ function Landing() {
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <h2 className="font-display text-3xl md:text-4xl font-medium text-text-main mb-6">
-                Everything you need, nothing you don't
+                {t('landing.featuresTitle')}
               </h2>
               <p className="text-lg text-text-secondary mb-10">
-                We focus on what matters: finding you the right destination at the right price.
+                {t('landing.featuresSubtitle')}
               </p>
 
               <div className="space-y-6">
                 {[
                   {
                     icon: <Globe size={20} />,
-                    title: 'Personalized destinations',
-                    desc: 'AI matches destinations to your unique travel personality'
+                    title: t('landing.feat1Title'),
+                    desc: t('landing.feat1Desc'),
                   },
                   {
                     icon: <CreditCard size={20} />,
-                    title: 'Real prices, real availability',
-                    desc: 'Live flight and hotel data from Booking.com'
+                    title: t('landing.feat2Title'),
+                    desc: t('landing.feat2Desc'),
                   },
                   {
                     icon: <Calendar size={20} />,
-                    title: 'Flexible date search',
-                    desc: 'Find the cheapest times to travel based on your schedule'
+                    title: t('landing.feat3Title'),
+                    desc: t('landing.feat3Desc'),
                   },
                   {
                     icon: <Users size={20} />,
-                    title: 'Group trip planning',
-                    desc: 'Invite friends and vote on destinations together'
+                    title: t('landing.feat4Title'),
+                    desc: t('landing.feat4Desc'),
                   }
                 ].map((feature, i) => (
                   <div key={i} className="flex gap-4">
@@ -402,7 +421,7 @@ function Landing() {
                   </div>
                 </div>
                 <p className="text-text-secondary text-sm leading-relaxed">
-                  "You love outdoor activities and good food. I found 3 destinations with hiking trails and top-rated restaurants, all within your €1,500 budget."
+                  {t('landing.aiQuote')}
                 </p>
               </div>
 
@@ -426,20 +445,20 @@ function Landing() {
               {[...Array(5)].map((_, i) => (
                 <Star key={i} size={20} className="text-primary fill-primary" />
               ))}
-              <span className="ml-2 font-medium text-text-main">4.9/5 rating</span>
+              <span className="ml-2 font-medium text-text-main">{t('landing.rating')}</span>
             </div>
             <div className="flex items-center gap-8 text-text-secondary">
               <div className="text-center">
                 <div className="text-2xl font-semibold text-text-main">10k+</div>
-                <div className="text-sm">trips planned</div>
+                <div className="text-sm">{t('landing.tripsPlanned')}</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-semibold text-text-main">150+</div>
-                <div className="text-sm">destinations</div>
+                <div className="text-sm">{t('landing.destinations')}</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-semibold text-text-main">€2.3M</div>
-                <div className="text-sm">saved for travelers</div>
+                <div className="text-sm">{t('landing.savedForTravelers')}</div>
               </div>
             </div>
           </div>
@@ -450,16 +469,16 @@ function Landing() {
       <section className="py-24 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-display text-3xl md:text-4xl font-medium text-text-main mb-6">
-            Ready to plan your next adventure?
+            {t('landing.readyCta')}
           </h2>
           <p className="text-lg text-text-secondary mb-10">
-            Join thousands of travelers who've discovered their perfect trips with Skusku.
+            {t('landing.readySubtitle')}
           </p>
 
           <SignedOut>
             <SignInButton mode="modal">
               <button className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-lg font-medium rounded-xl hover:bg-primary-hover transition-colors">
-                Get started for free
+                {t('landing.ctaFree')}
                 <ChevronRight size={20} />
               </button>
             </SignInButton>
@@ -469,29 +488,46 @@ function Landing() {
               onClick={() => navigate('/dashboard')}
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-lg font-medium rounded-xl hover:bg-primary-hover transition-colors"
             >
-              Go to dashboard
+              {t('landing.ctaDashboard')}
               <ChevronRight size={20} />
             </button>
           </SignedIn>
 
           <p className="mt-6 text-sm text-text-secondary">
-            No credit card required
+            {t('landing.noCreditCard')}
           </p>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="py-8 px-6 border-t border-stone-100">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
-              <Plane size={12} className="text-white" />
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-8">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
+                <Plane size={12} className="text-white" />
+              </div>
+              <span className="font-semibold text-text-main">Skusku</span>
             </div>
-            <span className="font-semibold text-text-main">Skusku</span>
+            <div>
+              <h4 className="font-medium text-text-main text-sm mb-3">{t('landing.popularDestinations')}</h4>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-secondary">
+                {POPULAR_DESTINATIONS.map(d => (
+                  <Link key={d.city} to={`/destination/${d.city.toLowerCase()}`} className="hover:text-primary transition-colors">
+                    {d.city}
+                  </Link>
+                ))}
+                <Link to="/destinations" className="text-primary font-medium hover:underline">
+                  {t('landing.allDestinations')}
+                </Link>
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-text-secondary">
-            © 2025 Skusku. AI-powered travel planning.
-          </p>
+          <div className="pt-6 border-t border-stone-100 text-center">
+            <p className="text-sm text-text-secondary">
+              © 2025 Skusku. AI-powered travel planning.
+            </p>
+          </div>
         </div>
       </footer>
     </div>

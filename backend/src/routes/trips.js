@@ -870,7 +870,9 @@ router.post('/:id/reminders', authenticateUser, async (req, res) => {
       return res.status(400).json({ error: 'Trip must have a confirmed destination to send reminders' });
     }
 
-    const destination = `${trip.finalDestination.city}, ${trip.finalDestination.country}`;
+    const destCity = trip.finalDestination.city || trip.finalDestination.destination?.city || 'Unknown';
+    const destCountry = trip.finalDestination.country || trip.finalDestination.destination?.country || '';
+    const destination = `${destCity}, ${destCountry}`;
     const senderName = `${user.firstName || 'Un membre'} ${user.lastName || ''}`.trim();
     const tripUrl = `${process.env.FRONTEND_URL || 'https://skusku.life'}/trip/${trip.id}`;
 

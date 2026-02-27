@@ -1,18 +1,24 @@
 // frontend/src/App.jsx
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-react';
 
-// Pages
+// Pages - eagerly loaded (critical path)
 import Landing from './pages/Landing';
-import Onboarding from './pages/Onboarding';
-import Dashboard from './pages/Dashboard';
-import CreateTrip from './pages/CreateTrip';
-import Results from './pages/Results';
-import Account from './pages/Account';
-import Pricing from './pages/Pricing';
-import TripDetail from './pages/TripDetail';
-import SavedTripDetail from './pages/SavedTripDetail';
-import AcceptInvitation from './pages/AcceptInvitation';
+
+// Pages - lazy loaded (code splitting)
+const Onboarding = lazy(() => import('./pages/Onboarding'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const CreateTrip = lazy(() => import('./pages/CreateTrip'));
+const Results = lazy(() => import('./pages/Results'));
+const Account = lazy(() => import('./pages/Account'));
+const Pricing = lazy(() => import('./pages/Pricing'));
+const TripDetail = lazy(() => import('./pages/TripDetail'));
+const SavedTripDetail = lazy(() => import('./pages/SavedTripDetail'));
+const AcceptInvitation = lazy(() => import('./pages/AcceptInvitation'));
+const PriceAlerts = lazy(() => import('./pages/PriceAlerts'));
+const Destinations = lazy(() => import('./pages/Destinations'));
+const DestinationLanding = lazy(() => import('./pages/DestinationLanding'));
 
 // Layout
 import AppLayout from './components/Layout/AppLayout';
@@ -41,9 +47,12 @@ function ProtectedRoute({ children }) {
 function AppContent() {
   return (
     <Router>
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-gray-200 border-t-primary rounded-full animate-spin" /></div>}>
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Landing />} />
+        <Route path="/destinations" element={<Destinations />} />
+        <Route path="/destination/:slug" element={<DestinationLanding />} />
 
         {/* Onboarding Route - Semi-Protected */}
         <Route
@@ -125,6 +134,14 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/price-alerts"
+          element={
+            <ProtectedRoute>
+              <PriceAlerts />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Public invitation acceptance - no auth required */}
         <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
@@ -132,6 +149,7 @@ function AppContent() {
         {/* Catch all - redirect to landing */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </Router>
   );
 }

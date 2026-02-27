@@ -4,7 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { OptimalPeriodsWidget } from '../components/OptimalPeriodsWidget';
 import { DashboardCardSkeleton } from '../components/SkeletonLoaders';
-import { Plane, Globe, Target, AlertTriangle, Map, Calendar, Clock, DollarSign, Plus, Users, MapPin, ChevronRight } from 'lucide-react';
+import { SearchUsageWidget } from '../components/SearchUsageWidget';
+import { Plane, Globe, Target, AlertTriangle, Map, Calendar, Clock, DollarSign, Plus, Users, MapPin, ChevronRight, Bell } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { getDestinationImage } from '../utils/destinationImages';
 
 function Dashboard() {
@@ -154,7 +156,7 @@ function Dashboard() {
       <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           <div className="bg-white p-5 rounded-2xl border border-stone-100 flex items-center gap-4">
             <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center">
               <Plane size={22} />
@@ -184,12 +186,30 @@ function Dashboard() {
               <div className="text-sm text-text-secondary">Avg. Match</div>
             </div>
           </div>
+          <SearchUsageWidget />
         </div>
 
         {/* Optimal Periods Widget */}
         <div className="mb-12">
           <OptimalPeriodsWidget />
         </div>
+
+        {/* Price Alerts Link */}
+        <Link
+          to="/price-alerts"
+          className="flex items-center justify-between p-5 mb-10 bg-white rounded-2xl border border-stone-100 hover:border-primary/30 hover:shadow-sm transition-all group"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+              <Bell size={22} />
+            </div>
+            <div>
+              <h3 className="font-semibold text-text-main">Price Alerts</h3>
+              <p className="text-sm text-text-secondary">Track prices and get notified when they drop</p>
+            </div>
+          </div>
+          <ChevronRight size={20} className="text-text-secondary group-hover:text-primary transition-colors" />
+        </Link>
 
         {/* All Trips Section */}
         <div className="mb-12">

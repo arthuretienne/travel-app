@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const BASE_URL = 'https://booking-com15.p.rapidapi.com';
-const BOOKING_API_KEY = process.env.BOOKING_API_KEY || 'b723f67a8cmshf49874500229ca8p12d559jsnedd1aee8f4ea';
+const BOOKING_API_KEY = process.env.BOOKING_API_KEY;
 
 const headers = {
   'x-rapidapi-key': BOOKING_API_KEY,

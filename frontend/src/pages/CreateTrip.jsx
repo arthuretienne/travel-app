@@ -11,6 +11,7 @@ import {
   X, Loader2, Heart, UserPlus, Baby, Handshake, PenLine
 } from 'lucide-react';
 import { SearchLoadingScreen } from '../components/SkeletonLoaders';
+import { SearchUsageWidget } from '../components/SearchUsageWidget';
 import DestinationAutocomplete from '../components/DestinationAutocomplete';
 
 const TRAVEL_VIBES = [
@@ -90,6 +91,7 @@ function CreateTrip() {
   const [loadingStage, setLoadingStage] = useState('analyzing');
   const [loadingPreferences, setLoadingPreferences] = useState(true);
   const [showOptionalFilters, setShowOptionalFilters] = useState(false);
+  const [usageData, setUsageData] = useState(null);
 
   // Mandatory fields
   const [formData, setFormData] = useState({
@@ -194,14 +196,19 @@ function CreateTrip() {
     try {
       const token = await getToken();
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${API_URL}/api/users/preferences`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
 
-      if (response.ok) {
-        const data = await response.json();
+      // Fetch preferences and usage in parallel (independent — one failure shouldn't block the other)
+      const [prefsResponse, usageResponse] = await Promise.all([
+        fetch(`${API_URL}/api/users/preferences`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        }).catch(() => null),
+        fetch(`${API_URL}/api/billing/usage`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        }).catch(() => null),
+      ]);
+
+      if (prefsResponse?.ok) {
+        const data = await prefsResponse.json();
         if (data.preferences) {
           const originCode = data.preferences.originCity || 'PAR';
           setFormData(prev => ({
@@ -215,6 +222,11 @@ function CreateTrip() {
             originCityName: ORIGIN_CITY_NAMES[originCode] || originCode,
           }));
         }
+      }
+
+      if (usageResponse?.ok) {
+        const usageResult = await usageResponse.json();
+        setUsageData(usageResult);
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
@@ -316,6 +328,12 @@ function CreateTrip() {
 
   const validate = () => {
     const newErrors = {};
+
+    // Check usage limits (only for solo trips - group trips don't trigger search)
+    if (!formData.isGroupTrip && usageData?.needsUpgrade) {
+      newErrors.submit = 'You have reached your monthly search limit. Please upgrade to continue.';
+      return false;
+    }
 
     if (!formData.duration || formData.duration < 1 || formData.duration > 30) {
       newErrors.duration = 'Duration must be between 1 and 30 days';
@@ -1019,7 +1037,7 @@ function CreateTrip() {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/settings')}
+                onClick={() => navigate('/onboarding')}
                 className="px-4 py-3 text-sm font-medium text-primary border border-primary rounded-xl hover:bg-primary-light transition-colors"
               >
                 Change
@@ -1184,29 +1202,53 @@ function CreateTrip() {
         )}
 
         {/* Submit Button */}
-        <div className="mt-10 pt-8 border-t border-gray-100 flex justify-end gap-4">
-          <button
-            type="button"
-            className="px-6 py-3 bg-white text-text-secondary font-medium rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
-            onClick={() => navigate('/dashboard')}
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-8 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <Loader2 size={20} className="animate-spin" />
-                {formData.isGroupTrip ? 'Creating Group Trip...' : 'Finding Your Perfect Trip...'}
-              </>
-            ) : (
-              formData.isGroupTrip ? 'Create Group Trip' : 'Find My Perfect Trip'
-            )}
-          </button>
+        <div className="mt-10 pt-8 border-t border-gray-100">
+          {/* Usage indicator for solo trips */}
+          {!formData.isGroupTrip && usageData && (
+            <div className="mb-6 flex items-center justify-between">
+              <SearchUsageWidget compact />
+              {usageData.needsUpgrade && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/pricing')}
+                  className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors"
+                >
+                  Upgrade Now
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-4">
+            <button
+              type="button"
+              className="px-6 py-3 bg-white text-text-secondary font-medium rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+              onClick={() => navigate('/dashboard')}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className={`px-8 py-3 font-semibold rounded-xl shadow-lg transition-all flex items-center gap-2 ${
+                usageData?.needsUpgrade && !formData.isGroupTrip
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-primary text-white shadow-primary/20 hover:bg-primary-hover disabled:opacity-70 disabled:cursor-not-allowed'
+              }`}
+              disabled={loading || (usageData?.needsUpgrade && !formData.isGroupTrip)}
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  {formData.isGroupTrip ? 'Creating Group Trip...' : 'Finding Your Perfect Trip...'}
+                </>
+              ) : usageData?.needsUpgrade && !formData.isGroupTrip ? (
+                'Upgrade to Search'
+              ) : (
+                formData.isGroupTrip ? 'Create Group Trip' : 'Find My Perfect Trip'
+              )}
+            </button>
+          </div>
         </div>
       </form>
     </div>

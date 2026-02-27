@@ -237,6 +237,9 @@ export function generateDestinationRecommendation({
 }) {
   const interests = userProfile.basic?.activities || [];
   const style = userProfile.basic?.style || 'explorer';
+  // CRITICAL: Extract the user's custom request - THIS IS THE MOST IMPORTANT INPUT
+  const customRequest = userProfile.basic?.travelVibeDescription || '';
+  const tripType = userProfile.basic?.tripType || '';
 
   // Get seasonal insights
   const seasonalInsights = getSeasonalInsights(destination.name, dates.departure, {
@@ -245,17 +248,28 @@ export function generateDestinationRecommendation({
     budgetLevel: userProfile.basic?.budgetLevel || 'moderate',
   });
 
+  // Build user context with custom request priority
+  const userContext = customRequest
+    ? `USER REQUEST: "${customRequest}"
+Style: ${style}, Activities: ${interests.length > 0 ? interests.join(', ') : 'open to all'}${tripType ? `, Trip type: ${tripType}` : ''}`
+    : `USER: ${style} traveler, loves ${interests.length > 0 ? interests.join(', ') : 'culture, nature'}${tripType ? ` (${tripType} trip)` : ''}`;
+
+  // Build matchReason instruction based on whether there's a custom request
+  const matchReasonInstruction = customRequest
+    ? `"matchReason": "1-2 sentences explaining why ${destination.name} is PERFECT for their request: '${customRequest}'. Be specific about what ${destination.name} offers that matches their exact wish!"`
+    : `"matchReason": "1-2 sentences why ${destination.name} matches this ${style} traveler who loves ${interests.join(', ') || 'exploring'}. Be specific!"`;
+
   return {
     role: 'user',
     content: `Generate a travel recommendation for ${destination.name}, ${destination.country || ''} (${dates.duration} days).
 
-USER: ${style} traveler, loves ${interests.length > 0 ? interests.join(', ') : 'culture, nature'}
+${userContext}
 SEASON: ${seasonalInsights.monthName} - ${seasonalInsights.weather.description}
 
 Return ONLY this JSON (no markdown):
 {
   "tagline": "Max 10 words catchy phrase about ${destination.name}",
-  "matchReason": "1-2 sentences why ${destination.name} matches this traveler. Be specific!",
+  ${matchReasonInstruction},
   "seasonReason": "1 sentence about ${seasonalInsights.monthName} in ${destination.name}",
   "activities": [
     {

@@ -6,7 +6,7 @@ import * as roadtripService from '../services/roadtripService.js';
 import { generateAffiliateLinks } from '../services/affiliateService.js';
 import { getDestinationPhotos as getPexelsPhoto } from '../services/pexelsService.js';
 import { authenticateUser } from '../middleware/auth.js';
-import { strictLimiter } from '../middleware/rateLimiter.js';
+import { strictLimiter, userStrictLimiter, userSearchLimiter } from '../middleware/rateLimiter.js';
 import { checkLimit, incrementUsage } from '../middleware/checkSubscription.js';
 import prisma from '../db/prisma.js';
 
@@ -87,7 +87,7 @@ const router = express.Router();
 // Uses Hotel API which returns cities/regions (not airports)
 // Backend will find appropriate airport when searching flights
 // ==========================================
-router.get('/destinations/search', async (req, res) => {
+router.get('/destinations/search', authenticateUser, userSearchLimiter, async (req, res) => {
   try {
     const { query } = req.query;
 
@@ -101,7 +101,7 @@ router.get('/destinations/search', async (req, res) => {
     // This is better UX: user selects "Bali, Indonesia" not "Ngurah Rai Airport"
     const response = await fetch(`https://booking-com15.p.rapidapi.com/api/v1/hotels/searchDestination?query=${encodeURIComponent(query)}`, {
       headers: {
-        'x-rapidapi-key': process.env.BOOKING_API_KEY || 'b723f67a8cmshf49874500229ca8p12d559jsnedd1aee8f4ea',
+        'x-rapidapi-key': process.env.BOOKING_API_KEY,
         'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
       }
     });
@@ -135,82 +135,11 @@ router.get('/destinations/search', async (req, res) => {
 
   } catch (error) {
     console.error('Autocomplete error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Destination search failed' });
   }
 });
 
-// ==========================================
-// TEST ENDPOINT: Test algorithm with random profiles
-// ==========================================
-router.get('/test-algorithm', async (req, res) => {
-  try {
-    const { generateDestinationShortlist } = await import('../services/claudeService.js');
-
-    // Random test profiles to simulate different users
-    const testProfiles = [
-      {
-        name: 'Budget Backpacker',
-        basic: { style: 'routard', activities: ['culture', 'nature'], budget: 500 },
-        onboardingPreferences: { whyTravel: 'discover authentic places', mainGoal: 'adventure', personality: 'curious' }
-      },
-      {
-        name: 'Beach Lover',
-        basic: { style: 'confort', activities: ['plage', 'gastronomie'], budget: 1200 },
-        onboardingPreferences: { whyTravel: 'relax and unwind', mainGoal: 'relaxation', personality: 'chill' }
-      },
-      {
-        name: 'Culture Enthusiast',
-        basic: { style: 'explorer', activities: ['culture', 'musées', 'gastronomie'], budget: 800 },
-        onboardingPreferences: { whyTravel: 'learn about history', mainGoal: 'cultural immersion', personality: 'intellectual' }
-      },
-      {
-        name: 'Adventure Seeker',
-        basic: { style: 'aventurier', activities: ['nature', 'randonnée', 'sport'], budget: 1000 },
-        onboardingPreferences: { whyTravel: 'push my limits', mainGoal: 'adventure', personality: 'thrill-seeker' }
-      },
-      {
-        name: 'Foodie Traveler',
-        basic: { style: 'explorer', activities: ['gastronomie', 'culture'], budget: 900 },
-        onboardingPreferences: { whyTravel: 'taste the world', mainGoal: 'culinary discovery', personality: 'epicurean', topActivities: ['food tours', 'cooking classes', 'wine tasting'] }
-      }
-    ];
-
-    // Pick random profile or use query param
-    const profileIndex = req.query.profile ? parseInt(req.query.profile) : Math.floor(Math.random() * testProfiles.length);
-    const testProfile = testProfiles[profileIndex % testProfiles.length];
-
-    console.log(`\n🧪 TESTING ALGORITHM with profile: ${testProfile.name}`);
-    console.log('Profile:', JSON.stringify(testProfile, null, 2));
-
-    // Allow budget and maxFlightHours override via query param for testing
-    const budgetOverride = req.query.budget ? parseInt(req.query.budget) : null;
-    const maxFlightHoursOverride = req.query.maxFlightHours ? parseInt(req.query.maxFlightHours) : null;
-    const testBudget = budgetOverride || testProfile.basic.budget;
-
-    const startTime = Date.now();
-    const destinations = await generateDestinationShortlist(testProfile, {
-      budget: testBudget,
-      duration: 7,
-      origin: req.query.origin || 'Paris',
-      count: 6,
-      maxFlightHours: maxFlightHoursOverride
-    });
-    const duration = Date.now() - startTime;
-
-    res.json({
-      success: true,
-      testProfile: testProfile.name,
-      profileDetails: testProfile,
-      destinations,
-      duration: `${duration}ms`,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Test algorithm error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+// test-algorithm endpoint removed for security (exposed Claude API to public)
 
 // Main endpoint: Generate travel recommendations
 // Apply strict rate limiting (10 req/15min) for expensive Claude AI calls
@@ -218,6 +147,7 @@ router.get('/test-algorithm', async (req, res) => {
 router.post('/recommendations',
   strictLimiter,
   authenticateUser,
+  userStrictLimiter,
   checkLimit('maxSearchesPerMonth', 'searchesThisMonth'),
   incrementUsage('searchesThisMonth'),
   async (req, res) => {
@@ -310,24 +240,21 @@ router.post('/recommendations',
 
       console.log(`✅ Trip optimized: €${optimizedTrip.flight.totalCost} flight + €${optimizedTrip.hotel.totalPrice} hotel`);
 
-      // Step 2: Generate destination insights with Claude (fast call)
-      console.log('🤖 Step 2: Generating destination insights...');
-      let destinationInsights = null;
-      try {
-        destinationInsights = await generateDestinationRecommendationWithData({
+      // Step 2+3: Generate destination insights + fetch photos in parallel
+      console.log('🤖 Step 2+3: Generating insights + fetching photos in parallel...');
+      const [destinationInsights, photoMap] = await Promise.all([
+        generateDestinationRecommendationWithData({
           destination: { name: optimizedTrip.destination.name, country: optimizedTrip.destination.country },
           userProfile,
           dates: { departure: optimizedTrip.dates.departure, duration: optimizedTrip.dates.duration },
           budget: { remaining: optimizedTrip.budget.activities },
-        });
-        console.log(`✅ Generated insights: ${destinationInsights?.tagline || 'N/A'}`);
-      } catch (insightError) {
-        console.warn('⚠️  Failed to generate insights:', insightError.message);
-      }
-
-      // Step 3: Get photos
-      console.log('📸 Step 3: Fetching destination photos...');
-      const photoMap = await getDestinationPhotos([optimizedTrip.destination.name]);
+        }).catch(err => {
+          console.warn('⚠️  Failed to generate insights:', err.message);
+          return null;
+        }),
+        getDestinationPhotos([optimizedTrip.destination.name]),
+      ]);
+      console.log(`✅ Generated insights: ${destinationInsights?.tagline || 'N/A'}`);
       const photo = photoMap.get(optimizedTrip.destination.name);
 
       // Step 4: Generate affiliate links
@@ -474,7 +401,19 @@ router.post('/recommendations',
           totalDays: optimizedTrip.dates.duration,
           highlights: [`Explore ${optimizedTrip.destination.name}`, 'Local experiences', 'Cultural immersion'],
         },
-        links: affiliateLinks
+        links: affiliateLinks,
+        // Include search context for itinerary personalization later
+        searchContext: {
+          travelVibeDescription: userProfile.basic?.travelVibeDescription || null,
+          travelers: userProfile.basic?.travelers || 1,
+          tripType: userProfile.basic?.tripType || null,
+          activities: userProfile.basic?.activities || [],
+          style: userProfile.basic?.style || null,
+          personality: userProfile.onboardingPreferences?.personality || null,
+          whyTravel: userProfile.onboardingPreferences?.whyTravel || null,
+          mainGoal: userProfile.onboardingPreferences?.mainGoal || null,
+          idealRhythm: userProfile.onboardingPreferences?.idealRhythm || null,
+        }
       };
 
       console.log(`✅ Returning 1 complete trip recommendation for ${destination}`);
@@ -854,7 +793,19 @@ router.post('/recommendations',
           } : null,
           recommendation: recommendation,
           score: score,
-          links: affiliateLinks
+          links: affiliateLinks,
+          // Include search context for itinerary personalization later
+          searchContext: {
+            travelVibeDescription: userProfile.basic?.travelVibeDescription || null,
+            travelers: userProfile.basic?.travelers || 1,
+            tripType: userProfile.basic?.tripType || null,
+            activities: userProfile.basic?.activities || [],
+            style: userProfile.basic?.style || null,
+            personality: userProfile.onboardingPreferences?.personality || null,
+            whyTravel: userProfile.onboardingPreferences?.whyTravel || null,
+            mainGoal: userProfile.onboardingPreferences?.mainGoal || null,
+            idealRhythm: userProfile.onboardingPreferences?.idealRhythm || null,
+          }
         };
       });
 
@@ -914,8 +865,7 @@ router.post('/recommendations',
     console.error('❌ Error in recommendations:', error);
     res.status(500).json({
       success: false,
-      error: error.message,
-      details: error.stack
+      error: 'Failed to generate recommendations. Please try again.',
     });
   }
 });
@@ -931,8 +881,8 @@ router.get('/test', async (req, res) => {
   });
 });
 
-// Endpoint to analyze destination diversity
-router.get('/algorithm-stats', async (req, res) => {
+// Endpoint to analyze destination diversity (auth required)
+router.get('/algorithm-stats', authenticateUser, async (req, res) => {
   try {
     const results = await prisma.algorithmResult.findMany({
       orderBy: { createdAt: 'desc' },
@@ -982,7 +932,7 @@ router.get('/algorithm-stats', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching algorithm stats:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch stats' });
   }
 });
 
@@ -994,6 +944,7 @@ router.get('/algorithm-stats', async (req, res) => {
 router.post('/recommendations/stream',
   strictLimiter,
   authenticateUser,
+  userStrictLimiter,
   checkLimit('maxSearchesPerMonth', 'searchesThisMonth'),
   incrementUsage('searchesThisMonth'),
   async (req, res) => {
@@ -1292,7 +1243,19 @@ router.post('/recommendations/stream',
               },
               recommendation: recommendation,
               score: score,
-              links: affiliateLinks
+              links: affiliateLinks,
+              // Include search context for itinerary personalization later
+              searchContext: {
+                travelVibeDescription: userProfile.basic?.travelVibeDescription || null,
+                travelers: userProfile.basic?.travelers || 1,
+                tripType: userProfile.basic?.tripType || null,
+                activities: userProfile.basic?.activities || [],
+                style: userProfile.basic?.style || null,
+                personality: userProfile.onboardingPreferences?.personality || null,
+                whyTravel: userProfile.onboardingPreferences?.whyTravel || null,
+                mainGoal: userProfile.onboardingPreferences?.mainGoal || null,
+                idealRhythm: userProfile.onboardingPreferences?.idealRhythm || null,
+              }
             };
 
             completedCount++;
@@ -1306,7 +1269,7 @@ router.post('/recommendations/stream',
 
           } catch (error) {
             console.warn(`⚠️  Streaming: Failed to process ${dest.name}:`, error.message);
-            sendEvent('warning', { destination: dest.name, error: error.message });
+            sendEvent('warning', { destination: dest.name, error: 'Failed to process destination' });
           }
         })
       );
@@ -1321,7 +1284,7 @@ router.post('/recommendations/stream',
 
     } catch (error) {
       console.error('Streaming error:', error);
-      sendEvent('error', { message: error.message });
+      sendEvent('error', { message: 'Failed to generate recommendations. Please try again.' });
       res.end();
     }
   }

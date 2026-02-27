@@ -3,6 +3,40 @@ import prisma from '../db/prisma.js';
 import { getPlanDetails, isWithinLimit } from '../services/stripeService.js';
 
 /**
+ * Check if we need to reset monthly usage (first of the month)
+ * Returns true if reset was performed
+ */
+async function checkAndResetMonthlyUsage(subscription) {
+  if (!subscription) return false;
+
+  const now = new Date();
+  const lastReset = subscription.updatedAt;
+
+  // Check if we're in a new month compared to the last update
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const lastResetMonth = lastReset.getMonth();
+  const lastResetYear = lastReset.getFullYear();
+
+  // Reset if it's a new month
+  if (currentYear > lastResetYear || (currentYear === lastResetYear && currentMonth > lastResetMonth)) {
+    console.log(`🔄 New month detected - resetting usage for user ${subscription.userId}`);
+
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        searchesThisMonth: 0,
+        // groupTripsCreated stays - only reset searches
+      },
+    });
+
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Middleware to check if user has an active subscription
  * Attaches subscription data to req.subscription
  */
@@ -72,8 +106,8 @@ export async function checkSubscription(req, res, next) {
  */
 export function requireFeature(featureName) {
   return async (req, res, next) => {
-    // BETA MODE: Bypass all feature checks - Stripe disabled for testing
-    const BETA_MODE = process.env.BETA_MODE === 'true' || process.env.STRIPE_DISABLED === 'true' || true; // Always bypass for now
+    // BETA MODE: Bypass all feature checks - set BETA_MODE=true to disable limits
+    const BETA_MODE = process.env.BETA_MODE === 'true' || process.env.STRIPE_DISABLED === 'true';
 
     if (BETA_MODE) {
       console.log(`🚀 BETA MODE: Bypassing feature check for ${featureName}`);
@@ -115,8 +149,8 @@ export function requireFeature(featureName) {
  */
 export function checkLimit(limitType, usageField) {
   return async (req, res, next) => {
-    // BETA MODE: Bypass all limits - Stripe disabled for testing
-    const BETA_MODE = process.env.BETA_MODE === 'true' || process.env.STRIPE_DISABLED === 'true' || true; // Always bypass for now
+    // BETA MODE: Bypass all limits - set BETA_MODE=true to disable limits
+    const BETA_MODE = process.env.BETA_MODE === 'true' || process.env.STRIPE_DISABLED === 'true';
 
     if (BETA_MODE) {
       console.log(`🚀 BETA MODE: Bypassing limit check for ${limitType}`);
@@ -134,6 +168,15 @@ export function checkLimit(limitType, usageField) {
 
       if (!req.subscription) {
         await checkSubscription(req, res, () => {});
+      }
+
+      // Check for monthly reset before checking limits
+      const wasReset = await checkAndResetMonthlyUsage(req.subscription);
+      if (wasReset) {
+        // Refresh subscription data after reset
+        req.subscription = await prisma.subscription.findUnique({
+          where: { userId: req.user.id },
+        });
       }
 
       const plan = getPlanDetails(req.subscription.plan);
@@ -173,8 +216,8 @@ export function checkLimit(limitType, usageField) {
  */
 export function incrementUsage(usageField) {
   return async (req, res, next) => {
-    // BETA MODE: Skip all usage tracking - Stripe disabled for testing
-    const BETA_MODE = process.env.BETA_MODE === 'true' || process.env.STRIPE_DISABLED === 'true' || true; // Always bypass for now
+    // BETA MODE: Skip all usage tracking - set BETA_MODE=true to disable limits
+    const BETA_MODE = process.env.BETA_MODE === 'true' || process.env.STRIPE_DISABLED === 'true';
 
     if (BETA_MODE) {
       return next();
@@ -192,9 +235,9 @@ export function incrementUsage(usageField) {
 
     res.json = function (data) {
       // Only increment if response is successful (2xx)
-      if (res.statusCode >= 200 && res.statusCode < 300) {
+      if (res.statusCode >= 200 && res.statusCode < 300 && req.user?.id) {
         prisma.subscription
-          .update({
+          .updateMany({
             where: { userId: req.user.id },
             data: {
               [usageField]: {
@@ -202,11 +245,13 @@ export function incrementUsage(usageField) {
               },
             },
           })
-          .then(() => {
-            console.log(`📊 Incremented ${usageField} for user ${req.user.id}`);
+          .then((result) => {
+            if (result.count > 0) {
+              console.log(`📊 Incremented ${usageField} for user ${req.user.id}`);
+            }
           })
           .catch(err => {
-            console.error(`❌ Failed to increment ${usageField}:`, err);
+            console.error(`❌ Failed to increment ${usageField}:`, err.message);
           });
       }
 

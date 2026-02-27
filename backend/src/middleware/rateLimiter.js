@@ -73,9 +73,52 @@ export const emailLimiter = rateLimit({
   validate: { trustProxy: false },
 });
 
+/**
+ * Per-user rate limiter for expensive operations (recommendations)
+ * Uses authenticated user ID as key, not IP.
+ * 10 requests per 15 minutes per user account.
+ * Must be placed AFTER authenticateUser middleware.
+ */
+export const userStrictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: {
+    error: 'Too many requests',
+    message: 'You have exceeded the rate limit. Please try again in 15 minutes.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { trustProxy: false },
+  keyGenerator: (req) => {
+    // Use authenticated user ID if available, fall back to IP
+    return req.user?.id || req.ip;
+  },
+});
+
+/**
+ * Per-user rate limiter for autocomplete/search (lighter)
+ * 60 requests per minute per user — allows fast typing
+ */
+export const userSearchLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  message: {
+    error: 'Too many search requests',
+    message: 'Please slow down. Try again in a moment.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { trustProxy: false },
+  keyGenerator: (req) => {
+    return req.user?.id || req.ip;
+  },
+});
+
 export default {
   apiLimiter,
   strictLimiter,
   authLimiter,
   emailLimiter,
+  userStrictLimiter,
+  userSearchLimiter,
 };

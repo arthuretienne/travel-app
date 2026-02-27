@@ -4,7 +4,10 @@ import axios from 'axios';
 import * as cache from '../utils/cache.js';
 
 const BASE_URL = 'https://booking-com15.p.rapidapi.com';
-const BOOKING_API_KEY = process.env.BOOKING_API_KEY || 'b723f67a8cmshf49874500229ca8p12d559jsnedd1aee8f4ea';
+const BOOKING_API_KEY = process.env.BOOKING_API_KEY;
+if (!BOOKING_API_KEY) {
+  console.error('[BookingService] BOOKING_API_KEY not set in environment variables');
+}
 
 const CACHE_TTL = {
   DESTINATION_ID: 43200,    // 30 days in minutes (permanent cache for destination IDs)
@@ -209,7 +212,7 @@ export async function getDestinationId(destinationName) {
   const cacheKey = `booking:destination:${destinationName.toLowerCase()}`;
 
   // Check cache first (30 days TTL)
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) {
     console.log(`✅ Cache HIT for "${destinationName}" → ${cached.id}`);
     return cached;
@@ -322,7 +325,7 @@ export async function searchFlights({
   const cacheKey = `booking:flights:${fromId}:${toId}:${departDate}:${returnDate}:${adults}:${cabinClass}`;
 
   // Check cache
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) {
     console.log(`✅ Flight cache HIT: ${fromId} → ${toId}`);
     return cached;
@@ -426,7 +429,7 @@ async function searchOneWayDirect({
 }) {
   const cacheKey = `booking:flights:${fromId}:${toId}:${departDate}:null:${adults}:${cabinClass}`;
 
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) {
     console.log(`✅ Flight cache HIT: ${fromId} → ${toId}`);
     return cached;
@@ -889,7 +892,7 @@ export async function searchHotels({
   const cacheKey = `booking:hotels:${destinationQuery}:${arrivalDate}:${departureDate}:${adults}:${children}:${rooms}:${prefKey}:${contextHash}:${typeHash}`;
 
   // Check cache
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) {
     console.log(`✅ Hotel cache HIT: ${destinationQuery} (context: ${contextHash})`);
     return cached;

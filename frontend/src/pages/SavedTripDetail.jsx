@@ -22,9 +22,12 @@ import {
   Send,
   Backpack,
   CheckCircle2,
+  Bell,
+  Download,
 } from 'lucide-react';
 import { CompleteTripPlanCard, PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
 import StickyBookingProgress, { BookingChecklistCard } from '../components/StickyBookingProgress';
+// PDF imports are lazy-loaded in handleExportPdf to keep bundle small
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -54,6 +57,9 @@ export default function SavedTripDetail() {
   const [currentEmail, setCurrentEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState(null);
+  const [creatingAlert, setCreatingAlert] = useState(false);
+  const [alertCreated, setAlertCreated] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   useEffect(() => {
     fetchTripDetails();
@@ -190,6 +196,63 @@ export default function SavedTripDetail() {
     }
   };
 
+  const handleExportPdf = async () => {
+    try {
+      setExportingPdf(true);
+      // Fetch itinerary and packing data for PDF
+      const token = await getToken();
+      const [itineraryRes, packingRes] = await Promise.all([
+        fetch(`${API_URL}/api/trips/${trip.id}/itinerary`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/api/trips/${trip.id}/packing`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      let itinerary = null;
+      let packing = null;
+
+      if (itineraryRes.ok) {
+        const data = await itineraryRes.json();
+        itinerary = data.data?.itinerary;
+      }
+      if (packingRes.ok) {
+        const data = await packingRes.json();
+        packing = data.data?.packing;
+      }
+
+      if (!itinerary || itinerary.length === 0) {
+        alert('No itinerary available yet. Generate the itinerary first by scrolling down.');
+        return;
+      }
+
+      const userName = user?.firstName || 'Traveler';
+      // Dynamic import to keep PDF renderer out of main bundle
+      const [{ pdf }, { default: ItineraryPDF }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('../components/ItineraryPDF'),
+      ]);
+      const blob = await pdf(
+        <ItineraryPDF trip={trip} itinerary={itinerary} packing={packing} userName={userName} />
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${safeText(trip.city)}-trip-plan.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('[PDF Export] Error:', err);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this trip?')) return;
 
@@ -206,6 +269,48 @@ export default function SavedTripDetail() {
     } catch (err) {
       console.error('Error deleting trip:', err);
       alert('Failed to delete trip');
+    }
+  };
+
+  const handleCreatePriceAlert = async () => {
+    if (!trip?.tripData?.pricing?.total || !trip.startDate || !trip.endDate) {
+      alert('Trip missing required data for price alert');
+      return;
+    }
+
+    setCreatingAlert(true);
+    try {
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/api/price-alerts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          savedTripId: trip.id,
+          destination: trip.city,
+          country: trip.country,
+          origin: trip.tripData?.slot?.origin || 'PAR',
+          departureDate: trip.startDate,
+          returnDate: trip.endDate,
+          initialPrice: trip.tripData.pricing.total,
+          alertType: 'flight',
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to create alert');
+      }
+
+      setAlertCreated(true);
+      setTimeout(() => setAlertCreated(false), 3000);
+    } catch (err) {
+      console.error('Error creating price alert:', err);
+      alert(err.message || 'Failed to create price alert');
+    } finally {
+      setCreatingAlert(false);
     }
   };
 
@@ -239,9 +344,9 @@ export default function SavedTripDetail() {
   const hotelOptions = tripData.hotelOptions || {};
   const links = tripData.links || {};
 
-  const duration = trip.startDate && trip.endDate
+  const duration = Math.max(1, trip.startDate && trip.endDate
     ? Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))
-    : slot.duration || 0;
+    : slot.duration || 1);
 
   return (
     <div className="min-h-screen bg-surface-subtle">
@@ -277,6 +382,38 @@ export default function SavedTripDetail() {
               >
                 <UserPlus size={18} />
                 Invite Friends
+              </button>
+              <button
+                onClick={handleCreatePriceAlert}
+                disabled={creatingAlert || alertCreated}
+                className={`flex items-center gap-2 px-4 py-2 font-medium rounded-lg transition-colors ${
+                  alertCreated
+                    ? 'bg-green-100 text-green-700 cursor-default'
+                    : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                }`}
+                title="Create price alert for this trip"
+              >
+                {creatingAlert ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : alertCreated ? (
+                  <CheckCircle2 size={18} />
+                ) : (
+                  <Bell size={18} />
+                )}
+                {alertCreated ? 'Alert Created' : 'Price Alert'}
+              </button>
+              <button
+                onClick={handleExportPdf}
+                disabled={exportingPdf}
+                className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-700 font-medium rounded-lg hover:bg-stone-200 transition-colors disabled:opacity-50"
+                title="Export trip as PDF"
+              >
+                {exportingPdf ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Download size={18} />
+                )}
+                PDF
               </button>
               <button
                 onClick={handleDelete}

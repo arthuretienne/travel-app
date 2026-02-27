@@ -16,8 +16,11 @@ import votingRoutes from './src/routes/voting.js';
 import messagesRoutes from './src/routes/messages.js';
 import membersRoutes from './src/routes/members.js';
 import billingRoutes from './src/routes/billing.js';
+import priceAlertsRoutes from './src/routes/priceAlerts.js';
 import tripEnhancementsRoutes from './src/routes/tripEnhancements.js';
 import friendsRoutes from './src/routes/friends.js';
+import pushRoutes from './src/routes/push.js';
+import expensesRoutes from './src/routes/expenses.js';
 import prisma from './src/db/prisma.js';
 import { apiLimiter, strictLimiter, emailLimiter } from './src/middleware/rateLimiter.js';
 import { initializeSocketServer } from './src/services/socketService.js';
@@ -63,6 +66,12 @@ app.use('/api/dates', datesRoutes);
 // Billing & subscription routes
 app.use('/api/billing', billingRoutes);
 
+// Price alerts
+app.use('/api/price-alerts', priceAlertsRoutes);
+
+// Push notifications
+app.use('/api/push', pushRoutes);
+
 // Collaborative trips routes
 app.use('/api/trips', tripsRoutes);
 app.use('/api/trips', votingRoutes);
@@ -74,6 +83,25 @@ app.use('/api/invitations', invitationsRoutes);
 // Friends system
 app.use('/api/friends', friendsRoutes);
 app.use('/api/trips', tripEnhancementsRoutes);
+app.use('/api/trips', expensesRoutes);
+
+// Cron endpoint for automated price checks (called by Render Cron Job)
+app.post('/api/cron/check-prices', async (req, res) => {
+  // Verify cron secret to prevent unauthorized access
+  const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
+  if (cronSecret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const { checkAllAlerts } = await import('./src/services/priceAlertService.js');
+    const results = await checkAllAlerts();
+    res.json({ success: true, results });
+  } catch (error) {
+    console.error('[Cron] Price check error:', error.message);
+    res.status(500).json({ success: false, error: 'Price check failed' });
+  }
+});
 
 // Health check
 app.get('/api/health', async (req, res) => {
@@ -108,12 +136,11 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Error handling
+// Error handling — never leak stack traces or internal details
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
+  console.error('Unhandled error:', err);
   res.status(500).json({
     error: 'Internal server error',
-    message: err.message
   });
 });
 
@@ -129,7 +156,7 @@ httpServer.listen(PORT, () => {
   console.log(`📡 API endpoints available at http://localhost:${PORT}/api`);
   console.log(`🔌 WebSocket server ready for real-time chat`);
   console.log(`✅ Database connected (Neon PostgreSQL)`);
-  console.log(`✅ Cache service ready (Upstash Redis)`);
+  console.log(`✅ Cache service ready (${process.env.UPSTASH_REDIS_REST_URL ? 'Upstash Redis' : 'In-memory'})`);
   console.log(`✅ Authentication ready (Clerk)`);
   console.log('');
   console.log('Available routes:');

@@ -39,6 +39,9 @@ model User {
   messages         TripMessage[]
   friendships      Friendship[] @relation("UserFriendships")
   friendOf         Friendship[] @relation("FriendOf")
+  priceAlerts      PriceAlert[]
+  pushSubscriptions PushSubscription[]
+  expensesPaid     TripExpense[] @relation("ExpensesPaid")
 }
 
 model UserPreferences {
@@ -317,6 +320,7 @@ model CollaborativeTrip {
   votes         TripVote[]
   messages      TripMessage[]
   proposedTrips ProposedDestination[]
+  expenses      TripExpense[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -531,4 +535,103 @@ model Subscription {
   @@index([userId])
   @@index([stripeCustomerId])
   @@index([stripeSubscriptionId])
+}
+
+// ========================================
+// PRICE ALERTS
+// ========================================
+
+model PriceAlert {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Trip details
+  savedTripId String?
+  destination String   // City name
+  country     String?
+  origin      String   // Departure city
+
+  // Travel dates
+  departureDate DateTime
+  returnDate    DateTime
+  duration      Int
+
+  // Price tracking
+  initialPrice     Float    // Price when alert was created
+  targetPrice      Float    // Alert triggers when price drops below this
+  currentPrice     Float?   // Last checked price
+  lowestPrice      Float?   // Lowest price seen
+  priceHistory     Json     @default("[]") // Array of { date, price }
+
+  // Alert settings
+  alertType  String @default("flight") // "flight", "hotel", "both"
+  isActive   Boolean @default(true)
+  frequency  String @default("daily") // "daily", "weekly"
+
+  // Notification tracking
+  lastCheckedAt    DateTime?
+  lastNotifiedAt   DateTime?
+  notificationsSent Int @default(0)
+
+  // Status
+  status String @default("active") // "active", "paused", "triggered", "expired"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([isActive, lastCheckedAt])
+}
+
+// ========================================
+// PUSH NOTIFICATIONS
+// ========================================
+
+model PushSubscription {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  endpoint String
+  p256dh   String
+  auth     String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, endpoint])
+  @@index([userId])
+}
+
+// ========================================
+// EXPENSE SPLITTING (Tricount-style)
+// ========================================
+
+model TripExpense {
+  id     String @id @default(cuid())
+  tripId String
+  trip   CollaborativeTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  // Who paid
+  paidById String
+  paidBy   User   @relation("ExpensesPaid", fields: [paidById], references: [id], onDelete: Cascade)
+
+  // Expense details
+  description String
+  amount      Float
+  currency    String @default("EUR")
+  category    String @default("other") // "food", "transport", "accommodation", "activity", "shopping", "other"
+  date        DateTime @default(now())
+
+  // Split configuration
+  splitType   String @default("equal") // "equal", "custom", "percentage"
+  splitAmong  Json   // Array of { userId, amount?, percentage? }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tripId])
+  @@index([paidById])
 }

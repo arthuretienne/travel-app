@@ -5,12 +5,14 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "postinstall": "DATABASE_URL=\"postgresql://placeholder\" prisma generate"
+    "postinstall": "DATABASE_URL=\"postgresql://placeholder\" prisma generate",
+    "cron:check-prices": "node scripts/check-prices.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
     "@clerk/clerk-sdk-node": "^4.13.23",
     "@prisma/client": "^6.19.0",
+    "@upstash/redis": "^1.36.1",
     "axios": "^1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -21,7 +23,9 @@
     "prisma": "^6.19.0",
     "resend": "^6.5.2",
     "socket.io": "^4.8.1",
-    "stripe": "^20.0.0"
+    "socket.io-client": "^4.8.3",
+    "stripe": "^20.0.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

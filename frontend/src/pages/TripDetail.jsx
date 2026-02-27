@@ -49,14 +49,26 @@ import {
   ListChecks,
   LayoutDashboard,
   Bot,
+  Wallet,
 } from 'lucide-react';
 import { PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
 import StickyBookingProgress, { BookingChecklistCard } from '../components/StickyBookingProgress';
 import TripChat from '../components/TripChat';
 import FriendsManager from '../components/FriendsManager';
+import TripBookingDetails from '../components/TripBookingDetails';
+import TripExpenses from '../components/TripExpenses';
 import { generateAllBookingLinks, getIataCode } from '../utils/bookingLinks';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+// Helper to extract city/country from finalDestination which can be flat or nested
+function getDestinationInfo(finalDestination) {
+  if (!finalDestination) return { city: null, country: null };
+  return {
+    city: finalDestination.city || finalDestination.destination?.city || null,
+    country: finalDestination.country || finalDestination.destination?.country || null,
+  };
+}
 
 export default function TripDetail() {
   const { id } = useParams();
@@ -346,8 +358,8 @@ export default function TripDetail() {
       {/* Sticky Booking Progress (only when confirmed) */}
       {isConfirmed && trip.finalDestination && (
         <StickyBookingProgress
-          city={trip.finalDestination.city}
-          country={trip.finalDestination.country}
+          city={getDestinationInfo(trip.finalDestination).city}
+          country={getDestinationInfo(trip.finalDestination).country}
           startDate={trip.finalStartDate}
           endDate={trip.finalEndDate}
           adults={trip.members?.length || 1}
@@ -374,7 +386,7 @@ export default function TripDetail() {
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-4xl font-bold text-text-main">
                   {trip.finalDestination
-                    ? `${trip.finalDestination.city} ${trip.finalDestination.country === 'Portugal' ? '🇵🇹' : '🌍'}`
+                    ? `${getDestinationInfo(trip.finalDestination).city} ${getDestinationInfo(trip.finalDestination).country === 'Portugal' ? '🇵🇹' : '🌍'}`
                     : trip.name}
                 </h1>
               </div>
@@ -455,6 +467,7 @@ export default function TripDetail() {
               { id: 'overview', label: 'Aperçu', icon: LayoutDashboard },
               { id: 'participants', label: 'Participants', icon: Users, badge: trip.members?.length || 0 },
               { id: 'chat', label: 'Chat', icon: MessageCircle },
+              { id: 'expenses', label: 'Expenses', icon: Wallet },
               { id: 'checklist', label: 'Checklist', icon: ListChecks },
               { id: 'settings', label: 'Réglages', icon: Settings },
             ].map((tab) => (
@@ -490,6 +503,15 @@ export default function TripDetail() {
             {isVoting && <VotingSection trip={trip} fetchTripDetails={fetchTripDetails} user={user} isCreator={userRole === 'creator'} />}
             {isConfirmed && (
               <>
+                {/* Show saved flight/hotel recommendations */}
+                <TripBookingDetails
+                  tripData={trip.finalDestination}
+                  city={getDestinationInfo(trip.finalDestination).city}
+                  country={getDestinationInfo(trip.finalDestination).country}
+                  startDate={trip.finalStartDate}
+                  endDate={trip.finalEndDate}
+                  adults={trip.members?.length || 1}
+                />
                 <BookingChecklistSection trip={trip} fetchTripDetails={fetchTripDetails} getToken={getToken} />
                 <TripEnhancementsSection trip={trip} userName={user?.firstName || 'there'} />
               </>
@@ -649,6 +671,14 @@ export default function TripDetail() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ============ EXPENSES TAB ============ */}
+        {activeTab === 'expenses' && (
+          <TripExpenses
+            tripId={trip.id}
+            currentUserId={trip.members?.find(m => m.user?.email === user?.primaryEmailAddress?.emailAddress)?.userId}
+          />
         )}
 
         {/* ============ CHECKLIST TAB ============ */}
@@ -1534,10 +1564,11 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
   const [sendingReminders, setSendingReminders] = useState(false);
   const [reminderResult, setReminderResult] = useState(null);
 
-  // Get trip data from finalDestination
+  // Get trip data from finalDestination (handles both flat and nested structures)
   const tripData = trip.finalDestination || {};
-  const city = tripData.city || 'Unknown';
-  const country = tripData.country || 'Unknown';
+  const { city: destCity, country: destCountry } = getDestinationInfo(trip.finalDestination);
+  const city = destCity || 'Unknown';
+  const country = destCountry || 'Unknown';
 
   // Generate optimized booking links
   const links = generateAllBookingLinks({
@@ -1860,7 +1891,13 @@ function TripEnhancementsSection({ trip, userName }) {
     };
   }, [trip.id, getToken]);
 
-  const destination = trip.finalDestination;
+  // Build destination object with proper city/country (handles nested tripData structure)
+  const destInfo = getDestinationInfo(trip.finalDestination);
+  const destination = {
+    ...(trip.finalDestination || {}),
+    city: destInfo.city,
+    country: destInfo.country,
+  };
 
   return (
     <div className="space-y-6">

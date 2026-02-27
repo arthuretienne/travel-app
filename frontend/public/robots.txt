@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Allow: /destination/
+Disallow: /dashboard
+Disallow: /create-trip
+Disallow: /results
+Disallow: /account
+Disallow: /onboarding
+Disallow: /pricing
+Disallow: /trips/
+Disallow: /saved-trips/
+Disallow: /price-alerts
+Disallow: /accept-invitation/
+
+Sitemap: https://skusku.life/sitemap.xml

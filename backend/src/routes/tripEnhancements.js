@@ -61,14 +61,16 @@ async function getTripData(id, userId) {
       hotelDetails = tripData.hotel;
     }
   } else if (trip.finalDestination) {
-    city = trip.finalDestination.city;
-    country = trip.finalDestination.country;
-    startDate = trip.finalDestination.startDate || trip.finalStartDate;
-    endDate = trip.finalDestination.endDate || trip.finalEndDate;
-    // For collaborative trips, activities might be in finalDestination
-    if (trip.finalDestination.suggestedActivities) {
-      suggestedActivities = trip.finalDestination.suggestedActivities;
-    }
+    // finalDestination can be flat { city, country } or nested { destination: { city, country }, slot, pricing }
+    const fd = trip.finalDestination;
+    city = fd.city || fd.destination?.city;
+    country = fd.country || fd.destination?.country;
+    startDate = fd.startDate || fd.slot?.startDate || trip.finalStartDate;
+    endDate = fd.endDate || fd.slot?.endDate || trip.finalEndDate;
+    // Activities might be at different levels
+    suggestedActivities = fd.suggestedActivities || fd.destination?.suggestedActivities || [];
+    flightDetails = fd.flightDetails || fd.flight;
+    hotelDetails = fd.hotelDetails || fd.hotelOptions;
   } else {
     // Fallback
     city = 'Paris';
@@ -136,7 +138,7 @@ router.get('/:id/weather', authenticateUser, async (req, res) => {
     res.json({ success: true, data: { weather } });
   } catch (error) {
     console.error('Error fetching weather:', error);
-    res.status(500).json({ error: 'Failed to fetch weather', message: error.message });
+    res.status(500).json({ error: 'Failed to fetch weather' });
   }
 });
 
@@ -168,7 +170,7 @@ router.get('/:id/packing', authenticateUser, async (req, res) => {
     res.json({ success: true, data: { packing, city, country } });
   } catch (error) {
     console.error('Error fetching packing tips:', error);
-    res.status(500).json({ error: 'Failed to fetch packing tips', message: error.message });
+    res.status(500).json({ error: 'Failed to fetch packing tips' });
   }
 });
 
@@ -288,7 +290,7 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
     res.json({ success: true, data: { itinerary, packing, city, country, cached: false } });
   } catch (error) {
     console.error('Error generating itinerary:', error);
-    res.status(500).json({ error: 'Failed to generate itinerary', message: error.message });
+    res.status(500).json({ error: 'Failed to generate itinerary' });
   }
 });
 
@@ -361,17 +363,37 @@ router.get('/:id/itinerary/stream', authenticateUser, async (req, res) => {
       hotelDetails
     };
 
-    // Get user preferences
+    // Get user preferences from database
     const userPreferences = await prisma.userPreferences.findUnique({
       where: { userId: req.user.id },
     });
 
+    // Extract search context from trip data (saved when trip was created)
+    // Note: existingTripData already declared above for cache check
+    const searchContext = existingTripData.searchContext || trip.finalDestination?.searchContext || {};
+
+    // Merge user preferences with search context for maximum personalization
     const userProfile = {
-      personality: userPreferences?.personality,
-      topActivities: userPreferences?.topActivities || [],
+      // From database (general preferences)
+      personality: userPreferences?.personality || searchContext.personality,
+      topActivities: userPreferences?.topActivities || searchContext.activities || [],
       budget: userPreferences?.budget || 1500,
-      idealRhythm: userPreferences?.idealRhythm,
+      idealRhythm: userPreferences?.idealRhythm || searchContext.idealRhythm,
+      whyTravel: userPreferences?.whyTravel || searchContext.whyTravel,
+      mainGoal: userPreferences?.mainGoal || searchContext.mainGoal,
+      globalStyle: userPreferences?.globalStyle || searchContext.style,
+      // From search context (specific to this trip)
+      travelVibeDescription: searchContext.travelVibeDescription,
+      travelers: searchContext.travelers || 1,
+      tripType: searchContext.tripType,
     };
+
+    console.log('👤 User profile for itinerary:', {
+      personality: userProfile.personality,
+      travelers: userProfile.travelers,
+      tripType: userProfile.tripType,
+      travelVibeDescription: userProfile.travelVibeDescription?.substring(0, 50),
+    });
 
     const userName = req.user.firstName || 'there';
 
@@ -445,7 +467,7 @@ router.get('/:id/itinerary/stream', authenticateUser, async (req, res) => {
 
   } catch (error) {
     console.error('Error streaming itinerary:', error);
-    sendEvent('error', { message: error.message });
+    sendEvent('error', { message: 'Failed to generate itinerary' });
     res.end();
   }
 });
@@ -481,7 +503,7 @@ router.get('/:id/events', authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching events:', error);
-    res.status(500).json({ error: 'Failed to fetch events', message: error.message });
+    res.status(500).json({ error: 'Failed to fetch events' });
   }
 });
 
@@ -772,7 +794,7 @@ router.patch('/:id/itinerary/activities', authenticateUser, async (req, res) => 
     });
   } catch (error) {
     console.error('Error modifying itinerary:', error);
-    res.status(500).json({ error: 'Failed to modify itinerary', message: error.message });
+    res.status(500).json({ error: 'Failed to modify itinerary' });
   }
 });
 

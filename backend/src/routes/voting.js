@@ -496,11 +496,17 @@ router.post('/:tripId/finalize-vote', authenticateUser, async (req, res) => {
     }
 
     // Update trip with final destination
+    // Ensure city/country are at top level for consistent access
+    const finalDest = {
+      ...(selectedDestination.tripData || {}),
+      city: selectedDestination.city || selectedDestination.tripData?.destination?.city,
+      country: selectedDestination.country || selectedDestination.tripData?.destination?.country,
+    };
     const updatedTrip = await prisma.collaborativeTrip.update({
       where: { id: tripId },
       data: {
         status: 'destination_selected',
-        finalDestination: selectedDestination.tripData,
+        finalDestination: finalDest,
         finalStartDate: selectedDestination.startDate,
         finalEndDate: selectedDestination.endDate,
         finalDuration: selectedDestination.duration,

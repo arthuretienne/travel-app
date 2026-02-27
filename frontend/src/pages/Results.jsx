@@ -28,6 +28,10 @@ function Results() {
   const [budgetWarning, setBudgetWarning] = useState(null);
   const [trainAlternatives, setTrainAlternatives] = useState([]);
 
+  // Price alert state
+  const [alertingTripId, setAlertingTripId] = useState(null);
+  const [alertCreatedFor, setAlertCreatedFor] = useState(new Set());
+
   // Check if we're proposing for a group trip
   const forGroupTrip = location.state?.forGroupTrip;
 
@@ -273,6 +277,48 @@ function Results() {
       alert(err.message || 'Failed to propose destination.');
     } finally {
       setProposingTripId(null);
+    }
+  };
+
+  const handleCreatePriceAlert = async (tripIndex) => {
+    const trip = recommendations[tripIndex];
+    if (!trip?.pricing?.total || !trip.slot?.startDate || !trip.slot?.endDate) {
+      alert('Trip missing required data for price alert');
+      return;
+    }
+
+    setAlertingTripId(tripIndex);
+    try {
+      const token = await getToken();
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${API_URL}/api/price-alerts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          destination: trip.destination?.city,
+          country: trip.destination?.country,
+          origin: trip.flightDetails?.outbound?.departureAirport || 'PAR',
+          departureDate: trip.slot.startDate,
+          returnDate: trip.slot.endDate,
+          initialPrice: trip.pricing.total,
+          alertType: 'flight',
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to create alert');
+      }
+
+      setAlertCreatedFor(prev => new Set([...prev, tripIndex]));
+    } catch (err) {
+      console.error('Error creating price alert:', err);
+      alert(err.message || 'Failed to create price alert');
+    } finally {
+      setAlertingTripId(null);
     }
   };
 
@@ -531,6 +577,9 @@ function Results() {
               isSaving={savingTripId === index}
               isProposing={proposingTripId === index}
               forGroupTrip={forGroupTrip}
+              onCreateAlert={() => handleCreatePriceAlert(index)}
+              isAlertCreating={alertingTripId === index}
+              isAlertCreated={alertCreatedFor.has(index)}
             />
           ))}
         </div>
@@ -555,7 +604,10 @@ function TripCard({
   onPropose,
   isSaving,
   isProposing,
-  forGroupTrip
+  forGroupTrip,
+  onCreateAlert,
+  isAlertCreating,
+  isAlertCreated
 }) {
   const { destination, slot, pricing, flightDetails, hotelOptions, links } = trip;
   const hotel = hotelOptions?.hotels?.[0];
@@ -820,6 +872,32 @@ function TripCard({
                 className="flex items-center justify-center gap-2 px-6 py-4 bg-surface-muted text-text-secondary font-medium rounded-xl hover:bg-surface-hover hover:text-text-main transition-colors"
               >
                 View hotels
+              </button>
+              <button
+                onClick={onCreateAlert}
+                disabled={isAlertCreating || isAlertCreated}
+                className={`flex items-center justify-center gap-2 px-6 py-4 font-medium rounded-xl transition-colors ${
+                  isAlertCreated
+                    ? 'bg-green-50 text-green-700 cursor-default'
+                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                }`}
+                title="Get notified when the price drops"
+              >
+                {isAlertCreating ? (
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : isAlertCreated ? (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                )}
+                {isAlertCreated ? 'Alert set' : 'Price alert'}
               </button>
             </>
           )}

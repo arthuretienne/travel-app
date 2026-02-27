@@ -24,7 +24,7 @@ export async function searchAirport(query, locale = 'fr-FR') {
   const cacheKey = `airport:${query}:${locale}`;
 
   // Check cache
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) return cached;
 
   try {
@@ -92,7 +92,7 @@ export async function searchFlights({
   const cacheKey = `flights:${originQuery}:${destinationQuery}:${date}:${returnDate || 'oneway'}:${adults}:${cabinClass}:${currency}`;
 
   // Check cache
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) return cached;
 
   try {
@@ -240,7 +240,7 @@ export async function getPriceCalendar({
   const cacheKey = `priceCalendar:${originQuery}:${destinationQuery}:${year}-${month}:${currency}`;
 
   // Check cache
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) return cached;
 
   try {
@@ -340,7 +340,7 @@ export async function searchFlightEverywhere({
   const cacheKey = `everywhere:${originQuery}:${maxPrice}:${currency}`;
 
   // Check cache
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) return cached;
 
   try {

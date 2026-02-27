@@ -35,7 +35,7 @@ export async function searchHotels({
   const cacheKey = `hotels:${destinationQuery}:${checkin}:${checkout}:${adults}:${rooms}:${currency}`;
 
   // Check cache
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) return cached;
 
   try {
@@ -165,7 +165,7 @@ export async function getHotelDetails({
 }) {
   const cacheKey = `hotel:${hotelId}:${checkin}:${checkout}`;
 
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) return cached;
 
   try {

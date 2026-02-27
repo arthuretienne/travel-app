@@ -25,8 +25,38 @@ export async function generatePersonalizedItinerary(tripData, userProfile, userN
   const end = new Date(endDate);
   const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
-  const memberCount = members.length + 1; // +1 for the user
-  const groupText = memberCount > 1 ? `for ${userName} and ${memberCount - 1} friend${memberCount > 1 ? 's' : ''}` : `for ${userName}`;
+  // Calculate group size - use explicit travelers count or fallback to members
+  const explicitTravelers = userProfile?.travelers || 1;
+  const memberCount = Math.max(explicitTravelers, members.length + 1);
+
+  // Build group description
+  let groupText = `for ${userName}`;
+  if (memberCount > 1) {
+    if (userProfile?.tripType === 'couple') {
+      groupText = `for ${userName} and their partner (romantic couple trip)`;
+    } else if (userProfile?.tripType === 'family') {
+      groupText = `for ${userName}'s family (${memberCount} people)`;
+    } else if (userProfile?.tripType === 'friends') {
+      groupText = `for ${userName} and ${memberCount - 1} friend${memberCount > 2 ? 's' : ''}`;
+    } else {
+      groupText = `for ${userName} and ${memberCount - 1} companion${memberCount > 2 ? 's' : ''}`;
+    }
+  }
+
+  // User's custom request is the most important context
+  const customRequestText = userProfile?.travelVibeDescription
+    ? `\n🎯 USER'S SPECIFIC REQUEST: "${userProfile.travelVibeDescription}"\n   ↳ Make sure the itinerary directly addresses what the user asked for!`
+    : '';
+
+  // Trip type context
+  const tripTypeContext = userProfile?.tripType
+    ? `\nTrip type: ${userProfile.tripType}${
+        userProfile.tripType === 'couple' ? ' → Prioritize romantic experiences, intimate dinners, couples activities' :
+        userProfile.tripType === 'family' ? ' → Prioritize kid-friendly activities, family restaurants, safe areas' :
+        userProfile.tripType === 'friends' ? ' → Prioritize group activities, social experiences, fun venues' :
+        ''
+      }`
+    : '';
 
   const activitiesText = suggestedActivities?.length > 0
     ? suggestedActivities.map(a => `- ${a.name} (${a.category || 'activity'}, ${a.duration || '2h'}, €${a.estimatedPrice || a.price || 0})`).join('\n')
@@ -74,12 +104,13 @@ ${hotelDetails.amenities ? `- Amenities: ${Array.isArray(hotelDetails.amenities)
     : '';
 
   const prompt = `You are a local travel expert creating a PERSONALIZED day-by-day itinerary ${groupText} visiting ${city}, ${country}.
+${customRequestText}
 
 TRIP DETAILS:
 - Dates: ${startDate} to ${endDate} (${days} days)
 - City: ${city}, ${country}
 - Group size: ${memberCount} traveler${memberCount > 1 ? 's' : ''}
-${personalityText}
+${personalityText}${tripTypeContext}
 - User preferences: ${userProfile?.topActivities?.join(', ') || 'various activities'}
 - Budget per person: €${userProfile?.budget || 1500}
 ${flightInfoText}
@@ -222,8 +253,23 @@ export async function generateItineraryStreaming(tripData, userProfile, userName
   const end = new Date(endDate);
   const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
-  const memberCount = members.length + 1;
-  const groupText = memberCount > 1 ? `for ${userName} and ${memberCount - 1} friend${memberCount > 1 ? 's' : ''}` : `for ${userName}`;
+  // Calculate group size - use explicit travelers count or fallback to members
+  const explicitTravelers = userProfile?.travelers || 1;
+  const memberCount = Math.max(explicitTravelers, members.length + 1);
+
+  // Build group description
+  let groupText = `for ${userName}`;
+  if (memberCount > 1) {
+    if (userProfile?.tripType === 'couple') {
+      groupText = `for ${userName} and their partner (romantic couple trip)`;
+    } else if (userProfile?.tripType === 'family') {
+      groupText = `for ${userName}'s family (${memberCount} people)`;
+    } else if (userProfile?.tripType === 'friends') {
+      groupText = `for ${userName} and ${memberCount - 1} friend${memberCount > 2 ? 's' : ''}`;
+    } else {
+      groupText = `for ${userName} and ${memberCount - 1} companion${memberCount > 2 ? 's' : ''}`;
+    }
+  }
 
   const activitiesText = suggestedActivities?.length > 0
     ? suggestedActivities.map(a => `- ${a.name} (${a.category || 'activity'}, ${a.duration || '2h'}, €${a.estimatedPrice || a.price || 0})`).join('\n')
@@ -252,8 +298,29 @@ HOTEL INFORMATION:
 - Check-out: ${hotelDetails.checkOut || endDate}`;
   }
 
+  // Build comprehensive user context
   const personalityText = userProfile?.personality
     ? `Traveler personality: ${userProfile.personality}`
+    : '';
+
+  // User's custom request is the most important context
+  const customRequestText = userProfile?.travelVibeDescription
+    ? `\n🎯 USER'S SPECIFIC REQUEST: "${userProfile.travelVibeDescription}"\n   ↳ This is what the user REALLY wants - make sure activities match this!`
+    : '';
+
+  // Trip type context
+  const tripTypeText = userProfile?.tripType
+    ? `Trip type: ${userProfile.tripType}${
+        userProfile.tripType === 'couple' ? ' (prioritize romantic experiences, intimate dinners, couples activities)' :
+        userProfile.tripType === 'family' ? ' (prioritize kid-friendly activities, family restaurants, safe areas)' :
+        userProfile.tripType === 'friends' ? ' (prioritize group activities, social experiences, fun nightlife)' :
+        ''
+      }`
+    : '';
+
+  // Why travel and main goal context
+  const motivationText = userProfile?.whyTravel || userProfile?.mainGoal
+    ? `Motivation: ${userProfile.whyTravel || ''} ${userProfile.mainGoal ? `(Goal: ${userProfile.mainGoal})` : ''}`
     : '';
 
   const itinerary = [];
@@ -269,7 +336,14 @@ HOTEL INFORMATION:
 
     const dayPrompt = `You are creating DAY ${dayNum} of a ${days}-day trip ${groupText} to ${city}, ${country}.
 Date: ${dateStr}
+
+TRAVELER PROFILE:
 ${personalityText}
+${tripTypeText}
+${motivationText}
+Group size: ${memberCount} traveler${memberCount > 1 ? 's' : ''}
+${customRequestText}
+
 ${isFirstDay ? `This is ARRIVAL day. ${flightInfoText}` : ''}
 ${isLastDay ? 'This is DEPARTURE day - include checkout and airport transfer.' : ''}
 ${hotelInfoText}

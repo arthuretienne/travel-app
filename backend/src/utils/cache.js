@@ -1,197 +1,201 @@
 // backend/src/utils/cache.js
-// Simple in-memory cache with TTL support
+// Cache with Upstash Redis (production) or in-memory fallback (development)
 
-class InMemoryCache {
-  constructor() {
-    this.cache = new Map();
-    this.timers = new Map();
+import { Redis } from '@upstash/redis';
+
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const useRedis = !!(REDIS_URL && REDIS_TOKEN);
+
+let redis = null;
+if (useRedis) {
+  try {
+    redis = new Redis({ url: REDIS_URL, token: REDIS_TOKEN });
+    console.log('✅ Cache: Upstash Redis connected');
+  } catch (err) {
+    console.warn('⚠️ Cache: Redis init failed, falling back to in-memory:', err.message);
   }
+}
 
-  /**
-   * Get value from cache
-   * @param {string} key - Cache key
-   * @returns {any|null} Cached value or null if expired/not found
-   */
-  get(key) {
-    const item = this.cache.get(key);
+if (!redis) {
+  console.log('ℹ️ Cache: Using in-memory (set UPSTASH_REDIS_REST_URL + TOKEN for Redis)');
+}
 
-    if (!item) {
-      return null;
-    }
+// ============================================
+// In-memory fallback
+// ============================================
+const memCache = new Map();
 
-    // Check if expired
-    if (Date.now() > item.expiry) {
-      this.delete(key);
-      return null;
-    }
-
-    console.log(`✅ Cache HIT: ${key}`);
-    return item.value;
+function memGet(key) {
+  const item = memCache.get(key);
+  if (!item) return null;
+  if (Date.now() > item.expiry) {
+    memCache.delete(key);
+    return null;
   }
+  return item.value;
+}
 
-  /**
-   * Set value in cache with TTL
-   * @param {string} key - Cache key
-   * @param {any} value - Value to cache
-   * @param {number} ttlMinutes - Time to live in minutes
-   */
-  set(key, value, ttlMinutes = 60) {
-    const expiry = Date.now() + ttlMinutes * 60 * 1000;
+function memSet(key, value, ttlSeconds) {
+  memCache.set(key, {
+    value,
+    expiry: Date.now() + ttlSeconds * 1000,
+  });
+}
 
-    this.cache.set(key, {
-      value,
-      expiry,
-      createdAt: new Date().toISOString(),
+function memDel(key) {
+  memCache.delete(key);
+}
+
+function memHas(key) {
+  const item = memCache.get(key);
+  if (!item) return false;
+  if (Date.now() > item.expiry) {
+    memCache.delete(key);
+    return false;
+  }
+  return true;
+}
+
+function memClear() {
+  memCache.clear();
+}
+
+function memGetStats() {
+  const now = Date.now();
+  let valid = 0;
+  let expired = 0;
+  memCache.forEach((item) => {
+    if (now <= item.expiry) valid++;
+    else expired++;
+  });
+  return { total: memCache.size, valid, expired, backend: 'memory' };
+}
+
+// Cleanup expired in-memory entries every hour
+setInterval(() => {
+  const now = Date.now();
+  memCache.forEach((item, key) => {
+    if (now > item.expiry) memCache.delete(key);
+  });
+}, 60 * 60 * 1000);
+
+// ============================================
+// Unified cache API
+// ============================================
+
+/**
+ * Get value from cache
+ * @param {string} key
+ * @returns {Promise<any|null>|any|null}
+ */
+export function get(key) {
+  if (redis) {
+    return redis.get(key).then(val => {
+      if (val !== null && val !== undefined) {
+        console.log(`✅ Cache HIT (Redis): ${key}`);
+      }
+      return val;
+    }).catch(err => {
+      console.warn(`⚠️ Redis GET error for ${key}:`, err.message);
+      return memGet(key);
     });
-
-    // Clear existing timer if any
-    if (this.timers.has(key)) {
-      clearTimeout(this.timers.get(key));
-    }
-
-    // Set auto-cleanup timer
-    // JavaScript setTimeout max value is 2147483647ms (24.8 days)
-    // For TTL > 24 days, rely on manual cleanup or get() expiry check
-    const ttlMs = ttlMinutes * 60 * 1000;
-    const MAX_TIMEOUT = 2147483647; // Max 32-bit signed integer
-
-    if (ttlMs <= MAX_TIMEOUT) {
-      const timer = setTimeout(() => {
-        this.delete(key);
-      }, ttlMs);
-
-      this.timers.set(key, timer);
-    }
-    // For long TTLs, cleanup will happen via get() expiry check or manual cleanup()
-
-    console.log(`💾 Cache SET: ${key} (TTL: ${ttlMinutes}min)`);
   }
+  const val = memGet(key);
+  if (val !== null) console.log(`✅ Cache HIT (mem): ${key}`);
+  return val;
+}
 
-  /**
-   * Delete value from cache
-   * @param {string} key - Cache key
-   */
-  delete(key) {
-    this.cache.delete(key);
-
-    // Clear timer
-    if (this.timers.has(key)) {
-      clearTimeout(this.timers.get(key));
-      this.timers.delete(key);
-    }
-
-    console.log(`🗑️  Cache DELETE: ${key}`);
+/**
+ * Set value in cache with TTL
+ * @param {string} key
+ * @param {any} value
+ * @param {number} ttlMinutes - Time to live in minutes
+ */
+export function set(key, value, ttlMinutes = 60) {
+  const ttlSeconds = Math.round(ttlMinutes * 60);
+  if (redis) {
+    redis.set(key, value, { ex: ttlSeconds }).then(() => {
+      console.log(`💾 Cache SET (Redis): ${key} (TTL: ${ttlMinutes}min)`);
+    }).catch(err => {
+      console.warn(`⚠️ Redis SET error for ${key}:`, err.message);
+      memSet(key, value, ttlSeconds);
+    });
+  } else {
+    memSet(key, value, ttlSeconds);
+    console.log(`💾 Cache SET (mem): ${key} (TTL: ${ttlMinutes}min)`);
   }
+}
 
-  /**
-   * Check if key exists in cache (not expired)
-   * @param {string} key - Cache key
-   * @returns {boolean}
-   */
-  has(key) {
-    const item = this.cache.get(key);
-
-    if (!item) {
-      return false;
-    }
-
-    // Check if expired
-    if (Date.now() > item.expiry) {
-      this.delete(key);
-      return false;
-    }
-
-    return true;
+/**
+ * Delete value from cache
+ * @param {string} key
+ */
+export function del(key) {
+  if (redis) {
+    redis.del(key).catch(err => {
+      console.warn(`⚠️ Redis DEL error for ${key}:`, err.message);
+    });
   }
+  memDel(key);
+}
 
-  /**
-   * Clear all cache
-   */
-  clear() {
-    // Clear all timers
-    this.timers.forEach(timer => clearTimeout(timer));
-    this.timers.clear();
-
-    this.cache.clear();
-    console.log('🧹 Cache CLEARED');
+/**
+ * Check if key exists in cache
+ * @param {string} key
+ * @returns {Promise<boolean>|boolean}
+ */
+export function has(key) {
+  if (redis) {
+    return redis.exists(key).then(exists => exists > 0).catch(() => memHas(key));
   }
+  return memHas(key);
+}
 
-  /**
-   * Get cache statistics
-   * @returns {Object} Cache stats
-   */
-  getStats() {
-    const entries = Array.from(this.cache.entries());
-    const now = Date.now();
-
-    const validEntries = entries.filter(([_, item]) => now <= item.expiry);
-    const expiredEntries = entries.filter(([_, item]) => now > item.expiry);
-
-    return {
-      total: this.cache.size,
-      valid: validEntries.length,
-      expired: expiredEntries.length,
-      keys: validEntries.map(([key]) => key),
-    };
+/**
+ * Clear all cache
+ */
+export function clear() {
+  if (redis) {
+    redis.flushdb().catch(err => {
+      console.warn('⚠️ Redis FLUSH error:', err.message);
+    });
   }
+  memClear();
+  console.log('🧹 Cache CLEARED');
+}
 
-  /**
-   * Clean expired entries (manual cleanup)
-   */
-  cleanup() {
+/**
+ * Get cache statistics
+ */
+export function getStats() {
+  if (redis) {
+    return redis.dbsize().then(size => ({
+      total: size,
+      backend: 'redis',
+    })).catch(() => memGetStats());
+  }
+  return memGetStats();
+}
+
+/**
+ * Cleanup (no-op for Redis since it handles TTL natively)
+ */
+export function cleanup() {
+  if (!redis) {
     const now = Date.now();
     let cleaned = 0;
-
-    this.cache.forEach((item, key) => {
+    memCache.forEach((item, key) => {
       if (now > item.expiry) {
-        this.delete(key);
+        memCache.delete(key);
         cleaned++;
       }
     });
-
-    if (cleaned > 0) {
-      console.log(`🧹 Cache cleanup: removed ${cleaned} expired entries`);
-    }
-
+    if (cleaned > 0) console.log(`🧹 Cache cleanup: removed ${cleaned} expired entries`);
     return cleaned;
   }
+  return 0;
 }
 
-// Singleton instance
-const cache = new InMemoryCache();
-
-// Export helper functions
-export function get(key) {
-  return cache.get(key);
-}
-
-export function set(key, value, ttlMinutes = 60) {
-  cache.set(key, value, ttlMinutes);
-}
-
-export function del(key) {
-  cache.delete(key);
-}
-
-export function has(key) {
-  return cache.has(key);
-}
-
-export function clear() {
-  cache.clear();
-}
-
-export function getStats() {
-  return cache.getStats();
-}
-
-export function cleanup() {
-  return cache.cleanup();
-}
-
-// Run cleanup every hour
-setInterval(() => {
-  cache.cleanup();
-}, 60 * 60 * 1000);
-
-export default cache;
+// Default export for backward compatibility
+export default { get, set, del, has, clear, getStats, cleanup };

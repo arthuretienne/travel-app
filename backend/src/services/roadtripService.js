@@ -5,7 +5,7 @@ import { generateDestinationShortlist } from './claudeService.js';
 import * as cache from '../utils/cache.js';
 import axios from 'axios';
 
-const BOOKING_API_KEY = process.env.BOOKING_API_KEY || 'b723f67a8cmshf49874500229ca8p12d559jsnedd1aee8f4ea';
+const BOOKING_API_KEY = process.env.BOOKING_API_KEY;
 const BASE_URL = 'https://booking-com15.p.rapidapi.com';
 
 const CACHE_TTL = {
@@ -68,7 +68,7 @@ export async function searchMultiStopFlights(legs, { adults = 1, cabinClass = 'E
   const cacheKey = `booking:multiflights:${JSON.stringify(legs)}:${adults}:${cabinClass}`;
 
   // Check cache
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) {
     console.log('✅ Multi-flight cache HIT');
     return cached;
@@ -205,7 +205,7 @@ export async function searchCarRentals({
 }) {
   const cacheKey = `booking:carrental:${pickUpLocation}:${dropOffLocation}:${pickUpDate}:${dropOffDate}`;
 
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) {
     console.log('✅ Car rental cache HIT');
     return cached;
@@ -341,7 +341,7 @@ export async function searchCarRentals({
 export async function searchAttractions(cityName, { limit = 10, currency = 'EUR' } = {}) {
   const cacheKey = `booking:attractions:${cityName.toLowerCase()}:${limit}`;
 
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) {
     console.log(`✅ Attractions cache HIT: ${cityName}`);
     return cached;

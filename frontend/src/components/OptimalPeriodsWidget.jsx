@@ -96,7 +96,7 @@ export function OptimalPeriodsWidget() {
     };
 
     fetchOptimalPeriods();
-  }, [getToken]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentPeriod = periods?.[view]?.[0];
 
