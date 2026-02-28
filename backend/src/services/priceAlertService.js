@@ -2,7 +2,7 @@
 // Price alert service for tracking flight and hotel prices
 
 import prisma from '../db/prisma.js';
-import { searchFlights, getFlightDestinationId, searchHotels } from './bookingService.js';
+import { searchFlights, getDestinationId as getFlightDestinationId, searchHotels } from './bookingService.js';
 import { sendPriceDropEmail } from './emailService.js';
 import { sendPriceDropPush } from './pushService.js';
 
