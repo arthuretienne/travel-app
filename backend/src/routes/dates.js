@@ -42,8 +42,16 @@ router.get('/intelligent', authenticateUser, async (req, res) => {
     // Map idealDuration (onboarding string) to avgTripDuration (int) as fallback
     const idealDurationMap = { '3-5-jours': 4, '1-semaine': 7, '2-semaines': 14, 'flexible': 7 };
 
+    // Allow ?refresh=true to force-bypass cache (used after engine upgrade)
+    const forceRefresh = req.query.refresh === 'true';
+
+    if (forceRefresh) {
+      await prisma.optimalPeriod.deleteMany({ where: { userId: req.user.id } });
+      console.log('🔄 Cache cleared for user:', req.user.id);
+    }
+
     // Check for cached periods that are still valid
-    const cachedPeriods = await prisma.optimalPeriod.findMany({
+    const cachedPeriods = forceRefresh ? [] : await prisma.optimalPeriod.findMany({
       where: {
         userId: req.user.id,
         expiresAt: { gte: today }
