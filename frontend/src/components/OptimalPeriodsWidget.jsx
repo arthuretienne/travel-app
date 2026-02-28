@@ -10,7 +10,8 @@ import {
   Sparkles,
   CheckCircle2,
   Info,
-  ArrowRight
+  ArrowRight,
+  Link as LinkIcon
 } from 'lucide-react';
 
 const MOCK_PERIODS = {
@@ -50,6 +51,8 @@ export function OptimalPeriodsWidget() {
   const [periods, setPeriods] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('short'); // 'short' | 'long'
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [connectingCalendar, setConnectingCalendar] = useState(false);
 
   useEffect(() => {
     const fetchOptimalPeriods = async () => {
@@ -83,6 +86,7 @@ export function OptimalPeriodsWidget() {
             if (!mergedData.long || mergedData.long.length === 0) mergedData.long = MOCK_PERIODS.long;
             if (!mergedData.leaveDaysInfo) mergedData.leaveDaysInfo = MOCK_PERIODS.leaveDaysInfo;
             setPeriods(mergedData);
+            setCalendarConnected(data.data.metadata?.hasCalendar || false);
           }
         } else {
           setPeriods(MOCK_PERIODS);
@@ -99,6 +103,23 @@ export function OptimalPeriodsWidget() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentPeriod = periods?.[view]?.[0];
+
+  const connectCalendar = async () => {
+    try {
+      setConnectingCalendar(true);
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/api/calendar/oauth/authorize`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.authUrl) window.location.href = data.authUrl;
+    } catch (err) {
+      console.error('Calendar connect error:', err);
+    } finally {
+      setConnectingCalendar(false);
+    }
+  };
 
   const handlePlanTrip = () => {
     if (!currentPeriod) return;
@@ -184,7 +205,24 @@ export function OptimalPeriodsWidget() {
             <Sparkles className="text-amber-400" size={20} />
             Best Time to Travel
           </h3>
-          <p className="text-gray-500 text-sm mt-1">AI-powered optimal dates for your next trip</p>
+          <div className="flex items-center gap-3 mt-1">
+            <p className="text-gray-500 text-sm">AI-powered optimal dates for your next trip</p>
+            {calendarConnected ? (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <CheckCircle2 size={11} />
+                Calendar synced
+              </span>
+            ) : (
+              <button
+                onClick={connectCalendar}
+                disabled={connectingCalendar}
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary-hover transition-colors"
+              >
+                <LinkIcon size={11} />
+                {connectingCalendar ? 'Connecting...' : 'Connect calendar'}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex bg-gray-100/80 p-1 rounded-xl self-start md:self-auto">
@@ -210,6 +248,29 @@ export function OptimalPeriodsWidget() {
           </button>
         </div>
       </div>
+
+      {!calendarConnected && (
+        <div className="mx-6 md:mx-8 mb-0 -mt-px">
+          <div className="flex items-center justify-between gap-4 bg-blue-50 border border-blue-100 rounded-2xl px-5 py-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                <CalendarIcon size={17} className="text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Connect Google Calendar</p>
+                <p className="text-xs text-gray-500 mt-0.5">Get suggestions based on your actual free dates</p>
+              </div>
+            </div>
+            <button
+              onClick={connectCalendar}
+              disabled={connectingCalendar}
+              className="shrink-0 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-hover transition-colors disabled:opacity-60"
+            >
+              {connectingCalendar ? 'Connecting...' : 'Connect'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-12 gap-0">
         {/* Calendar Section - Custom Static Grid */}

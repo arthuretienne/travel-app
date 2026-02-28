@@ -38,6 +38,9 @@ router.get('/intelligent', authenticateUser, async (req, res) => {
 
     const today = new Date();
 
+    // Map idealDuration (onboarding string) to avgTripDuration (int) as fallback
+    const idealDurationMap = { '3-5-jours': 4, '1-semaine': 7, '2-semaines': 14, 'flexible': 7 };
+
     // Check for cached periods that are still valid
     const cachedPeriods = await prisma.optimalPeriod.findMany({
       where: {
@@ -67,7 +70,7 @@ router.get('/intelligent', authenticateUser, async (req, res) => {
           long: cachedLong.map(formatCachedPeriod),
           leaveDaysInfo,
           metadata: {
-            tripDuration: userPreferences.avgTripDuration || 7,
+            tripDuration: userPreferences.avgTripDuration || idealDurationMap[userPreferences.idealDuration] || 7,
             hasCalendar: userPreferences.calendarConnected || false,
             generatedAt: cachedShort[0]?.generatedAt.toISOString(),
             fromCache: true
@@ -84,7 +87,9 @@ router.get('/intelligent', authenticateUser, async (req, res) => {
       ? calculateAvailableLeaveDays(userPreferences)
       : null;
 
-    const tripDuration = userPreferences.avgTripDuration || 7;
+    const tripDuration = userPreferences.avgTripDuration
+      || idealDurationMap[userPreferences.idealDuration]
+      || 7;
 
     // SHORT TERM: Next 30 days
     const shortTermPeriods = generateShortTermSuggestions(
