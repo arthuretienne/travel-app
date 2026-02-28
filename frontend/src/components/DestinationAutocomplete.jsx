@@ -2,6 +2,7 @@
 // Autocomplete input for destination selection with API-powered suggestions
 
 import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -12,6 +13,7 @@ export default function DestinationAutocomplete({
   className = "",
   disabled = false,
 }) {
+  const { getToken } = useAuth();
   const [query, setQuery] = useState(value || '');
   const [suggestions, setSuggestions] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -60,8 +62,10 @@ export default function DestinationAutocomplete({
 
     debounceRef.current = setTimeout(async () => {
       try {
+        const token = await getToken();
         const response = await fetch(
-          `${API_URL}/api/travel/destinations/search?query=${encodeURIComponent(query)}`
+          `${API_URL}/api/travel/destinations/search?query=${encodeURIComponent(query)}`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
         );
         const data = await response.json();
 
