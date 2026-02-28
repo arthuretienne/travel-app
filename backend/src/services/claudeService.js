@@ -1172,3 +1172,136 @@ Return a JSON object with this structure:
     };
   }
 }
+
+/**
+ * Travel arbitrage strategist: analyze real flight prices, exchange rates, weather
+ * and generate justified short/long term travel recommendations
+ */
+export async function generateSmartTravelDates({
+  userPreferences,
+  origin,
+  shortTermPrices,
+  longTermPrices,
+  weatherData,
+  currencyOpportunities,
+  exchangeRates,
+}) {
+  if (!client) throw new Error('Claude client not initialized');
+
+  const activities = (userPreferences.topActivities || []).join(', ') || 'culture, découverte';
+  const budget = userPreferences.budget || 800;
+  const idealDurationMap = { '3-5-jours': '3-5 jours', '1-semaine': '1 semaine', '2-semaines': '2 semaines', 'flexible': 'flexible' };
+  const duration = idealDurationMap[userPreferences.idealDuration] || '1 semaine';
+  const climate = userPreferences.climateSensitivity || 'peu-importe';
+  const personality = userPreferences.personality || 'explorateur';
+
+  // Format price data for prompt
+  const shortPricesText = shortTermPrices.length > 0
+    ? shortTermPrices.slice(0, 8).map(p => `  ${p.destination} | ${p.label} | ${p.depart} → ${p.return} | ${p.price}€ A/R`).join('\n')
+    : '  Aucun prix trouvé (données indisponibles)';
+
+  const longPricesText = longTermPrices.length > 0
+    ? longTermPrices.slice(0, 8).map(p => `  ${p.destination} | ${p.label} | ${p.date} | ${p.price}€ vol`).join('\n')
+    : '  Aucun prix trouvé (données indisponibles)';
+
+  const weatherText = Object.keys(weatherData).length > 0
+    ? Object.entries(weatherData).map(([dest, w]) => {
+        const forecast = w.forecast?.[0];
+        return `  ${dest}: ${forecast?.day?.avgtemp_c || '?'}°C, ${forecast?.day?.condition?.text || '?'}`;
+      }).join('\n')
+    : '  Données météo non disponibles';
+
+  const currencyText = currencyOpportunities.length > 0
+    ? currencyOpportunities.map(c => `  ${c.flag} ${c.currency} = ${c.rate} — ${c.message}`).join('\n')
+    : '  Pas d\'opportunité de change détectée';
+
+  const ratesText = exchangeRates
+    ? Object.entries(exchangeRates).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(', ')
+    : 'Non disponibles';
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const prompt = `Tu es un stratège voyage expert en arbitrage tarifaire. Analyse ces données RÉELLES et génère les meilleures recommandations de voyage.
+
+PROFIL VOYAGEUR:
+- Origine: ${origin}
+- Activités préférées: ${activities}
+- Budget: ${budget}€
+- Durée idéale: ${duration}
+- Climat préféré: ${climate}
+- Style: ${personality}
+- Date du jour: ${today}
+
+PRIX VOLS RÉELS — COURT TERME (prochains weekends):
+${shortPricesText}
+
+PRIX VOLS RÉELS — LONG TERME (prochains mois):
+${longPricesText}
+
+MÉTÉO PRÉVISIONS (court terme):
+${weatherText}
+
+TAUX DE CHANGE (base EUR, temps réel):
+${ratesText}
+
+OPPORTUNITÉS DE CHANGE DÉTECTÉES:
+${currencyText}
+
+MISSION: Génère exactement 2 recommandations COURT TERME (dans les 30 prochains jours) et 2 recommandations LONG TERME (dans les 6 prochains mois).
+
+Privilégie les VRAIES opportunités d'arbitrage: prix anormalement bas, météo favorable, monnaie avantageuse, basse saison intelligente.
+
+Réponds UNIQUEMENT avec ce JSON valide (aucun texte avant/après):
+{
+  "short": [
+    {
+      "id": "short-1",
+      "title": "Titre accrocheur (ex: Weekend à Lisbonne)",
+      "startDate": "YYYY-MM-DD",
+      "endDate": "YYYY-MM-DD",
+      "duration": 3,
+      "savings": "€120",
+      "confidence": 87,
+      "reason": "2-3 phrases expliquant POURQUOI c'est une opportunité maintenant: prix réel, météo, saison, monnaie",
+      "tags": ["Tag1", "Tag2", "Tag3"],
+      "canAfford": true
+    },
+    { ... }
+  ],
+  "long": [
+    {
+      "id": "long-1",
+      "title": "Titre (ex: Semaine au Japon)",
+      "startDate": "YYYY-MM-DD",
+      "endDate": "YYYY-MM-DD",
+      "duration": 7,
+      "savings": "€350",
+      "confidence": 82,
+      "reason": "Justification stratégique: prix vs saison normale, opportunité monnaie, météo optimale",
+      "tags": ["Tag1", "Tag2"],
+      "canAfford": true
+    },
+    { ... }
+  ]
+}`;
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1200,
+    temperature: 0.7,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = message.content[0].text.trim();
+
+  // Extract JSON (handle markdown code blocks if present)
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Claude returned no valid JSON');
+
+  const result = JSON.parse(jsonMatch[0]);
+
+  if (!result.short || !result.long) throw new Error('Claude response missing short/long keys');
+
+  console.log(`✅ Claude strategist generated ${result.short.length} short + ${result.long.length} long recommendations`);
+  return result;
+}

@@ -11,6 +11,7 @@ import {
   isDateInOffPeakPeriod,
   optimizeWeekendTravel
 } from '../utils/temporalOptimization.js';
+import { generateDynamicRecommendations } from '../services/dynamicDateService.js';
 
 const router = express.Router();
 
@@ -91,21 +92,26 @@ router.get('/intelligent', authenticateUser, async (req, res) => {
       || idealDurationMap[userPreferences.idealDuration]
       || 7;
 
-    // SHORT TERM: Next 30 days
-    const shortTermPeriods = generateShortTermSuggestions(
-      today,
-      tripDuration,
-      userPreferences,
-      leaveDaysInfo
-    );
+    let shortTermPeriods, longTermPeriods, isDynamic = false;
 
-    // LONG TERM: Next 6 months
-    const longTermPeriods = generateLongTermSuggestions(
-      today,
-      tripDuration,
-      userPreferences,
-      leaveDaysInfo
-    );
+    // Try dynamic engine first (real prices + exchange rates + weather + Claude)
+    try {
+      console.log('🚀 Trying dynamic arbitrage engine...');
+      const dynamic = await generateDynamicRecommendations(userPreferences);
+      if (dynamic?.short?.length > 0 && dynamic?.long?.length > 0) {
+        shortTermPeriods = dynamic.short;
+        longTermPeriods = dynamic.long;
+        isDynamic = true;
+        console.log('✅ Dynamic engine succeeded');
+      } else {
+        throw new Error('Dynamic engine returned empty results');
+      }
+    } catch (dynErr) {
+      console.warn('⚠️  Dynamic engine failed, falling back to static:', dynErr.message);
+      // Fallback: static algorithm based on off-peak periods
+      shortTermPeriods = generateShortTermSuggestions(today, tripDuration, userPreferences, leaveDaysInfo);
+      longTermPeriods = generateLongTermSuggestions(today, tripDuration, userPreferences, leaveDaysInfo);
+    }
 
     // Cache the new periods (expires in 24 hours)
     const expiresAt = new Date(today);
@@ -113,7 +119,7 @@ router.get('/intelligent', authenticateUser, async (req, res) => {
 
     await cachePeriods(req.user.id, shortTermPeriods, longTermPeriods, expiresAt);
 
-    console.log(`✅ Generated and cached ${shortTermPeriods.length} short-term + ${longTermPeriods.length} long-term suggestions`);
+    console.log(`✅ Generated and cached ${shortTermPeriods.length} short-term + ${longTermPeriods.length} long-term suggestions (${isDynamic ? 'dynamic' : 'static'})`);
 
     res.json({
       success: true,
@@ -125,7 +131,8 @@ router.get('/intelligent', authenticateUser, async (req, res) => {
           tripDuration,
           hasCalendar: userPreferences.calendarConnected || false,
           generatedAt: new Date().toISOString(),
-          fromCache: false
+          fromCache: false,
+          isDynamic,
         }
       }
     });
