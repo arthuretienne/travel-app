@@ -72,9 +72,18 @@ export function OptimalPeriodsWidget() {
           return;
         }
 
-        const response = await fetch(`${API_URL}/api/dates/intelligent`, {
+        // Force refresh once after dynamic engine deploy (v2), then use cache
+        const CACHE_VERSION = 'v2';
+        const cacheKey = `optimal_periods_cache_${CACHE_VERSION}`;
+        const needsRefresh = !localStorage.getItem(cacheKey);
+        const url = needsRefresh
+          ? `${API_URL}/api/dates/intelligent?refresh=true`
+          : `${API_URL}/api/dates/intelligent`;
+
+        const response = await fetch(url, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
+        if (needsRefresh) localStorage.setItem(cacheKey, '1');
 
         if (response.ok) {
           const data = await response.json();
