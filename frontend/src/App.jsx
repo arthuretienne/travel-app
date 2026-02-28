@@ -19,6 +19,7 @@ const AcceptInvitation = lazy(() => import('./pages/AcceptInvitation'));
 const PriceAlerts = lazy(() => import('./pages/PriceAlerts'));
 const Destinations = lazy(() => import('./pages/Destinations'));
 const DestinationLanding = lazy(() => import('./pages/DestinationLanding'));
+const TripProposal = lazy(() => import('./pages/TripProposal'));
 
 // Layout
 import AppLayout from './components/Layout/AppLayout';
@@ -139,6 +140,15 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <PriceAlerts />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/trip-proposal"
+          element={
+            <ProtectedRoute>
+              <TripProposal />
             </ProtectedRoute>
           }
         />

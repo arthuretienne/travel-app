@@ -1221,7 +1221,7 @@ export async function generateSmartTravelDates({
 
   const today = new Date().toISOString().split('T')[0];
 
-  const prompt = `Tu es un stratège voyage expert en arbitrage tarifaire. Analyse ces données RÉELLES et génère les meilleures recommandations de voyage.
+  const prompt = `Tu es un conseiller voyage passionné. Analyse ces données RÉELLES et propose les meilleures escapades au meilleur moment.
 
 PROFIL VOYAGEUR:
 - Origine: ${origin}
@@ -1244,44 +1244,53 @@ ${weatherText}
 TAUX DE CHANGE (base EUR, temps réel):
 ${ratesText}
 
-OPPORTUNITÉS DE CHANGE DÉTECTÉES:
+BONS PLANS DEVISES DÉTECTÉS:
 ${currencyText}
 
 MISSION: Génère exactement 2 recommandations COURT TERME (dans les 30 prochains jours) et 2 recommandations LONG TERME (dans les 6 prochains mois).
 
-Privilégie les VRAIES opportunités d'arbitrage: prix anormalement bas, météo favorable, monnaie avantageuse, basse saison intelligente.
+Choisis les moments où le rapport qualité/prix est exceptionnel: prix bas, météo idéale, monnaie favorable, basse saison avantageuse.
+
+Règles d'écriture:
+- Titres: chaleureux et inspirants, jamais techniques (ex: "Weekend au soleil à Malaga", "Semaine de rêve à Kyoto")
+- Reason: 2-3 phrases simples et convaincantes qui donnent envie (ex: "Les vols sont à 127€ A/R ce week-end, moitié prix par rapport à la haute saison. Malaga affiche 22°C et ciel dégagé — idéal pour la plage en toute tranquillité.")
+- Tags: expériences concrètes (ex: "Plage", "Gastronomie", "Week-end détente")
+- Savings: économie estimée vs prix habituel (ex: "€150")
+- destination: nom de la ville en clair (ex: "Malaga", "Kyoto")
 
 Réponds UNIQUEMENT avec ce JSON valide (aucun texte avant/après):
 {
   "short": [
     {
       "id": "short-1",
-      "title": "Titre accrocheur (ex: Weekend à Lisbonne)",
+      "title": "Titre inspirant et chaleureux",
+      "destination": "Nom de la ville",
       "startDate": "YYYY-MM-DD",
       "endDate": "YYYY-MM-DD",
       "duration": 3,
       "savings": "€120",
       "confidence": 87,
-      "reason": "2-3 phrases expliquant POURQUOI c'est une opportunité maintenant: prix réel, météo, saison, monnaie",
+      "reason": "2-3 phrases simples et enthousiastes qui expliquent pourquoi c'est le bon moment",
       "tags": ["Tag1", "Tag2", "Tag3"],
       "canAfford": true
     },
-    { ... }
+    { "id": "short-2", "title": "...", "destination": "...", "startDate": "YYYY-MM-DD", "endDate": "YYYY-MM-DD", "duration": 3, "savings": "€80", "confidence": 82, "reason": "...", "tags": [], "canAfford": true }
   ],
   "long": [
     {
       "id": "long-1",
-      "title": "Titre (ex: Semaine au Japon)",
+      "title": "Titre inspirant",
+      "destination": "Nom de la ville",
       "startDate": "YYYY-MM-DD",
       "endDate": "YYYY-MM-DD",
       "duration": 7,
       "savings": "€350",
       "confidence": 82,
-      "reason": "Justification stratégique: prix vs saison normale, opportunité monnaie, météo optimale",
+      "reason": "Pourquoi c'est le moment idéal pour partir: prix, météo, ambiance locale",
       "tags": ["Tag1", "Tag2"],
       "canAfford": true
     },
-    { ... }
+    { "id": "long-2", "title": "...", "destination": "...", "startDate": "YYYY-MM-DD", "endDate": "YYYY-MM-DD", "duration": 14, "savings": "€400", "confidence": 78, "reason": "...", "tags": [], "canAfford": true }
   ]
 }`;
 

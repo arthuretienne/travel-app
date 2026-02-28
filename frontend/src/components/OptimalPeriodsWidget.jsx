@@ -132,8 +132,6 @@ export function OptimalPeriodsWidget() {
 
   const handlePlanTrip = () => {
     if (!currentPeriod) return;
-
-    // Navigate to create-trip page with pre-filled dates
     navigate('/create-trip', {
       state: {
         prefilledDates: {
@@ -142,6 +140,11 @@ export function OptimalPeriodsWidget() {
         }
       }
     });
+  };
+
+  const handleAcceptProposal = () => {
+    if (!currentPeriod) return;
+    navigate('/trip-proposal', { state: { proposal: currentPeriod } });
   };
 
   // Helper to generate calendar days
@@ -212,10 +215,10 @@ export function OptimalPeriodsWidget() {
         <div>
           <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Sparkles className="text-amber-400" size={20} />
-            Best Time to Travel
+            Vos prochaines escapades
           </h3>
           <div className="flex items-center gap-3 mt-1">
-            <p className="text-gray-500 text-sm">AI-powered optimal dates for your next trip</p>
+            <p className="text-gray-500 text-sm">Les meilleurs moments pour partir, selon vos envies</p>
             {calendarConnected ? (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                 <CheckCircle2 size={11} />
@@ -243,7 +246,7 @@ export function OptimalPeriodsWidget() {
               }`}
           >
             <Rocket size={14} className={view === 'short' ? 'text-emerald-500' : ''} />
-            Short Term
+            Bientôt
           </button>
           <button
             onClick={() => setView('long')}
@@ -253,7 +256,7 @@ export function OptimalPeriodsWidget() {
               }`}
           >
             <Target size={14} className={view === 'long' ? 'text-primary' : ''} />
-            Long Term
+            Dans quelques mois
           </button>
         </div>
       </div>
@@ -266,8 +269,8 @@ export function OptimalPeriodsWidget() {
                 <CalendarIcon size={17} className="text-blue-600" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900">Connect Google Calendar</p>
-                <p className="text-xs text-gray-500 mt-0.5">Get suggestions based on your actual free dates</p>
+                <p className="text-sm font-semibold text-gray-900">Connecter Google Agenda</p>
+                <p className="text-xs text-gray-500 mt-0.5">Suggestions basées sur vos vraies dates libres</p>
               </div>
             </div>
             <button
@@ -275,7 +278,7 @@ export function OptimalPeriodsWidget() {
               disabled={connectingCalendar}
               className="shrink-0 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-hover transition-colors disabled:opacity-60"
             >
-              {connectingCalendar ? 'Connecting...' : 'Connect'}
+              {connectingCalendar ? 'Connexion...' : 'Connecter'}
             </button>
           </div>
         </div>
@@ -394,17 +397,25 @@ export function OptimalPeriodsWidget() {
                 )}
               </div>
 
-              <button
-                onClick={handlePlanTrip}
-                className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-gray-200"
-              >
-                Plan Trip for These Dates
-                <ArrowRight size={18} />
-              </button>
+              <div className="space-y-2.5 pt-1">
+                <button
+                  onClick={handleAcceptProposal}
+                  className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-gray-200"
+                >
+                  J'accepte cette proposition
+                  <ArrowRight size={18} />
+                </button>
+                <button
+                  onClick={handlePlanTrip}
+                  className="w-full py-3 text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
+                >
+                  Choisir mes propres dates
+                </button>
+              </div>
             </div>
           ) : (
             <div className="text-center text-gray-400 py-12">
-              <p>Select a view to see recommendations</p>
+              <p>Sélectionnez une période pour voir les suggestions</p>
             </div>
           )}
         </div>
