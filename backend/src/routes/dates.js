@@ -121,9 +121,9 @@ router.get('/intelligent', authenticateUser, async (req, res) => {
       longTermPeriods = generateLongTermSuggestions(today, tripDuration, userPreferences, leaveDaysInfo);
     }
 
-    // Cache the new periods (expires in 24 hours)
+    // Cache the new periods (expires in 7 days)
     const expiresAt = new Date(today);
-    expiresAt.setHours(expiresAt.getHours() + 24);
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
     await cachePeriods(req.user.id, shortTermPeriods, longTermPeriods, expiresAt);
 
@@ -497,7 +497,7 @@ async function cachePeriods(userId, shortTermPeriods, longTermPeriods, expiresAt
           canAfford: period.canAfford,
           season: period.season || null,
           events: period.events || [],
-          tags: period.tags || [],
+          tags: [...(period.tags || []), ...(period.destination ? [`_dest:${period.destination}`] : [])],
           weatherScore: period.weatherScore || null,
           expiresAt
         }))
@@ -522,7 +522,7 @@ async function cachePeriods(userId, shortTermPeriods, longTermPeriods, expiresAt
           canAfford: period.canAfford,
           season: period.season || null,
           events: period.events || [],
-          tags: period.tags || [],
+          tags: [...(period.tags || []), ...(period.destination ? [`_dest:${period.destination}`] : [])],
           weatherScore: period.weatherScore || null,
           expiresAt
         }))
@@ -540,6 +540,11 @@ async function cachePeriods(userId, shortTermPeriods, longTermPeriods, expiresAt
  * Format cached period for API response
  */
 function formatCachedPeriod(cached) {
+  const allTags = cached.tags || [];
+  const destTag = allTags.find(t => typeof t === 'string' && t.startsWith('_dest:'));
+  const destination = destTag ? destTag.slice(5) : null;
+  const tags = allTags.filter(t => typeof t !== 'string' || !t.startsWith('_dest:'));
+
   return {
     id: cached.id,
     startDate: cached.startDate.toISOString().split('T')[0],
@@ -554,7 +559,8 @@ function formatCachedPeriod(cached) {
     canAfford: cached.canAfford,
     season: cached.season,
     events: cached.events,
-    tags: cached.tags,
+    tags,
+    destination,
     weatherScore: cached.weatherScore,
     type: cached.type
   };

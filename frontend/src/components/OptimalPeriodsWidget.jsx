@@ -45,6 +45,27 @@ const MOCK_PERIODS = {
   }
 };
 
+const PERIODS_CACHE_KEY = 'optimal_periods_v3';
+const PERIODS_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function loadFromLocalCache() {
+  try {
+    const raw = localStorage.getItem(PERIODS_CACHE_KEY);
+    if (!raw) return null;
+    const { data, timestamp } = JSON.parse(raw);
+    if (Date.now() - timestamp > PERIODS_CACHE_TTL) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function saveToLocalCache(data) {
+  try {
+    localStorage.setItem(PERIODS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch { /* ignore storage errors */ }
+}
+
 export function OptimalPeriodsWidget() {
   const { getToken } = useAuth();
   const navigate = useNavigate();
@@ -55,6 +76,15 @@ export function OptimalPeriodsWidget() {
   const [connectingCalendar, setConnectingCalendar] = useState(false);
 
   useEffect(() => {
+    // Check localStorage first — no API call if cache is < 7 days old
+    const localData = loadFromLocalCache();
+    if (localData) {
+      setPeriods(localData);
+      setCalendarConnected(localData.metadata?.hasCalendar || false);
+      setLoading(false);
+      return;
+    }
+
     const fetchOptimalPeriods = async () => {
       try {
         setLoading(true);
@@ -72,18 +102,9 @@ export function OptimalPeriodsWidget() {
           return;
         }
 
-        // Force refresh once after dynamic engine deploy (v2), then use cache
-        const CACHE_VERSION = 'v2';
-        const cacheKey = `optimal_periods_cache_${CACHE_VERSION}`;
-        const needsRefresh = !localStorage.getItem(cacheKey);
-        const url = needsRefresh
-          ? `${API_URL}/api/dates/intelligent?refresh=true`
-          : `${API_URL}/api/dates/intelligent`;
-
-        const response = await fetch(url, {
+        const response = await fetch(`${API_URL}/api/dates/intelligent`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
-        if (needsRefresh) localStorage.setItem(cacheKey, '1');
 
         if (response.ok) {
           const data = await response.json();
@@ -96,6 +117,7 @@ export function OptimalPeriodsWidget() {
             if (!mergedData.leaveDaysInfo) mergedData.leaveDaysInfo = MOCK_PERIODS.leaveDaysInfo;
             setPeriods(mergedData);
             setCalendarConnected(data.data.metadata?.hasCalendar || false);
+            saveToLocalCache(mergedData);
           }
         } else {
           setPeriods(MOCK_PERIODS);

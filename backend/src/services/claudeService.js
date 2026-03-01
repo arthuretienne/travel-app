@@ -1221,11 +1221,35 @@ export async function generateSmartTravelDates({
 
   const today = new Date().toISOString().split('T')[0];
 
-  const prompt = `Tu es un conseiller voyage passionné. Analyse ces données RÉELLES et propose les meilleures escapades au meilleur moment.
+  // Build activity-specific argument hints so Claude personalizes the reason field
+  const activityArgHints = {
+    plage:    'mentionne la météo, la mer, la plage tranquille hors-saison',
+    culture:  'mentionne les musées, monuments, l\'ambiance locale sans foule',
+    nature:   'mentionne les paysages, randonnées, air pur',
+    montagne: 'mentionne le ski, les sommets ou la verdure selon la saison',
+    gastro:   'mentionne les restaurants, marchés, spécialités culinaires locales',
+    sport:    'mentionne les activités outdoor et conditions sportives idéales',
+    shopping: 'mentionne les boutiques, bonnes affaires, rapport qualité/prix local',
+    histoire: 'mentionne le patrimoine historique, les monuments et l\'histoire du lieu',
+  };
+  const userActivityHints = (userPreferences.topActivities || [])
+    .map(a => activityArgHints[a])
+    .filter(Boolean)
+    .slice(0, 3)
+    .join('; ') || 'mentionne l\'expérience unique de la destination';
 
-PROFIL VOYAGEUR:
+  const personalityHint = {
+    aventurier: 'ton enthousiaste et aventureux',
+    explorateur: 'ton curieux et découverte',
+    confort: 'ton rassurant, axé confort et sérénité',
+    flexible: 'ton ouvert et spontané',
+  }[personality] || 'ton chaleureux et enthousiaste';
+
+  const prompt = `Tu es un conseiller voyage passionné qui connaît parfaitement son utilisateur. Analyse ces données RÉELLES et propose les meilleures escapades adaptées à SES envies.
+
+PROFIL DU VOYAGEUR:
 - Origine: ${origin}
-- Activités préférées: ${activities}
+- Ce qu'il/elle aime: ${activities}
 - Budget: ${budget}€
 - Durée idéale: ${duration}
 - Climat préféré: ${climate}
@@ -1244,19 +1268,19 @@ ${weatherText}
 TAUX DE CHANGE (base EUR, temps réel):
 ${ratesText}
 
-BONS PLANS DEVISES DÉTECTÉS:
+BONS PLANS DEVISES (utilise UNIQUEMENT si la destination recommandée utilise une devise avantageuse):
 ${currencyText}
 
 MISSION: Génère exactement 2 recommandations COURT TERME (dans les 30 prochains jours) et 2 recommandations LONG TERME (dans les 6 prochains mois).
 
-Choisis les moments où le rapport qualité/prix est exceptionnel: prix bas, météo idéale, monnaie favorable, basse saison avantageuse.
+Choisis les moments où le rapport qualité/prix est exceptionnel pour CE voyageur précis.
 
 Règles d'écriture:
-- Titres: chaleureux et inspirants, jamais techniques (ex: "Weekend au soleil à Malaga", "Semaine de rêve à Kyoto")
-- Reason: 2-3 phrases simples et convaincantes qui donnent envie (ex: "Les vols sont à 127€ A/R ce week-end, moitié prix par rapport à la haute saison. Malaga affiche 22°C et ciel dégagé — idéal pour la plage en toute tranquillité.")
-- Tags: expériences concrètes (ex: "Plage", "Gastronomie", "Week-end détente")
+- Titres: chaleureux et inspirants (ex: "Weekend au soleil à Malaga", "Semaine de rêve à Kyoto")
+- Reason: 2-3 phrases PERSONNALISÉES. Utilise un ${personalityHint}. Priorité aux arguments qui parlent à cet utilisateur: ${userActivityHints}. Parle de prix seulement s'ils sont vraiment bas. Ne mentionne la devise/monnaie QUE si la destination recommandée est dans un pays à monnaie réellement avantageuse pour les Européens (ex: yen japonais, livre turque, baht thaï) — sinon ignore totalement la monnaie.
+- Tags: expériences concrètes adaptées à ses goûts (pas de termes financiers ni techniques)
 - Savings: économie estimée vs prix habituel (ex: "€150")
-- destination: nom de la ville en clair (ex: "Malaga", "Kyoto")
+- destination: nom de la ville en clair
 
 Réponds UNIQUEMENT avec ce JSON valide (aucun texte avant/après):
 {
@@ -1270,7 +1294,7 @@ Réponds UNIQUEMENT avec ce JSON valide (aucun texte avant/après):
       "duration": 3,
       "savings": "€120",
       "confidence": 87,
-      "reason": "2-3 phrases simples et enthousiastes qui expliquent pourquoi c'est le bon moment",
+      "reason": "2-3 phrases personnalisées selon le profil du voyageur",
       "tags": ["Tag1", "Tag2", "Tag3"],
       "canAfford": true
     },
@@ -1286,7 +1310,7 @@ Réponds UNIQUEMENT avec ce JSON valide (aucun texte avant/après):
       "duration": 7,
       "savings": "€350",
       "confidence": 82,
-      "reason": "Pourquoi c'est le moment idéal pour partir: prix, météo, ambiance locale",
+      "reason": "Pourquoi c'est LE bon moment pour ce voyageur: prix, météo, expériences selon ses goûts",
       "tags": ["Tag1", "Tag2"],
       "canAfford": true
     },
