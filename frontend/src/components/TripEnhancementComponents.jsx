@@ -441,35 +441,45 @@ export function LocalEventsCard({ events, destination }) {
               Happening During Your Trip
             </h3>
             <div className="space-y-3">
-              {upcoming.map((event, idx) => (
-                <div key={idx} className="bg-surface-subtle rounded-xl p-4 border-l-4 border-primary">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <h4 className="font-bold text-text-main mb-1">{event.name}</h4>
-                      <p className="text-sm text-text-secondary mb-2">{event.description}</p>
-                      <div className="flex items-center gap-3 text-xs text-text-light">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {typeof event.month === 'number'
-                            ? new Date(2025, event.month - 1, event.day || 1).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-                            : event.month}
-                        </span>
-                        <span className="px-2 py-0.5 bg-primary-light text-primary rounded">
-                          {event.type}
-                        </span>
+              {upcoming.map((event, idx) => {
+                // Handle both AI format { name, dates, category, description }
+                // and static format { name, description, month, day, type }
+                const eventType = event.category || event.type || 'Événement';
+                const dateLabel = event.dates
+                  ? event.dates
+                  : typeof event.month === 'number'
+                    ? new Date(2025, event.month - 1, event.day || 1).toLocaleDateString('fr-FR', { month: 'long', day: 'numeric' })
+                    : event.month || '';
+                return (
+                  <div key={idx} className="bg-surface-subtle rounded-xl p-4 border-l-4 border-primary">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <h4 className="font-bold text-text-main mb-1">{event.name}</h4>
+                        <p className="text-sm text-text-secondary mb-2">{event.description}</p>
+                        <div className="flex items-center gap-3 text-xs text-text-light">
+                          {dateLabel && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {dateLabel}
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 bg-primary-light text-primary rounded">
+                            {eventType}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 w-10 h-10 bg-primary-light rounded-lg flex items-center justify-center">
+                        {['Music', 'Musique', 'Concert'].includes(eventType) && <Music className="w-5 h-5 text-primary" />}
+                        {['Festival', 'Carnaval', 'Fête'].includes(eventType) && <PartyPopper className="w-5 h-5 text-primary" />}
+                        {['Cultural', 'Culture', 'Culturel', 'Art', 'Exposition'].includes(eventType) && <MapPin className="w-5 h-5 text-primary" />}
+                        {!['Music', 'Musique', 'Concert', 'Festival', 'Carnaval', 'Fête', 'Cultural', 'Culture', 'Culturel', 'Art', 'Exposition'].includes(eventType) && (
+                          <CalendarDays className="w-5 h-5 text-primary" />
+                        )}
                       </div>
                     </div>
-                    <div className="flex-shrink-0 w-10 h-10 bg-primary-light rounded-lg flex items-center justify-center">
-                      {event.type === 'Music' && <Music className="w-5 h-5 text-primary" />}
-                      {event.type === 'Festival' && <PartyPopper className="w-5 h-5 text-primary" />}
-                      {event.type === 'Cultural' && <MapPin className="w-5 h-5 text-primary" />}
-                      {!['Music', 'Festival', 'Cultural'].includes(event.type) && (
-                        <CalendarDays className="w-5 h-5 text-primary" />
-                      )}
-                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

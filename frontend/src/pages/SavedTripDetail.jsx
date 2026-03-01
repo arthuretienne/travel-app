@@ -26,7 +26,7 @@ import {
   Download,
 } from 'lucide-react';
 import { CompleteTripPlanCard, PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
-import StickyBookingProgress, { BookingChecklistCard } from '../components/StickyBookingProgress';
+import { generateFlightLink, generateHotelLink, generateActivitiesLink } from '../utils/bookingLinks';
 // PDF imports are lazy-loaded in handleExportPdf to keep bundle small
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -350,19 +350,18 @@ export default function SavedTripDetail() {
 
   return (
     <div className="min-h-screen bg-surface-subtle">
-      {/* Sticky Booking Progress Bar */}
-      <StickyBookingProgress
-        city={safeText(trip.city)}
-        country={safeText(trip.country)}
-        startDate={trip.startDate}
-        endDate={trip.endDate}
-        adults={1}
-        onBack={() => navigate('/dashboard')}
-      />
-
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Back nav */}
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors text-sm font-medium mb-4"
+          >
+            <ArrowLeft size={16} />
+            Retour au tableau de bord
+          </button>
+
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
@@ -462,15 +461,6 @@ export default function SavedTripDetail() {
 
       {/* Main Content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Booking Checklist Card */}
-        <BookingChecklistCard
-          city={safeText(trip.city)}
-          country={safeText(trip.country)}
-          startDate={trip.startDate}
-          endDate={trip.endDate}
-          adults={1}
-        />
-
         {/* Flight Details */}
         {flightDetails && (flightDetails.outbound || flightDetails.return) && (
           <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
@@ -569,6 +559,36 @@ export default function SavedTripDetail() {
                 </div>
               )}
             </div>
+
+            {/* Flight booking CTAs */}
+            <div className="flex gap-3 mt-5 pt-4 border-t border-gray-100">
+              {flightDetails.bookingUrl ? (
+                <a
+                  href={flightDetails.bookingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold text-center hover:bg-primary-hover transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plane size={14} />
+                  Réserver ce vol
+                </a>
+              ) : null}
+              <a
+                href={generateFlightLink({
+                  destinationCity: safeText(trip.city),
+                  destinationIata: destination.iataCode,
+                  destinationCountry: safeText(trip.country),
+                  startDate: trip.startDate,
+                  endDate: trip.endDate,
+                  adults: 1,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`py-2.5 px-4 rounded-xl text-sm font-medium text-center border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors ${flightDetails.bookingUrl ? '' : 'flex-1'}`}
+              >
+                Voir d'autres vols
+              </a>
+            </div>
           </div>
         )}
 
@@ -602,53 +622,95 @@ export default function SavedTripDetail() {
             {/* Hotel list */}
             {hotelOptions?.hotels?.length > 0 && (
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-text-main">Recommended Hotels:</p>
-                {hotelOptions.hotels.slice(0, 3).map((hotel, idx) => (
-                  <div key={idx} className="p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-primary/30 transition-colors">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <p className="font-semibold text-text-main">{safeText(hotel.name)}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          {hotel.stars && (
-                            <span className="text-xs text-amber-600 flex items-center gap-0.5">
-                              {'★'.repeat(typeof hotel.stars === 'number' ? hotel.stars : 0)}
-                            </span>
-                          )}
-                          {hotel.rating?.value && (
-                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                              {safeText(hotel.rating.value)}/10
-                            </span>
-                          )}
-                          {hotel.location && (
-                            <span className="text-xs text-text-secondary flex items-center gap-1">
-                              <MapPin size={10} />
-                              {safeText(hotel.location)}
-                            </span>
-                          )}
-                        </div>
-                        {hotel.amenities?.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {hotel.amenities.slice(0, 4).map((amenity, i) => {
-                              const text = typeof amenity === 'string' ? amenity : (amenity?.word || amenity?.value || amenity?.name || '');
-                              if (!text) return null;
-                              return (
-                                <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                                  {text}
+                <p className="text-sm font-semibold text-text-main">Hôtels recommandés :</p>
+                {hotelOptions.hotels.slice(0, 3).map((hotel, idx) => {
+                  const photo = hotel.mainPhoto || hotel.photos?.[0];
+                  return (
+                    <div key={idx} className="rounded-xl border border-gray-100 hover:border-primary/30 transition-colors overflow-hidden">
+                      {/* Hotel photo */}
+                      {photo && (
+                        <img
+                          src={photo}
+                          alt={safeText(hotel.name)}
+                          className="w-full h-36 object-cover"
+                          loading="lazy"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      )}
+                      <div className="p-4 bg-gray-50">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <p className="font-semibold text-text-main">{safeText(hotel.name)}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              {hotel.stars && (
+                                <span className="text-xs text-amber-600">
+                                  {'★'.repeat(typeof hotel.stars === 'number' ? hotel.stars : 0)}
                                 </span>
-                              );
-                            })}
+                              )}
+                              {hotel.rating?.value && (
+                                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                  {safeText(hotel.rating.value)}/10
+                                </span>
+                              )}
+                              {hotel.location && (
+                                <span className="text-xs text-text-secondary flex items-center gap-1">
+                                  <MapPin size={10} />
+                                  {safeText(hotel.location)}
+                                </span>
+                              )}
+                            </div>
+                            {hotel.amenities?.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {hotel.amenities.slice(0, 4).map((amenity, i) => {
+                                  const text = typeof amenity === 'string' ? amenity : (amenity?.word || amenity?.value || amenity?.name || '');
+                                  if (!text) return null;
+                                  return (
+                                    <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                      {text}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-lg font-bold text-primary">
+                              €{Math.round(hotel.pricePerNight || hotel.price?.amount / duration || 0)}
+                            </span>
+                            <span className="text-xs text-text-secondary block">/nuit</span>
+                          </div>
+                        </div>
+                        {hotel.bookingUrl && (
+                          <a
+                            href={hotel.bookingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 w-full py-2 bg-primary text-white rounded-lg text-sm font-semibold text-center hover:bg-primary-hover transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Hotel size={14} />
+                            Réserver cet hôtel
+                          </a>
                         )}
                       </div>
-                      <div className="text-right">
-                        <span className="text-lg font-bold text-primary">
-                          €{Math.round(hotel.pricePerNight || hotel.price?.amount / duration || 0)}
-                        </span>
-                        <span className="text-xs text-text-secondary block">/night</span>
-                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+
+                {/* See more hotels CTA */}
+                <a
+                  href={generateHotelLink({
+                    city: safeText(trip.city),
+                    country: safeText(trip.country),
+                    startDate: trip.startDate,
+                    endDate: trip.endDate,
+                    adults: 1,
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full py-2.5 text-center text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors mt-2"
+                >
+                  Voir d'autres hôtels à {safeText(trip.city)}
+                </a>
               </div>
             )}
           </div>
@@ -674,6 +736,24 @@ export default function SavedTripDetail() {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Activities booking CTA */}
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <a
+                href={generateActivitiesLink({
+                  city: safeText(trip.city),
+                  country: safeText(trip.country),
+                  startDate: trip.startDate,
+                  endDate: trip.endDate,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold text-primary border border-primary/30 bg-primary/5 rounded-xl hover:bg-primary/10 transition-colors"
+              >
+                <Sparkles size={14} />
+                Trouver des activités à {safeText(trip.city)}
+              </a>
             </div>
           </div>
         )}
@@ -1018,11 +1098,15 @@ function WeatherForecastCard({ weather, destination }) {
   );
 }
 
-// Packing Tips Card Component - Teal Design System
+// Packing Tips Card Component - handles both AI format and static format
 function PackingTipsCard({ packing }) {
-  // Get only the MOST important tips (first 2 essentials)
-  const keyEssentials = packing.essentials.slice(0, 2);
-  const keyClothing = packing.clothing.slice(0, 1);
+  // AI format: { essentials: string[], clothing: string[], activityItems: string[], tip: string }
+  // Static format: { essentials: string[], clothing: string[], weatherSummary: { tempRange, rainChance, maxUV } }
+  const essentials = (packing.essentials || []).slice(0, 3);
+  const clothing = (packing.clothing || []).slice(0, 2);
+  const activityItems = (packing.activityItems || []).slice(0, 2);
+
+  const allItems = [...essentials, ...clothing, ...activityItems];
 
   return (
     <div className="bg-white rounded-xl shadow-card border border-stone-200 p-4 hover:border-primary/30 transition-colors">
@@ -1031,19 +1115,9 @@ function PackingTipsCard({ packing }) {
           <Backpack className="w-5 h-5 text-primary" />
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold text-text-main mb-2">Packing Essentials</h3>
+          <h3 className="font-semibold text-text-main mb-2">À emporter</h3>
           <div className="space-y-1.5 text-sm">
-            {keyEssentials.map((item, idx) => {
-              const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
-              if (!text) return null;
-              return (
-                <div key={idx} className="flex items-center gap-2 text-text-secondary">
-                  <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>{text}</span>
-                </div>
-              );
-            })}
-            {keyClothing.map((item, idx) => {
+            {allItems.map((item, idx) => {
               const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
               if (!text) return null;
               return (
@@ -1054,11 +1128,18 @@ function PackingTipsCard({ packing }) {
               );
             })}
           </div>
+          {/* AI tip */}
+          {packing.tip && (
+            <p className="text-xs text-primary mt-2 bg-primary-light px-2 py-1.5 rounded-lg leading-relaxed">
+              {packing.tip}
+            </p>
+          )}
+          {/* Static weather summary */}
           {packing.weatherSummary && (
             <p className="text-xs text-text-light mt-2">
               {packing.weatherSummary.tempRange}
               {packing.weatherSummary.rainChance > 30 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-primary-light text-primary rounded">Rain gear</span>
+                <span className="ml-1 px-1.5 py-0.5 bg-primary-light text-primary rounded">Imperméable</span>
               )}
               {packing.weatherSummary.maxUV > 6 && (
                 <span className="ml-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded">SPF 50+</span>
