@@ -1,7 +1,8 @@
 // frontend/src/pages/TripProposal.jsx
-// Proposal acceptance page — shows AI recommendation + traveler count before creating trip
+// Proposal acceptance page — shows AI recommendation + traveler count, then launches search
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import {
   CalendarDays,
   Clock,
@@ -12,23 +13,28 @@ import {
   Sparkles,
   ArrowRight,
   MapPin,
+  Loader2,
 } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 const TRAVELER_OPTIONS = [
-  { value: 1, label: 'Solo', description: 'Juste moi' },
-  { value: 2, label: 'Duo', description: 'À deux' },
-  { value: 3, label: '3 personnes', description: 'Petit groupe' },
-  { value: 4, label: '4 personnes', description: 'Groupe' },
-  { value: 6, label: '5-6 personnes', description: 'Grand groupe' },
+  { value: 1, label: 'Solo', description: 'Juste moi', tripType: 'solo' },
+  { value: 2, label: 'Duo', description: 'À deux', tripType: 'couple' },
+  { value: 3, label: '3 personnes', description: 'Petit groupe', tripType: 'friends' },
+  { value: 4, label: '4 personnes', description: 'Groupe', tripType: 'friends' },
+  { value: 6, label: '5-6 personnes', description: 'Grand groupe', tripType: 'friends' },
 ];
 
 export default function TripProposal() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { getToken } = useAuth();
   const proposal = location.state?.proposal;
   const [travelers, setTravelers] = useState(2);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // If no proposal data, redirect to dashboard
   if (!proposal) {
     navigate('/dashboard', { replace: true });
     return null;
@@ -44,22 +50,91 @@ export default function TripProposal() {
     day: 'numeric', month: 'long', year: 'numeric',
   });
 
-  const handleSearchTrip = () => {
-    navigate('/create-trip', {
-      state: {
-        proposal: {
+  const selectedOption = TRAVELER_OPTIONS.find(o => o.value === travelers) || TRAVELER_OPTIONS[1];
+
+  const handleSearch = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = await getToken();
+
+      const payload = {
+        basic: {
           destination: proposal.destination || '',
+          budget: 1500,
+          style: 'relaxation',
+          tripType: selectedOption.tripType,
+          activities: ['cultural', 'nature'],
+          maxFlightHours: 12,
+          destinationPreference: 'specific',
+          travelers,
+        },
+        preferences: {
+          climate: 'any',
+          accommodation: 'hotel',
+          pace: 'moderate',
+          gastronomy: 'important',
+          natureVsCity: 50,
+          nightlife: 'optional',
+          activitiesBudget: 20,
+        },
+        constraints: {
+          budget: 1500,
+          maxFlightHours: 12,
+          avoidCountries: [],
+        },
+        availability: {
           startDate: proposal.startDate,
           endDate: proposal.endDate,
-          travelers,
-          title: proposal.title,
-          reason: proposal.reason,
+          duration: proposal.duration,
+          timeHorizon: '6-mois',
+          idealDuration: `${proposal.duration}-jours`,
+          flexibleDates: false,
+          preferredMonths: [],
+          departureFlexibility: 'fixed',
         },
-      },
-    });
+        chatbotPreferences: { tone: 'friendly' },
+      };
+
+      const response = await fetch(`${API_URL}/api/travel/recommendations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.recommendations) {
+        navigate('/results', { state: { recommendations: data.recommendations } });
+      } else {
+        throw new Error(data.error || 'La recherche a échoué');
+      }
+    } catch (err) {
+      console.error('TripProposal search error:', err);
+      setError('Une erreur est survenue. Veuillez réessayer.');
+      setLoading(false);
+    }
   };
 
-  const isShort = proposal.duration <= 4;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-5">
+        <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center">
+          <Loader2 size={28} className="text-primary animate-spin" />
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-semibold text-gray-900">Recherche en cours…</p>
+          <p className="text-sm text-gray-500 mt-1">
+            On trouve les meilleurs vols et hébergements vers {proposal.destination || 'votre destination'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -98,6 +173,7 @@ export default function TripProposal() {
 
           {/* Proposal card */}
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+
             {/* Key stats */}
             <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
               <div className="p-5 text-center">
@@ -186,10 +262,17 @@ export default function TripProposal() {
             </div>
           </div>
 
+          {/* Error */}
+          {error && (
+            <div className="bg-red-50 border border-red-100 rounded-2xl px-5 py-4 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
           {/* CTAs */}
           <div className="space-y-3 pb-8">
             <button
-              onClick={handleSearchTrip}
+              onClick={handleSearch}
               className="w-full py-4 bg-gray-900 hover:bg-gray-800 text-white rounded-2xl font-semibold text-base transition-colors flex items-center justify-center gap-2.5 shadow-lg shadow-gray-200"
             >
               Trouver vols & hébergements
@@ -202,6 +285,7 @@ export default function TripProposal() {
               Pas pour cette fois
             </button>
           </div>
+
         </div>
       </div>
     </div>
