@@ -2009,7 +2009,7 @@ function TripEnhancementsSection({ trip, userName }) {
               activeDay={activeDay}
               setActiveDay={setActiveDay}
               destination={destination}
-              isStreaming={loadingItinerary}
+              isStreaming={true}
             />
           ) : error ? (
             <div className="text-center py-8">

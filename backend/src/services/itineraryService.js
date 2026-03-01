@@ -334,42 +334,51 @@ HOTEL INFORMATION:
     const isFirstDay = dayNum === 1;
     const isLastDay = dayNum === days;
 
-    const dayPrompt = `You are creating DAY ${dayNum} of a ${days}-day trip ${groupText} to ${city}, ${country}.
+    const dayPrompt = `Tu es un expert local créant le JOUR ${dayNum} sur ${days} d'un voyage ${groupText} à ${city}, ${country}.
 Date: ${dateStr}
+${isFirstDay ? `\n⚡ C'est le jour d'arrivée. ${flightInfoText}` : ''}
+${isLastDay ? '\n⚡ C'est le jour de départ — inclure checkout + transfert aéroport avec timing précis.' : ''}
+${hotelInfoText}
 
-TRAVELER PROFILE:
+PROFIL VOYAGEUR:
 ${personalityText}
 ${tripTypeText}
 ${motivationText}
-Group size: ${memberCount} traveler${memberCount > 1 ? 's' : ''}
+Groupe: ${memberCount} personne${memberCount > 1 ? 's' : ''}
 ${customRequestText}
 
-${isFirstDay ? `This is ARRIVAL day. ${flightInfoText}` : ''}
-${isLastDay ? 'This is DEPARTURE day - include checkout and airport transfer.' : ''}
-${hotelInfoText}
+Activités suggérées: ${activitiesText}
 
-Activities to possibly include: ${activitiesText}
+RÈGLES:
+- 4-6 activités avec horaires précis (ex: "9h30", "14h")
+- Inclure repas (breakfast, déjeuner, dîner) avec noms de restaurants locaux concrets
+- Temps de transport réalistes (métro X min, marche Y min, taxi €Z)
+- Tips personnalisés pour ${userName} referencing leur profil
+- Rythme équilibré — ne pas surcharger la journée
+- Mélanger gratuit et payant
+${memberCount > 1 ? `- Activités adaptées à ${memberCount} personnes ensemble` : ''}
 
-Create a SINGLE day schedule with 4-6 activities. Return ONLY valid JSON (no markdown):
+JSON uniquement, pas de markdown:
 {
   "day": ${dayNum},
   "date": "${dateStr}",
-  "theme": "Short theme (3-4 words)",
+  "theme": "Thème court (3-4 mots)",
   "schedule": [
     {
-      "time": "HH:MM AM/PM",
-      "duration": "Xh",
-      "activity": "Activity name",
-      "type": "Culture|Food|Nature|Adventure|Relaxation",
-      "location": "Location name",
-      "transport": "How to get there",
+      "time": "9h30",
+      "duration": "2h",
+      "activity": "Nom activité",
+      "type": "Culture|Food|Nature|Adventure|Relaxation|Transport",
+      "location": "Lieu précis",
+      "transport": "Comment y aller (temps + coût)",
       "cost": 0,
-      "tips": "One sentence tip for ${userName}"
+      "tips": "Conseil insider pour ${userName}",
+      "forWho": "Pourquoi parfait pour ce groupe (optionnel)"
     }
   ],
   "totalCost": 50,
   "walkingDistance": "5km",
-  "highlights": ["highlight1", "highlight2"]
+  "highlights": ["point fort 1", "point fort 2"]
 }`;
 
     try {
