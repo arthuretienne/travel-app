@@ -605,26 +605,27 @@ export async function optimizeDestination({
     const isLuxuryTrip = ['luxury', 'luxe', 'premium', '5 star', 'birthday', 'anniversaire', '50 ans', '40 ans', '30 ans', 'special'].some(kw => tripContextLower.includes(kw));
     // Note: 'budget' intentionally excluded — it shouldn't reduce hotel ratio for families/couples
     const isAdventureTrip = ['adventure', 'aventure', 'hiking', 'randonnée', 'backpack', 'bivouac', 'trek'].some(kw => tripContextLower.includes(kw));
+    const isDigitalNomad = ['nomade digital', 'digital nomad', 'télétravail', 'remote', 'coworking', 'nomad'].some(kw => tripContextLower.includes(kw));
 
     // Adjust hotel budget ratio based on trip type:
-    // - Romantic/Luxury: 85% for hotel (hotel is the priority)
-    // - Business: 80% for hotel (comfort matters)
-    // - Adventure/Budget: 50% for hotel (activities are the priority)
-    // - Family: 75% for hotel (comfort with kids)
-    // - Default: 70% for hotel
+    // Priority order: Romantic/Luxury > Business > Family > Adventure/Nomad > Default
     let hotelBudgetRatio = 0.70;
     if (isRomanticTrip || isLuxuryTrip) {
       hotelBudgetRatio = 0.85;
-      console.log(`   💕 Romantic/Luxury trip detected - prioritizing hotel quality (85% budget)`);
+      console.log(`   💕 Romantic/Luxury trip → 85% hotel budget`);
     } else if (isBusinessTrip) {
       hotelBudgetRatio = 0.80;
-      console.log(`   💼 Business trip detected - prioritizing comfort (80% budget)`);
+      console.log(`   💼 Business trip → 80% hotel budget`);
     } else if (isFamilyTrip) {
       hotelBudgetRatio = 0.75;
-      console.log(`   👨‍👩‍👧‍👦 Family trip detected - balanced comfort (75% budget)`);
+      console.log(`   👨‍👩‍👧‍👦 Family trip → 75% hotel budget`);
+    } else if (isDigitalNomad) {
+      // Nomads want decent quality (good wifi, desk) but value for money
+      hotelBudgetRatio = 0.65;
+      console.log(`   💻 Digital nomad → 65% hotel budget (prefer apartments with workspace)`);
     } else if (isAdventureTrip) {
       hotelBudgetRatio = 0.50;
-      console.log(`   🏔️ Adventure trip detected - prioritizing activities (50% hotel budget)`);
+      console.log(`   🏔️ Adventure trip → 50% hotel budget (activities priority)`);
     }
 
     const remainingForAccommodation = budget - flightCost;
@@ -643,9 +644,23 @@ export async function optimizeDestination({
     const materialComfort = userProfile?.onboardingPreferences?.materialComfort || 50;
 
     // Use numAdults/numChildren already parsed at the beginning of the function
-    // Calculate rooms: 1 room per 2 adults, families stay together (couples share a room)
-    let rooms = Math.ceil(numAdults / 2);
-    if (numChildren > 0 && rooms === 1) rooms = 1; // Family in same room
+    // Calculate rooms based on trip type
+    let rooms;
+    if (effectiveTripType === 'family') {
+      // Family trips: if no explicit children count, infer from total travelers
+      // Assume max 2 adults, rest are children → need 1-2 family rooms
+      const inferredChildren = numChildren > 0 ? numChildren : Math.max(0, numAdults - 2);
+      const effectiveAdults = numChildren > 0 ? numAdults : Math.min(2, numAdults);
+      const totalPeople = effectiveAdults + inferredChildren;
+      rooms = totalPeople <= 4 ? 1 : totalPeople <= 7 ? 2 : 3; // Family rooms fit more people
+      if (inferredChildren > 0 && numChildren === 0) {
+        console.log(`   👨‍👩‍👧‍👦 Family: inferred ${inferredChildren} children from ${numAdults} travelers → searching ${rooms} family room(s)`);
+      }
+    } else {
+      // Standard: 1 room per 2 adults
+      rooms = Math.ceil(numAdults / 2);
+      if (numChildren > 0 && rooms === 1) rooms = 1; // Family already in same room
+    }
     // Cap at 3 rooms: Booking.com API has practical limits for large group searches
     // (4+ rooms returns very few results, only large resorts)
     if (rooms > 3) {

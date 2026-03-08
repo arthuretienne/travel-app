@@ -807,10 +807,33 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
 
   // Trip type context (from structured data, not keyword detection)
   const tripType = userProfile.basic?.tripType;
+  const travelers = userProfile.basic?.travelers || 1;
   if (tripType === 'family') {
-    activityConstraint += `\n👨‍👩‍👧‍👦 FAMILY TRIP: Avoid party destinations. Prioritize safe, kid-friendly places.`;
+    const childrenApprox = travelers > 2 ? travelers - 2 : 0;
+    activityConstraint += `\n👨‍👩‍👧‍👦 FAMILY TRIP${childrenApprox > 0 ? ` (${travelers} people, ~${childrenApprox} children)` : ''}: Avoid party destinations. Prioritize safe, kid-friendly places with beach clubs, nature parks, or cultural sites accessible to children. Suggest apartments or family resorts over boutique hotels.`;
   } else if (tripType === 'couple') {
     activityConstraint += `\n💕 COUPLE TRIP: Prioritize romantic, charming destinations.`;
+  } else if (tripType === 'friends') {
+    activityConstraint += `\n👥 FRIENDS GROUP (${travelers} people): Suggest destinations with diverse options for groups — variety of restaurants, bars, activities. Cities with good nightlife AND daytime culture tend to work best.`;
+  }
+
+  // Digital nomad detection
+  const allText = [...userActivities, customFieldLower].join(' ');
+  const isDigitalNomad = ['nomade digital', 'digital nomad', 'télétravail', 'remote', 'coworking', 'nomad'].some(kw => allText.includes(kw));
+  const isTeamBuilding = ['team building', 'cohésion', 'séminaire', 'corporate', 'team retreat', 'incentive'].some(kw => allText.includes(kw));
+  const isLongStay = duration >= 12;
+
+  if (isDigitalNomad) {
+    activityConstraint += `\n💻 DIGITAL NOMAD: Prioritize destinations with excellent coworking culture, fast internet, and vibrant expat communities: Lisbon, Tbilisi, Chiang Mai, Tallinn, Bali, Budapest, Medellín, Mexico City. Long-stay visas or low cost of living are a bonus. Avoid remote areas without connectivity.`;
+    console.log('   💻 Digital nomad detected');
+  }
+  if (isTeamBuilding) {
+    activityConstraint += `\n🏢 CORPORATE RETREAT/TEAM BUILDING: Suggest cities accessible from ${origin} (max 3h flight), with group activity options (cooking classes, outdoor team activities, wine tours), hotels with meeting facilities, and good group restaurant scene.`;
+    console.log('   🏢 Team building detected');
+  }
+  if (isLongStay) {
+    activityConstraint += `\n🗓️ LONG STAY (${duration} days): Prioritize destinations with good cost of living for extended stays (€40-100/day), strong local life beyond tourist spots, apartment availability, and rich neighbourhood culture.`;
+    console.log(`   🗓️ Long stay detected (${duration} days)`);
   }
 
   // Visa preference from onboarding (structured data)
@@ -818,7 +841,7 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
     activityConstraint += `\n🇪🇺 VISA-FREE ONLY: User prefers destinations without visa requirements (Schengen for EU citizens).`;
   }
 
-  console.log(`🏖️ Coastal constraint: ${needsCoast}, Trip type: ${tripType || 'not specified'}`);
+  console.log(`🏖️ Coastal: ${needsCoast}, Type: ${tripType || 'not specified'}, Nomad: ${isDigitalNomad}, TeamBuild: ${isTeamBuilding}, LongStay: ${isLongStay}`);
 
   // FLEXIBLE INTERPRETATION GUIDE - let Claude handle weird requests
   const interpretationGuide = `
