@@ -257,7 +257,7 @@ Preferred departure airports: ${airportsList}
 - Their global style (Routard vs Luxe vs Aventurier) changes EVERYTHING
 
 USER PROFILE:
-Budget: €${basic.budget}
+Budget: €${basic.budget} total${basic.budgetPerPerson && basic.budgetPerPerson !== basic.budget ? ` (€${basic.budgetPerPerson}/personne × ${Math.round(basic.budget / basic.budgetPerPerson)} voyageurs)` : ''}
 Style: ${basic.style}
 Activities: ${basic.activities.join(', ')}
 Max flight duration: ${basic.maxFlightHours}h
@@ -1337,4 +1337,95 @@ Réponds UNIQUEMENT avec ce JSON valide (aucun texte avant/après):
 
   console.log(`✅ Claude strategist generated ${result.short.length} short + ${result.long.length} long recommendations`);
   return result;
+}
+// ─── Smart Packing ────────────────────────────────────────────────────────────
+export async function generateSmartPacking({ city, country, startDate, endDate, weatherForecast, activities = [] }) {
+  if (!client) throw new Error('Claude client not initialized');
+
+  const duration = Math.max(1, Math.ceil((new Date(endDate) - new Date(startDate)) / 86400000));
+
+  const weatherSummary = weatherForecast?.length > 0
+    ? weatherForecast.slice(0, 5).map(d =>
+        `${d.date}: ${d.day?.avgtemp_c || '?'}°C, ${d.day?.condition?.text || '?'}, pluie ${d.day?.daily_chance_of_rain || 0}%`
+      ).join('\n')
+    : 'Météo non disponible';
+
+  const prompt = `Tu es un conseiller voyage expert. Génère une liste de bagages personnalisée et pratique.
+
+VOYAGE:
+- Destination: ${city}, ${country}
+- Dates: ${startDate} → ${endDate} (${duration} jours)
+- Activités prévues: ${activities.join(', ') || 'découverte générale'}
+- Météo prévue:
+${weatherSummary}
+
+Génère une liste SPÉCIFIQUE à ce voyage. Sois concret (ex: "Crème solaire SPF50" pas "Protection solaire", "Chaussures de randonnée légères" pas "Chaussures adaptées").
+
+Réponds UNIQUEMENT avec ce JSON valide:
+{
+  "essentials": ["item1", "item2", "item3"],
+  "clothing": ["item1", "item2", "item3"],
+  "activityItems": ["item1", "item2"],
+  "tip": "Un conseil pratique unique pour cette destination/saison en 1 phrase"
+}
+
+Max 5 éléments par catégorie. En français.`;
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 600,
+    temperature: 0.3,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = message.content[0].text.trim();
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON in packing response');
+  return JSON.parse(jsonMatch[0]);
+}
+
+// ─── Smart Events ─────────────────────────────────────────────────────────────
+export async function generateSmartEvents({ city, country, startDate, endDate }) {
+  if (!client) throw new Error('Claude client not initialized');
+
+  const prompt = `Tu es un expert des événements culturels et locaux. Pour le voyage ci-dessous, liste uniquement les événements RÉELS et RÉCURRENTS que tu connais avec certitude.
+
+VOYAGE:
+- Destination: ${city}, ${country}
+- Dates: ${startDate} → ${endDate}
+
+RÈGLES STRICTES:
+- Ne liste QUE des événements que tu sais avec certitude qui existent (festivals annuels connus, marchés permanents, saisons culturelles établies)
+- Si tu n'es pas sûr qu'un événement ait lieu pendant ces dates exactes, ne le liste PAS
+- Si aucun événement pertinent → retourne {"events": []}
+- Max 3 événements, seulement les vraiment notables
+
+Réponds UNIQUEMENT avec ce JSON valide:
+{
+  "events": [
+    {
+      "name": "Nom de l'événement",
+      "dates": "Description des dates (ex: 'chaque week-end en juillet')",
+      "category": "Festival|Marché|Culture|Sport|Gastronomie",
+      "description": "1-2 phrases décrivant l'événement et pourquoi y aller"
+    }
+  ]
+}`;
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 400,
+    temperature: 0.2,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = message.content[0].text.trim();
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return { events: [] };
+  try {
+    const result = JSON.parse(jsonMatch[0]);
+    return { events: result.events || [] };
+  } catch {
+    return { events: [] };
+  }
 }

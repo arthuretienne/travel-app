@@ -94,6 +94,33 @@ function findNearestAirport(destinationName) {
 }
 
 /**
+ * Estimate flight budget ratio based on actual flight prices found.
+ * Uses the median flight price to infer whether destinations are short/medium/long-haul.
+ * - Short-haul (Europe/Maghreb): flights ~€80-250 → 30% of budget for flights
+ * - Medium-haul (Turkey, Canaries, Egypt): flights ~€200-400 → 40%
+ * - Long-haul (Asia, Americas, Sub-Saharan Africa): flights ~€400+ → 55%
+ */
+function getFlightBudgetRatio(destinationsWithFlights) {
+  if (!destinationsWithFlights || destinationsWithFlights.length === 0) return 0.40;
+
+  const prices = destinationsWithFlights.map(d => d.price?.amount || 0).filter(p => p > 0);
+  if (prices.length === 0) return 0.40;
+
+  const median = prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)];
+
+  if (median <= 250) {
+    console.log(`   ✈️  Short-haul detected (median €${Math.round(median)}) → 30% flight budget ratio`);
+    return 0.30;
+  } else if (median <= 450) {
+    console.log(`   ✈️  Medium-haul detected (median €${Math.round(median)}) → 40% flight budget ratio`);
+    return 0.40;
+  } else {
+    console.log(`   ✈️  Long-haul detected (median €${Math.round(median)}) → 55% flight budget ratio`);
+    return 0.55;
+  }
+}
+
+/**
  * Discover destinations when user doesn't specify one
  * NEW WORKFLOW: Uses Claude AI + Booking.com API
  * Returns top 3-5 destinations with flights and prices
@@ -203,7 +230,9 @@ export async function discoverDestinations({
     console.log(`✅ Found flights for ${destinationsWithFlights.length} destinations`);
 
     // STEP 4: Filter by budget and select best matches
-    const maxFlightBudget = budget * 0.5; // Reserve 50% for flights (more realistic for low budgets)
+    // Dynamic flight ratio: short-haul (Europe) = 30%, medium (N.Africa/Turkey/Middle East) = 40%, long-haul = 55%
+    const flightBudgetRatio = getFlightBudgetRatio(destinationsWithFlights);
+    const maxFlightBudget = budget * flightBudgetRatio;
 
     const affordable = destinationsWithFlights.filter(d => d.price.amount <= maxFlightBudget);
 
@@ -490,7 +519,7 @@ export async function optimizeDestination({
               toId: destDest.id,
               departDate: depDate,
               returnDate: returnDateStr,
-              adults: 1,
+              adults: numAdults,
               cabinClass: 'ECONOMY',
               currency: 'EUR'
             });
@@ -633,10 +662,26 @@ export async function optimizeDestination({
       }
 
       // Find best hotel within budget
-      const affordableHotels = hotelSearchResults.hotels.filter(h => {
+      let affordableHotels = hotelSearchResults.hotels.filter(h => {
         const nightlyRate = h.price.amount / totalNights;
         return nightlyRate <= maxNightlyRate;
       });
+
+      // Exclude hostels/dorms for couple, family, business, friends trips unless user explicitly chose budget/hostel
+      const isBudgetPref = ['budget', 'hostel', 'backpacker', 'routard'].includes(accommodationPref);
+      const isAdventureOrBudgetTrip = isAdventureTrip || isBudgetPref;
+      if (!isAdventureOrBudgetTrip && ['couple', 'family', 'business', 'friends'].includes(effectiveTripType)) {
+        const nonHostelHotels = affordableHotels.filter(h =>
+          (h.stars || 0) >= 2 &&
+          !h.name?.toLowerCase().includes('hostel') &&
+          !h.name?.toLowerCase().includes('auberge de jeunesse') &&
+          !h.name?.toLowerCase().includes('dormitory')
+        );
+        if (nonHostelHotels.length > 0) {
+          affordableHotels = nonHostelHotels;
+          console.log(`   🏨 Excluded hostels for ${effectiveTripType} trip: ${nonHostelHotels.length}/${affordableHotels.length + nonHostelHotels.length - nonHostelHotels.length} options kept`);
+        }
+      }
 
       if (affordableHotels.length > 0) {
         // Sort by: 1) contextScore (if trip context was applied), 2) rating

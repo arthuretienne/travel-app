@@ -22,6 +22,7 @@ const IATA_TO_CITY = {
   'PAR': 'Paris',
   'CDG': 'Paris',
   'ORY': 'Paris',
+  'BVA': 'Paris', // Paris Beauvais (Ryanair hub ~80km north of Paris)
   'LON': 'London',
   'LHR': 'London',
   'LGW': 'London',

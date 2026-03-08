@@ -208,7 +208,12 @@ router.post('/recommendations',
 
       const destination = userProfile.basic.destination;
       const destinationId = userProfile.basic.destinationId; // From autocomplete
-      const budget = userProfile.basic.budget;
+      const budgetPerPerson = userProfile.basic.budget;
+      const travelers = userProfile.basic.travelers || 1;
+      const budget = budgetPerPerson * travelers; // Budget is per-person from frontend → multiply for total
+      userProfile.basic.budget = budget; // Update so Claude and downstream services see the effective total
+      userProfile.basic.budgetPerPerson = budgetPerPerson; // Keep per-person for reference
+      console.log(`   💰 Budget: €${budgetPerPerson}/person × ${travelers} = €${budget} total`);
       const duration = userProfile.availability?.duration || 7;
 
       // Extract trip context (free text from user)
@@ -437,7 +442,12 @@ router.post('/recommendations',
       // ====================================================================
       console.log('🌍 WITHOUT DESTINATION workflow - Discovering destinations');
 
-      const budget = userProfile.basic.budget;
+      const budgetPerPerson = userProfile.basic.budget;
+      const travelersCount = userProfile.basic.travelers || 1;
+      const budget = budgetPerPerson * travelersCount; // Budget is per-person from frontend → multiply for total
+      userProfile.basic.budget = budget; // Update so Claude and downstream services see the effective total
+      userProfile.basic.budgetPerPerson = budgetPerPerson; // Keep per-person for reference
+      console.log(`   💰 Budget: €${budgetPerPerson}/person × ${travelersCount} = €${budget} total`);
       const duration = userProfile.availability?.duration || 7;
 
       // CHECK: Should we propose a roadtrip?
