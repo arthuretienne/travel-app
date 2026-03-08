@@ -203,8 +203,8 @@ function Results() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          city: trip.destination?.city || trip.city,
-          country: trip.destination?.country || trip.country,
+          city: trip.destination?.city || trip.city || trip.cities?.[0]?.name || 'Road trip',
+          country: trip.destination?.country || trip.country || trip.cities?.[0]?.country,
           startDate: trip.slot?.startDate,
           endDate: trip.slot?.endDate,
           tripData: trip,
@@ -354,6 +354,7 @@ function Results() {
 
   // Filter destinations
   const destinationTrips = recommendations.filter(r => r?.destination && r?.type !== 'roadtrip');
+  const roadtripTrips = recommendations.filter(r => r?.type === 'roadtrip');
 
   // Loading state
   if (loading) {
@@ -441,7 +442,7 @@ function Results() {
                 </div>
               ) : (
                 <p className="text-sm font-medium text-primary mb-1">
-                  {destinationTrips.length} {destinationTrips.length === 1 ? 'destination' : 'destinations'} found
+                  {destinationTrips.length + roadtripTrips.length} {destinationTrips.length + roadtripTrips.length === 1 ? 'result' : 'results'} found{roadtripTrips.length > 0 ? ' · includes road trip' : ''}
                 </p>
               )}
               <h1 className="font-display text-3xl text-text-main">
@@ -554,6 +555,27 @@ function Results() {
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Road Trip Cards */}
+        {roadtripTrips.length > 0 && (
+          <div className="space-y-8 mb-8">
+            {roadtripTrips.map((trip) => {
+              const originalIndex = recommendations.indexOf(trip);
+              return (
+                <RoadtripCard
+                  key={originalIndex}
+                  trip={trip}
+                  onSave={() => handleSaveTrip(originalIndex)}
+                  isSaving={savingTripId === originalIndex}
+                  formatNumber={formatNumber}
+                  forGroupTrip={forGroupTrip}
+                  onPropose={() => handleProposeToGroup(originalIndex)}
+                  isProposing={proposingTripId === originalIndex}
+                />
+              );
+            })}
           </div>
         )}
 
@@ -900,6 +922,307 @@ function TripCard({
                 {isAlertCreated ? 'Alert set' : 'Price alert'}
               </button>
             </>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// Road Trip Card Component
+function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPropose, isProposing }) {
+  const [expandedCity, setExpandedCity] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  const { cities = [], transport, pricing, narrative, duration, title, tagline, overview } = trip;
+  const totalCost = pricing?.totalCost || pricing?.total || 0;
+
+  const modeIcon = (mode) => {
+    const m = mode?.toLowerCase();
+    if (m === 'flight') return '✈️';
+    if (m === 'train') return '🚂';
+    if (m === 'bus') return '🚌';
+    if (m === 'car' || m === 'rental') return '🚗';
+    return '🚌';
+  };
+
+  return (
+    <article className="bg-white rounded-2xl shadow-card overflow-hidden border border-stone-200/40 hover:shadow-elevated transition-shadow duration-300">
+      {/* Hero: city photo strip */}
+      <div className="relative h-64 overflow-hidden bg-stone-100">
+        <div className="flex h-full">
+          {cities.slice(0, 3).map((city, i) => (
+            <div
+              key={i}
+              className="flex-1 relative overflow-hidden"
+              style={{ borderRight: i < Math.min(cities.length, 3) - 1 ? '2px solid white' : 'none' }}
+            >
+              <img
+                src={city.photo?.url || `https://source.unsplash.com/800x600/?${encodeURIComponent(city.name + ' travel')}`}
+                alt={city.photo?.alt || city.name}
+                className="w-full h-full object-cover"
+                onError={(e) => { e.target.src = `https://source.unsplash.com/800x600/?${encodeURIComponent(city.name)}`; }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              <p className="absolute bottom-3 left-3 text-white font-semibold text-sm drop-shadow">{city.name}</p>
+            </div>
+          ))}
+        </div>
+        <div className="absolute top-4 left-4">
+          <span className="px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-semibold uppercase tracking-wide">
+            Road trip
+          </span>
+        </div>
+        <div className="absolute top-4 right-4">
+          <span className="px-3 py-1.5 bg-black/30 backdrop-blur-sm rounded-full text-white text-xs font-medium">
+            {duration} days
+          </span>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-8">
+        {/* Title & tagline */}
+        <div className="mb-6">
+          <h2 className="font-display text-2xl text-text-main mb-1">
+            {title || `Road trip · ${cities.map(c => c.name).join(' → ')}`}
+          </h2>
+          {tagline && <p className="text-text-secondary">{tagline}</p>}
+        </div>
+
+        {/* Route visualization */}
+        <div className="mb-5 flex items-center gap-2 flex-wrap">
+          {cities.map((city, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-subtle rounded-xl">
+                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {i + 1}
+                </div>
+                <span className="text-sm font-medium text-text-main">{city.name}</span>
+                <span className="text-xs text-text-secondary">· {city.nights}n</span>
+              </div>
+              {i < cities.length - 1 && (
+                <svg className="w-4 h-4 text-text-light" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Transport modes */}
+        {transport?.modes?.length > 0 && (
+          <div className="mb-6 flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-medium text-text-light uppercase tracking-wide">Transport</span>
+            {transport.modes.map((mode, i) => (
+              <span key={i} className="px-2.5 py-1 bg-surface-muted text-text-secondary text-xs rounded-lg">
+                {modeIcon(mode)} {mode}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Budget breakdown */}
+        <div className="grid grid-cols-4 gap-3 mb-6">
+          <div className="p-4 bg-surface-subtle rounded-xl">
+            <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Transport</p>
+            <p className="text-text-main font-semibold">€{formatNumber(Math.round(pricing?.transport || 0))}</p>
+          </div>
+          <div className="p-4 bg-surface-subtle rounded-xl">
+            <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Hotels</p>
+            <p className="text-text-main font-semibold">€{formatNumber(Math.round(pricing?.hotels || 0))}</p>
+          </div>
+          <div className="p-4 bg-surface-subtle rounded-xl">
+            <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Activities</p>
+            <p className="text-text-main font-semibold">€{formatNumber(Math.round(pricing?.activities || 0))}</p>
+          </div>
+          <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
+            <p className="text-xs font-medium text-primary uppercase tracking-wide mb-1">Total</p>
+            <p className="text-primary font-bold">€{formatNumber(Math.round(totalCost))}</p>
+          </div>
+        </div>
+
+        {/* AI Narrative */}
+        {(overview || narrative?.perfectFor) && (
+          <div className="mb-6 p-5 border border-primary/20 bg-primary-light/30 rounded-xl">
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div>
+                {overview && <p className="text-text-main leading-relaxed mb-2">{overview}</p>}
+                {narrative?.perfectFor && <p className="text-text-secondary text-sm">{narrative.perfectFor}</p>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* City breakdown */}
+        <div className="mb-6">
+          <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-3">Trip stages</p>
+          <div className="space-y-3">
+            {cities.map((city, i) => (
+              <div key={i} className="border border-stone-200/60 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setExpandedCity(expandedCity === i ? null : i)}
+                  className="w-full flex items-center gap-4 p-4 text-left hover:bg-surface-subtle transition-colors"
+                >
+                  <div className="w-14 h-10 rounded-lg overflow-hidden bg-stone-100 flex-shrink-0">
+                    <img
+                      src={city.photo?.url || `https://source.unsplash.com/200x150/?${encodeURIComponent(city.name)}`}
+                      alt={city.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => e.target.style.display = 'none'}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        {i + 1}
+                      </div>
+                      <p className="font-semibold text-text-main">{city.name}</p>
+                      <span className="text-text-secondary text-sm">· {city.country}</span>
+                    </div>
+                    <p className="text-sm text-text-secondary ml-7">{city.nights} night{city.nights !== 1 ? 's' : ''}</p>
+                  </div>
+                  {city.hotel && (
+                    <div className="text-right flex-shrink-0 hidden sm:block">
+                      <p className="text-sm font-medium text-text-main">€{city.hotel.pricePerNight}/night</p>
+                      <p className="text-xs text-text-secondary truncate max-w-32">{city.hotel.name}</p>
+                    </div>
+                  )}
+                  <svg
+                    className={`w-4 h-4 text-text-light transition-transform flex-shrink-0 ${expandedCity === i ? 'rotate-180' : ''}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {expandedCity === i && (
+                  <div className="border-t border-stone-200/60 p-5 bg-surface-subtle space-y-4">
+                    {city.hotel && (
+                      <div>
+                        <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Accommodation</p>
+                        <div className="flex items-center gap-3">
+                          {city.hotel.photos?.[0] && (
+                            <img src={city.hotel.photos[0]} alt={city.hotel.name} className="w-20 h-14 rounded-lg object-cover flex-shrink-0" onError={(e) => e.target.style.display = 'none'} />
+                          )}
+                          <div>
+                            <p className="font-medium text-text-main">{city.hotel.name}</p>
+                            <p className="text-sm text-text-secondary">
+                              {city.hotel.stars > 0 && '★'.repeat(Math.min(city.hotel.stars, 5))} · €{city.hotel.pricePerNight}/night
+                            </p>
+                            {city.hotel.rating > 0 && (
+                              <p className="text-sm text-primary font-medium">{city.hotel.rating}/10</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {city.topAttractions?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Top activities</p>
+                        <div className="space-y-1.5">
+                          {city.topAttractions.map((a, j) => (
+                            <div key={j} className="flex items-center justify-between">
+                              <p className="text-sm text-text-main">{a.name}</p>
+                              <p className="text-sm text-text-secondary ml-2 flex-shrink-0">
+                                {a.price === 0 ? 'Free' : a.price ? `€${a.price}` : ''}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Expandable: transport + tips + hidden gems */}
+        <div className="border-t border-stone-200/60 pt-6">
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="flex items-center justify-between w-full group"
+          >
+            <span className="text-sm font-medium text-text-secondary group-hover:text-text-main transition-colors">
+              {showDetails ? 'Hide details' : 'View logistics & tips'}
+            </span>
+            <svg className={`w-5 h-5 text-text-light transition-transform duration-200 ${showDetails ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showDetails && (
+            <div className="mt-6 space-y-4 animate-fadeIn">
+              {transport?.narrative && (
+                <div className="p-4 bg-surface-subtle rounded-xl">
+                  <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Transport</p>
+                  <p className="text-sm text-text-main leading-relaxed">{transport.narrative}</p>
+                </div>
+              )}
+              {narrative?.budgetExplanation && (
+                <div className="p-4 bg-surface-subtle rounded-xl">
+                  <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Budget</p>
+                  <p className="text-sm text-text-main leading-relaxed">{narrative.budgetExplanation}</p>
+                </div>
+              )}
+              {narrative?.practicalTips?.length > 0 && (
+                <div className="p-4 bg-surface-subtle rounded-xl">
+                  <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Practical tips</p>
+                  <ul className="space-y-1.5">
+                    {narrative.practicalTips.map((tip, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-text-main">
+                        <span className="text-primary mt-0.5 flex-shrink-0">·</span>
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {narrative?.hiddenGems?.length > 0 && (
+                <div className="p-4 bg-surface-subtle rounded-xl">
+                  <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Hidden gems</p>
+                  <ul className="space-y-1.5">
+                    {narrative.hiddenGems.map((gem, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-text-main">
+                        <span className="text-amber-500 mt-0.5 flex-shrink-0">★</span>
+                        {gem}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="mt-8 flex flex-col sm:flex-row gap-3">
+          {forGroupTrip ? (
+            <button
+              onClick={onPropose}
+              disabled={isProposing}
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white font-semibold rounded-xl hover:bg-primary-hover transition-colors disabled:opacity-50"
+            >
+              {isProposing ? 'Proposing...' : 'Propose to group'}
+            </button>
+          ) : (
+            <button
+              onClick={onSave}
+              disabled={isSaving}
+              className="flex items-center justify-center gap-2 px-6 py-4 bg-surface-muted text-text-secondary font-medium rounded-xl hover:bg-surface-hover hover:text-text-main transition-colors disabled:opacity-50"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+              {isSaving ? 'Saving...' : 'Save road trip'}
+            </button>
           )}
         </div>
       </div>

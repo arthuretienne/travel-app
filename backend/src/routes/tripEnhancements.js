@@ -4,6 +4,7 @@ import { authenticateUser } from '../middleware/auth.js';
 import { getWeatherForecast, getPackingRecommendations } from '../services/weatherService.js';
 import { generatePersonalizedItinerary, generatePackingFromItinerary, generateItineraryStreaming } from '../services/itineraryService.js';
 import { getLocalEvents, getAllCityEvents } from '../data/localEvents.js';
+import { generateSmartPacking, generateSmartEvents } from '../services/claudeService.js';
 import { broadcastTripUpdate } from '../services/socketService.js';
 import prisma from '../db/prisma.js';
 
@@ -157,15 +158,25 @@ router.get('/:id/packing', authenticateUser, async (req, res) => {
 
     const { city, country, startDate, endDate } = tripData;
 
-    // Get weather forecast for packing
+    // Get weather + generate AI-powered packing in parallel
     const weather = await getWeatherForecast(city, country);
-    const packing = weather
-      ? getPackingRecommendations(weather.forecast, { startDate, endDate })
-      : {
-          clothing: ['Versatile layers', 'Comfortable walking shoes'],
-          essentials: ['Sunscreen', 'Water bottle'],
-          optional: ['Umbrella'],
-        };
+
+    // Try Claude AI packing first, fall back to static
+    let packing;
+    try {
+      packing = await generateSmartPacking({
+        city,
+        country,
+        startDate,
+        endDate,
+        weatherForecast: weather?.forecast || [],
+        activities: [],
+      });
+    } catch {
+      packing = weather
+        ? getPackingRecommendations(weather.forecast, { startDate, endDate })
+        : { clothing: ['Vêtements confortables'], essentials: ['Documents de voyage'], activityItems: [] };
+    }
 
     res.json({ success: true, data: { packing, city, country } });
   } catch (error) {
@@ -485,22 +496,36 @@ router.get('/:id/events', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Trip not found or access denied' });
     }
 
-    const { city, startDate, endDate } = tripData;
+    const { city, country, startDate, endDate } = tripData;
 
-    // Get events
-    const upcomingEvents = getLocalEvents(city, startDate, endDate);
-    const allCityEvents = getAllCityEvents(city);
-
-    res.json({
-      success: true,
-      data: {
-        events: {
+    // Try Claude AI events first — only returns real/confirmed events
+    let events;
+    try {
+      const aiResult = await generateSmartEvents({ city, country, startDate, endDate });
+      if (aiResult.events.length > 0) {
+        // Return AI-generated events in a unified format
+        events = {
+          upcoming: aiResult.events,
+          regular: [],
+          source: 'ai',
+        };
+      } else {
+        // Claude found nothing relevant — try static fallback
+        const upcomingEvents = getLocalEvents(city, startDate, endDate);
+        const allCityEvents = getAllCityEvents(city);
+        events = {
           upcoming: upcomingEvents,
           regular: allCityEvents,
-        },
-        city,
-      },
-    });
+          source: 'static',
+        };
+      }
+    } catch {
+      const upcomingEvents = getLocalEvents(city, startDate, endDate);
+      const allCityEvents = getAllCityEvents(city);
+      events = { upcoming: upcomingEvents, regular: allCityEvents };
+    }
+
+    res.json({ success: true, data: { events, city } });
   } catch (error) {
     console.error('Error fetching events:', error);
     res.status(500).json({ error: 'Failed to fetch events' });
