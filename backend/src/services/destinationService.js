@@ -143,7 +143,7 @@ export async function discoverDestinations({
       budget,
       duration,
       origin,
-      count: 4, // Reduced from 6 to 4 for faster response
+      count: 8, // More candidates → better country diversity after filtering
       userId // Pass userId for diversity (avoids recently recommended destinations)
     });
 
@@ -183,6 +183,11 @@ export async function discoverDestinations({
     returnDate.setDate(returnDate.getDate() + duration);
     const returnDateStr = returnDate.toISOString().split('T')[0];
 
+    // Extract actual traveler count for flight search (affects price and availability)
+    const groupTravelers = userProfile?.basic?.travelers || 1;
+    const groupAdults = typeof groupTravelers === 'number' ? groupTravelers : 1;
+    console.log(`   👥 Shortlist flight search: ${groupAdults} adult(s)`);
+
     const flightPromises = validDestinations.map(async ({ cityName, dest }) => {
       try {
         const flights = await bookingService.searchFlights({
@@ -190,7 +195,7 @@ export async function discoverDestinations({
           toId: dest.id,
           departDate: departureDate,
           returnDate: returnDateStr,
-          adults: 1,
+          adults: groupAdults, // Use actual group size for accurate pricing
           cabinClass: 'ECONOMY',
           currency: 'EUR'
         });
@@ -276,12 +281,26 @@ export async function discoverDestinations({
     // Sort by price (cheapest first)
     affordable.sort((a, b) => a.price.amount - b.price.amount);
 
-    // Return top 3-5 destinations
-    const selected = affordable.slice(0, Math.min(5, affordable.length));
+    // Apply country diversity: prioritize destinations from different countries
+    // First pass: one destination per country (cheapest)
+    const usedCountries = new Set();
+    const diverseFirst = [];
+    const countryDuplicates = [];
+    for (const dest of affordable) {
+      const country = dest.countryName || dest.country || dest.name;
+      if (!usedCountries.has(country)) {
+        usedCountries.add(country);
+        diverseFirst.push(dest);
+      } else {
+        countryDuplicates.push(dest);
+      }
+    }
+    // Diverse countries first, then fill with duplicates if needed
+    const selected = [...diverseFirst, ...countryDuplicates].slice(0, Math.min(5, affordable.length));
 
-    console.log(`🎯 Selected ${selected.length} best destinations:`);
+    console.log(`🎯 Selected ${selected.length} best destinations (${usedCountries.size} countries):`);
     selected.forEach((d, i) => {
-      console.log(`  ${i + 1}. ${d.name} - €${d.price.amount} (${d.flightCount} flights)`);
+      console.log(`  ${i + 1}. ${d.name} (${d.countryName || d.country}) - €${d.price.amount} (${d.flightCount} flights)`);
     });
 
     return selected;
@@ -584,7 +603,8 @@ export async function optimizeDestination({
       isRomanticTrip = true;
     }
     const isLuxuryTrip = ['luxury', 'luxe', 'premium', '5 star', 'birthday', 'anniversaire', '50 ans', '40 ans', '30 ans', 'special'].some(kw => tripContextLower.includes(kw));
-    const isAdventureTrip = ['adventure', 'aventure', 'hiking', 'randonnée', 'backpack', 'budget'].some(kw => tripContextLower.includes(kw));
+    // Note: 'budget' intentionally excluded — it shouldn't reduce hotel ratio for families/couples
+    const isAdventureTrip = ['adventure', 'aventure', 'hiking', 'randonnée', 'backpack', 'bivouac', 'trek'].some(kw => tripContextLower.includes(kw));
 
     // Adjust hotel budget ratio based on trip type:
     // - Romantic/Luxury: 85% for hotel (hotel is the priority)
@@ -626,6 +646,12 @@ export async function optimizeDestination({
     // Calculate rooms: 1 room per 2 adults, families stay together (couples share a room)
     let rooms = Math.ceil(numAdults / 2);
     if (numChildren > 0 && rooms === 1) rooms = 1; // Family in same room
+    // Cap at 3 rooms: Booking.com API has practical limits for large group searches
+    // (4+ rooms returns very few results, only large resorts)
+    if (rooms > 3) {
+      console.log(`   👥 Large group (${numAdults} adults, ${rooms} rooms needed) → capping at 3 rooms for better availability`);
+      rooms = 3;
+    }
 
     console.log(`   👥 Hotel search: ${numAdults} adults${numChildren ? `, ${numChildren} children` : ''} → ${rooms} room(s)`);
     console.log(`   🏨 Preference: ${accommodationPref || 'default'}, Comfort: ${materialComfort}/100`);
@@ -661,25 +687,28 @@ export async function optimizeDestination({
         throw new Error('No hotels found');
       }
 
-      // Find best hotel within budget
+      // Extract user preferences for filtering
+      const isBudgetPref = ['budget', 'hostel', 'backpacker', 'routard'].includes(accommodationPref);
+
+      // Find best hotel within budget with minimum quality floor
+      // For non-budget trips: minimum €15/night to exclude dorm beds/hostels
+      const minNightlyRate = isBudgetPref ? 0 : 15;
       let affordableHotels = hotelSearchResults.hotels.filter(h => {
         const nightlyRate = h.price.amount / totalNights;
-        return nightlyRate <= maxNightlyRate;
+        return nightlyRate >= minNightlyRate && nightlyRate <= maxNightlyRate;
       });
 
-      // Exclude hostels/dorms for couple, family, business, friends trips unless user explicitly chose budget/hostel
-      const isBudgetPref = ['budget', 'hostel', 'backpacker', 'routard'].includes(accommodationPref);
-      const isAdventureOrBudgetTrip = isAdventureTrip || isBudgetPref;
-      if (!isAdventureOrBudgetTrip && ['couple', 'family', 'business', 'friends'].includes(effectiveTripType)) {
+      // Exclude hostels/dorms unless user explicitly chose budget/hostel preference
+      if (!isBudgetPref) {
         const nonHostelHotels = affordableHotels.filter(h =>
-          (h.stars || 0) >= 2 &&
           !h.name?.toLowerCase().includes('hostel') &&
           !h.name?.toLowerCase().includes('auberge de jeunesse') &&
-          !h.name?.toLowerCase().includes('dormitory')
+          !h.name?.toLowerCase().includes('dormitory') &&
+          !h.name?.toLowerCase().includes('dorm')
         );
         if (nonHostelHotels.length > 0) {
           affordableHotels = nonHostelHotels;
-          console.log(`   🏨 Excluded hostels for ${effectiveTripType} trip: ${nonHostelHotels.length}/${affordableHotels.length + nonHostelHotels.length - nonHostelHotels.length} options kept`);
+          console.log(`   🏨 Filtered to non-hostel options: ${nonHostelHotels.length} hotels`);
         }
       }
 

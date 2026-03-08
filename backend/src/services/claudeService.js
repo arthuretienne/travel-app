@@ -602,7 +602,7 @@ export async function generateDestinationRecommendationWithData(tripData, userId
 
     const message = await client.messages.create({
       model: 'claude-3-5-haiku-20241022', // Fast model for quick recommendations
-      max_tokens: 800, // Increased to accommodate personalized matchReason
+      max_tokens: 1500, // Enough for tagline + matchReason + seasonReason + 5-6 activities + budgetTips
       temperature: 0.7,
       messages: [promptMessage]
     });
@@ -623,9 +623,11 @@ export async function generateDestinationRecommendationWithData(tripData, userId
     });
 
     // Strip markdown code blocks if present
-    if (response.startsWith('```')) {
-      response = response.replace(/^```(?:json)?\n?/g, '').replace(/\n?```$/g, '').trim();
-    }
+    response = response.replace(/^```(?:json)?\n?/g, '').replace(/\n?```$/g, '').trim();
+
+    // Extract JSON object if there's extra text around it
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (jsonMatch) response = jsonMatch[0];
 
     // Parse JSON response
     const recommendation = JSON.parse(response);
