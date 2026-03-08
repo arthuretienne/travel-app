@@ -4,6 +4,8 @@
 
 Skusku is an AI travel planner that recommends personalized destinations based on user profiles, then finds flights and hotels via Booking.com API.
 
+> **📋 Documentation algorithme de recommandations :** Voir [`algorithme.md`](./algorithme.md) pour l'analyse complète du système (bugs identifiés, stratégie par profil voyageur, métriques qualité, roadmap d'améliorations, tests de validation).
+
 **Tech Stack:**
 - Frontend: React 18 + Vite + Tailwind CSS (Vercel: skusku.life)
 - Backend: Node.js + Express + Prisma (Render)
@@ -23,11 +25,17 @@ Skusku is an AI travel planner that recommends personalized destinations based o
    - ⚠️ Rotate BOOKING_API_KEY on RapidAPI (old key exposed in git history)
 
 ### P1 - Core Product
-1. **Algorithm Improvement** - ✅ MAJOR PROGRESS
+1. **Algorithm Improvement** - 🔄 IN PROGRESS (voir algorithme.md pour détail complet)
    - ✅ Keyword detection for all constraint types
    - ✅ Custom travelVibeDescription field parsed and used in prompts
    - ✅ All 20 tests passing
-   - Next: Monitor production logs, add more edge cases
+   - 🔴 Bug: hostel proposé pour couple/amis quand budget serré
+   - 🔴 Bug: budget/personne vs budget total non clarifié → mauvaise interprétation
+   - 🔴 Bug: Paris Beauvais (BVA) non supporté dans IATA mapping
+   - 🔴 Bug: ratio vols hardcodé 50% → trop peu pour long-courrier, trop pour court-courrier
+   - 🟡 Bug: timing de vol non pris en compte (vol 6h du matin = levé 3h)
+   - 🟡 Bug: destinations répétitives en mode découverte
+   - Next: Sprint corrections critiques (voir algorithme.md §8)
 
 2. **UX/Performance** - Target: <15s for 3 results
    - ✅ Switched to claude-3-5-haiku
