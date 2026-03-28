@@ -105,20 +105,20 @@ export default function SavedTripDetail() {
       // Basic email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        setInviteError('Invalid email format');
+        setInviteError('Format d\'e-mail invalide');
         return;
       }
 
       // Check for duplicates
       if (inviteEmails.includes(email)) {
-        setInviteError('Email already added');
+        setInviteError('E-mail déjà ajouté');
         return;
       }
 
       // In development, allow self-invite for testing (Resend sandbox)
       const isDevelopment = import.meta.env.DEV;
       if (user?.primaryEmailAddress?.emailAddress === email && !isDevelopment) {
-        setInviteError('Cannot invite yourself');
+        setInviteError('Vous ne pouvez pas vous inviter vous-même');
         return;
       }
 
@@ -135,7 +135,7 @@ export default function SavedTripDetail() {
   const handleInviteFriends = async () => {
     // Convert to group trip first, then send invitations
     if (inviteEmails.length === 0) {
-      setInviteError('Please add at least one email');
+      setInviteError('Veuillez ajouter au moins un e-mail');
       return;
     }
 
@@ -223,11 +223,11 @@ export default function SavedTripDetail() {
       }
 
       if (!itinerary || itinerary.length === 0) {
-        alert('No itinerary available yet. Generate the itinerary first by scrolling down.');
+        alert('Aucun itinéraire disponible. Générez d\'abord l\'itinéraire en faisant défiler la page.');
         return;
       }
 
-      const userName = user?.firstName || 'Traveler';
+      const userName = user?.firstName || 'Voyageur';
       // Dynamic import to keep PDF renderer out of main bundle
       const [{ pdf }, { default: ItineraryPDF }] = await Promise.all([
         import('@react-pdf/renderer'),
@@ -247,14 +247,14 @@ export default function SavedTripDetail() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('[PDF Export] Error:', err);
-      alert('Failed to generate PDF. Please try again.');
+      alert('Impossible de générer le PDF. Veuillez réessayer.');
     } finally {
       setExportingPdf(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this trip?')) return;
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce voyage ?')) return;
 
     try {
       const token = await getToken();
@@ -268,13 +268,13 @@ export default function SavedTripDetail() {
       navigate('/dashboard');
     } catch (err) {
       console.error('Error deleting trip:', err);
-      alert('Failed to delete trip');
+      alert('Impossible de supprimer le voyage');
     }
   };
 
   const handleCreatePriceAlert = async () => {
     if (!trip?.tripData?.pricing?.total || !trip.startDate || !trip.endDate) {
-      alert('Trip missing required data for price alert');
+      alert('Données manquantes pour créer une alerte prix');
       return;
     }
 
@@ -308,7 +308,7 @@ export default function SavedTripDetail() {
       setTimeout(() => setAlertCreated(false), 3000);
     } catch (err) {
       console.error('Error creating price alert:', err);
-      alert(err.message || 'Failed to create price alert');
+      alert(err.message || 'Impossible de créer l\'alerte prix');
     } finally {
       setCreatingAlert(false);
     }
@@ -323,13 +323,13 @@ export default function SavedTripDetail() {
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-md text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-red-900 mb-2">Error</h3>
-          <p className="text-red-700 mb-4">{error || 'Trip not found'}</p>
+          <h3 className="text-lg font-semibold text-red-900 mb-2">Erreur</h3>
+          <p className="text-red-700 mb-4">{error || 'Voyage introuvable'}</p>
           <button
             onClick={() => navigate('/dashboard')}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
-            Back to Dashboard
+            Retour au tableau de bord
           </button>
         </div>
       </div>
@@ -370,7 +370,7 @@ export default function SavedTripDetail() {
                 </h1>
               </div>
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-primary-light text-primary">
-                Solo Trip
+                Voyage solo
               </span>
             </div>
 
@@ -380,7 +380,7 @@ export default function SavedTripDetail() {
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
               >
                 <UserPlus size={18} />
-                Invite Friends
+                Inviter des amis
               </button>
               <button
                 onClick={handleCreatePriceAlert}
@@ -390,7 +390,7 @@ export default function SavedTripDetail() {
                     ? 'bg-green-100 text-green-700 cursor-default'
                     : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
                 }`}
-                title="Create price alert for this trip"
+                title="Créer une alerte prix pour ce voyage"
               >
                 {creatingAlert ? (
                   <Loader2 size={18} className="animate-spin" />
@@ -399,13 +399,13 @@ export default function SavedTripDetail() {
                 ) : (
                   <Bell size={18} />
                 )}
-                {alertCreated ? 'Alert Created' : 'Price Alert'}
+                {alertCreated ? 'Alerte créée' : 'Alerte prix'}
               </button>
               <button
                 onClick={handleExportPdf}
                 disabled={exportingPdf}
                 className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-700 font-medium rounded-lg hover:bg-stone-200 transition-colors disabled:opacity-50"
-                title="Export trip as PDF"
+                title="Exporter en PDF"
               >
                 {exportingPdf ? (
                   <Loader2 size={18} className="animate-spin" />
@@ -417,7 +417,7 @@ export default function SavedTripDetail() {
               <button
                 onClick={handleDelete}
                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Delete trip"
+                title="Supprimer"
               >
                 <Trash2 size={20} />
               </button>
@@ -429,11 +429,11 @@ export default function SavedTripDetail() {
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
               <Calendar className="w-5 h-5 text-gray-400" />
               <div>
-                <p className="text-xs text-text-secondary">Departure</p>
+                <p className="text-xs text-text-secondary">Départ</p>
                 <p className="font-semibold text-text-main">
                   {trip.startDate
-                    ? new Date(trip.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                    : 'Date not set'}
+                    ? new Date(trip.startDate).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : 'Date non définie'}
                 </p>
               </div>
             </div>
@@ -441,15 +441,15 @@ export default function SavedTripDetail() {
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
               <Clock className="w-5 h-5 text-gray-400" />
               <div>
-                <p className="text-xs text-text-secondary">Duration</p>
-                <p className="font-semibold text-text-main">{duration} Days</p>
+                <p className="text-xs text-text-secondary">Durée</p>
+                <p className="font-semibold text-text-main">{duration} jours</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
               <DollarSign className="w-5 h-5 text-gray-400" />
               <div>
-                <p className="text-xs text-text-secondary">Total Budget</p>
+                <p className="text-xs text-text-secondary">Budget total</p>
                 <p className="font-semibold text-text-main">
                   €{Math.round(pricing.total || 0)}
                 </p>
@@ -467,7 +467,7 @@ export default function SavedTripDetail() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Plane className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-bold text-text-main">Flights</h2>
+                <h2 className="text-lg font-bold text-text-main">Vols</h2>
               </div>
               {flightDetails.totalPrice && (
                 <span className="text-lg font-bold text-primary">
@@ -481,15 +481,15 @@ export default function SavedTripDetail() {
               {flightDetails.outbound && (
                 <div className="p-4 bg-primary-light rounded-xl">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-text-main">Outbound Flight</span>
+                    <span className="text-sm font-semibold text-text-main">Vol aller</span>
                     <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
-                      {slot.startDate ? new Date(slot.startDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date TBD'}
+                      {slot.startDate ? new Date(slot.startDate).toLocaleDateString('fr-FR', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date à confirmer'}
                     </span>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-center">
                       <div className="text-lg font-bold text-text-main">
-                        {flightDetails.outbound.departureTime ? new Date(flightDetails.outbound.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                        {flightDetails.outbound.departureTime ? new Date(flightDetails.outbound.departureTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                       </div>
                       <div className="text-xs text-primary">{flightDetails.outbound.departureAirport || trip.city}</div>
                     </div>
@@ -497,13 +497,13 @@ export default function SavedTripDetail() {
                       <div className="h-px bg-primary/30 flex-1"></div>
                       <div className="text-xs text-primary flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-full">
                         <Plane size={10} className="rotate-90" />
-                        {flightDetails.outbound.duration || 'Duration N/A'}
+                        {flightDetails.outbound.duration || 'Durée N/D'}
                       </div>
                       <div className="h-px bg-primary/30 flex-1"></div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-text-main">
-                        {flightDetails.outbound.arrivalTime ? new Date(flightDetails.outbound.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                        {flightDetails.outbound.arrivalTime ? new Date(flightDetails.outbound.arrivalTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                       </div>
                       <div className="text-xs text-primary">{flightDetails.outbound.arrivalAirport || destination.city}</div>
                     </div>
@@ -513,7 +513,7 @@ export default function SavedTripDetail() {
                     {flightDetails.outbound.segments?.[0]?.carrierLogo && (
                       <img src={flightDetails.outbound.segments[0].carrierLogo} alt={flightDetails.airline} className="h-5 w-auto" />
                     )}
-                    <span className="text-xs text-primary">{flightDetails.airline || 'Airline'} • {flightDetails.cabinClass || 'Economy'}</span>
+                    <span className="text-xs text-primary">{flightDetails.airline || 'Compagnie'} • {flightDetails.cabinClass || 'Economy'}</span>
                   </div>
                 </div>
               )}
@@ -522,15 +522,15 @@ export default function SavedTripDetail() {
               {flightDetails.return && (
                 <div className="p-4 bg-primary-light rounded-xl">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-text-main">Return Flight</span>
+                    <span className="text-sm font-semibold text-text-main">Vol retour</span>
                     <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
-                      {slot.endDate ? new Date(slot.endDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date TBD'}
+                      {slot.endDate ? new Date(slot.endDate).toLocaleDateString('fr-FR', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date à confirmer'}
                     </span>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-center">
                       <div className="text-lg font-bold text-text-main">
-                        {flightDetails.return.departureTime ? new Date(flightDetails.return.departureTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                        {flightDetails.return.departureTime ? new Date(flightDetails.return.departureTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                       </div>
                       <div className="text-xs text-primary">{flightDetails.return.departureAirport || destination.city}</div>
                     </div>
@@ -538,13 +538,13 @@ export default function SavedTripDetail() {
                       <div className="h-px bg-primary/30 flex-1"></div>
                       <div className="text-xs text-primary flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-full">
                         <Plane size={10} className="-rotate-90" />
-                        {flightDetails.return.duration || 'Duration N/A'}
+                        {flightDetails.return.duration || 'Durée N/D'}
                       </div>
                       <div className="h-px bg-primary/30 flex-1"></div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-text-main">
-                        {flightDetails.return.arrivalTime ? new Date(flightDetails.return.arrivalTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                        {flightDetails.return.arrivalTime ? new Date(flightDetails.return.arrivalTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                       </div>
                       <div className="text-xs text-primary">{flightDetails.return.arrivalAirport || trip.city}</div>
                     </div>
@@ -554,7 +554,7 @@ export default function SavedTripDetail() {
                     {flightDetails.return.segments?.[0]?.carrierLogo && (
                       <img src={flightDetails.return.segments[0].carrierLogo} alt={flightDetails.airline} className="h-5 w-auto" />
                     )}
-                    <span className="text-xs text-primary">{flightDetails.airline || 'Airline'} • {flightDetails.cabinClass || 'Economy'}</span>
+                    <span className="text-xs text-primary">{flightDetails.airline || 'Compagnie'} • {flightDetails.cabinClass || 'Economy'}</span>
                   </div>
                 </div>
               )}
@@ -598,7 +598,7 @@ export default function SavedTripDetail() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Hotel className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-bold text-text-main">Accommodation</h2>
+                <h2 className="text-lg font-bold text-text-main">Hébergement</h2>
               </div>
               {pricing?.hotel && (
                 <span className="text-lg font-bold text-primary">
@@ -611,10 +611,10 @@ export default function SavedTripDetail() {
             <div className="p-4 bg-green-50 rounded-xl mb-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-green-900">
-                  {duration} nights
+                  {duration} nuits
                 </span>
                 <span className="text-sm text-green-700">
-                  ~€{Math.round((pricing?.hotel || 0) / duration)} per night
+                  ~€{Math.round((pricing?.hotel || 0) / duration)} par nuit
                 </span>
               </div>
             </div>
@@ -721,7 +721,7 @@ export default function SavedTripDetail() {
           <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-bold text-text-main">Highlights & Activities</h2>
+              <h2 className="text-lg font-bold text-text-main">Points forts & activités</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -761,12 +761,12 @@ export default function SavedTripDetail() {
         {/* Match Reasons */}
         {tripData.matchReason && (
           <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-            <h2 className="text-lg font-bold text-text-main mb-4">Why This Destination?</h2>
+            <h2 className="text-lg font-bold text-text-main mb-4">Pourquoi cette destination ?</h2>
             <p className="text-text-secondary leading-relaxed">{safeText(tripData.matchReason)}</p>
 
             {tripData.seasonReason && (
               <div className="mt-4 p-4 bg-amber-50 rounded-xl">
-                <p className="text-sm font-medium text-amber-900 mb-1">Best Season</p>
+                <p className="text-sm font-medium text-amber-900 mb-1">Meilleure saison</p>
                 <p className="text-sm text-amber-700">{safeText(tripData.seasonReason)}</p>
               </div>
             )}
@@ -791,7 +791,7 @@ export default function SavedTripDetail() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
             {/* Modal Header */}
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-text-main">Invite Friends</h3>
+              <h3 className="text-xl font-bold text-text-main">Inviter des amis</h3>
               <button
                 onClick={() => {
                   setShowInviteModal(false);
@@ -808,29 +808,29 @@ export default function SavedTripDetail() {
             {/* Modal Body */}
             <div className="space-y-4">
               <p className="text-sm text-text-secondary">
-                This will convert your solo trip into a group trip and send invitations to your friends.
+                Votre voyage solo sera converti en voyage de groupe et des invitations seront envoyées à vos amis.
               </p>
 
               {/* Email Input */}
               <div>
                 <label className="block text-sm font-medium text-text-main mb-2">
-                  Email Addresses
+                  Adresses e-mail
                 </label>
                 <input
                   type="email"
                   value={currentEmail}
                   onChange={(e) => setCurrentEmail(e.target.value)}
                   onKeyDown={addInviteEmail}
-                  placeholder="Enter email and press Enter"
+                  placeholder="Saisissez un e-mail et appuyez sur Entrée"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
-                <p className="text-xs text-text-secondary mt-1">Press Enter to add multiple emails</p>
+                <p className="text-xs text-text-secondary mt-1">Appuyez sur Entrée pour ajouter plusieurs e-mails</p>
               </div>
 
               {/* Email List */}
               {inviteEmails.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-text-main">Inviting ({inviteEmails.length}):</p>
+                  <p className="text-sm font-medium text-text-main">Invitations ({inviteEmails.length}) :</p>
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {inviteEmails.map((email) => (
                       <div
@@ -874,7 +874,7 @@ export default function SavedTripDetail() {
                 className="flex-1 px-4 py-2 border border-gray-300 text-text-secondary rounded-lg hover:bg-gray-50 transition-colors font-medium"
                 disabled={inviting}
               >
-                Cancel
+                Annuler
               </button>
               <button
                 onClick={handleInviteFriends}
@@ -884,12 +884,12 @@ export default function SavedTripDetail() {
                 {inviting ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    Sending...
+                    Envoi en cours...
                   </>
                 ) : (
                   <>
                     <Send size={18} />
-                    Send Invitations
+                    Envoyer les invitations
                   </>
                 )}
               </button>
@@ -1042,9 +1042,9 @@ function TripEnhancementsSection({ trip, userName }) {
         <div className="bg-gradient-to-br from-primary-light via-white to-stone-50 rounded-2xl shadow-card border border-stone-200 p-8">
           <div className="text-center">
             <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-text-main mb-2">Creating Your Personalized Plan...</h3>
+            <h3 className="text-lg font-bold text-text-main mb-2">Création de votre itinéraire...</h3>
             <p className="text-text-secondary">
-              Our AI is planning your perfect trip with flights, transfers, activities, and timing
+              Notre IA prépare votre voyage idéal avec les vols, transferts, activités et horaires
             </p>
           </div>
         </div>
@@ -1080,15 +1080,15 @@ function WeatherForecastCard({ weather, destination }) {
           <img src={weather.current.icon} alt={weather.current.condition} className="w-10 h-10" />
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold text-text-main">Weather Forecast</h3>
+          <h3 className="font-semibold text-text-main">Météo prévue</h3>
           <p className="text-sm text-text-secondary">
-            Currently {Math.round(weather.current.temp_c)}°C • {weather.current.condition}
+            Actuellement {Math.round(weather.current.temp_c)}°C • {weather.current.condition}
           </p>
           <p className="text-xs text-text-light mt-1">
-            Trip average: ~{avgTemp}°C
+            Moyenne du séjour : ~{avgTemp}°C
             {maxRainChance > 30 && (
               <span className="ml-2 px-1.5 py-0.5 bg-primary-light text-primary rounded text-xs">
-                {maxRainChance}% rain
+                {maxRainChance}% de pluie
               </span>
             )}
           </p>
