@@ -715,12 +715,18 @@ export async function optimizeDestination({
 
       // Exclude hostels/dorms unless user explicitly chose budget/hostel preference
       if (!isBudgetPref) {
-        const nonHostelHotels = affordableHotels.filter(h =>
-          !h.name?.toLowerCase().includes('hostel') &&
-          !h.name?.toLowerCase().includes('auberge de jeunesse') &&
-          !h.name?.toLowerCase().includes('dormitory') &&
-          !h.name?.toLowerCase().includes('dorm')
-        );
+        const hostelKeywords = [
+          'hostel', 'auberge de jeunesse', 'dormitory', 'dorm',
+          'backpacker', 'backpackers', 'generator', 'selina',
+          'wombats', 'a&o ', 'meininger', 'st christopher',
+          'smartplace', 'smart place', 'clink', 'the student'
+        ];
+        const nonHostelHotels = affordableHotels.filter(h => {
+          const nameLower = h.name?.toLowerCase() || '';
+          // Also filter by stars: if stars is known and = 0, likely a hostel/unclassified
+          if (h.stars === 0 && nameLower.length > 0) return false;
+          return !hostelKeywords.some(kw => nameLower.includes(kw));
+        });
         if (nonHostelHotels.length > 0) {
           affordableHotels = nonHostelHotels;
           console.log(`   🏨 Filtered to non-hostel options: ${nonHostelHotels.length} hotels`);

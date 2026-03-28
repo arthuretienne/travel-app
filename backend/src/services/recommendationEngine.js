@@ -24,8 +24,10 @@ function computeContextualScore(destination, params) {
   if (weatherScore >= 8) reasons.push(`Météo idéale en ${['jan','fév','mar','avr','mai','juin','juil','août','sep','oct','nov','déc'][departureMonth - 1]}`);
 
   // 2. Budget (0-30 pts)
+  // budget = budget total pour tout le groupe
+  const rooms = Math.ceil(numTravelers / 2);
   const estimatedTotal = (destination.avg_flight_price_eur * numTravelers) +
-    (destination.avg_hotel_price_eur * numNights * Math.ceil(numTravelers / 2));
+    (destination.avg_hotel_price_eur * numNights * rooms);
   const budgetRatio = estimatedTotal > 0 ? budget / estimatedTotal : 1;
 
   if (budgetRatio >= 1.5) {
@@ -34,7 +36,7 @@ function computeContextualScore(destination, params) {
   } else if (budgetRatio >= 1.0) {
     score += 20;
     reasons.push('Dans votre budget');
-  } else if (budgetRatio >= 0.8) {
+  } else if (budgetRatio >= 0.7) {
     score += 10;
     reasons.push('Budget légèrement serré');
   }
@@ -51,10 +53,20 @@ function computeContextualScore(destination, params) {
     reasons.push(`Idéale pour ${labels[tripType] || tripType}`);
   }
 
-  // 5. Originalité (0-10 pts)
-  const popular = ['paris','rome','barcelone','amsterdam','new york','venise','madrid','tokyo'];
-  if (!popular.includes(destination.city.toLowerCase())) {
+  // 5. Originalité (0-10 pts) — bonus pour destinations hors des sentiers battus
+  // Modulé selon le profil : solo/aventure = forte pénalité pour destinations mainstream
+  const veryPopular = ['paris','rome','barcelone','amsterdam','new york','venise','madrid','tokyo','dubai','dubaï','london','londres','bali','prague','budapest','cracovie'];
+  const cityLower = destination.city.toLowerCase();
+  const isAdventureSolo = ['solo', 'adventure', 'aventure'].includes(tripType);
+
+  if (!veryPopular.includes(cityLower)) {
     score += 10;
+    if (!['paris','rome','barcelone','amsterdam','new york'].includes(cityLower)) {
+      reasons.push('Destination originale');
+    }
+  } else if (isAdventureSolo) {
+    // Pénalité pour profil aventurier qui tombe sur destination mainstream
+    score -= 5;
   }
 
   return { score: Math.round(score), reasons };
@@ -66,10 +78,15 @@ function computeContextualScore(destination, params) {
 function passesHardConstraints(destination, params) {
   const { budget, numTravelers, numNights, minSafety = 6, excludedDestinations = [] } = params;
 
-  // Budget : plus de 30% au-dessus = éliminé
+  // Budget : seuil adapté au nombre de voyageurs
+  // Les prix seeds sont des estimations — laisser plus de marge pour les groupes
+  const rooms = Math.ceil(numTravelers / 2);
   const minCost = (destination.avg_flight_price_eur * numTravelers) +
-    (destination.avg_hotel_price_eur * numNights * Math.ceil(numTravelers / 2));
-  if (minCost > budget * 1.3) return false;
+    (destination.avg_hotel_price_eur * numNights * rooms);
+  // Seuil : 150% pour groupes 3+ (les prix Booking réels sont souvent meilleurs)
+  //         130% pour solo/couple
+  const budgetThreshold = numTravelers >= 3 ? 1.6 : 1.3;
+  if (minCost > budget * budgetThreshold) return false;
 
   if (destination.safety_index < minSafety) return false;
 

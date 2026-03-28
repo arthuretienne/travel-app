@@ -993,8 +993,8 @@ export async function searchHotels({
       const stars = hotel.property?.propertyClass || 0;
       const rating = hotel.property?.reviewScore || 0;
 
-      // Apply minimum star filter
-      if (filters.minStars > 0 && stars < filters.minStars && stars > 0) {
+      // Apply minimum star filter (exclude unclassified 0-star properties too)
+      if (filters.minStars > 0 && stars < filters.minStars) {
         return false;
       }
 
