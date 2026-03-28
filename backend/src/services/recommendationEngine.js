@@ -222,10 +222,42 @@ export async function captureSignal(userId, destinationCity, signalType) {
 
   const current = existing?.[column] || [];
   if (!current.includes(destinationCity)) {
+    const updated = [...current, destinationCity];
     await supabase
       .from('user_travel_profiles')
-      .upsert({ user_id: userId, [column]: [...current, destinationCity], updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      .upsert({ user_id: userId, [column]: updated, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+
+    // Regenerate DNA vector with new signal (async, non-blocking)
+    regenerateDNA(supabase, userId).catch(err =>
+      console.warn('[Reco] DNA regeneration failed (non-critical):', err.message)
+    );
   }
+}
+
+async function regenerateDNA(supabase, userId) {
+  const { data: profile } = await supabase
+    .from('user_travel_profiles')
+    .select('onboarding_data, clicked_destinations, saved_destinations, booked_destinations, rejected_destinations')
+    .eq('user_id', userId)
+    .single();
+
+  if (!profile?.onboarding_data) return;
+
+  const enrichedProfile = {
+    ...profile.onboarding_data,
+    clickedDestinations: profile.clicked_destinations || [],
+    savedDestinations: profile.saved_destinations || [],
+    bookedDestinations: profile.booked_destinations || [],
+    rejectedDestinations: profile.rejected_destinations || [],
+  };
+
+  const embedding = await generateUserDNA(enrichedProfile);
+  await supabase
+    .from('user_travel_profiles')
+    .update({ embedding, updated_at: new Date().toISOString() })
+    .eq('user_id', userId);
+
+  console.log(`[Reco] DNA vector refreshed for user ${userId}`);
 }
 
 async function updateUserVector(supabase, userId, embedding, profile) {

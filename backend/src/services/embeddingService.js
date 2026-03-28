@@ -65,6 +65,14 @@ export function buildUserDNAText(profile) {
     parts.push(`Destinations sauvegardées : ${profile.savedDestinations.slice(-10).join(', ')}`);
   }
 
+  if (profile.bookedDestinations?.length > 0) {
+    parts.push(`Destinations bookées (fort signal) : ${profile.bookedDestinations.slice(-5).join(', ')}`);
+  }
+
+  if (profile.clickedDestinations?.length > 0) {
+    parts.push(`Destinations consultées : ${profile.clickedDestinations.slice(-8).join(', ')}`);
+  }
+
   if (profile.rejectedDestinations?.length > 0) {
     parts.push(`Ne veut pas : ${profile.rejectedDestinations.slice(-5).join(', ')}`);
   }
