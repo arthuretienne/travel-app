@@ -275,4 +275,39 @@ router.put('/preferences', authenticateUser, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/users/digest-optout
+ * Opt-out from weekly digest emails (authenticated)
+ */
+router.post('/digest-optout', authenticateUser, async (req, res) => {
+  try {
+    await prisma.userPreferences.updateMany({
+      where: { user: { clerkId: req.user.id } },
+      data: { digestOptOut: true },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[User] digest-optout error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/users/digest-optin
+ * Re-subscribe to weekly digest emails
+ */
+router.post('/digest-optin', authenticateUser, async (req, res) => {
+  try {
+    await prisma.userPreferences.updateMany({
+      where: { user: { clerkId: req.user.id } },
+      data: { digestOptOut: false },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[User] digest-optin error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
+

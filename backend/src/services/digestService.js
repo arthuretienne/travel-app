@@ -29,7 +29,10 @@ export async function sendWeeklyDigestToAll() {
   // Get all users who have completed onboarding (have preferences)
   const users = await prisma.user.findMany({
     where: {
-      preferences: { isNot: null },
+      preferences: {
+        isNot: null,
+        digestOptOut: false,
+      },
     },
     select: {
       id: true,

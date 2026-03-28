@@ -114,6 +114,9 @@ model UserPreferences {
   professionalStatus  String? // "salarié" | "indépendant" | "étudiant" | "retraité" | "autre"
   idealDuration       String? // "weekend" | "1-semaine" | "2-semaines" | "3-semaines" | "flexible"
 
+  // Email preferences
+  digestOptOut        Boolean @default(false) // Opt-out from weekly digest emails
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
