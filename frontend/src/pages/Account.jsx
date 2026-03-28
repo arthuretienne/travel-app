@@ -5,7 +5,7 @@ import { useUser, useAuth } from '@clerk/clerk-react';
 import {
   User, Settings, Calendar, CheckCircle, XCircle,
   LogOut, Save, Globe, Briefcase, Heart, MapPin,
-  Clock, Plane, Shield, AlertCircle, CreditCard, Loader2
+  Clock, Plane, Shield, AlertCircle, CreditCard, Loader2, Bell
 } from 'lucide-react';
 
 // Import constants from Onboarding
@@ -70,6 +70,8 @@ function Account() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('profile'); // profile, preferences, availability, subscription
   const [connectingCalendar, setConnectingCalendar] = useState(false);
+  const [digestOptOut, setDigestOptOut] = useState(false);
+  const [togglingDigest, setTogglingDigest] = useState(false);
   const [calendarStatus, setCalendarStatus] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [loadingBillingPortal, setLoadingBillingPortal] = useState(false);
@@ -236,12 +238,31 @@ function Account() {
             calendarType: data.preferences.calendarType || '',
             preferredAirports: data.preferences.preferredAirports || []
           });
+          setDigestOptOut(data.preferences.digestOptOut || false);
         }
       }
     } catch (error) {
       console.error('Error fetching preferences:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleDigestOptOut = async () => {
+    try {
+      setTogglingDigest(true);
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const token = await getToken();
+      const endpoint = digestOptOut ? 'digest-optin' : 'digest-optout';
+      await fetch(`${API_URL}/api/users/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      setDigestOptOut(prev => !prev);
+    } catch (err) {
+      console.error('Error toggling digest opt-out:', err);
+    } finally {
+      setTogglingDigest(false);
     }
   };
 
@@ -437,6 +458,28 @@ function Account() {
                 <p className="text-sm leading-relaxed">
                   Pour modifier votre nom, email ou mot de passe, veuillez utiliser le bouton de profil en haut à droite de l'application.
                 </p>
+              </div>
+
+              {/* Notifications */}
+              <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                  <Bell size={18} className="text-primary" />
+                  Notifications email
+                </h3>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Digest hebdomadaire</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Vos meilleures opportunités voyage chaque lundi matin</p>
+                  </div>
+                  <button
+                    onClick={toggleDigestOptOut}
+                    disabled={togglingDigest}
+                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-60 ${!digestOptOut ? 'bg-primary' : 'bg-gray-200'}`}
+                    aria-label="Toggle weekly digest"
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${!digestOptOut ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
               </div>
             </div>
           )}
