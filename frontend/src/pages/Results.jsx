@@ -188,6 +188,20 @@ function Results() {
     }
   };
 
+  // Fire-and-forget signal capture — never blocks UI
+  const captureSignal = async (city, signalType) => {
+    if (!city || city === 'Road trip') return;
+    try {
+      const token = await getToken();
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      fetch(`${API_URL}/api/travel/signal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ destinationCity: city, signalType }),
+      }).catch(() => {}); // silent fail — non-critical
+    } catch {}
+  };
+
   const handleSaveTrip = async (tripIndex, silent = false) => {
     const trip = recommendations[tripIndex];
     if (!silent) setSavingTripId(tripIndex);
@@ -217,6 +231,10 @@ function Results() {
 
       const data = await response.json();
 
+      // Capture save signal
+      const city = trip.destination?.city || trip.cities?.[0]?.name;
+      captureSignal(city, 'saved');
+
       if (!silent) {
         if (data.alreadyExists) {
           alert('This trip is already in your saved trips!');
@@ -237,6 +255,9 @@ function Results() {
   };
 
   const handleAffiliateClick = async (tripIndex, linkType, url) => {
+    const trip = recommendations[tripIndex];
+    const city = trip.destination?.city || trip.cities?.[0]?.name;
+    captureSignal(city, 'booked');
     await handleSaveTrip(tripIndex, true);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -407,21 +428,59 @@ function Results() {
 
   // Empty state
   if (recommendations.length === 0 && !isStreaming) {
+    // Extract context from search payload if available
+    const searchPayload = location.state?.searchPayload;
+    const budget = searchPayload?.preferences?.budget;
+    const travelers = searchPayload?.preferences?.travelers || 1;
+    const nights = searchPayload?.preferences?.duration || 5;
+    const totalBudget = budget ? budget * travelers : null;
+    const minEstimate = travelers > 1
+      ? Math.round((80 * travelers) + (50 * Math.ceil(travelers / 2) * nights))
+      : Math.round(80 + 50 * nights);
+
     return (
       <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-6">
         <div className="text-center max-w-md">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-surface-muted flex items-center justify-center">
-            <svg className="w-8 h-8 text-text-light" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-amber-50 flex items-center justify-center">
+            <svg className="w-8 h-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
           </div>
-          <h3 className="font-display text-2xl text-text-main mb-2">No trips found</h3>
-          <p className="text-text-secondary mb-8">Try adjusting your preferences or budget.</p>
+          <h3 className="font-display text-2xl text-text-main mb-2">Aucun résultat trouvé</h3>
+
+          {totalBudget && totalBudget < minEstimate ? (
+            <div className="text-left bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
+              <p className="text-sm font-semibold text-amber-900 mb-3">
+                Budget insuffisant pour {travelers} {travelers > 1 ? 'personnes' : 'personne'}, {nights} nuits
+              </p>
+              <ul className="space-y-2 text-sm text-amber-800">
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5">•</span>
+                  Budget saisi : <strong>€{totalBudget}</strong> total (€{budget}/pers.)
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5">•</span>
+                  Minimum estimé : <strong>~€{minEstimate}</strong> (vol ~€{80 * travelers} + hôtel ~€{50 * Math.ceil(travelers / 2) * nights})
+                </li>
+              </ul>
+              <p className="text-xs text-amber-700 mt-3 font-medium">Suggestions :</p>
+              <ul className="space-y-1 text-xs text-amber-700 mt-1">
+                <li>→ Augmenter le budget à €{Math.ceil(minEstimate / travelers / 50) * 50}/pers. minimum</li>
+                <li>→ Réduire la durée à {Math.max(2, nights - 2)} nuits</li>
+                {travelers > 2 && <li>→ Partir à {travelers - 1} personnes</li>}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-text-secondary mb-6">
+              Aucune destination ne correspond à vos critères actuels. Essayez d'ajuster vos préférences ou votre budget.
+            </p>
+          )}
+
           <button
             onClick={handleNewSearch}
             className="px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
           >
-            Start new search
+            Nouvelle recherche
           </button>
         </div>
       </div>
@@ -587,7 +646,14 @@ function Results() {
               trip={trip}
               index={index}
               isExpanded={expandedTrip === index}
-              onToggle={() => setExpandedTrip(expandedTrip === index ? null : index)}
+              onToggle={() => {
+                const isOpening = expandedTrip !== index;
+                setExpandedTrip(expandedTrip === index ? null : index);
+                if (isOpening) {
+                  const city = trip.destination?.city || trip.cities?.[0]?.name;
+                  captureSignal(city, 'clicked');
+                }
+              }}
               formatDate={formatDate}
               formatNumber={formatNumber}
               formatDuration={formatDuration}
