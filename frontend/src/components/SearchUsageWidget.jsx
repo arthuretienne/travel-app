@@ -57,19 +57,19 @@ export function SearchUsageWidget({ compact = false }) {
         <Search size={14} className="text-text-secondary" />
         <span className="text-text-secondary">
           {searches.unlimited ? (
-            'Unlimited searches'
+            'Recherches illimitées'
           ) : (
             <>
               <span className={needsUpgrade ? 'text-red-600 font-medium' : 'text-text-main'}>
                 {searches.remaining}
               </span>
-              /{searches.limit} searches left
+              /{searches.limit} recherches restantes
             </>
           )}
         </span>
         {needsUpgrade && (
           <Link to="/pricing" className="text-primary font-medium hover:underline">
-            Upgrade
+            Passer premium
           </Link>
         )}
       </div>
@@ -91,7 +91,7 @@ export function SearchUsageWidget({ compact = false }) {
               {searches.unlimited ? '∞' : searches.remaining}
             </div>
             <div className="text-sm text-text-secondary">
-              {searches.unlimited ? 'Unlimited' : `of ${searches.limit}`} searches
+              {searches.unlimited ? 'illimitées' : `/ ${searches.limit}`} recherches
             </div>
           </div>
         </div>
@@ -118,7 +118,7 @@ export function SearchUsageWidget({ compact = false }) {
             />
           </div>
           <div className="flex justify-between mt-1.5 text-xs text-text-secondary">
-            <span>{searches.used} used this month</span>
+            <span>{searches.used} utilisées ce mois</span>
             <span>{percentUsed}%</span>
           </div>
         </div>
@@ -132,7 +132,7 @@ export function SearchUsageWidget({ compact = false }) {
         >
           <div className="flex items-center gap-2">
             <Zap size={16} />
-            <span className="font-medium text-sm">Get more searches</span>
+            <span className="font-medium text-sm">Obtenir plus de recherches</span>
           </div>
           <ChevronRight size={16} />
         </Link>
@@ -141,7 +141,7 @@ export function SearchUsageWidget({ compact = false }) {
       {/* Low usage warning */}
       {!needsUpgrade && !searches.unlimited && percentUsed >= 80 && (
         <div className="p-3 bg-amber-50 rounded-xl text-amber-700 text-sm">
-          Running low on searches. Consider upgrading for more.
+          Bientôt à court de recherches. Pensez à passer premium.
         </div>
       )}
     </div>
