@@ -702,19 +702,21 @@ export async function optimizeDestination({
         throw new Error('No hotels found');
       }
 
-      // Extract user preferences for filtering
+      // Hostel/budget accommodation logic:
+      // Accept hostels if user explicitly wants budget OR materialComfort < 35 (comfort not a priority)
       const isBudgetPref = ['budget', 'hostel', 'backpacker', 'routard'].includes(accommodationPref);
+      const isLowComfort = materialComfort < 35;
+      const acceptsHostels = isBudgetPref || isLowComfort;
 
-      // Find best hotel within budget with minimum quality floor
-      // For non-budget trips: minimum €15/night to exclude dorm beds/hostels
-      const minNightlyRate = isBudgetPref ? 0 : 15;
+      // Minimum nightly rate to exclude dorm beds for non-budget users
+      const minNightlyRate = acceptsHostels ? 0 : 15;
       let affordableHotels = hotelSearchResults.hotels.filter(h => {
         const nightlyRate = h.price.amount / totalNights;
         return nightlyRate >= minNightlyRate && nightlyRate <= maxNightlyRate;
       });
 
-      // Exclude hostels/dorms unless user explicitly chose budget/hostel preference
-      if (!isBudgetPref) {
+      // Filter out hostel-type properties for users who care about comfort
+      if (!acceptsHostels) {
         const hostelKeywords = [
           'hostel', 'auberge de jeunesse', 'dormitory', 'dorm',
           'backpacker', 'backpackers', 'generator', 'selina',
@@ -723,7 +725,6 @@ export async function optimizeDestination({
         ];
         const nonHostelHotels = affordableHotels.filter(h => {
           const nameLower = h.name?.toLowerCase() || '';
-          // Also filter by stars: if stars is known and = 0, likely a hostel/unclassified
           if (h.stars === 0 && nameLower.length > 0) return false;
           return !hostelKeywords.some(kw => nameLower.includes(kw));
         });
@@ -731,6 +732,8 @@ export async function optimizeDestination({
           affordableHotels = nonHostelHotels;
           console.log(`   🏨 Filtered to non-hostel options: ${nonHostelHotels.length} hotels`);
         }
+      } else {
+        console.log(`   🎒 Budget/low-comfort profile → hostels accepted (comfort: ${materialComfort}, pref: ${accommodationPref})`);
       }
 
       if (affordableHotels.length > 0) {
