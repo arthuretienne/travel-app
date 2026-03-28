@@ -106,6 +106,7 @@ function DestinationLanding() {
             src={imageUrl}
             alt={`${dest.city}, ${dest.country}`}
             className="w-full h-full object-cover"
+            onError={(e) => { e.target.src = 'https://images.pexels.com/photos/1008155/pexels-photo-1008155.jpeg?auto=compress&cs=tinysrgb&w=800'; }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12">
@@ -364,6 +365,7 @@ function DestinationLanding() {
                       alt={`${rel.city}, ${rel.country}`}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"
+                      onError={(e) => { e.target.src = 'https://images.pexels.com/photos/1008155/pexels-photo-1008155.jpeg?auto=compress&cs=tinysrgb&w=800'; }}
                     />
                   </div>
                   <div className="p-4">
