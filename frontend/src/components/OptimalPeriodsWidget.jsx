@@ -244,7 +244,7 @@ export function OptimalPeriodsWidget() {
             {calendarConnected ? (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                 <CheckCircle2 size={11} />
-                Calendar synced
+                Calendrier synchronisé
               </span>
             ) : (
               <button
@@ -253,7 +253,7 @@ export function OptimalPeriodsWidget() {
                 className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary-hover transition-colors"
               >
                 <LinkIcon size={11} />
-                {connectingCalendar ? 'Connecting...' : 'Connect calendar'}
+                {connectingCalendar ? 'Connexion...' : 'Connecter le calendrier'}
               </button>
             )}
           </div>
@@ -367,7 +367,7 @@ export function OptimalPeriodsWidget() {
               <div>
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-2">
                   <CalendarIcon size={16} />
-                  Recommended Period
+                  Période recommandée
                 </div>
                 <h4 className="text-2xl font-bold text-gray-900 mb-1">{currentPeriod.title}</h4>
                 <p className="text-lg text-gray-600">
@@ -377,14 +377,14 @@ export function OptimalPeriodsWidget() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Savings</div>
+                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Économies</div>
                   <div className="text-2xl font-bold text-emerald-600 flex items-center gap-1">
                     {currentPeriod.savings}
                     <TrendingUp size={16} />
                   </div>
                 </div>
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Confidence</div>
+                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Fiabilité</div>
                   <div className="text-2xl font-bold text-primary flex items-center gap-1">
                     {currentPeriod.confidence}%
                     <CheckCircle2 size={16} />
@@ -396,7 +396,7 @@ export function OptimalPeriodsWidget() {
                 <div className="flex items-start gap-3">
                   <Info size={20} className="text-amber-500 shrink-0 mt-0.5" />
                   <div>
-                    <h5 className="font-semibold text-gray-900 text-sm mb-1">Why this time?</h5>
+                    <h5 className="font-semibold text-gray-900 text-sm mb-1">Pourquoi cette période ?</h5>
                     <p className="text-gray-600 text-sm leading-relaxed">
                       {currentPeriod.reason}
                     </p>
