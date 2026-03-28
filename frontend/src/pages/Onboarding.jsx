@@ -361,7 +361,7 @@ function Onboarding() {
     return (
       <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-6">
         <div className="max-w-4xl w-full text-center">
-          <h1 className="text-4xl font-bold mb-4 text-text-main">Bienvenue sur Travel AI !</h1>
+          <h1 className="text-4xl font-bold mb-4 text-text-main">Bienvenue sur Skusku !</h1>
           <p className="text-xl text-text-secondary mb-12 max-w-2xl mx-auto">
             Pour vous proposer les meilleures recommandations de voyage, nous avons besoin d'en savoir plus sur vos préférences.
           </p>

@@ -151,17 +151,24 @@ function CreateTrip() {
   };
 
   const loadUserPreferences = async () => {
+    // Timeout after 8s to handle Render cold start gracefully
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 8000)
+    );
     try {
       const token = await getToken();
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-      const [prefsResponse, usageResponse] = await Promise.all([
-        fetch(`${API_URL}/api/users/preferences`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }).catch(() => null),
-        fetch(`${API_URL}/api/billing/usage`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }).catch(() => null),
+      const [prefsResponse, usageResponse] = await Promise.race([
+        Promise.all([
+          fetch(`${API_URL}/api/users/preferences`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          }).catch(() => null),
+          fetch(`${API_URL}/api/billing/usage`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          }).catch(() => null),
+        ]),
+        timeoutPromise,
       ]);
 
       if (prefsResponse?.ok) {
@@ -442,9 +449,10 @@ function CreateTrip() {
   if (loadingPreferences) {
     return (
       <div className="min-h-screen bg-surface-subtle flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-xs">
           <div className="w-12 h-12 border-4 border-gray-200 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-text-secondary">Chargement de vos préférences...</p>
+          <p className="text-text-secondary mb-1">Chargement de vos préférences...</p>
+          <p className="text-xs text-text-secondary/60">Le serveur démarre, cela peut prendre quelques secondes</p>
         </div>
       </div>
     );

@@ -25,7 +25,7 @@ function AppLayout({ children }) {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/30">
                 <Plane size={20} />
               </div>
-              Travel AI
+              Skusku
             </button>
 
             <nav className="hidden md:flex items-center gap-1">
@@ -47,7 +47,7 @@ function AppLayout({ children }) {
                 onClick={() => navigate('/create-trip')}
               >
                 <PlusCircle size={18} />
-                Create Trip
+                Nouveau voyage
               </button>
               <button
                 className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${isActive('/account')
@@ -57,7 +57,7 @@ function AppLayout({ children }) {
                 onClick={() => navigate('/account')}
               >
                 <User size={18} />
-                My Account
+                Mon compte
               </button>
             </nav>
           </div>
@@ -126,10 +126,8 @@ function AppLayout({ children }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2 text-text-secondary text-sm">
-              <span className="font-semibold text-text-main">Travel AI</span>
-              <span>&copy; 2025</span>
-              <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-              <span>Powered by Claude AI & Amadeus</span>
+              <span className="font-semibold text-text-main">Skusku</span>
+              <span>&copy; 2026</span>
             </div>
             <div className="flex gap-6 text-sm text-text-secondary">
               <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-primary transition-colors">Privacy Policy</a>

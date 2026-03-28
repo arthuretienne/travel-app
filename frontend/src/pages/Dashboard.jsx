@@ -139,16 +139,16 @@ function Dashboard() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
               <h1 className="font-display text-3xl md:text-4xl font-medium text-text-main mb-2">
-                Welcome back, {user?.firstName || 'Traveler'}
+                Bon retour, {user?.firstName || 'Voyageur'} 👋
               </h1>
-              <p className="text-text-secondary text-lg">Your travel dashboard</p>
+              <p className="text-text-secondary text-lg">Votre tableau de bord voyage</p>
             </div>
             <button
               className="flex items-center gap-2 px-6 py-3.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
               onClick={handleCreateTrip}
             >
               <Plus size={20} strokeWidth={2} />
-              New Trip
+              Nouveau voyage
             </button>
           </div>
         </div>
@@ -164,7 +164,7 @@ function Dashboard() {
             </div>
             <div>
               <div className="text-2xl font-semibold text-text-main">{savedTrips.length}</div>
-              <div className="text-sm text-text-secondary">Saved Trips</div>
+              <div className="text-sm text-text-secondary">Voyages sauvegardés</div>
             </div>
           </div>
           <div className="bg-white p-5 rounded-2xl border border-stone-100 flex items-center gap-4">
@@ -173,7 +173,7 @@ function Dashboard() {
             </div>
             <div>
               <div className="text-2xl font-semibold text-text-main">{new Set(savedTrips.map(t => t.country)).size}</div>
-              <div className="text-sm text-text-secondary">Countries</div>
+              <div className="text-sm text-text-secondary">Pays visités</div>
             </div>
           </div>
           <div className="bg-white p-5 rounded-2xl border border-stone-100 flex items-center gap-4">
@@ -184,7 +184,7 @@ function Dashboard() {
               <div className="text-2xl font-semibold text-text-main">
                 {savedTrips.length > 0 ? Math.round(savedTrips.reduce((acc, t) => acc + (t.tripData?.score?.total || 0), 0) / savedTrips.length) : 0}%
               </div>
-              <div className="text-sm text-text-secondary">Avg. Match</div>
+              <div className="text-sm text-text-secondary">Compatibilité moy.</div>
             </div>
           </div>
           <SearchUsageWidget />
@@ -210,8 +210,8 @@ function Dashboard() {
               <Bell size={22} />
             </div>
             <div>
-              <h3 className="font-semibold text-text-main">Price Alerts</h3>
-              <p className="text-sm text-text-secondary">Track prices and get notified when they drop</p>
+              <h3 className="font-semibold text-text-main">Alertes prix</h3>
+              <p className="text-sm text-text-secondary">Suivez les prix et soyez notifié quand ils baissent</p>
             </div>
           </div>
           <ChevronRight size={20} className="text-text-secondary group-hover:text-primary transition-colors" />
@@ -220,7 +220,7 @@ function Dashboard() {
         {/* All Trips Section */}
         <div className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-2xl font-medium text-text-main">My Trips</h2>
+            <h2 className="font-display text-2xl font-medium text-text-main">Mes voyages</h2>
             <div className="flex gap-1 p-1 bg-stone-100 rounded-lg">
               <button
                 onClick={() => setActiveFilter('all')}
@@ -228,7 +228,7 @@ function Dashboard() {
                   activeFilter === 'all' ? 'bg-white text-text-main shadow-sm' : 'text-text-secondary hover:text-text-main'
                 }`}
               >
-                All
+                Tous
               </button>
               <button
                 onClick={() => setActiveFilter('solo')}
@@ -244,7 +244,7 @@ function Dashboard() {
                   activeFilter === 'group' ? 'bg-white text-text-main shadow-sm' : 'text-text-secondary hover:text-text-main'
                 }`}
               >
-                Group
+                Groupe
               </button>
             </div>
           </div>
@@ -260,12 +260,12 @@ function Dashboard() {
               <div className="inline-flex p-4 bg-stone-50 text-text-secondary rounded-full mb-4">
                 <AlertTriangle size={28} />
               </div>
-              <p className="text-text-secondary mb-6">Failed to load trips: {error}</p>
+              <p className="text-text-secondary mb-6">Erreur lors du chargement : {error}</p>
               <button
                 className="px-5 py-2.5 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
                 onClick={fetchSavedTrips}
               >
-                Try again
+                Réessayer
               </button>
             </div>
           ) : (savedTrips.length === 0 && collaborativeTrips.length === 0) ? (
@@ -273,13 +273,13 @@ function Dashboard() {
               <div className="inline-flex p-5 bg-primary-light text-primary rounded-2xl mb-6">
                 <Map size={36} />
               </div>
-              <h3 className="font-display text-xl font-medium text-text-main mb-2">No trips yet</h3>
-              <p className="text-text-secondary mb-8">Start by creating your first trip</p>
+              <h3 className="font-display text-xl font-medium text-text-main mb-2">Aucun voyage pour l'instant</h3>
+              <p className="text-text-secondary mb-8">Commencez par créer votre premier voyage</p>
               <button
                 className="px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
                 onClick={handleCreateTrip}
               >
-                Create Your First Trip
+                Créer mon premier voyage
               </button>
             </div>
           ) : (() => {

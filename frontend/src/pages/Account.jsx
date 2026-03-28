@@ -208,11 +208,16 @@ function Account() {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const token = await getToken();
 
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 9000);
+
       const response = await fetch(`${API_URL}/api/users/preferences`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
 
       if (response.ok) {
         const data = await response.json();
@@ -369,7 +374,8 @@ function Account() {
       <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <div className="w-16 h-16 border-4 border-gray-200 border-t-primary rounded-full animate-spin mx-auto mb-6"></div>
-          <h2 className="text-2xl font-bold text-text-main mb-2">Loading your account...</h2>
+          <h2 className="text-2xl font-bold text-text-main mb-2">Chargement de votre compte...</h2>
+          <p className="text-sm text-text-secondary/60">Le serveur démarre, cela peut prendre quelques secondes</p>
         </div>
       </div>
     );

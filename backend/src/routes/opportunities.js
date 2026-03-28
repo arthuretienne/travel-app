@@ -11,7 +11,7 @@ const router = express.Router();
  */
 router.get('/', authenticateUser, async (req, res) => {
   try {
-    const opportunities = await getUserOpportunities(req.user.id);
+    const opportunities = await getUserOpportunities(req.user.clerkId);
     res.json({ success: true, data: opportunities });
   } catch (error) {
     console.error('[Opportunities] GET error:', error.message);
@@ -29,7 +29,7 @@ router.patch('/:id', authenticateUser, async (req, res) => {
     return res.status(400).json({ error: 'Invalid status' });
   }
   try {
-    await updateOpportunityStatus(req.user.id, req.params.id, status);
+    await updateOpportunityStatus(req.user.clerkId, req.params.id, status);
     res.json({ success: true });
   } catch (error) {
     console.error('[Opportunities] PATCH error:', error.message);
