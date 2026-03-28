@@ -107,6 +107,22 @@ app.post('/api/cron/check-prices', async (req, res) => {
   }
 });
 
+// Cron: send weekly digest email to all users (Monday 8am)
+app.post('/api/cron/weekly-digest', async (req, res) => {
+  const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
+  if (cronSecret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { sendWeeklyDigestToAll } = await import('./src/services/digestService.js');
+    const results = await sendWeeklyDigestToAll();
+    res.json({ success: true, results });
+  } catch (error) {
+    console.error('[Cron] Weekly digest error:', error.message);
+    res.status(500).json({ success: false, error: 'Digest failed' });
+  }
+});
+
 // Cron: scan all users for proactive travel opportunities (daily)
 app.post('/api/cron/scan-opportunities', async (req, res) => {
   const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
