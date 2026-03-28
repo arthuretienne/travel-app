@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { OptimalPeriodsWidget } from '../components/OptimalPeriodsWidget';
+import { OpportunitiesWidget } from '../components/OpportunitiesWidget';
 import { DashboardCardSkeleton } from '../components/SkeletonLoaders';
 import { SearchUsageWidget } from '../components/SearchUsageWidget';
 import { Plane, Globe, Target, AlertTriangle, Map, Calendar, Clock, DollarSign, Plus, Users, MapPin, ChevronRight, Bell } from 'lucide-react';
@@ -187,6 +188,11 @@ function Dashboard() {
             </div>
           </div>
           <SearchUsageWidget />
+        </div>
+
+        {/* Proactive deal opportunities */}
+        <div className="mb-6">
+          <OpportunitiesWidget />
         </div>
 
         {/* Optimal Periods Widget */}

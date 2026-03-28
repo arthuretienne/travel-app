@@ -21,6 +21,7 @@ import tripEnhancementsRoutes from './src/routes/tripEnhancements.js';
 import friendsRoutes from './src/routes/friends.js';
 import pushRoutes from './src/routes/push.js';
 import expensesRoutes from './src/routes/expenses.js';
+import opportunitiesRoutes from './src/routes/opportunities.js';
 import prisma from './src/db/prisma.js';
 import { apiLimiter, strictLimiter, emailLimiter } from './src/middleware/rateLimiter.js';
 import { initializeSocketServer } from './src/services/socketService.js';
@@ -85,6 +86,9 @@ app.use('/api/friends', friendsRoutes);
 app.use('/api/trips', tripEnhancementsRoutes);
 app.use('/api/trips', expensesRoutes);
 
+// Proactive opportunities (Sprint 4)
+app.use('/api/opportunities', opportunitiesRoutes);
+
 // Cron endpoint for automated price checks (called by Render Cron Job)
 app.post('/api/cron/check-prices', async (req, res) => {
   // Verify cron secret to prevent unauthorized access
@@ -100,6 +104,22 @@ app.post('/api/cron/check-prices', async (req, res) => {
   } catch (error) {
     console.error('[Cron] Price check error:', error.message);
     res.status(500).json({ success: false, error: 'Price check failed' });
+  }
+});
+
+// Cron: scan all users for proactive travel opportunities (daily)
+app.post('/api/cron/scan-opportunities', async (req, res) => {
+  const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
+  if (cronSecret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { scanAllUsers } = await import('./src/services/opportunityService.js');
+    const results = await scanAllUsers();
+    res.json({ success: true, results });
+  } catch (error) {
+    console.error('[Cron] Opportunity scan error:', error.message);
+    res.status(500).json({ success: false, error: 'Scan failed' });
   }
 });
 
