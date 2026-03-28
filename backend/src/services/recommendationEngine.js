@@ -174,7 +174,11 @@ export async function getRecommendations(userProfile, searchParams) {
   // Étape 3 : filtrage hard + scoring
   const params = {
     budget, numTravelers, numNights, tripType, departureMonth, minSafety,
-    excludedDestinations: userProfile.rejectedDestinations || [],
+    // Exclude rejected AND already-booked destinations (been there, done that)
+    excludedDestinations: [
+      ...(userProfile.rejectedDestinations || []),
+      ...(userProfile.bookedDestinations || []),
+    ],
   };
 
   const scored = candidates

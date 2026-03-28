@@ -567,8 +567,17 @@ export async function optimizeDestination({
       throw new Error(`No flights found from ${origin} to ${actualFlightDestination} for any date`);
     }
 
-    // Find the cheapest date option
-    flightSearches.sort((a, b) => a.price - b.price);
+    // Find the best date option: price + comfort (penalize very early departures)
+    // A 6am flight means waking up at 3am — treat it as €25 more expensive for ranking
+    function adjustedPrice(r) {
+      const depTime = r.flight?.outbound?.departureTime;
+      if (!depTime) return r.price;
+      const hour = new Date(depTime).getHours();
+      if (hour < 5) return r.price + 40;  // Before 5am: brutal (wake up 2am)
+      if (hour < 7) return r.price + 20;  // Before 7am: uncomfortable (wake up 4am)
+      return r.price;
+    }
+    flightSearches.sort((a, b) => adjustedPrice(a) - adjustedPrice(b));
     const bestOption = flightSearches[0];
 
     console.log(`✅ Best price found: €${bestOption.price} on ${bestOption.departureDate}`);
