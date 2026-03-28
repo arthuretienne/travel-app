@@ -139,13 +139,13 @@ export default function Pricing() {
             className="flex items-center gap-2 text-text-secondary hover:text-text-main mb-4 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">Back to Dashboard</span>
+            <span className="text-sm font-medium">Retour au dashboard</span>
           </button>
 
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-text-main mb-3">Choose Your Plan</h1>
+            <h1 className="text-4xl font-bold text-text-main mb-3">Choisissez votre formule</h1>
             <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-              Start planning amazing trips for free, or upgrade for unlimited access and advanced features.
+              Commencez gratuitement ou passez à la version premium pour un accès illimité.
             </p>
           </div>
         </div>
@@ -167,13 +167,13 @@ export default function Pricing() {
               >
                 {isPopular && (
                   <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-                    POPULAR
+                    POPULAIRE
                   </div>
                 )}
 
                 {isCurrentPlan && (
                   <div className="absolute top-0 left-0 bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-br-lg">
-                    CURRENT PLAN
+                    FORMULE ACTUELLE
                   </div>
                 )}
 
@@ -201,52 +201,52 @@ export default function Pricing() {
                     {checkoutLoading === plan.id ? (
                       <span className="flex items-center justify-center gap-2">
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Loading...
+                        Chargement...
                       </span>
                     ) : isCurrentPlan ? (
-                      'Current Plan'
+                      'Formule actuelle'
                     ) : plan.id === 'FREE' ? (
-                      'Free Forever'
+                      'Gratuit à vie'
                     ) : (
-                      'Subscribe'
+                      'S\'abonner'
                     )}
                   </button>
                 </div>
 
                 <div className="p-6">
-                  <h4 className="font-semibold text-text-main mb-4">Features:</h4>
+                  <h4 className="font-semibold text-text-main mb-4">Fonctionnalités :</h4>
                   <ul className="space-y-3">
                     <FeatureItem
                       value={formatFeatureValue(plan.features.maxSearchesPerMonth)}
-                      label="AI searches per month"
+                      label="recherches IA / mois"
                     />
                     <FeatureItem
                       value={formatFeatureValue(plan.features.maxGroupTrips)}
-                      label="group trips"
+                      label="voyages de groupe"
                     />
                     <FeatureItem
                       value={formatFeatureValue(plan.features.maxMembersPerTrip)}
-                      label="members per trip"
+                      label="membres par voyage"
                     />
                     <FeatureItem
                       value={plan.features.aiRecommendations}
-                      label="AI recommendations"
+                      label="Recommandations IA"
                     />
                     <FeatureItem
                       value={plan.features.flightSearch}
-                      label="Flight search"
+                      label="Recherche de vols"
                     />
                     <FeatureItem
                       value={plan.features.hotelSearch}
-                      label="Hotel search"
+                      label="Recherche d'hôtels"
                     />
                     <FeatureItem
                       value={plan.features.collaborativeVoting}
-                      label="Collaborative voting"
+                      label="Vote collaboratif"
                     />
                     <FeatureItem
                       value={plan.features.prioritySupport}
-                      label="Priority support"
+                      label="Support prioritaire"
                     />
                   </ul>
                 </div>
@@ -257,16 +257,16 @@ export default function Pricing() {
 
         {/* FAQ or Additional Info */}
         <div className="mt-16 text-center">
-          <h2 className="text-2xl font-bold text-text-main mb-4">Need help choosing?</h2>
+          <h2 className="text-2xl font-bold text-text-main mb-4">Besoin d'aide pour choisir ?</h2>
           <p className="text-text-secondary mb-6 max-w-2xl mx-auto">
-            Start with the Free plan to try out our AI-powered travel recommendations.
-            Upgrade anytime to unlock unlimited searches and group trip planning features.
+            Commencez avec la formule gratuite pour tester nos recommandations IA.
+            Passez en premium à tout moment pour des recherches illimitées et la planification en groupe.
           </p>
           <button
             onClick={() => navigate('/account')}
             className="text-primary font-semibold hover:underline"
           >
-            Manage your subscription →
+            Gérer mon abonnement →
           </button>
         </div>
       </div>

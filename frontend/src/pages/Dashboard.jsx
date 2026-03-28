@@ -317,12 +317,12 @@ function Dashboard() {
                           <div className="flex items-center justify-between text-sm mb-3">
                             <div className="flex items-center gap-2 text-text-secondary">
                               <Calendar size={15} />
-                              <span>{trip.startDate ? formatDate(trip.startDate) : 'Date TBD'}</span>
+                              <span>{trip.startDate ? formatDate(trip.startDate) : 'Date à définir'}</span>
                             </div>
                             <div className="text-text-secondary">
                               {trip.startDate && trip.endDate
                                 ? Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))
-                                : 0} days
+                                : 0} j
                             </div>
                           </div>
 
@@ -331,7 +331,7 @@ function Dashboard() {
                               {trip.tripData?.pricing?.total ? `€${Math.round(trip.tripData.pricing.total)}` : '—'}
                             </div>
                             <div className="flex items-center gap-1 text-primary text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                              View details
+                              Voir
                               <ChevronRight size={16} />
                             </div>
                           </div>
@@ -381,22 +381,22 @@ function Dashboard() {
                             <div className="flex items-center justify-between text-sm">
                               <div className="flex items-center gap-2 text-text-secondary">
                                 <Calendar size={15} />
-                                <span>{trip.finalStartDate ? formatDate(trip.finalStartDate) : 'Date TBD'}</span>
+                                <span>{trip.finalStartDate ? formatDate(trip.finalStartDate) : 'Date à définir'}</span>
                               </div>
                               <div className="flex items-center gap-1 text-primary text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                View trip
+                                Voir
                                 <ChevronRight size={16} />
                               </div>
                             </div>
                           ) : (
                             <div className="flex items-center justify-between">
                               <div className="text-sm text-text-secondary">
-                                {trip.status === 'draft' && 'Planning in progress'}
-                                {trip.status === 'voting' && 'Voting in progress'}
+                                {trip.status === 'draft' && 'Planification en cours'}
+                                {trip.status === 'voting' && 'Vote en cours'}
                                 {trip.proposedTrips?.length > 0 && `${trip.proposedTrips.length} destination(s)`}
                               </div>
                               <div className="flex items-center gap-1 text-primary text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                View trip
+                                Voir
                                 <ChevronRight size={16} />
                               </div>
                             </div>
@@ -414,13 +414,13 @@ function Dashboard() {
         {/* CTA Section */}
         {savedTrips.length > 0 && (
           <div className="bg-white rounded-2xl p-10 md:p-12 text-center border border-stone-100">
-            <h3 className="font-display text-xl md:text-2xl font-medium text-text-main mb-2">Looking for more adventures?</h3>
-            <p className="text-text-secondary mb-8">Create a new trip and discover your next destination</p>
+            <h3 className="font-display text-xl md:text-2xl font-medium text-text-main mb-2">Envie de partir encore ?</h3>
+            <p className="text-text-secondary mb-8">Créez un nouveau voyage et découvrez votre prochaine destination</p>
             <button
               className="px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
               onClick={handleCreateTrip}
             >
-              Plan Another Trip
+              Planifier un autre voyage
             </button>
           </div>
         )}

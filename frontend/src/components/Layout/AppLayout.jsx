@@ -37,7 +37,7 @@ function AppLayout({ children }) {
                 onClick={() => navigate('/dashboard')}
               >
                 <LayoutDashboard size={18} />
-                Dashboard
+                Accueil
               </button>
               <button
                 className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${isActive('/create-trip')
@@ -95,7 +95,7 @@ function AppLayout({ children }) {
             onClick={() => navigate('/dashboard')}
           >
             <LayoutDashboard size={20} />
-            <span className="text-[10px] font-medium">Dashboard</span>
+            <span className="text-[10px] font-medium">Accueil</span>
           </button>
           <button
             className={`flex flex-col items-center justify-center w-full h-full gap-1 ${isActive('/create-trip') ? 'text-primary' : 'text-gray-400'
@@ -103,7 +103,7 @@ function AppLayout({ children }) {
             onClick={() => navigate('/create-trip')}
           >
             <PlusCircle size={20} />
-            <span className="text-[10px] font-medium">New Trip</span>
+            <span className="text-[10px] font-medium">Voyage</span>
           </button>
           <button
             className={`flex flex-col items-center justify-center w-full h-full gap-1 ${isActive('/account') ? 'text-primary' : 'text-gray-400'
@@ -111,7 +111,7 @@ function AppLayout({ children }) {
             onClick={() => navigate('/account')}
           >
             <User size={20} />
-            <span className="text-[10px] font-medium">Account</span>
+            <span className="text-[10px] font-medium">Compte</span>
           </button>
         </div>
       </div>
