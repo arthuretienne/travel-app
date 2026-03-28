@@ -160,10 +160,10 @@ function PriceAlerts() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-display text-3xl font-medium text-text-main mb-2">
-                Price Alerts
+                Alertes prix
               </h1>
               <p className="text-text-secondary">
-                Track flight prices and get notified when they drop
+                Suivez les prix des vols et soyez notifié quand ils baissent
               </p>
             </div>
             <Link
@@ -171,7 +171,7 @@ function PriceAlerts() {
               className="flex items-center gap-2 px-5 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
             >
               <Plus size={18} />
-              New Alert
+              Nouvelle alerte
             </Link>
           </div>
         </div>
@@ -188,7 +188,7 @@ function PriceAlerts() {
                 </div>
                 <div>
                   <div className="text-2xl font-semibold text-text-main">{stats.activeAlerts}</div>
-                  <div className="text-xs text-text-secondary">Active</div>
+                  <div className="text-xs text-text-secondary">Actives</div>
                 </div>
               </div>
             </div>
@@ -199,7 +199,7 @@ function PriceAlerts() {
                 </div>
                 <div>
                   <div className="text-2xl font-semibold text-text-main">{stats.triggeredAlerts}</div>
-                  <div className="text-xs text-text-secondary">Triggered</div>
+                  <div className="text-xs text-text-secondary">Déclenchées</div>
                 </div>
               </div>
             </div>
@@ -212,7 +212,7 @@ function PriceAlerts() {
                   <div className="text-2xl font-semibold text-text-main">
                     {stats.totalSavings > 0 ? `€${stats.totalSavings}` : '—'}
                   </div>
-                  <div className="text-xs text-text-secondary">Saved</div>
+                  <div className="text-xs text-text-secondary">Économies</div>
                 </div>
               </div>
             </div>
@@ -238,9 +238,9 @@ function PriceAlerts() {
                 {pushSubscribed ? <Bell size={18} /> : <BellOff size={18} />}
               </div>
               <div>
-                <p className="font-medium text-text-main text-sm">Push Notifications</p>
+                <p className="font-medium text-text-main text-sm">Notifications push</p>
                 <p className="text-xs text-text-secondary">
-                  {pushSubscribed ? 'You\'ll receive instant alerts on this device' : 'Get notified instantly when prices drop'}
+                  {pushSubscribed ? 'Vous recevrez des alertes instantanées sur cet appareil' : 'Soyez notifié instantanément quand les prix baissent'}
                 </p>
               </div>
             </div>
@@ -252,7 +252,7 @@ function PriceAlerts() {
                   : 'bg-primary text-white hover:bg-primary-hover'
               }`}
             >
-              {pushSubscribed ? 'Disable' : 'Enable'}
+              {pushSubscribed ? 'Désactiver' : 'Activer'}
             </button>
           </div>
         )}
@@ -272,18 +272,18 @@ function PriceAlerts() {
               <Bell size={36} />
             </div>
             <h3 className="font-display text-xl font-medium text-text-main mb-2">
-              No price alerts yet
+              Aucune alerte prix
             </h3>
             <p className="text-text-secondary mb-6 max-w-md mx-auto">
-              Create a price alert to track flight prices for your trips.
-              We'll notify you when prices drop below your target.
+              Créez une alerte pour suivre les prix des vols de vos voyages.
+              Vous serez notifié quand les prix passent sous votre objectif.
             </p>
             <Link
               to="/create-trip"
               className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
             >
               <Plus size={18} />
-              Create Your First Alert
+              Créer ma première alerte
             </Link>
           </div>
         ) : (
@@ -316,12 +316,12 @@ function PriceAlerts() {
                         </h3>
                         {isTriggered && (
                           <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                            Target reached
+                            Objectif atteint
                           </span>
                         )}
                         {!alert.isActive && (
                           <span className="px-2 py-0.5 bg-stone-100 text-stone-600 text-xs font-medium rounded-full">
-                            Paused
+                            En pause
                           </span>
                         )}
                       </div>
@@ -341,13 +341,13 @@ function PriceAlerts() {
                       {/* Price Info */}
                       <div className="flex items-center gap-6">
                         <div>
-                          <div className="text-xs text-text-secondary mb-1">Current</div>
+                          <div className="text-xs text-text-secondary mb-1">Prix actuel</div>
                           <div className="text-xl font-bold text-text-main">
                             €{Math.round(alert.currentPrice || alert.initialPrice)}
                           </div>
                         </div>
                         <div>
-                          <div className="text-xs text-text-secondary mb-1">Target</div>
+                          <div className="text-xs text-text-secondary mb-1">Objectif</div>
                           <div className="text-xl font-semibold text-primary flex items-center gap-1">
                             <Target size={16} />
                             €{Math.round(alert.targetPrice)}
@@ -355,7 +355,7 @@ function PriceAlerts() {
                         </div>
                         {priceChange && (
                           <div>
-                            <div className="text-xs text-text-secondary mb-1">Change</div>
+                            <div className="text-xs text-text-secondary mb-1">Variation</div>
                             <div className={`text-lg font-semibold flex items-center gap-1 ${
                               priceChange.isDown ? 'text-green-600' : 'text-red-500'
                             }`}>
@@ -370,7 +370,7 @@ function PriceAlerts() {
                       {/* Last checked */}
                       {alert.lastCheckedAt && (
                         <div className="mt-3 text-xs text-text-secondary">
-                          Last checked: {new Date(alert.lastCheckedAt).toLocaleString()}
+                          Dernière vérification : {new Date(alert.lastCheckedAt).toLocaleString('fr-FR')}
                         </div>
                       )}
                     </div>
@@ -381,7 +381,7 @@ function PriceAlerts() {
                         onClick={() => checkPrice(alert.id)}
                         disabled={checkingId === alert.id}
                         className="p-2 text-primary hover:bg-primary-light rounded-lg transition-colors disabled:opacity-50"
-                        title="Check price now"
+                        title="Vérifier le prix maintenant"
                       >
                         <RefreshCw size={18} className={checkingId === alert.id ? 'animate-spin' : ''} />
                       </button>
@@ -392,14 +392,14 @@ function PriceAlerts() {
                             ? 'text-amber-600 hover:bg-amber-50'
                             : 'text-green-600 hover:bg-green-50'
                         }`}
-                        title={alert.isActive ? 'Pause alert' : 'Resume alert'}
+                        title={alert.isActive ? 'Mettre en pause' : 'Reprendre'}
                       >
                         {alert.isActive ? <BellOff size={18} /> : <Bell size={18} />}
                       </button>
                       <button
                         onClick={() => deleteAlert(alert.id)}
                         className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete alert"
+                        title="Supprimer l'alerte"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -416,10 +416,10 @@ function PriceAlerts() {
           <div className="flex items-start gap-3">
             <Zap className="text-blue-600 mt-0.5" size={20} />
             <div>
-              <h4 className="font-medium text-blue-900 mb-1">How Price Alerts Work</h4>
+              <h4 className="font-medium text-blue-900 mb-1">Comment fonctionnent les alertes prix</h4>
               <p className="text-sm text-blue-700">
-                We check flight prices daily and send you an email when prices drop below your target.
-                You can also manually check prices anytime using the refresh button.
+                Nous vérifions les prix des vols chaque jour et vous envoyons un email quand les prix descendent sous votre objectif.
+                Vous pouvez aussi vérifier manuellement à tout moment avec le bouton de rafraîchissement.
               </p>
             </div>
           </div>
