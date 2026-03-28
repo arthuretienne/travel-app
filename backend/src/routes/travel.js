@@ -3,6 +3,7 @@ import express from 'express';
 import { generateDestinationRecommendationWithData, generateRoadtripNarrative } from '../services/claudeService.js';
 import * as destinationService from '../services/destinationService.js';
 import * as roadtripService from '../services/roadtripService.js';
+import { getRecommendations, captureSignal } from '../services/recommendationEngine.js';
 import { generateAffiliateLinks } from '../services/affiliateService.js';
 import { getDestinationPhotos as getPexelsPhoto } from '../services/pexelsService.js';
 import { authenticateUser } from '../middleware/auth.js';
@@ -574,15 +575,26 @@ router.post('/recommendations',
       // STANDARD DESTINATION DISCOVERY (3 single-city recommendations)
       // ====================================================================
 
-      // Step 1: Discover top destinations with Booking.com
-      console.log('🔍 Step 1: Discovering destinations with Booking.com...');
-      const topDestinations = await destinationService.discoverDestinations({
-        userProfile,
-        budget,
-        origin: originCity,
-        duration,
-        departureDate: userProfile.availability?.startDate,
-        userId: req.user.id // For diversity tracking (avoids recently suggested cities)
+      // Step 1: Discover top destinations via vector search + contextual scoring
+      console.log('🔍 Step 1: Discovering destinations via recommendation engine...');
+      const topDestinations = await getRecommendations(
+        { ...userProfile, userId: req.user.id },
+        {
+          budget,
+          numTravelers: userProfile.basic?.travelers || 1,
+          numNights: duration,
+          tripType: userProfile.basic?.tripType,
+          departureMonth: userProfile.availability?.startDate
+            ? new Date(userProfile.availability.startDate).getMonth() + 1
+            : new Date().getMonth() + 1,
+        }
+      ).catch(async (err) => {
+        console.warn('[Reco] Vector engine failed, falling back to discoverDestinations:', err.message);
+        return destinationService.discoverDestinations({
+          userProfile, budget, origin: originCity, duration,
+          departureDate: userProfile.availability?.startDate,
+          userId: req.user.id
+        });
       });
 
       console.log(`✅ Discovered ${topDestinations.length} destinations`);
@@ -601,21 +613,23 @@ router.post('/recommendations',
                                   userProfile.availability?.flexibleDates === false;
 
       const optimizedTrips = await Promise.all(
-        topDestinations.slice(0, 3).map(dest =>
-          destinationService.optimizeDestination({
-            destination: dest.name,
+        topDestinations.slice(0, 3).map(dest => {
+          const destName = dest.city || dest.name;
+          return destinationService.optimizeDestination({
+            destination: destName,
             userProfile,
             budget,
             origin: originCity,
             duration,
             departureDate: userProfile.availability?.startDate,
-            tripContext: tripContextWithout, // NEW: Pass user's free text for context-aware hotel selection
-            isFixedDate: isFixedDateWithout, // Respect fixed dates if specified
-          }).catch(error => {
-            console.warn(`⚠️  Failed to optimize ${dest.name}:`, error.message);
-            return null;
-          })
-        )
+            tripContext: tripContextWithout,
+            isFixedDate: isFixedDateWithout,
+          }).then(result => result ? { ...result, _matchReasons: dest.matchReasons } : null)
+            .catch(error => {
+              console.warn(`⚠️  Failed to optimize ${destName}:`, error.message);
+              return null;
+            });
+        })
       );
 
       // Filter out failures
@@ -688,7 +702,7 @@ router.post('/recommendations',
             country: trip.destination.country || trip.destination.name,
             iataCode: trip.destination.iata,
             photo: photo,
-            matchReason: recommendation?.matchReason || recommendation?.tagline || `Perfect for ${userProfile.basic?.activities?.join(', ') || 'your interests'}`,
+            matchReason: recommendation?.matchReason || recommendation?.tagline || trip._matchReasons?.join(' · ') || `Perfect for ${userProfile.basic?.activities?.join(', ') || 'your interests'}`,
             seasonReason: recommendation?.seasonReason || `Great time to visit ${trip.destination.name}`
           },
           slot: {
@@ -1299,5 +1313,20 @@ router.post('/recommendations/stream',
     }
   }
 );
+
+// POST /api/travel/signal — capture behavioral signal (click, save, reject)
+router.post('/signal', authenticateUser, async (req, res) => {
+  const { destinationCity, signalType } = req.body;
+  if (!destinationCity || !signalType) {
+    return res.status(400).json({ error: 'destinationCity and signalType are required' });
+  }
+  try {
+    await captureSignal(req.user.id, destinationCity, signalType);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[Signal] Error:', err.message);
+    res.status(500).json({ error: 'Failed to capture signal' });
+  }
+});
 
 export default router;
