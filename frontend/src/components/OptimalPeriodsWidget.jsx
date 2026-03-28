@@ -227,8 +227,8 @@ export function OptimalPeriodsWidget() {
   }
 
   const calendarDays = currentPeriod ? generateCalendarDays(currentPeriod.startDate) : [];
-  const monthName = currentPeriod ? new Date(currentPeriod.startDate).toLocaleString('default', { month: 'long', year: 'numeric' }) : '';
-  const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const monthName = currentPeriod ? new Date(currentPeriod.startDate).toLocaleString('fr-FR', { month: 'long', year: 'numeric' }) : '';
+  const weekDays = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
