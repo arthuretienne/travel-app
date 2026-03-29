@@ -41,7 +41,7 @@ function PriceAlerts() {
       }
     } catch (err) {
       console.error('Error fetching alerts:', err);
-      setError('Failed to load price alerts');
+      setError('Impossible de charger les alertes prix.');
     } finally {
       setLoading(false);
     }
@@ -108,7 +108,7 @@ function PriceAlerts() {
   };
 
   const deleteAlert = async (alertId) => {
-    if (!confirm('Are you sure you want to delete this price alert?')) return;
+    if (!confirm('Supprimer cette alerte prix ?')) return;
 
     try {
       const token = await getToken();
@@ -146,7 +146,7 @@ function PriceAlerts() {
       <div className="min-h-screen bg-surface-subtle flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-gray-200 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-text-secondary">Loading price alerts...</p>
+          <p className="text-text-secondary">Chargement des alertes...</p>
         </div>
       </div>
     );
@@ -412,13 +412,13 @@ function PriceAlerts() {
         )}
 
         {/* Info Box */}
-        <div className="mt-8 bg-blue-50 border border-blue-100 rounded-xl p-5">
+        <div className="mt-8 bg-primary-light border border-primary/20 rounded-xl p-5">
           <div className="flex items-start gap-3">
-            <Zap className="text-blue-600 mt-0.5" size={20} />
+            <Zap className="text-primary mt-0.5 flex-shrink-0" size={18} />
             <div>
-              <h4 className="font-medium text-blue-900 mb-1">Comment fonctionnent les alertes prix</h4>
-              <p className="text-sm text-blue-700">
-                Nous vérifions les prix des vols chaque jour et vous envoyons un email quand les prix descendent sous votre objectif.
+              <h4 className="font-medium text-text-main mb-1">Comment fonctionnent les alertes prix</h4>
+              <p className="text-sm text-text-secondary">
+                Nous vérifions les prix des vols chaque jour et vous envoyons un email quand ils passent sous votre objectif.
                 Vous pouvez aussi vérifier manuellement à tout moment avec le bouton de rafraîchissement.
               </p>
             </div>

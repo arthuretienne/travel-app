@@ -109,13 +109,13 @@ export default function Pricing() {
       window.location.href = data.url;
     } catch (error) {
       console.error('Error creating checkout:', error);
-      alert('Failed to start checkout. Please try again.');
+      alert('Impossible de démarrer le paiement. Veuillez réessayer.');
       setCheckoutLoading(null);
     }
   };
 
   const formatFeatureValue = (value) => {
-    if (value === -1) return 'Unlimited';
+    if (value === -1) return 'Illimité';
     if (value === true) return true;
     if (value === false) return false;
     return value;
@@ -132,20 +132,23 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-surface-subtle">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="bg-white border-b border-stone-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-text-secondary hover:text-text-main mb-4 transition-colors"
+            className="flex items-center gap-2 text-text-secondary hover:text-text-main mb-6 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">Retour au dashboard</span>
+            <span className="text-sm font-medium">Retour au tableau de bord</span>
           </button>
 
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-text-main mb-3">Choisissez votre formule</h1>
-            <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-              Commencez gratuitement ou passez à la version premium pour un accès illimité.
+            <h1 className="text-3xl md:text-4xl font-bold text-text-main mb-3">Choisissez votre formule</h1>
+            <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-4">
+              Commencez gratuitement ou passez à la version premium pour des recherches illimitées.
+            </p>
+            <p className="text-sm text-text-secondary">
+              Paiement sécurisé · Annulation à tout moment · Sans engagement
             </p>
           </div>
         </div>
@@ -163,17 +166,19 @@ export default function Pricing() {
             return (
               <div
                 key={plan.id}
-                className={`relative bg-white rounded-2xl shadow-card border-2 ${colors.border} overflow-hidden transition-transform hover:scale-105`}
+                className={`relative bg-white rounded-2xl border-2 ${colors.border} overflow-hidden transition-all hover:shadow-lg ${isPopular ? 'ring-2 ring-primary ring-offset-2' : ''}`}
               >
                 {isPopular && (
-                  <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-                    POPULAIRE
+                  <div className="absolute top-0 inset-x-0 flex justify-center">
+                    <div className="bg-primary text-white text-xs font-bold px-4 py-1 rounded-b-lg">
+                      Le plus populaire
+                    </div>
                   </div>
                 )}
 
                 {isCurrentPlan && (
-                  <div className="absolute top-0 left-0 bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-br-lg">
-                    FORMULE ACTUELLE
+                  <div className="absolute top-3 right-3 bg-green-100 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                    Formule actuelle
                   </div>
                 )}
 
@@ -255,16 +260,30 @@ export default function Pricing() {
           })}
         </div>
 
-        {/* FAQ or Additional Info */}
-        <div className="mt-16 text-center">
-          <h2 className="text-2xl font-bold text-text-main mb-4">Besoin d'aide pour choisir ?</h2>
-          <p className="text-text-secondary mb-6 max-w-2xl mx-auto">
+        {/* Trust signals */}
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+          {[
+            { icon: '🔒', title: 'Paiement sécurisé', desc: 'Stripe — norme bancaire SSL' },
+            { icon: '↩️', title: 'Annulation facile', desc: 'À tout moment depuis votre compte' },
+            { icon: '💬', title: 'Support réactif', desc: 'Réponse en moins de 24h' },
+          ].map(item => (
+            <div key={item.title} className="text-center p-5 bg-white rounded-xl border border-stone-100">
+              <div className="text-2xl mb-2">{item.icon}</div>
+              <div className="font-medium text-text-main text-sm">{item.title}</div>
+              <div className="text-xs text-text-secondary mt-0.5">{item.desc}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* FAQ */}
+        <div className="mt-12 text-center">
+          <p className="text-text-secondary mb-3 max-w-2xl mx-auto text-sm">
             Commencez avec la formule gratuite pour tester nos recommandations IA.
             Passez en premium à tout moment pour des recherches illimitées et la planification en groupe.
           </p>
           <button
             onClick={() => navigate('/account')}
-            className="text-primary font-semibold hover:underline"
+            className="text-primary text-sm font-semibold hover:underline"
           >
             Gérer mon abonnement →
           </button>

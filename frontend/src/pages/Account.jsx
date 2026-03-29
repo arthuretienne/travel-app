@@ -155,7 +155,7 @@ function Account() {
       }
     } catch (error) {
       console.error('Error opening billing portal:', error);
-      alert('Failed to open billing portal. Please try again.');
+      alert('Impossible d\'ouvrir le portail de facturation. Veuillez réessayer.');
       setLoadingBillingPortal(false);
     }
   };
@@ -188,7 +188,7 @@ function Account() {
     const calendarError = params.get('calendar_error');
 
     if (calendarSuccess === 'true') {
-      alert('✅ Calendrier Google connecté avec succès!');
+      alert('Calendrier Google connecté avec succès !');
       fetchPreferences();
       checkCalendarStatus();
       // Clean URL
@@ -357,7 +357,7 @@ function Account() {
       });
 
       if (response.ok) {
-        alert('✅ Calendrier déconnecté avec succès');
+        alert('Calendrier Google déconnecté.');
         fetchPreferences();
         checkCalendarStatus();
       } else {
@@ -835,7 +835,7 @@ function Account() {
             <div className="max-w-3xl mx-auto space-y-6">
               {subscription ? (
                 <>
-                  <div className="bg-gradient-to-br from-primary/5 to-purple-50 p-8 rounded-2xl border-2 border-primary/20">
+                  <div className="bg-primary-light p-8 rounded-2xl border border-primary/20">
                     <div className="flex items-center justify-between mb-6">
                       <div>
                         <h3 className="text-2xl font-bold text-text-main mb-1">

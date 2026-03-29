@@ -562,7 +562,7 @@ export default function TripDetail() {
                 {trip.members?.map((member) => (
                   <div
                     key={member.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                    className="flex items-center justify-between p-4 bg-stone-50 hover:bg-stone-100 rounded-xl transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <img
@@ -597,8 +597,8 @@ export default function TripDetail() {
                           )}
                         </>
                       )}
-                      <span className="text-xs font-medium px-3 py-1 bg-gray-200 text-gray-600 rounded-full capitalize">
-                        {member.role}
+                      <span className="text-xs font-medium px-3 py-1 bg-stone-100 text-stone-600 rounded-full">
+                        {member.role === 'creator' ? 'Créateur' : 'Membre'}
                       </span>
                     </div>
                   </div>
@@ -1223,7 +1223,7 @@ function PlanningSection({ trip, navigate }) {
         <div className="space-y-4">
           <button
             onClick={() => setProposalMode('ai')}
-            className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-primary hover:bg-blue-50 transition-all text-left group"
+            className="w-full p-6 border-2 border-stone-200 rounded-xl hover:border-primary hover:bg-primary-light transition-all text-left group"
           >
             <div className="flex items-start gap-4">
               <div className="p-3 bg-primary rounded-xl text-white group-hover:scale-110 transition-transform">
@@ -1240,7 +1240,7 @@ function PlanningSection({ trip, navigate }) {
 
           <button
             onClick={() => setProposalMode('custom')}
-            className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-primary hover:bg-blue-50 transition-all text-left group"
+            className="w-full p-6 border-2 border-stone-200 rounded-xl hover:border-primary hover:bg-primary-light transition-all text-left group"
           >
             <div className="flex items-start gap-4">
               <div className="p-3 bg-purple-600 rounded-xl text-white group-hover:scale-110 transition-transform">
@@ -1464,7 +1464,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
         {trip.proposedTrips?.map((proposed) => (
           <div
             key={proposed.id}
-            className="p-6 border-2 border-gray-200 rounded-xl hover:border-primary transition-all cursor-pointer"
+            className="p-6 border-2 border-stone-200 rounded-xl hover:border-primary hover:bg-primary-light/30 transition-all cursor-pointer"
           >
             <div className="flex items-start justify-between mb-3">
               <div>

@@ -493,6 +493,7 @@ function CreateTrip() {
         <SearchLoadingScreen
           stage={loadingStage}
           scenario={formData.destination ? 'WITH_DESTINATION' : 'WITHOUT_DESTINATION'}
+          onCancel={() => setLoading(false)}
         />
       )}
 

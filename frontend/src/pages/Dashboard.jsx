@@ -159,31 +159,47 @@ function Dashboard() {
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           <div className="bg-white p-5 rounded-2xl border border-stone-100 flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center flex-shrink-0">
               <Plane size={22} />
             </div>
             <div>
-              <div className="text-2xl font-semibold text-text-main">{savedTrips.length}</div>
+              {loading ? (
+                <div className="h-7 w-8 bg-stone-100 rounded animate-pulse mb-1" />
+              ) : (
+                <div className="text-2xl font-semibold text-text-main">{savedTrips.length}</div>
+              )}
               <div className="text-sm text-text-secondary">Voyages sauvegardés</div>
             </div>
           </div>
           <div className="bg-white p-5 rounded-2xl border border-stone-100 flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center flex-shrink-0">
               <Globe size={22} />
             </div>
             <div>
-              <div className="text-2xl font-semibold text-text-main">{new Set(savedTrips.map(t => t.country)).size}</div>
-              <div className="text-sm text-text-secondary">Pays visités</div>
+              {loading ? (
+                <div className="h-7 w-8 bg-stone-100 rounded animate-pulse mb-1" />
+              ) : (
+                <div className="text-2xl font-semibold text-text-main">
+                  {new Set(savedTrips.map(t => t.country).filter(Boolean)).size || '—'}
+                </div>
+              )}
+              <div className="text-sm text-text-secondary">Destinations explorées</div>
             </div>
           </div>
           <div className="bg-white p-5 rounded-2xl border border-stone-100 flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center flex-shrink-0">
               <Target size={22} />
             </div>
             <div>
-              <div className="text-2xl font-semibold text-text-main">
-                {savedTrips.length > 0 ? Math.round(savedTrips.reduce((acc, t) => acc + (t.tripData?.score?.total || 0), 0) / savedTrips.length) : 0}%
-              </div>
+              {loading ? (
+                <div className="h-7 w-14 bg-stone-100 rounded animate-pulse mb-1" />
+              ) : (
+                <div className="text-2xl font-semibold text-text-main">
+                  {savedTrips.length > 0
+                    ? `${Math.round(savedTrips.reduce((acc, t) => acc + (t.tripData?.score?.total || 0), 0) / savedTrips.length)}%`
+                    : '—'}
+                </div>
+              )}
               <div className="text-sm text-text-secondary">Compatibilité moy.</div>
             </div>
           </div>
@@ -269,18 +285,35 @@ function Dashboard() {
               </button>
             </div>
           ) : (savedTrips.length === 0 && collaborativeTrips.length === 0) ? (
-            <div className="bg-white rounded-2xl p-12 md:p-16 text-center border border-stone-100">
-              <div className="inline-flex p-5 bg-primary-light text-primary rounded-2xl mb-6">
-                <Map size={36} />
+            <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
+              <div className="p-10 md:p-14 text-center border-b border-stone-50">
+                <div className="inline-flex p-4 bg-primary-light text-primary rounded-2xl mb-5">
+                  <Map size={32} />
+                </div>
+                <h3 className="font-display text-xl font-medium text-text-main mb-2">Planifiez votre premier voyage</h3>
+                <p className="text-text-secondary mb-8 max-w-sm mx-auto">
+                  L'IA analyse votre profil et trouve les destinations idéales avec vols et hôtels en temps réel.
+                </p>
+                <button
+                  className="px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors shadow-sm shadow-primary/20"
+                  onClick={handleCreateTrip}
+                >
+                  Lancer ma première recherche
+                </button>
               </div>
-              <h3 className="font-display text-xl font-medium text-text-main mb-2">Aucun voyage pour l'instant</h3>
-              <p className="text-text-secondary mb-8">Commencez par créer votre premier voyage</p>
-              <button
-                className="px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
-                onClick={handleCreateTrip}
-              >
-                Créer mon premier voyage
-              </button>
+              <div className="grid grid-cols-3 divide-x divide-stone-100">
+                {[
+                  { icon: '🤖', label: 'IA personnalisée', desc: 'Selon votre profil' },
+                  { icon: '✈️', label: 'Prix en temps réel', desc: 'Vols + hôtels' },
+                  { icon: '⚡', label: 'Résultats en 15s', desc: '3 destinations top' },
+                ].map((item) => (
+                  <div key={item.label} className="p-5 text-center">
+                    <div className="text-2xl mb-2">{item.icon}</div>
+                    <div className="text-sm font-medium text-text-main">{item.label}</div>
+                    <div className="text-xs text-text-secondary mt-0.5">{item.desc}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (() => {
             // Filter trips based on active filter
@@ -291,58 +324,72 @@ function Dashboard() {
               <div className="space-y-8">
                 {/* Solo Trips */}
                 {soloTripsFiltered.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {soloTripsFiltered.map((trip, index) => (
-                      <div
-                        key={`solo-${trip.id || index}`}
-                        className="bg-white rounded-2xl overflow-hidden border border-stone-100 hover:border-stone-200 transition-all cursor-pointer group"
-                        onClick={() => navigate(`/saved-trips/${trip.id}`)}
-                      >
-                        {/* Destination image */}
-                        <div className="relative h-32 overflow-hidden">
-                          <img
-                            src={getDestinationImage({ city: trip.city, country: trip.country, tripData: trip.tripData })}
-                            alt={`${trip.city}, ${trip.country}`}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                          <div className="absolute bottom-4 left-4 right-4">
-                            <h3 className="text-xl font-semibold text-white mb-0.5">{trip.city || 'Unknown'}</h3>
-                            <p className="text-white/80 text-sm">{trip.country || 'Unknown'}</p>
-                          </div>
-                        </div>
-
-                        <div className="p-5">
-                          <div className="flex items-center justify-between text-sm mb-3">
-                            <div className="flex items-center gap-2 text-text-secondary">
-                              <Calendar size={15} />
-                              <span>{trip.startDate ? formatDate(trip.startDate) : 'Date à définir'}</span>
-                            </div>
-                            <div className="text-text-secondary">
-                              {trip.startDate && trip.endDate
-                                ? Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))
-                                : 0} j
+                  <div>
+                    {activeFilter === 'all' && (
+                      <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wide mb-4">Voyages solo</h3>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {soloTripsFiltered.map((trip, index) => (
+                        <div
+                          key={`solo-${trip.id || index}`}
+                          className="bg-white rounded-2xl overflow-hidden border border-stone-100 hover:border-primary/20 hover:shadow-sm transition-all cursor-pointer group"
+                          onClick={() => navigate(`/saved-trips/${trip.id}`)}
+                        >
+                          {/* Destination image */}
+                          <div className="relative h-36 overflow-hidden">
+                            <img
+                              src={getDestinationImage({ city: trip.city, country: trip.country, tripData: trip.tripData })}
+                              alt={`${trip.city}, ${trip.country}`}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                            {trip.tripData?.score?.total > 0 && (
+                              <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-primary text-xs font-bold px-2 py-1 rounded-lg">
+                                {Math.round(trip.tripData.score.total)}% compatible
+                              </div>
+                            )}
+                            <div className="absolute bottom-3 left-4 right-4">
+                              <h3 className="text-lg font-semibold text-white leading-tight">{trip.city || 'Unknown'}</h3>
+                              <p className="text-white/75 text-xs">{trip.country || 'Unknown'}</p>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between">
-                            <div className="text-lg font-semibold text-text-main">
-                              {trip.tripData?.pricing?.total ? `€${Math.round(trip.tripData.pricing.total)}` : '—'}
+                          <div className="p-4">
+                            <div className="flex items-center justify-between text-sm mb-2.5">
+                              <div className="flex items-center gap-1.5 text-text-secondary">
+                                <Calendar size={13} />
+                                <span className="text-xs">{trip.startDate ? formatDate(trip.startDate) : 'Date à définir'}</span>
+                              </div>
+                              <div className="text-xs text-text-secondary">
+                                {trip.startDate && trip.endDate
+                                  ? `${Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))} j`
+                                  : ''}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1 text-primary text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                              Voir
-                              <ChevronRight size={16} />
+
+                            <div className="flex items-center justify-between">
+                              <div className="text-base font-semibold text-text-main">
+                                {trip.tripData?.pricing?.total ? `€${Math.round(trip.tripData.pricing.total)}` : '—'}
+                              </div>
+                              <div className="flex items-center gap-1 text-primary text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                Voir le voyage
+                                <ChevronRight size={14} />
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
 
                 {/* Collaborative Trips */}
                 {groupTripsFiltered.length > 0 && (
+                  <div>
+                  {activeFilter === 'all' && (
+                    <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wide mb-4">Voyages en groupe</h3>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {groupTripsFiltered.map((trip) => (
                       <div
@@ -404,6 +451,7 @@ function Dashboard() {
                         </div>
                       </div>
                     ))}
+                  </div>
                   </div>
                 )}
               </div>

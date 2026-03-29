@@ -223,7 +223,7 @@ export default function SavedTripDetail() {
       }
 
       if (!itinerary || itinerary.length === 0) {
-        alert('Aucun itinéraire disponible. Générez d\'abord l\'itinéraire en faisant défiler la page.');
+        alert('L\'itinéraire est en cours de création. Veuillez patienter quelques secondes puis réessayer.');
         return;
       }
 
@@ -374,13 +374,14 @@ export default function SavedTripDetail() {
               </span>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setShowInviteModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
               >
-                <UserPlus size={18} />
-                Inviter des amis
+                <UserPlus size={16} />
+                <span className="hidden sm:inline">Inviter des amis</span>
+                <span className="sm:hidden">Inviter</span>
               </button>
               <button
                 onClick={handleCreatePriceAlert}
@@ -388,16 +389,16 @@ export default function SavedTripDetail() {
                 className={`flex items-center gap-2 px-4 py-2 font-medium rounded-lg transition-colors ${
                   alertCreated
                     ? 'bg-green-100 text-green-700 cursor-default'
-                    : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                 }`}
                 title="Créer une alerte prix pour ce voyage"
               >
                 {creatingAlert ? (
-                  <Loader2 size={18} className="animate-spin" />
+                  <Loader2 size={16} className="animate-spin" />
                 ) : alertCreated ? (
-                  <CheckCircle2 size={18} />
+                  <CheckCircle2 size={16} />
                 ) : (
-                  <Bell size={18} />
+                  <Bell size={16} />
                 )}
                 {alertCreated ? 'Alerte créée' : 'Alerte prix'}
               </button>
@@ -408,18 +409,19 @@ export default function SavedTripDetail() {
                 title="Exporter en PDF"
               >
                 {exportingPdf ? (
-                  <Loader2 size={18} className="animate-spin" />
+                  <Loader2 size={16} className="animate-spin" />
                 ) : (
-                  <Download size={18} />
+                  <Download size={16} />
                 )}
-                PDF
+                Exporter PDF
               </button>
               <button
                 onClick={handleDelete}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Supprimer"
+                className="flex items-center gap-2 px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
+                title="Supprimer ce voyage"
               >
-                <Trash2 size={20} />
+                <Trash2 size={16} />
+                <span className="hidden sm:inline">Supprimer</span>
               </button>
             </div>
           </div>
@@ -1015,7 +1017,7 @@ function TripEnhancementsSection({ trip, userName }) {
   return (
     <div className="space-y-6">
       {/* Weather & Packing - Load FIRST (fast) */}
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-2 gap-4">
         {/* Weather */}
         {weatherLoading ? (
           <div className="bg-primary-light rounded-xl p-4 animate-pulse border border-primary/10">

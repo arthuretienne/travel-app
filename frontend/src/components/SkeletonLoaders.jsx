@@ -1,5 +1,6 @@
 // frontend/src/components/SkeletonLoaders.jsx
 // Skeleton loading components for better UX
+import React from 'react';
 
 // Base skeleton element with animation
 export function Skeleton({ className = '', rounded = 'lg' }) {
@@ -92,79 +93,103 @@ export function DashboardCardSkeleton() {
 }
 
 // Loading screen with progress steps
-export function SearchLoadingScreen({ stage = 'analyzing', scenario = 'WITHOUT_DESTINATION' }) {
-  // Different stages for WITH_DESTINATION vs WITHOUT_DESTINATION
+export function SearchLoadingScreen({ stage = 'analyzing', scenario = 'WITHOUT_DESTINATION', onCancel }) {
+  const [elapsed, setElapsed] = React.useState(0);
+
+  React.useEffect(() => {
+    const t = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   const stagesWithDestination = [
-    { key: 'analyzing', label: 'Analyzing your travel dates', icon: '📅' },
-    { key: 'searching', label: 'Checking 7 date options for best price', icon: '💰' },
-    { key: 'flights', label: 'Finding cheapest flight dates', icon: '✈️' },
-    { key: 'hotels', label: 'Searching hotels at destination', icon: '🏨' },
-    { key: 'optimizing', label: 'Finalizing best deal', icon: '✨' },
+    { key: 'analyzing', label: 'Analyse de vos dates de voyage', icon: '📅' },
+    { key: 'searching', label: 'Comparaison de 7 combinaisons de dates', icon: '💰' },
+    { key: 'flights', label: 'Recherche des vols les moins chers', icon: '✈️' },
+    { key: 'hotels', label: 'Vérification des hôtels disponibles', icon: '🏨' },
+    { key: 'optimizing', label: 'Finalisation de la meilleure offre', icon: '✨' },
   ];
 
   const stagesWithoutDestination = [
-    { key: 'analyzing', label: 'Analyzing your preferences', icon: '🧠' },
-    { key: 'searching', label: 'Searching destinations worldwide', icon: '🌍' },
-    { key: 'flights', label: 'Finding best flight options', icon: '✈️' },
-    { key: 'hotels', label: 'Checking hotel availability', icon: '🏨' },
-    { key: 'optimizing', label: 'Optimizing your itinerary', icon: '✨' },
+    { key: 'analyzing', label: 'Analyse de votre profil voyageur', icon: '🧠' },
+    { key: 'searching', label: 'Exploration de 150+ destinations', icon: '🌍' },
+    { key: 'flights', label: 'Recherche des meilleures liaisons', icon: '✈️' },
+    { key: 'hotels', label: 'Vérification des disponibilités', icon: '🏨' },
+    { key: 'optimizing', label: 'Optimisation de vos recommandations', icon: '✨' },
   ];
 
   const stages = scenario === 'WITH_DESTINATION' ? stagesWithDestination : stagesWithoutDestination;
   const title = scenario === 'WITH_DESTINATION'
-    ? 'Finding Best Dates & Prices'
-    : 'Finding Your Perfect Trip';
+    ? 'Recherche des meilleures dates & prix'
+    : 'Recherche de votre voyage idéal';
 
   const currentIndex = stages.findIndex(s => s.key === stage);
+  const progressPct = Math.round(((currentIndex + 1) / stages.length) * 100);
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-3xl p-10 max-w-lg w-[90%] shadow-2xl">
-        {/* Animated plane */}
-        <div className="relative h-20 mb-8 overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-5xl animate-bounce">✈️</div>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+        {/* Header */}
+        <div className="text-center mb-7">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-light rounded-2xl mb-4">
+            <span className="text-3xl">{stages[currentIndex]?.icon || '✈️'}</span>
           </div>
-          {/* Flying trail */}
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1">
-            <div className="w-2 h-2 bg-primary rounded-full animate-ping" style={{ animationDelay: '0ms' }} />
-            <div className="w-2 h-2 bg-primary rounded-full animate-ping" style={{ animationDelay: '150ms' }} />
-            <div className="w-2 h-2 bg-primary rounded-full animate-ping" style={{ animationDelay: '300ms' }} />
+          <h2 className="text-xl font-semibold text-text-main">{title}</h2>
+          <p className="text-sm text-text-secondary mt-1">
+            {elapsed < 5 ? 'Démarrage…' : elapsed < 15 ? 'En cours…' : 'Presque terminé…'}
+          </p>
+        </div>
+
+        {/* Progress bar */}
+        <div className="mb-6">
+          <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-700"
+              style={{ width: `${progressPct}%` }}
+            />
           </div>
         </div>
 
-        <h2 className="text-2xl font-bold text-center text-text-main mb-8">
-          {title}
-        </h2>
-
         {/* Progress steps */}
-        <div className="space-y-3">
+        <div className="space-y-2 mb-7">
           {stages.map((s, idx) => (
             <div
               key={s.key}
-              className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${
                 idx < currentIndex
-                  ? 'bg-green-50 text-green-700'
+                  ? 'bg-green-50'
                   : idx === currentIndex
-                    ? 'bg-primary/10 text-primary'
-                    : 'bg-gray-50 text-gray-400'
+                    ? 'bg-primary-light'
+                    : 'opacity-40'
               }`}
             >
-              <span className="text-xl">{s.icon}</span>
-              <span className="flex-1 text-sm font-medium">{s.label}</span>
+              <span className="text-base w-5 text-center">{s.icon}</span>
+              <span className={`flex-1 text-sm font-medium ${
+                idx < currentIndex ? 'text-green-700' : idx === currentIndex ? 'text-primary' : 'text-text-secondary'
+              }`}>{s.label}</span>
               {idx < currentIndex && (
-                <span className="text-green-500 text-lg">✓</span>
+                <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
               )}
               {idx === currentIndex && (
-                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin flex-shrink-0" />
               )}
             </div>
           ))}
         </div>
 
-        <p className="text-center text-sm text-text-secondary mt-6">
-          This usually takes 10-15 seconds
-        </p>
+        {/* Footer */}
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-text-light">Généralement 10–20 secondes</p>
+          {onCancel && elapsed >= 5 && (
+            <button
+              onClick={onCancel}
+              className="text-xs text-text-secondary hover:text-text-main underline transition-colors"
+            >
+              Annuler
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
