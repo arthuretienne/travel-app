@@ -44,7 +44,7 @@ function Results() {
 
       setIsStreaming(true);
       setLoading(false);
-      setStreamingStatus('Finding perfect destinations...');
+      setStreamingStatus('Recherche des destinations parfaites...');
 
       const startStreaming = async () => {
         try {
@@ -106,14 +106,14 @@ function Results() {
 
               if (eventType === 'status') {
                 if (eventData.stage === 'discovering') {
-                  setStreamingStatus('Finding perfect destinations...');
+                  setStreamingStatus('Recherche des destinations parfaites...');
                 } else if (eventData.stage === 'discovered') {
-                  setStreamingStatus(`Found ${eventData.destinations?.length || 3} destinations`);
+                  setStreamingStatus(`${eventData.destinations?.length || 3} destinations trouvées`);
                   setExpectedTotal(eventData.destinations?.length || 3);
                 }
               } else if (eventType === 'recommendation') {
                 if (eventData.data) {
-                  setStreamingStatus(`Loading ${eventData.index}/${eventData.total}...`);
+                  setStreamingStatus(`Chargement ${eventData.index}/${eventData.total}...`);
 
                   setRecommendations(prev => {
                     const exists = prev.some(r => r.destination?.city === eventData.data.destination?.city);
@@ -133,7 +133,7 @@ function Results() {
                 if (eventData.trainAlternatives) {
                   setTrainAlternatives(eventData.trainAlternatives);
                 }
-                setStreamingStatus('Budget exceeded - showing alternatives...');
+                setStreamingStatus('Budget dépassé - affichage d\'alternatives...');
               } else if (eventType === 'complete') {
                 setIsStreaming(false);
                 setStreamingStatus('');
@@ -237,16 +237,16 @@ function Results() {
 
       if (!silent) {
         if (data.alreadyExists) {
-          alert('This trip is already in your saved trips!');
+          alert('Ce voyage est déjà dans vos voyages sauvegardés !');
         } else {
-          alert('Trip saved successfully!');
+          alert('Voyage sauvegardé avec succès !');
         }
       }
       return true;
     } catch (err) {
       console.error('Error saving trip:', err);
       if (!silent) {
-        alert('Failed to save trip. Please try again.');
+        alert('Impossible de sauvegarder le voyage. Veuillez réessayer.');
       }
       return false;
     } finally {
@@ -291,11 +291,11 @@ function Results() {
         throw new Error(errorData.error || 'Failed to propose destination');
       }
 
-      alert('Destination proposed successfully!');
+      alert('Destination proposée avec succès !');
       navigate(`/trips/${forGroupTrip}`);
     } catch (err) {
       console.error('Error proposing destination:', err);
-      alert(err.message || 'Failed to propose destination.');
+      alert(err.message || 'Impossible de proposer la destination.');
     } finally {
       setProposingTripId(null);
     }
@@ -304,7 +304,7 @@ function Results() {
   const handleCreatePriceAlert = async (tripIndex) => {
     const trip = recommendations[tripIndex];
     if (!trip?.pricing?.total || !trip.slot?.startDate || !trip.slot?.endDate) {
-      alert('Trip missing required data for price alert');
+      alert('Données manquantes pour créer une alerte prix');
       return;
     }
 
@@ -337,7 +337,7 @@ function Results() {
       setAlertCreatedFor(prev => new Set([...prev, tripIndex]));
     } catch (err) {
       console.error('Error creating price alert:', err);
-      alert(err.message || 'Failed to create price alert');
+      alert(err.message || 'Impossible de créer l\'alerte prix');
     } finally {
       setAlertingTripId(null);
     }
@@ -349,7 +349,7 @@ function Results() {
   // Helpers
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' });
   };
 
   const formatNumber = (num) => Math.round(num ?? 0).toLocaleString();
@@ -388,7 +388,7 @@ function Results() {
           </div>
           <TripCardSkeleton />
           <p className="text-center text-text-secondary mt-8 animate-pulse">
-            Analyzing your profile and searching flights...
+            Analyse de votre profil et recherche de vols...
           </p>
         </div>
       </div>
@@ -405,20 +405,20 @@ function Results() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h2 className="font-display text-2xl text-text-main mb-2">Something went wrong</h2>
+          <h2 className="font-display text-2xl text-text-main mb-2">Une erreur est survenue</h2>
           <p className="text-text-secondary mb-8">{error}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={handleBackToDashboard}
               className="px-5 py-2.5 text-text-secondary font-medium rounded-xl border border-stone-200 hover:bg-surface-muted transition-colors"
             >
-              Back to Dashboard
+              Retour au tableau de bord
             </button>
             <button
               onClick={handleNewSearch}
               className="px-5 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
             >
-              Try New Search
+              Nouvelle recherche
             </button>
           </div>
         </div>
@@ -501,11 +501,11 @@ function Results() {
                 </div>
               ) : (
                 <p className="text-sm font-medium text-primary mb-1">
-                  {destinationTrips.length + roadtripTrips.length} {destinationTrips.length + roadtripTrips.length === 1 ? 'result' : 'results'} found{roadtripTrips.length > 0 ? ' · includes road trip' : ''}
+                  {destinationTrips.length + roadtripTrips.length} {destinationTrips.length + roadtripTrips.length === 1 ? 'résultat' : 'résultats'} trouvé{destinationTrips.length + roadtripTrips.length > 1 ? 's' : ''}{roadtripTrips.length > 0 ? ' · inclut un road trip' : ''}
                 </p>
               )}
               <h1 className="font-display text-3xl text-text-main">
-                {forGroupTrip ? 'Propose a destination' : 'Your travel options'}
+                {forGroupTrip ? 'Proposer une destination' : 'Vos options de voyage'}
               </h1>
             </div>
             <div className="flex gap-3">
@@ -517,7 +517,7 @@ function Results() {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
-                  Back to trip
+                  Retour au voyage
                 </button>
               ) : (
                 <>
@@ -528,7 +528,7 @@ function Results() {
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
-                    Dashboard
+                    Tableau de bord
                   </button>
                   <button
                     onClick={handleNewSearch}
@@ -537,7 +537,7 @@ function Results() {
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    New search
+                    Nouvelle recherche
                   </button>
                 </>
               )}
@@ -572,7 +572,7 @@ function Results() {
                 {trainAlternatives.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-amber-200">
                     <h4 className="font-medium text-amber-900 mb-3 flex items-center gap-2">
-                      <span>🚂</span> Train & Bus Alternatives (cheaper!)
+                      <span>🚂</span> Alternatives train & bus (moins cher !)
                     </h4>
                     <div className="grid gap-2">
                       {trainAlternatives.map((alt, i) => (
@@ -586,10 +586,10 @@ function Results() {
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-green-600">€{alt.price}</p>
-                            <p className="text-xs text-gray-500">round trip</p>
+                            <p className="text-xs text-gray-500">aller-retour</p>
                           </div>
                           {alt.hasBeach && (
-                            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">🏖️ Beach</span>
+                            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">🏖️ Plage</span>
                           )}
                         </div>
                       ))}
@@ -726,7 +726,7 @@ function TripCard({
             </div>
             {index === 0 && (
               <div className="px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full">
-                <span className="text-white text-sm font-medium">Best match</span>
+                <span className="text-white text-sm font-medium">Meilleur choix</span>
               </div>
             )}
           </div>
@@ -735,7 +735,7 @@ function TripCard({
         {/* Photo credit */}
         {destination?.photo?.photographer && (
           <div className="absolute top-4 right-4 px-2 py-1 bg-black/30 backdrop-blur-sm rounded text-xs text-white/70">
-            Photo by{' '}
+            Photo par{' '}
             <a href={destination.photo.photographer.link} target="_blank" rel="noopener noreferrer" className="underline">
               {destination.photo.photographer.name}
             </a>
@@ -751,28 +751,28 @@ function TripCard({
             <p className="text-text-main font-semibold">
               {formatDate(slot?.startDate)} – {formatDate(slot?.endDate)}
             </p>
-            <p className="text-sm text-text-secondary">{slot?.duration} days</p>
+            <p className="text-sm text-text-secondary">{slot?.duration} jours</p>
           </InfoCard>
 
-          <InfoCard label="Total cost">
+          <InfoCard label="Coût total">
             <p className="text-text-main font-semibold text-xl">€{formatNumber(pricing?.total)}</p>
             {isUnderBudget ? (
-              <p className="text-sm text-status-positive">€{formatNumber(pricing?.remaining)} under budget</p>
+              <p className="text-sm text-status-positive">€{formatNumber(pricing?.remaining)} sous le budget</p>
             ) : (
-              <p className="text-sm text-red-600">€{formatNumber(Math.abs(pricing?.remaining))} over</p>
+              <p className="text-sm text-red-600">€{formatNumber(Math.abs(pricing?.remaining))} dépassé</p>
             )}
           </InfoCard>
 
-          <InfoCard label="Flight">
+          <InfoCard label="Vol">
             <p className="text-text-main font-semibold">€{formatNumber(pricing?.flight)}</p>
             <p className="text-sm text-text-secondary">
-              {flightDetails?.outbound?.stops === 0 ? 'Direct' : `${flightDetails?.outbound?.stops || 0} stop${(flightDetails?.outbound?.stops || 0) > 1 ? 's' : ''}`}
+              {flightDetails?.outbound?.stops === 0 ? 'Direct' : `${flightDetails?.outbound?.stops || 0} escale${(flightDetails?.outbound?.stops || 0) > 1 ? 's' : ''}`}
             </p>
           </InfoCard>
 
-          <InfoCard label="Hotel">
+          <InfoCard label="Hôtel">
             <p className="text-text-main font-semibold">€{formatNumber(pricing?.hotel)}</p>
-            <p className="text-sm text-text-secondary">{hotelOptions?.nights || slot?.duration - 1} nights</p>
+            <p className="text-sm text-text-secondary">{hotelOptions?.nights || slot?.duration - 1} nuits</p>
           </InfoCard>
         </div>
 
@@ -800,7 +800,7 @@ function TripCard({
         {/* Highlights */}
         {destination?.highlights?.length > 0 && (
           <div className="mb-8">
-            <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-3">Highlights</p>
+            <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-3">Points forts</p>
             <div className="flex flex-wrap gap-2">
               {destination.highlights.map((highlight, i) => {
                 const text = typeof highlight === 'string' ? highlight : (highlight?.word || highlight?.value || highlight?.text || '');
@@ -818,13 +818,13 @@ function TripCard({
         {/* Activities */}
         {destination?.activities?.length > 0 && (
           <div className="mb-8">
-            <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-3">Recommended activities</p>
+            <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-3">Activités recommandées</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {destination.activities.slice(0, 6).map((activity, i) => (
                 <div key={i} className="flex items-center justify-between px-3 py-2 bg-surface-subtle rounded-lg">
                   <span className="text-sm text-text-main truncate">{activity.name}</span>
                   <span className={`text-sm font-medium flex-shrink-0 ml-2 ${activity.price === 0 ? 'text-status-positive' : 'text-text-secondary'}`}>
-                    {activity.price === 0 ? 'Free' : `€${activity.price}`}
+                    {activity.price === 0 ? 'Gratuit' : `€${activity.price}`}
                   </span>
                 </div>
               ))}
@@ -839,7 +839,7 @@ function TripCard({
             className="flex items-center justify-between w-full group"
           >
             <span className="text-sm font-medium text-text-secondary group-hover:text-text-main transition-colors">
-              {isExpanded ? 'Hide details' : 'View flight & hotel details'}
+              {isExpanded ? 'Masquer les détails' : 'Voir les détails vols & hôtel'}
             </span>
             <svg
               className={`w-5 h-5 text-text-light transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
@@ -856,11 +856,11 @@ function TripCard({
               {/* Flight Details */}
               {flightDetails && (
                 <div className="p-5 bg-surface-subtle rounded-xl">
-                  <h4 className="text-sm font-semibold text-text-main mb-4">Flight details</h4>
+                  <h4 className="text-sm font-semibold text-text-main mb-4">Détails du vol</h4>
 
                   {/* Outbound */}
                   <div className="mb-4">
-                    <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Outbound</p>
+                    <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Aller</p>
                     <FlightSegment
                       departureTime={flightDetails.outbound?.departureTime}
                       arrivalTime={flightDetails.outbound?.arrivalTime}
@@ -873,7 +873,7 @@ function TripCard({
                   {/* Return */}
                   {flightDetails.return && (
                     <div>
-                      <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Return</p>
+                      <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Retour</p>
                       <FlightSegment
                         departureTime={flightDetails.return?.departureTime}
                         arrivalTime={flightDetails.return?.arrivalTime}
@@ -889,7 +889,7 @@ function TripCard({
               {/* Hotel Details */}
               {hotel && (
                 <div className="p-5 bg-surface-subtle rounded-xl">
-                  <h4 className="text-sm font-semibold text-text-main mb-4">Suggested accommodation</h4>
+                  <h4 className="text-sm font-semibold text-text-main mb-4">Hébergement suggéré</h4>
                   <div className="flex gap-4">
                     {hotel.mainPhoto && (
                       <div className="w-28 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-stone-200">
@@ -914,7 +914,7 @@ function TripCard({
                         )}
                       </div>
                       <p className="text-sm text-text-secondary">
-                        €{formatNumber(hotel.price || hotel.pricePerNight)}/night
+                        €{formatNumber(hotel.price || hotel.pricePerNight)}/nuit
                       </p>
                     </div>
                   </div>
@@ -932,7 +932,7 @@ function TripCard({
               disabled={isProposing}
               className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white font-semibold rounded-xl hover:bg-primary-hover transition-colors disabled:opacity-50"
             >
-              {isProposing ? 'Proposing...' : 'Propose to group'}
+              {isProposing ? 'Proposition...' : 'Proposer au groupe'}
             </button>
           ) : (
             <>
@@ -944,13 +944,13 @@ function TripCard({
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                 </svg>
-                {isSaving ? 'Saving...' : 'Save'}
+                {isSaving ? 'Enregistrement...' : 'Sauvegarder'}
               </button>
               <button
                 onClick={() => onBook('skyscanner', links?.skyscanner)}
                 className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white font-semibold rounded-xl hover:bg-primary-hover transition-colors"
               >
-                Book this trip
+                Réserver ce voyage
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
@@ -959,7 +959,7 @@ function TripCard({
                 onClick={() => onBook('booking', links?.booking)}
                 className="flex items-center justify-center gap-2 px-6 py-4 bg-surface-muted text-text-secondary font-medium rounded-xl hover:bg-surface-hover hover:text-text-main transition-colors"
               >
-                View hotels
+                Voir les hôtels
               </button>
               <button
                 onClick={onCreateAlert}
@@ -969,7 +969,7 @@ function TripCard({
                     ? 'bg-green-50 text-green-700 cursor-default'
                     : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
                 }`}
-                title="Get notified when the price drops"
+                title="Être notifié quand le prix baisse"
               >
                 {isAlertCreating ? (
                   <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -985,7 +985,7 @@ function TripCard({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                 )}
-                {isAlertCreated ? 'Alert set' : 'Price alert'}
+                {isAlertCreated ? 'Alerte activée' : 'Alerte prix'}
               </button>
             </>
           )}
@@ -1041,7 +1041,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
         </div>
         <div className="absolute top-4 right-4">
           <span className="px-3 py-1.5 bg-black/30 backdrop-blur-sm rounded-full text-white text-xs font-medium">
-            {duration} days
+            {duration} jours
           </span>
         </div>
       </div>
@@ -1095,11 +1095,11 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
             <p className="text-text-main font-semibold">€{formatNumber(Math.round(pricing?.transport || 0))}</p>
           </div>
           <div className="p-4 bg-surface-subtle rounded-xl">
-            <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Hotels</p>
+            <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Hôtels</p>
             <p className="text-text-main font-semibold">€{formatNumber(Math.round(pricing?.hotels || 0))}</p>
           </div>
           <div className="p-4 bg-surface-subtle rounded-xl">
-            <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Activities</p>
+            <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Activités</p>
             <p className="text-text-main font-semibold">€{formatNumber(Math.round(pricing?.activities || 0))}</p>
           </div>
           <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
@@ -1127,7 +1127,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
 
         {/* City breakdown */}
         <div className="mb-6">
-          <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-3">Trip stages</p>
+          <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-3">Étapes du voyage</p>
           <div className="space-y-3">
             {cities.map((city, i) => (
               <div key={i} className="border border-stone-200/60 rounded-xl overflow-hidden">
@@ -1151,11 +1151,11 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
                       <p className="font-semibold text-text-main">{city.name}</p>
                       <span className="text-text-secondary text-sm">· {city.country}</span>
                     </div>
-                    <p className="text-sm text-text-secondary ml-7">{city.nights} night{city.nights !== 1 ? 's' : ''}</p>
+                    <p className="text-sm text-text-secondary ml-7">{city.nights} nuit{city.nights !== 1 ? 's' : ''}</p>
                   </div>
                   {city.hotel && (
                     <div className="text-right flex-shrink-0 hidden sm:block">
-                      <p className="text-sm font-medium text-text-main">€{city.hotel.pricePerNight}/night</p>
+                      <p className="text-sm font-medium text-text-main">€{city.hotel.pricePerNight}/nuit</p>
                       <p className="text-xs text-text-secondary truncate max-w-32">{city.hotel.name}</p>
                     </div>
                   )}
@@ -1171,7 +1171,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
                   <div className="border-t border-stone-200/60 p-5 bg-surface-subtle space-y-4">
                     {city.hotel && (
                       <div>
-                        <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Accommodation</p>
+                        <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Hébergement</p>
                         <div className="flex items-center gap-3">
                           {city.hotel.photos?.[0] && (
                             <img src={city.hotel.photos[0]} alt={city.hotel.name} className="w-20 h-14 rounded-lg object-cover flex-shrink-0" onError={(e) => e.target.style.display = 'none'} />
@@ -1179,7 +1179,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
                           <div>
                             <p className="font-medium text-text-main">{city.hotel.name}</p>
                             <p className="text-sm text-text-secondary">
-                              {city.hotel.stars > 0 && '★'.repeat(Math.min(city.hotel.stars, 5))} · €{city.hotel.pricePerNight}/night
+                              {city.hotel.stars > 0 && '★'.repeat(Math.min(city.hotel.stars, 5))} · €{city.hotel.pricePerNight}/nuit
                             </p>
                             {city.hotel.rating > 0 && (
                               <p className="text-sm text-primary font-medium">{city.hotel.rating}/10</p>
@@ -1190,13 +1190,13 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
                     )}
                     {city.topAttractions?.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Top activities</p>
+                        <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Activités phares</p>
                         <div className="space-y-1.5">
                           {city.topAttractions.map((a, j) => (
                             <div key={j} className="flex items-center justify-between">
                               <p className="text-sm text-text-main">{a.name}</p>
                               <p className="text-sm text-text-secondary ml-2 flex-shrink-0">
-                                {a.price === 0 ? 'Free' : a.price ? `€${a.price}` : ''}
+                                {a.price === 0 ? 'Gratuit' : a.price ? `€${a.price}` : ''}
                               </p>
                             </div>
                           ))}
@@ -1217,7 +1217,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
             className="flex items-center justify-between w-full group"
           >
             <span className="text-sm font-medium text-text-secondary group-hover:text-text-main transition-colors">
-              {showDetails ? 'Hide details' : 'View logistics & tips'}
+              {showDetails ? 'Masquer les détails' : 'Voir la logistique & conseils'}
             </span>
             <svg className={`w-5 h-5 text-text-light transition-transform duration-200 ${showDetails ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -1240,7 +1240,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
               )}
               {narrative?.practicalTips?.length > 0 && (
                 <div className="p-4 bg-surface-subtle rounded-xl">
-                  <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Practical tips</p>
+                  <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Conseils pratiques</p>
                   <ul className="space-y-1.5">
                     {narrative.practicalTips.map((tip, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-text-main">
@@ -1253,7 +1253,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
               )}
               {narrative?.hiddenGems?.length > 0 && (
                 <div className="p-4 bg-surface-subtle rounded-xl">
-                  <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Hidden gems</p>
+                  <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Pépites cachées</p>
                   <ul className="space-y-1.5">
                     {narrative.hiddenGems.map((gem, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-text-main">
@@ -1276,7 +1276,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
               disabled={isProposing}
               className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white font-semibold rounded-xl hover:bg-primary-hover transition-colors disabled:opacity-50"
             >
-              {isProposing ? 'Proposing...' : 'Propose to group'}
+              {isProposing ? 'Proposition...' : 'Proposer au groupe'}
             </button>
           ) : (
             <button
@@ -1287,7 +1287,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
-              {isSaving ? 'Saving...' : 'Save road trip'}
+              {isSaving ? 'Enregistrement...' : 'Sauvegarder le road trip'}
             </button>
           )}
         </div>
@@ -1310,7 +1310,7 @@ function InfoCard({ label, children }) {
 function FlightSegment({ departureTime, arrivalTime, departureAirport, arrivalAirport, duration }) {
   const formatTime = (time) => {
     if (!time) return '--:--';
-    return new Date(time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    return new Date(time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
