@@ -61,6 +61,29 @@ import { generateAllBookingLinks, getIataCode } from '../utils/bookingLinks';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+// Country name → flag emoji
+const COUNTRY_EMOJIS = {
+  'France': '🇫🇷', 'Spain': '🇪🇸', 'Espagne': '🇪🇸', 'Italy': '🇮🇹', 'Italie': '🇮🇹',
+  'Portugal': '🇵🇹', 'Germany': '🇩🇪', 'Allemagne': '🇩🇪', 'Greece': '🇬🇷', 'Grèce': '🇬🇷',
+  'Japan': '🇯🇵', 'Japon': '🇯🇵', 'Morocco': '🇲🇦', 'Maroc': '🇲🇦', 'Thailand': '🇹🇭',
+  'Thaïlande': '🇹🇭', 'Netherlands': '🇳🇱', 'Pays-Bas': '🇳🇱', 'Czech Republic': '🇨🇿',
+  'Czechia': '🇨🇿', 'Tchéquie': '🇨🇿', 'Austria': '🇦🇹', 'Autriche': '🇦🇹', 'Croatia': '🇭🇷',
+  'Croatie': '🇭🇷', 'Hungary': '🇭🇺', 'Hongrie': '🇭🇺', 'Poland': '🇵🇱', 'Pologne': '🇵🇱',
+  'Iceland': '🇮🇸', 'Islande': '🇮🇸', 'Ireland': '🇮🇪', 'Irlande': '🇮🇪', 'UK': '🇬🇧',
+  'United Kingdom': '🇬🇧', 'Royaume-Uni': '🇬🇧', 'USA': '🇺🇸', 'United States': '🇺🇸',
+  'États-Unis': '🇺🇸', 'Turkey': '🇹🇷', 'Turquie': '🇹🇷', 'Indonesia': '🇮🇩', 'Indonésie': '🇮🇩',
+  'Bali': '🇮🇩', 'Vietnam': '🇻🇳', 'Colombia': '🇨🇴', 'Colombie': '🇨🇴', 'Peru': '🇵🇪',
+  'Pérou': '🇵🇪', 'Mexico': '🇲🇽', 'Mexique': '🇲🇽', 'Canada': '🇨🇦', 'Brazil': '🇧🇷',
+  'Brésil': '🇧🇷', 'Argentina': '🇦🇷', 'Argentine': '🇦🇷', 'Australia': '🇦🇺', 'Australie': '🇦🇺',
+  'New Zealand': '🇳🇿', 'Nouvelle-Zélande': '🇳🇿', 'South Africa': '🇿🇦', 'Afrique du Sud': '🇿🇦',
+  'Egypt': '🇪🇬', 'Égypte': '🇪🇬', 'Kenya': '🇰🇪', 'Dubai': '🇦🇪', 'UAE': '🇦🇪',
+  'Émirats arabes unis': '🇦🇪', 'Singapore': '🇸🇬', 'Singapour': '🇸🇬',
+};
+function getCountryEmoji(country) {
+  if (!country) return '✈️';
+  return COUNTRY_EMOJIS[country] || '🌍';
+}
+
 // Helper to extract city/country from finalDestination which can be flat or nested
 function getDestinationInfo(finalDestination) {
   if (!finalDestination) return { city: null, country: null };
@@ -80,12 +103,14 @@ export default function TripDetail() {
   const [error, setError] = useState(null);
   const [trip, setTrip] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showFriendsManager, setShowFriendsManager] = useState(false);
   const [inviteEmails, setInviteEmails] = useState([]);
   const [currentEmail, setCurrentEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState(null);
+  const [inviteSuccess, setInviteSuccess] = useState(null);
 
   // Tab navigation for group trip sections
   const [activeTab, setActiveTab] = useState('overview');
@@ -142,6 +167,7 @@ export default function TripDetail() {
       const data = await response.json();
       setTrip(data.data.trip);
       setUserRole(data.data.userRole);
+      setCurrentUserId(data.data.currentUserId || null);
     } catch (err) {
       console.error('Error fetching trip:', err);
       setError(err.message);
@@ -186,7 +212,21 @@ export default function TripDetail() {
   };
 
   const handleSendInvitations = async () => {
-    if (inviteEmails.length === 0) return;
+    // Auto-add any email typed but not yet confirmed with Enter
+    let emailsToSend = [...inviteEmails];
+    if (currentEmail.trim()) {
+      const email = currentEmail.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(email) && !emailsToSend.includes(email)) {
+        emailsToSend = [...emailsToSend, email];
+        setInviteEmails(emailsToSend);
+        setCurrentEmail('');
+      }
+    }
+    if (emailsToSend.length === 0) {
+      setInviteError('Ajoutez au moins une adresse email');
+      return;
+    }
 
     try {
       setInviting(true);
@@ -199,25 +239,23 @@ export default function TripDetail() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          emails: inviteEmails,
-        }),
+        body: JSON.stringify({ emails: emailsToSend }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send invitations');
+        throw new Error(errorData.error || 'Impossible d\'envoyer les invitations');
       }
 
       // Success - reset and close modal
       setInviteEmails([]);
       setCurrentEmail('');
       setShowInviteModal(false);
+      setInviteSuccess(`${emailsToSend.length} invitation${emailsToSend.length > 1 ? 's' : ''} envoyée${emailsToSend.length > 1 ? 's' : ''} !`);
+      setTimeout(() => setInviteSuccess(null), 4000);
 
       // Refresh trip data to show new invitations
       await fetchTripDetails();
-
-      alert(`✅ ${inviteEmails.length} invitation(s) envoyée(s) avec succès !`);
     } catch (err) {
       console.error('Error sending invitations:', err);
       setInviteError(err.message);
@@ -384,36 +422,82 @@ export default function TripDetail() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-4xl font-bold text-text-main">
+                <h1 className="text-3xl md:text-4xl font-bold text-text-main leading-tight">
                   {trip.finalDestination
-                    ? `${getDestinationInfo(trip.finalDestination).city} ${getDestinationInfo(trip.finalDestination).country === 'Portugal' ? '🇵🇹' : '🌍'}`
+                    ? getDestinationInfo(trip.finalDestination).city
                     : trip.name}
                 </h1>
+                {trip.finalDestination && (
+                  <span className="text-2xl">
+                    {getCountryEmoji(getDestinationInfo(trip.finalDestination).country)}
+                  </span>
+                )}
               </div>
-              <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${statusInfo.color}`}>
-                {statusInfo.label}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${statusInfo.color}`}>
+                  {statusInfo.label}
+                </span>
+                {trip.finalDestination && getDestinationInfo(trip.finalDestination).country && (
+                  <span className="text-sm text-text-secondary">{getDestinationInfo(trip.finalDestination).country}</span>
+                )}
+              </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {inviteSuccess && (
+                <span className="text-sm text-green-600 font-medium flex items-center gap-1">
+                  <CheckCircle2 size={16} />
+                  {inviteSuccess}
+                </span>
+              )}
               <button
                 onClick={() => setShowInviteModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
               >
-                <UserPlus size={18} />
-                Inviter
+                <UserPlus size={16} />
+                <span className="hidden sm:inline">Inviter des amis</span>
+                <span className="sm:hidden">Inviter</span>
               </button>
               {userRole === 'creator' && (
                 <button
                   onClick={handleDelete}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
                   title="Supprimer le voyage"
                 >
-                  <Trash2 size={20} />
+                  <Trash2 size={16} />
+                  <span className="hidden sm:inline">Supprimer</span>
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Lifecycle Stepper */}
+          <div className="mt-5 flex items-center gap-0">
+            {[
+              { key: 'plan', label: 'Invitation', active: isPlanning, done: !isPlanning },
+              { key: 'vote', label: 'Vote', active: isVoting, done: isConfirmed },
+              { key: 'confirm', label: 'Confirmé', active: isConfirmed, done: false },
+              { key: 'book', label: 'Réservation', active: false, done: false },
+            ].map((step, i, arr) => (
+              <div key={step.key} className="flex items-center flex-1 last:flex-none">
+                <div className="flex items-center gap-1.5">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors ${
+                    step.done ? 'bg-primary text-white' :
+                    step.active ? 'bg-primary text-white ring-2 ring-primary/30' :
+                    'bg-stone-200 text-stone-400'
+                  }`}>
+                    {step.done ? '✓' : i + 1}
+                  </div>
+                  <span className={`text-xs font-medium whitespace-nowrap ${
+                    step.active ? 'text-primary' : step.done ? 'text-text-main' : 'text-stone-400'
+                  }`}>{step.label}</span>
+                </div>
+                {i < arr.length - 1 && (
+                  <div className={`flex-1 h-px mx-2 ${step.done ? 'bg-primary' : 'bg-stone-200'}`} />
+                )}
+              </div>
+            ))}
           </div>
 
           {/* Quick Info */}
@@ -677,7 +761,7 @@ export default function TripDetail() {
         {activeTab === 'expenses' && (
           <TripExpenses
             tripId={trip.id}
-            currentUserId={trip.members?.find(m => m.user?.email === user?.primaryEmailAddress?.emailAddress)?.userId}
+            currentUserId={trip.members?.find(m => m.user?.email === user?.primaryEmailAddress?.emailAddress)?.user?.id}
           />
         )}
 
@@ -686,10 +770,24 @@ export default function TripDetail() {
           <div className="space-y-6">
             {isConfirmed ? (
               <>
+                {/* My Booking Status — quick actions for current user */}
+                {currentUserId && (() => {
+                  const myMember = trip.members?.find(m => m.user?.id === currentUserId);
+                  if (!myMember) return null;
+                  return (
+                    <MyBookingCard
+                      member={myMember}
+                      tripId={trip.id}
+                      getToken={getToken}
+                      onUpdate={fetchTripDetails}
+                    />
+                  );
+                })()}
+
                 {/* Group Booking Status */}
                 <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-bold text-text-main">Suivi des réservations</h2>
+                    <h2 className="text-lg font-bold text-text-main">Suivi du groupe</h2>
                     <button
                       onClick={sendReminders}
                       disabled={sendingReminder}
@@ -711,16 +809,17 @@ export default function TripDetail() {
                           />
                           <span className="font-medium text-text-main">
                             {member.user?.firstName} {member.user?.lastName}
+                            {member.user?.id === currentUserId && (
+                              <span className="ml-2 text-xs text-primary font-normal">(vous)</span>
+                            )}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedFlight ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                            }`}>
+                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedFlight ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                             <Plane size={14} />
                             {member.hasBookedFlight ? 'Vol réservé' : 'Vol en attente'}
                           </div>
-                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedHotel ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                            }`}>
+                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedHotel ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                             <Hotel size={14} />
                             {member.hasBookedHotel ? 'Hôtel réservé' : 'Hôtel en attente'}
                           </div>
@@ -750,73 +849,13 @@ export default function TripDetail() {
 
         {/* ============ SETTINGS TAB ============ */}
         {activeTab === 'settings' && (
-          <div className="space-y-6">
-            {/* Trip Settings */}
-            <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-              <h2 className="text-lg font-bold text-text-main mb-6">Paramètres du voyage</h2>
-
-              <div className="space-y-4">
-                {/* Trip Name */}
-                <div className="p-4 bg-gray-50 rounded-xl">
-                  <label className="text-sm font-medium text-text-secondary">Nom du voyage</label>
-                  <p className="text-lg font-semibold text-text-main mt-1">{trip.name}</p>
-                </div>
-
-                {/* Max Members */}
-                <div className="p-4 bg-gray-50 rounded-xl">
-                  <label className="text-sm font-medium text-text-secondary">Nombre max de participants</label>
-                  <p className="text-lg font-semibold text-text-main mt-1">{trip.maxMembers || 8} personnes</p>
-                </div>
-
-                {/* Vote Deadline */}
-                {trip.voteDeadline && (
-                  <div className="p-4 bg-gray-50 rounded-xl">
-                    <label className="text-sm font-medium text-text-secondary">Date limite de vote</label>
-                    <p className="text-lg font-semibold text-text-main mt-1">
-                      {new Date(trip.voteDeadline).toLocaleDateString('fr-FR', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                )}
-
-                {/* Require All Votes */}
-                <div className="p-4 bg-gray-50 rounded-xl flex items-center justify-between">
-                  <div>
-                    <label className="text-sm font-medium text-text-secondary">Tous les votes requis</label>
-                    <p className="text-sm text-text-secondary mt-1">
-                      {trip.requireAllVotes
-                        ? 'Tous les membres doivent voter avant de finaliser'
-                        : 'Le vote peut être finalisé à tout moment'}
-                    </p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${trip.requireAllVotes ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
-                    }`}>
-                    {trip.requireAllVotes ? 'Oui' : 'Non'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Danger Zone */}
-            {userRole === 'creator' && (
-              <div className="bg-red-50 rounded-2xl border border-red-200 p-6">
-                <h3 className="text-lg font-bold text-red-900 mb-4">Zone de danger</h3>
-                <p className="text-sm text-red-700 mb-4">
-                  Ces actions sont irréversibles. Procédez avec précaution.
-                </p>
-                <button
-                  onClick={handleDelete}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
-                >
-                  <Trash2 size={18} />
-                  Supprimer ce voyage
-                </button>
-              </div>
-            )}
-          </div>
+          <TripSettingsTab
+            trip={trip}
+            userRole={userRole}
+            getToken={getToken}
+            fetchTripDetails={fetchTripDetails}
+            handleDelete={handleDelete}
+          />
         )}
       </div>
 
@@ -1353,29 +1392,43 @@ function PlanningSection({ trip, navigate }) {
 function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
   const { getToken } = useAuth();
   const [voting, setVoting] = useState(false);
+  const [votedForId, setVotedForId] = useState(null); // track locally which dest user just voted for
+  const [voteError, setVoteError] = useState(null);
+  const [finalizing, setFinalizing] = useState(false);
+  const [finalizeError, setFinalizeError] = useState(null);
   const [votingProgress, setVotingProgress] = useState(null);
 
-  // Listen for real-time voting updates via socket
+  // Detect if user has already voted (from trip data)
+  const userVotedDestId = (() => {
+    if (!user || !trip.proposedTrips) return null;
+    for (const dest of trip.proposedTrips) {
+      const myVote = dest.votes?.find(v =>
+        v.voter?.email === user.primaryEmailAddress?.emailAddress
+      );
+      if (myVote) return dest.id;
+    }
+    return null;
+  })();
+
+  const hasVoted = votedForId || userVotedDestId;
+
+  // Total votes across all destinations
+  const totalVotes = trip.proposedTrips?.reduce((sum, d) => sum + (d.votes?.length || 0), 0) || 0;
+  const memberCount = trip.members?.length || 1;
+
+  // Listen for real-time voting updates
   useEffect(() => {
     const handleTripUpdate = (event) => {
       const { type, data } = event.detail || {};
-      if (type === 'vote_submitted') {
-        setVotingProgress(data);
-      }
-      if (type === 'voting_complete' || type === 'destination_finalized') {
-        // Refresh to show BookingChecklistSection
-        fetchTripDetails();
-      }
+      if (type === 'vote_submitted') setVotingProgress(data);
+      if (type === 'voting_complete' || type === 'destination_finalized') fetchTripDetails();
     };
-
     window.addEventListener('trip-update', handleTripUpdate);
     return () => window.removeEventListener('trip-update', handleTripUpdate);
   }, [fetchTripDetails]);
 
-  // Calculate winning destination based on current votes
   const getWinningDestinationId = () => {
     if (!trip.proposedTrips?.length) return null;
-
     const scored = trip.proposedTrips.map(dest => ({
       id: dest.id,
       score: (dest.votes || []).reduce((sum, v) => {
@@ -1385,172 +1438,216 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
         return sum;
       }, 0),
     }));
-
     scored.sort((a, b) => b.score - a.score);
     return scored[0]?.id;
   };
 
-  // Finalize voting (creator only)
   const handleFinalizeVote = async () => {
     const destinationId = getWinningDestinationId();
     if (!destinationId) return;
-
     try {
-      setVoting(true);
+      setFinalizing(true);
+      setFinalizeError(null);
       const token = await getToken();
-
       const response = await fetch(`${API_URL}/api/trips/${trip.id}/finalize-vote`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ destinationId }),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to finalize vote');
+        throw new Error(errorData.error || 'Échec de la finalisation');
       }
-
       await fetchTripDetails();
     } catch (err) {
       console.error('Error finalizing vote:', err);
-      alert(err.message || 'Impossible de finaliser le vote.');
+      setFinalizeError(err.message);
     } finally {
-      setVoting(false);
+      setFinalizing(false);
     }
   };
 
   const handleVote = async (destinationId) => {
     try {
       setVoting(true);
+      setVoteError(null);
       const token = await getToken();
-
-      // Backend expects: { votes: [{ destinationId, rank }] }
       const response = await fetch(`${API_URL}/api/trips/${trip.id}/vote`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          votes: [{ destinationId, rank: 1 }]
-        }),
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ votes: [{ destinationId, rank: 1 }] }),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to vote');
+        throw new Error(errorData.error || 'Impossible de voter');
       }
-
+      setVotedForId(destinationId);
       await fetchTripDetails();
     } catch (err) {
       console.error('Error voting:', err);
-      alert(err.message || 'Impossible de voter. Veuillez réessayer.');
+      setVoteError(err.message);
     } finally {
       setVoting(false);
     }
   };
 
+  const votedMembersCount = votingProgress?.votedMembers
+    ?? trip.proposedTrips?.reduce((set, d) => {
+      (d.votes || []).forEach(v => v.voter?.email && set.add(v.voter.email));
+      return set;
+    }, new Set()).size;
+
   return (
-    <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-      <h2 className="text-lg font-bold text-text-main mb-4">Destinations proposées</h2>
-      <p className="text-sm text-text-secondary mb-6">
-        Votez pour votre destination préférée. Celle qui obtient le plus de votes sera sélectionnée.
-      </p>
-
-      <div className="space-y-4">
-        {trip.proposedTrips?.map((proposed) => (
-          <div
-            key={proposed.id}
-            className="p-6 border-2 border-stone-200 rounded-xl hover:border-primary hover:bg-primary-light/30 transition-all cursor-pointer"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h3 className="text-lg font-bold text-text-main">
-                  {proposed.city || proposed.tripData?.destination?.city}, {proposed.country || proposed.tripData?.destination?.country}
-                </h3>
-                <p className="text-sm text-text-secondary">
-                  Proposé par {proposed.proposer?.firstName || proposed.proposedBy?.firstName || 'Inconnu'}
-                </p>
-              </div>
-              <button
-                onClick={() => handleVote(proposed.id)}
-                disabled={voting}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50"
-              >
-                Voter
-              </button>
-            </div>
-
-            {/* Match Reason - Why this destination fits */}
-            {(proposed.tripData?.matchReason || proposed.tripData?.destination?.matchReason) && (
-              <div className="mb-3 p-3 bg-primary-light/30 border border-primary/20 rounded-lg">
-                <p className="text-sm text-text-main flex items-start gap-2">
-                  <Sparkles size={16} className="text-primary mt-0.5 flex-shrink-0" />
-                  <span>{proposed.tripData?.matchReason || proposed.tripData?.destination?.matchReason}</span>
-                </p>
-                {(proposed.tripData?.seasonReason || proposed.tripData?.destination?.seasonReason) && (
-                  <p className="text-xs text-text-secondary mt-1 ml-6">
-                    {proposed.tripData?.seasonReason || proposed.tripData?.destination?.seasonReason}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="flex items-center gap-4 text-sm text-text-secondary">
-              {(proposed.startDate || proposed.tripData?.slot?.startDate) && (
-                <div className="flex items-center gap-2">
-                  <Calendar size={16} />
-                  <span>
-                    {new Date(proposed.startDate || proposed.tripData.slot.startDate).toLocaleDateString('fr-FR', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </span>
-                </div>
-              )}
-              {(proposed.estimatedCostPerPerson || proposed.tripData?.pricing?.total) && (
-                <div className="flex items-center gap-2">
-                  <span>€{Math.round(proposed.estimatedCostPerPerson || proposed.tripData.pricing.total)}/pers</span>
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Users size={16} />
-                <span>{proposed.votes?.length || 0} votes</span>
-              </div>
-            </div>
-          </div>
-        ))}
+    <div className="bg-white rounded-2xl border border-stone-100 p-6">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-2">
+        <h2 className="text-lg font-bold text-text-main">Vote pour la destination</h2>
+        {hasVoted && (
+          <span className="flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-100 px-3 py-1.5 rounded-full">
+            <CheckCircle2 size={14} />
+            Vous avez voté
+          </span>
+        )}
       </div>
 
-      {/* Finalize Vote Button - Creator Only */}
-      {isCreator && trip.proposedTrips?.length > 0 && (
-        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-          <div className="flex items-start justify-between">
-            <div>
-              <h4 className="font-semibold text-amber-900 mb-1">Prêt à décider ?</h4>
-              <p className="text-sm text-amber-700">
-                En tant que créateur, tu peux finaliser le vote et sélectionner la destination gagnante.
-              </p>
-              {votingProgress && (
-                <p className="text-xs text-amber-600 mt-1">
-                  {votingProgress.votedMembers}/{votingProgress.totalVoters} ont voté ({votingProgress.votingProgress}%)
-                </p>
+      {/* Progress bar: votes cast */}
+      <div className="mb-6">
+        <div className="flex justify-between text-xs text-text-secondary mb-1.5">
+          <span>{votedMembersCount} membre{votedMembersCount !== 1 ? 's' : ''} ont voté</span>
+          <span>sur {memberCount}</span>
+        </div>
+        <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary rounded-full transition-all duration-500"
+            style={{ width: `${Math.min(100, (votedMembersCount / memberCount) * 100)}%` }}
+          />
+        </div>
+      </div>
+
+      {voteError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+          <AlertCircle size={16} />
+          {voteError}
+        </div>
+      )}
+
+      {/* Destination cards */}
+      <div className="space-y-4">
+        {trip.proposedTrips?.map((proposed) => {
+          const voteCount = proposed.votes?.length || 0;
+          const votePercent = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
+          const isMyVote = (votedForId === proposed.id) || (userVotedDestId === proposed.id);
+          const city = proposed.city || proposed.tripData?.destination?.city || '?';
+          const country = proposed.country || proposed.tripData?.destination?.country || '';
+
+          return (
+            <div
+              key={proposed.id}
+              className={`p-5 border-2 rounded-xl transition-all ${
+                isMyVote
+                  ? 'border-primary bg-primary-light'
+                  : 'border-stone-200 hover:border-stone-300'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="text-base font-bold text-text-main truncate">
+                      {city}{country ? `, ${country}` : ''}
+                    </h3>
+                    <span className="text-lg">{getCountryEmoji(country)}</span>
+                    {isMyVote && (
+                      <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                        Votre choix
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-text-secondary">
+                    Proposé par {proposed.proposer?.firstName || 'Inconnu'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleVote(proposed.id)}
+                  disabled={voting}
+                  className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 ${
+                    isMyVote
+                      ? 'bg-primary text-white'
+                      : hasVoted
+                        ? 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        : 'bg-primary text-white hover:bg-primary-hover'
+                  }`}
+                >
+                  {voting && votedForId === proposed.id ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : isMyVote ? (
+                    '✓ Voté'
+                  ) : (
+                    hasVoted ? 'Changer' : 'Voter'
+                  )}
+                </button>
+              </div>
+
+              {/* Match reason */}
+              {(proposed.tripData?.matchReason || proposed.tripData?.destination?.matchReason) && (
+                <div className="mb-3 p-2.5 bg-white/60 rounded-lg text-xs text-text-secondary flex items-start gap-1.5">
+                  <Sparkles size={13} className="text-primary mt-0.5 flex-shrink-0" />
+                  <span>{proposed.tripData?.matchReason || proposed.tripData?.destination?.matchReason}</span>
+                </div>
               )}
+
+              {/* Meta + Vote bar */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-secondary mb-3">
+                {(proposed.startDate || proposed.tripData?.slot?.startDate) && (
+                  <span className="flex items-center gap-1">
+                    <Calendar size={13} />
+                    {new Date(proposed.startDate || proposed.tripData.slot.startDate).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}
+                  </span>
+                )}
+                {(proposed.estimatedCostPerPerson || proposed.tripData?.pricing?.total) && (
+                  <span>€{Math.round(proposed.estimatedCostPerPerson || proposed.tripData.pricing.total)}/pers</span>
+                )}
+              </div>
+
+              {/* Vote bar */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${isMyVote ? 'bg-primary' : 'bg-stone-400'}`}
+                    style={{ width: `${votePercent}%` }}
+                  />
+                </div>
+                <span className={`text-xs font-semibold flex-shrink-0 ${isMyVote ? 'text-primary' : 'text-text-secondary'}`}>
+                  {voteCount} vote{voteCount !== 1 ? 's' : ''} · {votePercent}%
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Finalize Vote - Creator Only */}
+      {isCreator && trip.proposedTrips?.length > 0 && (
+        <div className="mt-6 p-4 bg-stone-50 border border-stone-200 rounded-xl">
+          {finalizeError && (
+            <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+              <AlertCircle size={14} />
+              {finalizeError}
+            </div>
+          )}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h4 className="font-semibold text-text-main mb-1">Clôturer le vote</h4>
+              <p className="text-sm text-text-secondary">
+                La destination avec le plus de votes sera confirmée et le voyage passera en phase de réservation.
+              </p>
             </div>
             <button
               onClick={handleFinalizeVote}
-              disabled={voting || !trip.proposedTrips?.some(p => p.votes?.length > 0)}
-              className="px-4 py-2 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              disabled={finalizing || !trip.proposedTrips?.some(p => p.votes?.length > 0)}
+              className="flex-shrink-0 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              {voting ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <CheckCircle2 size={16} />
-              )}
-              Finaliser
+              {finalizing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+              Confirmer
             </button>
           </div>
         </div>
@@ -1560,6 +1657,237 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
 }
 
 // Booking Checklist Section - When destination is confirmed
+// Editable settings tab (creator only for editing)
+function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDelete }) {
+  const isCreator = userRole === 'creator';
+  const [name, setName] = useState(trip.name);
+  const [maxMembers, setMaxMembers] = useState(trip.maxMembers || 8);
+  const [requireAllVotes, setRequireAllVotes] = useState(trip.requireAllVotes || false);
+  const [voteDeadline, setVoteDeadline] = useState(
+    trip.voteDeadline ? new Date(trip.voteDeadline).toISOString().split('T')[0] : ''
+  );
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/api/trips/${trip.id}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          maxMembers: parseInt(maxMembers, 10),
+          requireAllVotes,
+          voteDeadline: voteDeadline || null,
+        }),
+      });
+      if (!res.ok) throw new Error('Impossible de sauvegarder les modifications');
+      await fetchTripDetails();
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setSaveError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-text-main">Paramètres du voyage</h2>
+          {!isCreator && (
+            <span className="text-xs text-text-secondary bg-stone-100 px-3 py-1 rounded-full">Lecture seule</span>
+          )}
+        </div>
+
+        <div className="space-y-5">
+          {/* Trip Name */}
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1.5">Nom du voyage</label>
+            {isCreator ? (
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            ) : (
+              <p className="px-4 py-2.5 bg-stone-50 rounded-xl font-medium text-text-main">{trip.name}</p>
+            )}
+          </div>
+
+          {/* Max Members */}
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1.5">Nombre max de participants</label>
+            {isCreator ? (
+              <input
+                type="number"
+                min={trip.members?.length || 1}
+                max={50}
+                value={maxMembers}
+                onChange={e => setMaxMembers(e.target.value)}
+                className="w-32 px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            ) : (
+              <p className="px-4 py-2.5 bg-stone-50 rounded-xl font-medium text-text-main">{trip.maxMembers || 8} personnes</p>
+            )}
+          </div>
+
+          {/* Vote Deadline */}
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1.5">Date limite de vote</label>
+            {isCreator ? (
+              <input
+                type="date"
+                value={voteDeadline}
+                onChange={e => setVoteDeadline(e.target.value)}
+                className="w-48 px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            ) : (
+              <p className="px-4 py-2.5 bg-stone-50 rounded-xl font-medium text-text-main">
+                {trip.voteDeadline
+                  ? new Date(trip.voteDeadline).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+                  : 'Non définie'}
+              </p>
+            )}
+          </div>
+
+          {/* Require All Votes */}
+          <div className="flex items-center justify-between p-4 bg-stone-50 rounded-xl">
+            <div>
+              <p className="text-sm font-medium text-text-main">Tous les votes requis</p>
+              <p className="text-xs text-text-secondary mt-0.5">
+                {requireAllVotes
+                  ? 'Tous les membres doivent voter avant de finaliser'
+                  : 'Le vote peut être finalisé à tout moment'}
+              </p>
+            </div>
+            {isCreator ? (
+              <button
+                onClick={() => setRequireAllVotes(!requireAllVotes)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${requireAllVotes ? 'bg-primary' : 'bg-stone-300'}`}
+              >
+                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${requireAllVotes ? 'left-6' : 'left-1'}`} />
+              </button>
+            ) : (
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${requireAllVotes ? 'bg-green-100 text-green-700' : 'bg-stone-200 text-stone-600'}`}>
+                {requireAllVotes ? 'Oui' : 'Non'}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Save button */}
+        {isCreator && (
+          <div className="mt-6 flex items-center gap-3">
+            {saveError && <p className="text-sm text-red-500">{saveError}</p>}
+            {saveSuccess && <p className="text-sm text-green-600 flex items-center gap-1"><CheckCircle2 size={14} /> Sauvegardé</p>}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors disabled:opacity-50"
+            >
+              {saving ? <Loader2 size={16} className="animate-spin" /> : null}
+              {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Danger Zone */}
+      {isCreator && (
+        <div className="bg-red-50 rounded-2xl border border-red-200 p-6">
+          <h3 className="text-lg font-bold text-red-900 mb-2">Zone de danger</h3>
+          <p className="text-sm text-red-700 mb-4">Ces actions sont irréversibles.</p>
+          <button
+            onClick={handleDelete}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <Trash2 size={18} />
+            Supprimer ce voyage
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// My Booking Card — lets the current user mark their own flight/hotel as booked
+function MyBookingCard({ member, tripId, getToken, onUpdate }) {
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
+  const updateStatus = async (field, value) => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/api/trips/${tripId}/booking-status`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (!res.ok) throw new Error('Erreur lors de la mise à jour');
+      await onUpdate();
+    } catch (err) {
+      setSaveError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const allBooked = member.hasBookedFlight && member.hasBookedHotel;
+
+  return (
+    <div className={`rounded-2xl border-2 p-5 ${allBooked ? 'bg-green-50 border-green-200' : 'bg-white border-primary/20'}`}>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-bold text-text-main flex items-center gap-2">
+          <CheckSquare size={18} className={allBooked ? 'text-green-600' : 'text-primary'} />
+          Mes réservations
+        </h3>
+        {allBooked && (
+          <span className="text-xs font-semibold text-green-700 bg-green-100 px-2.5 py-1 rounded-full flex items-center gap-1">
+            <CheckCircle2 size={13} /> Tout réservé
+          </span>
+        )}
+      </div>
+      {saveError && <p className="text-red-500 text-sm mb-3">{saveError}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => updateStatus('hasBookedFlight', !member.hasBookedFlight)}
+          disabled={saving}
+          className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+            member.hasBookedFlight
+              ? 'bg-green-100 text-green-700 border-2 border-green-300'
+              : 'bg-stone-100 text-stone-600 hover:bg-stone-200 border-2 border-transparent'
+          }`}
+        >
+          {saving ? <Loader2 size={16} className="animate-spin" /> : <Plane size={16} />}
+          {member.hasBookedFlight ? 'Vol réservé ✓' : 'Marquer vol réservé'}
+        </button>
+        <button
+          onClick={() => updateStatus('hasBookedHotel', !member.hasBookedHotel)}
+          disabled={saving}
+          className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+            member.hasBookedHotel
+              ? 'bg-green-100 text-green-700 border-2 border-green-300'
+              : 'bg-stone-100 text-stone-600 hover:bg-stone-200 border-2 border-transparent'
+          }`}
+        >
+          {saving ? <Loader2 size={16} className="animate-spin" /> : <Hotel size={16} />}
+          {member.hasBookedHotel ? 'Hôtel réservé ✓' : 'Marquer hôtel réservé'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
   const [sendingReminders, setSendingReminders] = useState(false);
   const [reminderResult, setReminderResult] = useState(null);

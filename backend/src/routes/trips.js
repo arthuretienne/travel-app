@@ -334,6 +334,7 @@ router.get('/:id', authenticateUser, async (req, res) => {
       data: {
         trip,
         userRole,
+        currentUserId: user.id,
         permissions: {
           canInvite: isCreator || userRole === 'organizer',
           canPropose: isMember || isCreator,
@@ -774,6 +775,45 @@ router.patch('/:id', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Error updating trip:', error);
     res.status(500).json({ error: 'Failed to update trip' });
+  }
+});
+
+/**
+ * PATCH /api/trips/:id/booking-status
+ * Update current user's booking status (hasBookedFlight, hasBookedHotel)
+ */
+router.patch('/:id/booking-status', authenticateUser, async (req, res) => {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+    const { hasBookedFlight, hasBookedHotel } = req.body;
+
+    const member = await prisma.tripMember.findFirst({
+      where: { tripId: id, userId: user.id },
+    });
+
+    if (!member) {
+      return res.status(403).json({ error: 'You are not a member of this trip' });
+    }
+
+    const updateData = {};
+    if (hasBookedFlight !== undefined) updateData.hasBookedFlight = hasBookedFlight;
+    if (hasBookedHotel !== undefined) updateData.hasBookedHotel = hasBookedHotel;
+    if (updateData.hasBookedFlight && updateData.hasBookedHotel) {
+      updateData.bookingConfirmed = true;
+    } else if (hasBookedFlight === false || hasBookedHotel === false) {
+      updateData.bookingConfirmed = false;
+    }
+
+    const updated = await prisma.tripMember.update({
+      where: { id: member.id },
+      data: updateData,
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('Error updating booking status:', error);
+    res.status(500).json({ error: 'Failed to update booking status' });
   }
 });
 
