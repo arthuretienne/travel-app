@@ -1,6 +1,6 @@
 // frontend/src/pages/CreateTrip.jsx
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import {
   Mountain, Landmark, Palmtree, Building2, Utensils,
@@ -65,11 +65,13 @@ const FLIGHT_DURATION_OPTIONS = [
 
 function CreateTrip() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useUser();
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [loadingStage, setLoadingStage] = useState('analyzing');
   const [loadingPreferences, setLoadingPreferences] = useState(true);
+  const [profileLoadTimeout, setProfileLoadTimeout] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [usageData, setUsageData] = useState(null);
 
@@ -114,6 +116,21 @@ function CreateTrip() {
       loadUserPreferences();
     }
   }, [user]);
+
+  // Pre-fill destination from Landing page search (navigation state or sessionStorage)
+  useEffect(() => {
+    const prefilled = location.state?.prefilledDestination
+      || (() => { try { return JSON.parse(sessionStorage.getItem('pendingDestination') || 'null'); } catch { return null; } })();
+    if (prefilled?.city) {
+      setFormData(prev => ({
+        ...prev,
+        destination: prefilled.city,
+        destinationCountry: prefilled.country || null,
+        destinationCode: prefilled.iata || null,
+      }));
+      sessionStorage.removeItem('pendingDestination');
+    }
+  }, []);
 
   // Auto-calculate based on date mode
   useEffect(() => {
@@ -193,7 +210,11 @@ function CreateTrip() {
         setUsageData(usageResult);
       }
     } catch (error) {
-      console.error('Error loading preferences:', error);
+      if (error.message === 'timeout') {
+        setProfileLoadTimeout(true);
+      } else {
+        console.error('Error loading preferences:', error);
+      }
     } finally {
       setLoadingPreferences(false);
     }
@@ -272,6 +293,14 @@ function CreateTrip() {
     if (!formData.isGroupTrip && usageData?.needsUpgrade) {
       newErrors.submit = 'Vous avez atteint votre limite mensuelle de recherches. Passez à un plan supérieur pour continuer.';
       return false;
+    }
+
+    if (!formData.budget || formData.budget < BUDGET_CONFIG.min) {
+      newErrors.budget = 'Veuillez définir un budget pour votre voyage';
+    }
+
+    if (!formData.mustHaves || formData.mustHaves.length === 0) {
+      newErrors.mustHaves = 'Sélectionnez au moins une activité';
     }
 
     if (!formData.duration || formData.duration < 1 || formData.duration > 30) {
@@ -467,6 +496,14 @@ function CreateTrip() {
         />
       )}
 
+      {/* Cold start banner */}
+      {profileLoadTimeout && (
+        <div className="max-w-2xl mx-auto mb-4 flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
+          <Loader2 size={15} className="animate-spin flex-shrink-0" />
+          <span>Démarrage en cours... Vos préférences seront chargées dans quelques instants. Vous pouvez déjà remplir le formulaire.</span>
+        </div>
+      )}
+
       {/* HERO */}
       <div className="max-w-2xl mx-auto text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-text-main mb-2">
@@ -614,17 +651,30 @@ function CreateTrip() {
 
         {/* ── Section 3 : Activités ── */}
         <div className="px-6 md:px-10 py-8 space-y-4">
-          <p className="text-base font-semibold text-text-main flex items-center gap-2">
-            <Sparkles size={18} className="text-primary" />
-            Quels types d'activités ?
-            <span className="text-xs font-normal text-text-secondary ml-1">Multi-sélection</span>
-          </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center justify-between">
+            <p className="text-base font-semibold text-text-main flex items-center gap-2">
+              <Sparkles size={18} className="text-primary" />
+              Quels types d'activités ?
+              <span className="text-xs font-normal text-text-secondary ml-1">Multi-sélection</span>
+            </p>
+            {formData.mustHaves.length > 0 && (
+              <span className="text-xs text-primary font-medium bg-primary-light px-2.5 py-1 rounded-full">
+                {formData.mustHaves.length} sélectionnée{formData.mustHaves.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          {errors.mustHaves && (
+            <p className="text-red-500 text-xs -mt-1">{errors.mustHaves}</p>
+          )}
+          <div className={`flex flex-wrap gap-2 ${errors.mustHaves ? 'ring-1 ring-red-200 rounded-xl p-3 bg-red-50/30' : ''}`}>
             {ACTIVITY_OPTIONS.map(option => (
               <button
                 key={option.value}
                 type="button"
-                onClick={() => toggleMustHave(option.value)}
+                onClick={() => {
+                  toggleMustHave(option.value);
+                  if (errors.mustHaves) setErrors(prev => ({ ...prev, mustHaves: null }));
+                }}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-sm transition-all ${
                   formData.mustHaves.includes(option.value)
                     ? 'bg-primary-light border-primary text-primary font-medium ring-2 ring-primary/20'
@@ -640,10 +690,16 @@ function CreateTrip() {
 
         {/* ── Section 4 : Budget ── */}
         <div className="px-6 md:px-10 py-8 space-y-4">
-          <p className="text-base font-semibold text-text-main flex items-center gap-2">
-            <DollarSign size={18} className="text-primary" />
-            Budget par personne
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-base font-semibold text-text-main flex items-center gap-2">
+              <DollarSign size={18} className="text-primary" />
+              Budget par personne
+              <span className="text-red-500 text-sm">*</span>
+            </p>
+            {errors.budget && (
+              <p className="text-red-500 text-xs">{errors.budget}</p>
+            )}
+          </div>
 
           {/* Presets */}
           <div className="grid grid-cols-3 gap-3">
@@ -839,19 +895,41 @@ function CreateTrip() {
             Laissez vide pour que l'IA suggère les destinations qui vous correspondent le mieux
           </p>
           {errors.destination && <p className="text-red-500 text-xs mb-1">{errors.destination}</p>}
-          <DestinationAutocomplete
-            value={formData.destination}
-            onChange={(data) => {
-              setFormData(prev => ({
-                ...prev,
-                destination: data.destination,
-                destinationId: data.destinationId,
-                destinationCode: data.destinationCode,
-                destinationCountry: data.destinationCountry,
-              }));
-            }}
-            placeholder="Rechercher : Bali, Tokyo, Barcelone..."
-          />
+          {formData.destination && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary-light border border-primary/30 rounded-xl text-sm text-primary font-medium">
+              <MapPin size={14} className="flex-shrink-0" />
+              <span>Destination pré-remplie : <strong>{formData.destination}</strong>{formData.destinationCountry ? `, ${formData.destinationCountry}` : ''}</span>
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({
+                  ...prev,
+                  destination: '',
+                  destinationId: null,
+                  destinationCode: null,
+                  destinationCountry: null,
+                }))}
+                className="ml-auto hover:text-primary-hover transition-colors"
+                aria-label="Effacer la destination"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          {!formData.destination && (
+            <DestinationAutocomplete
+              value={formData.destination}
+              onChange={(data) => {
+                setFormData(prev => ({
+                  ...prev,
+                  destination: data.destination,
+                  destinationId: data.destinationId,
+                  destinationCode: data.destinationCode,
+                  destinationCountry: data.destinationCountry,
+                }));
+              }}
+              placeholder="Rechercher : Bali, Tokyo, Barcelone..."
+            />
+          )}
         </div>
 
         {/* ── Section 7 : Ville de départ ── */}
@@ -953,16 +1031,23 @@ function CreateTrip() {
         {/* ── Submit ── */}
         <div className="px-6 md:px-10 py-8">
           {!formData.isGroupTrip && usageData && (
-            <div className="mb-5 flex items-center justify-between">
-              <SearchUsageWidget compact />
+            <div className="mb-5">
+              <div className="flex items-center justify-between">
+                <SearchUsageWidget compact />
+              </div>
               {usageData.needsUpgrade && (
-                <button
-                  type="button"
-                  onClick={() => navigate('/pricing')}
-                  className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors"
-                >
-                  Passer à Premium
-                </button>
+                <div className="mt-3 flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p className="text-sm text-amber-800 font-medium">
+                    Limite atteinte — Passez premium pour continuer
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/pricing')}
+                    className="flex-shrink-0 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-hover transition-colors"
+                  >
+                    Voir les offres →
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -979,10 +1064,10 @@ function CreateTrip() {
             <button
               type="submit"
               disabled={loading || (usageData?.needsUpgrade && !formData.isGroupTrip)}
-              className={`px-8 py-3 font-semibold rounded-xl shadow-lg transition-all flex items-center gap-2 text-sm ${
+              className={`px-8 py-3 font-semibold rounded-xl transition-all flex items-center gap-2 text-sm ${
                 usageData?.needsUpgrade && !formData.isGroupTrip
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-primary text-white shadow-primary/20 hover:bg-primary-hover disabled:opacity-70 disabled:cursor-not-allowed'
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                  : 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-hover hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0'
               }`}
             >
               {loading ? (
