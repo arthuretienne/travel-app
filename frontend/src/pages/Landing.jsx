@@ -1,9 +1,9 @@
 // frontend/src/pages/Landing.jsx
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, SignInButton, UserButton, useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
-import { Plane, ArrowRight, Globe, Sparkles, Calendar, CreditCard, Users, ChevronRight, Star, MapPin, Search, ExternalLink, Hotel } from 'lucide-react';
+import { Plane, ArrowRight, Globe, Sparkles, Calendar, CreditCard, Users, ChevronRight, Star, MapPin, Search, ChevronDown } from 'lucide-react';
 import { getFeaturedDestinations, getDestinationImage } from '../utils/destinationImages';
 import { AIRPORTS, searchAirports, getPrimaryAirport } from '../data/airports';
 import { generateFlightLink, generateHotelLink, generateActivitiesLink } from '../utils/bookingLinks';
@@ -39,6 +39,7 @@ function LanguageSwitcher() {
 function Landing() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { isSignedIn } = useAuth();
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,6 +47,7 @@ function Landing() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState(null);
   const searchRef = useRef(null);
+  const howItWorksRef = useRef(null);
 
   // Handle search input
   const handleSearchChange = (e) => {
@@ -87,10 +89,9 @@ function Landing() {
     setShowSuggestions(false);
   };
 
-  // Handle search submit
+  // Handle search submit — for signed-in users, go straight to AI search
   const handleSearch = () => {
     if (!selectedDestination && searchQuery) {
-      // Try to find a matching destination
       const airport = getPrimaryAirport(searchQuery);
       if (airport) {
         setSelectedDestination({ city: airport.city, country: airport.country, iata: airport.code });
@@ -100,14 +101,14 @@ function Landing() {
     const dest = selectedDestination || { city: searchQuery, country: '' };
     if (!dest.city) return;
 
-    // Generate booking links and open flight search
-    const flightUrl = generateFlightLink({
-      destinationCity: dest.city,
-      destinationIata: dest.iata,
-      destinationCountry: dest.country
-    });
-
-    window.open(flightUrl, '_blank');
+    if (isSignedIn) {
+      // Keep users in the funnel — go to AI search with destination pre-filled
+      navigate('/create', { state: { prefilledDestination: dest } });
+    } else {
+      // Guests: store destination and redirect after sign-in
+      sessionStorage.setItem('pendingDestination', JSON.stringify(dest));
+      navigate('/create', { state: { prefilledDestination: dest } });
+    }
   };
 
   // Close suggestions on click outside
@@ -136,6 +137,12 @@ function Landing() {
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
             <SignedOut>
+              <Link
+                to="/pricing"
+                className="hidden sm:block px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-main transition-colors"
+              >
+                Tarifs
+              </Link>
               <SignInButton mode="modal">
                 <button className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-main transition-colors">
                   {t('nav.signIn')}
@@ -180,22 +187,36 @@ function Landing() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <SignedOut>
                 <SignInButton mode="modal">
-                  <button className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-lg font-medium rounded-xl hover:bg-primary-hover transition-colors">
+                  <button className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-lg font-medium rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5">
                     {t('landing.cta')}
                     <ArrowRight size={20} />
                   </button>
                 </SignInButton>
+                <button
+                  onClick={() => howItWorksRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 text-text-main text-lg font-medium rounded-xl border border-stone-200 hover:border-stone-300 hover:bg-stone-50 transition-colors"
+                >
+                  Comment ça marche
+                  <ChevronDown size={20} />
+                </button>
               </SignedOut>
               <SignedIn>
                 <button
+                  onClick={() => navigate('/create')}
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-lg font-medium rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5"
+                >
+                  Planifier un voyage
+                  <ArrowRight size={20} />
+                </button>
+                <button
                   onClick={() => navigate('/dashboard')}
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-lg font-medium rounded-xl hover:bg-primary-hover transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 text-text-main text-lg font-medium rounded-xl border border-stone-200 hover:border-stone-300 hover:bg-stone-50 transition-colors"
                 >
                   {t('landing.ctaDashboard')}
-                  <ArrowRight size={20} />
                 </button>
               </SignedIn>
             </div>
+            <p className="mt-4 text-sm text-text-secondary">{t('landing.noCreditCard')}</p>
           </div>
 
           {/* Hero Visual - Trip Cards Preview */}
@@ -257,7 +278,7 @@ function Landing() {
                 )}
 
                 {/* Quick Access - Popular Destinations */}
-                <div className="flex flex-wrap gap-2 mt-3">
+                <div className="flex flex-wrap gap-2 mt-3 items-center">
                   <span className="text-xs text-text-secondary">{t('landing.popular')}</span>
                   {POPULAR_DESTINATIONS.slice(0, 4).map((dest, idx) => (
                     <button
@@ -268,6 +289,10 @@ function Landing() {
                       {dest.city}
                     </button>
                   ))}
+                  <span className="ml-auto text-xs text-text-secondary flex items-center gap-1">
+                    <Sparkles size={11} className="text-primary" />
+                    Propulsé par l'IA
+                  </span>
                 </div>
               </div>
 
@@ -295,12 +320,12 @@ function Landing() {
                           <p className="text-sm text-text-secondary">{dest.country}</p>
                         </div>
                         <div className="px-2 py-1 bg-primary-light text-primary text-xs font-medium rounded">
-                          {dest.match}% match
+                          {dest.match}% compatible
                         </div>
                       </div>
                       <div className="flex items-center justify-between pt-2 border-t border-stone-100">
                         <span className="font-semibold text-text-main">€{dest.price}</span>
-                        <span className="text-xs text-text-secondary">7 days • flights + hotel</span>
+                        <span className="text-xs text-text-secondary">7 j · vol + hôtel</span>
                       </div>
                     </div>
                   </div>
@@ -312,7 +337,7 @@ function Landing() {
       </section>
 
       {/* How it Works */}
-      <section className="py-24 px-6 bg-stone-50">
+      <section ref={howItWorksRef} className="py-24 px-6 bg-stone-50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="font-display text-3xl md:text-4xl font-medium text-text-main mb-4">
@@ -416,8 +441,8 @@ function Landing() {
                     <Sparkles size={18} className="text-white" />
                   </div>
                   <div>
-                    <p className="font-medium text-text-main">AI Assistant</p>
-                    <p className="text-xs text-text-secondary">Based on your profile</p>
+                    <p className="font-medium text-text-main">Assistant IA</p>
+                    <p className="text-xs text-text-secondary">Basé sur votre profil</p>
                   </div>
                 </div>
                 <p className="text-text-secondary text-sm leading-relaxed">
@@ -426,7 +451,7 @@ function Landing() {
               </div>
 
               <div className="grid grid-cols-3 gap-3">
-                {['🏔️ Alps', '🏖️ Beach', '🏛️ Culture'].map((tag, i) => (
+                {['🏔️ Montagne', '🏖️ Plage', '🏛️ Culture'].map((tag, i) => (
                   <div key={i} className="bg-white rounded-lg p-3 text-center border border-stone-100">
                     <span className="text-sm">{tag}</span>
                   </div>
@@ -437,30 +462,71 @@ function Landing() {
         </div>
       </section>
 
-      {/* Social Proof */}
-      <section className="py-16 px-6 bg-primary-light">
+      {/* Social Proof / Testimonials */}
+      <section className="py-16 px-6 bg-stone-50 border-y border-stone-100">
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-2">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={20} className="text-primary fill-primary" />
-              ))}
-              <span className="ml-2 font-medium text-text-main">{t('landing.rating')}</span>
+          {/* Stats row */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-8 md:gap-16 mb-12">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-text-main">150+</div>
+              <div className="text-sm text-text-secondary mt-1">{t('landing.destinations')}</div>
             </div>
-            <div className="flex items-center gap-8 text-text-secondary">
-              <div className="text-center">
-                <div className="text-2xl font-semibold text-text-main">10k+</div>
-                <div className="text-sm">{t('landing.tripsPlanned')}</div>
+            <div className="hidden sm:block w-px h-12 bg-stone-200" />
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} size={16} className="text-amber-400 fill-amber-400" />
+                ))}
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-semibold text-text-main">150+</div>
-                <div className="text-sm">{t('landing.destinations')}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-semibold text-text-main">€2.3M</div>
-                <div className="text-sm">{t('landing.savedForTravelers')}</div>
-              </div>
+              <div className="text-sm text-text-secondary">{t('landing.rating')}</div>
             </div>
+            <div className="hidden sm:block w-px h-12 bg-stone-200" />
+            <div className="text-center">
+              <div className="text-3xl font-bold text-text-main">Gratuit</div>
+              <div className="text-sm text-text-secondary mt-1">pour commencer</div>
+            </div>
+          </div>
+
+          {/* Testimonial cards */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                quote: "En 5 minutes, j'avais 3 destinations avec vols et hôtels correspondant exactement à mon budget. Impressionnant.",
+                name: "Marie L.",
+                trip: "Voyage à Lisbonne",
+                avatar: "ML",
+              },
+              {
+                quote: "On était 6 amis avec des budgets très différents. Skusku a trouvé un destination qui convenait à tout le monde. Magique.",
+                name: "Thomas R.",
+                trip: "Trip en groupe à Prague",
+                avatar: "TR",
+              },
+              {
+                quote: "L'IA a su qu'on voulait de la randonnée ET de la bonne cuisine. Elle nous a proposé San Sebastián qu'on n'aurait jamais pensé.",
+                name: "Sophie M.",
+                trip: "Week-end au Pays Basque",
+                avatar: "SM",
+              },
+            ].map((t, i) => (
+              <div key={i} className="bg-white rounded-2xl p-6 border border-stone-100">
+                <div className="flex items-center gap-1 mb-3">
+                  {[...Array(5)].map((_, j) => (
+                    <Star key={j} size={14} className="text-amber-400 fill-amber-400" />
+                  ))}
+                </div>
+                <p className="text-text-secondary text-sm leading-relaxed mb-4">"{t.quote}"</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-primary-light text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {t.avatar}
+                  </div>
+                  <div>
+                    <p className="font-medium text-text-main text-sm">{t.name}</p>
+                    <p className="text-xs text-text-secondary">{t.trip}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -525,7 +591,7 @@ function Landing() {
           </div>
           <div className="pt-6 border-t border-stone-100 text-center">
             <p className="text-sm text-text-secondary">
-              © 2025 Skusku. AI-powered travel planning.
+              © 2026 Skusku. Planification de voyages par IA.
             </p>
           </div>
         </div>

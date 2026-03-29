@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { Zap, Target, Check, Calendar, MapPin, Globe, Clock, Shield, Users, Heart, Activity, Sun, Moon, Coffee, Briefcase, Plane } from 'lucide-react';
+import { Zap, Target, Check, Calendar, MapPin, Globe, Clock, Shield, Users, Heart, Activity, Sun, Moon, Coffee, Briefcase, Plane, Loader2, Sparkles } from 'lucide-react';
 import AirportAutocomplete from '../components/AirportAutocomplete';
 
 // Constants
@@ -361,12 +361,20 @@ function Onboarding() {
     return (
       <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-6">
         <div className="max-w-4xl w-full text-center">
-          <h1 className="text-4xl font-bold mb-4 text-text-main">Bienvenue sur Skusku !</h1>
-          <p className="text-xl text-text-secondary mb-12 max-w-2xl mx-auto">
-            Pour vous proposer les meilleures recommandations de voyage, nous avons besoin d'en savoir plus sur vos préférences.
+          {/* Greeting */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-light text-primary text-sm font-medium rounded-full mb-6">
+            <Sparkles size={14} />
+            Votre profil voyageur
+          </div>
+          <h1 className="text-4xl font-bold mb-4 text-text-main">
+            {user?.firstName ? `Bienvenue, ${user.firstName} !` : 'Bienvenue sur Skusku !'}
+          </h1>
+          <p className="text-xl text-text-secondary mb-3 max-w-2xl mx-auto">
+            Quelques questions pour que l'IA vous propose des destinations qui <strong>vous ressemblent vraiment</strong>.
           </p>
+          <p className="text-sm text-text-secondary mb-10">Vous ne le faites qu'une seule fois.</p>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             <div
               onClick={() => {
                 setOnboardingType('short');
@@ -374,16 +382,16 @@ function Onboarding() {
               }}
               className="bg-white p-8 rounded-3xl border border-gray-200 hover:border-primary hover:shadow-xl transition-all cursor-pointer group text-left relative overflow-hidden"
             >
-              <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <Zap size={28} />
               </div>
-              <h3 className="text-2xl font-bold mb-2 text-text-main">Onboarding Rapide</h3>
-              <p className="text-sm font-medium text-text-secondary mb-4">~9 questions • 3-5 minutes</p>
-              <p className="text-text-secondary mb-8 leading-relaxed">
-                Les questions essentielles pour commencer. Vous pourrez compléter votre profil plus tard.
+              <h3 className="text-2xl font-bold mb-1 text-text-main">Profil express</h3>
+              <p className="text-sm font-medium text-primary mb-4">9 questions · 3 minutes</p>
+              <p className="text-text-secondary mb-8 leading-relaxed text-sm">
+                L'essentiel pour démarrer. Recommandations précises dès la première recherche.
               </p>
-              <button className="w-full py-3 bg-surface-subtle text-text-main font-semibold rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
-                Commencer rapidement
+              <button className="w-full py-3 bg-stone-100 text-text-main font-semibold rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
+                Commencer →
               </button>
             </div>
 
@@ -392,24 +400,31 @@ function Onboarding() {
                 setOnboardingType('long');
                 setFormData(prev => ({ ...prev, onboardingType: 'long' }));
               }}
-              className="bg-white p-8 rounded-3xl border-2 border-primary shadow-soft cursor-pointer group text-left relative overflow-hidden"
+              className="bg-white p-8 rounded-3xl border-2 border-primary shadow-card cursor-pointer group text-left relative overflow-hidden"
             >
               <div className="absolute top-4 right-4 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">
                 Recommandé
               </div>
-              <div className="w-14 h-14 bg-primary-light text-primary rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <div className="w-14 h-14 bg-primary-light text-primary rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <Target size={28} />
               </div>
-              <h3 className="text-2xl font-bold mb-2 text-text-main">Onboarding Complet</h3>
-              <p className="text-sm font-medium text-text-secondary mb-4">~30 questions • 10-15 minutes</p>
-              <p className="text-text-secondary mb-8 leading-relaxed">
-                Des recommandations ultra-personnalisées basées sur un profil détaillé de vos préférences.
+              <h3 className="text-2xl font-bold mb-1 text-text-main">Profil complet</h3>
+              <p className="text-sm font-medium text-primary mb-4">~30 questions · 10 minutes</p>
+              <p className="text-text-secondary mb-8 leading-relaxed text-sm">
+                Des recommandations ultra-précises qui tiennent compte de tous vos critères.
               </p>
-              <button className="w-full py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-colors">
-                Obtenir les meilleurs résultats
+              <button className="w-full py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 group-hover:bg-primary-hover transition-colors">
+                Meilleurs résultats →
               </button>
             </div>
           </div>
+
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="mt-8 text-sm text-text-secondary hover:text-text-main underline underline-offset-2 transition-colors"
+          >
+            Passer pour l'instant — je compléterai plus tard
+          </button>
         </div>
       </div>
     );
@@ -417,12 +432,35 @@ function Onboarding() {
 
   // Short onboarding - one page
   if (onboardingType === 'short') {
+    // Calculate how many of the 9 questions have been answered
+    const shortAnswered = [
+      formData.whyTravel,
+      formData.mainGoal,
+      formData.globalStyle,
+      formData.topActivities.length >= 3,
+      formData.idealRhythm,
+      formData.tripsPerYear !== 2,
+      formData.departureFlexibility,
+      formData.calendarConnected !== false || formData.calendarConnected === false,
+      formData.preferredAirports.length > 0,
+    ].filter(Boolean).length;
+
     return (
       <div className="min-h-screen bg-surface-subtle py-12 px-4">
         <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-card p-8 md:p-12">
-          <div className="text-center mb-12">
+          {/* Sticky header with progress */}
+          <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-2 text-text-main">Parlez-nous de vous</h1>
-            <p className="text-text-secondary">9 questions rapides pour des recommandations personnalisées</p>
+            <p className="text-text-secondary mb-4">9 questions pour des recommandations personnalisées</p>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-2 bg-stone-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-500"
+                  style={{ width: `${(shortAnswered / 9) * 100}%` }}
+                />
+              </div>
+              <span className="text-sm font-medium text-primary whitespace-nowrap">{shortAnswered}/9</span>
+            </div>
           </div>
 
           <div className="space-y-12">
@@ -633,11 +671,16 @@ function Onboarding() {
 
             <div className="pt-8 border-t border-gray-100">
               <button
-                className="w-full py-4 bg-primary text-white text-lg font-bold rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-4 bg-primary text-white text-lg font-bold rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 onClick={handleSubmit}
                 disabled={loading}
               >
-                {loading ? 'Enregistrement...' : 'Terminer'}
+                {loading ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : 'Accéder à mes recommandations →'}
               </button>
             </div>
           </div>
@@ -1117,16 +1160,36 @@ function Onboarding() {
   return (
     <div className="min-h-screen bg-surface-subtle py-12 px-4">
       <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-card p-8 md:p-12">
-        <div className="w-full h-2 bg-gray-100 rounded-full mb-8 overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-500 ease-out"
-            style={{ width: `${((currentPart + 1) / 5) * 100}%` }}
-          ></div>
-        </div>
-
-        <div className="text-center text-sm font-medium text-text-secondary mb-8">
-          Partie {currentPart + 1} sur 5
-        </div>
+        {/* Step progress indicator */}
+        {(() => {
+          const steps = ['Style', 'Activités', 'Rythme', 'Contraintes', 'Disponibilités'];
+          return (
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-3">
+                {steps.map((step, i) => (
+                  <div key={i} className="flex flex-col items-center gap-1 flex-1">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                      i < currentPart ? 'bg-primary text-white' :
+                      i === currentPart ? 'bg-primary text-white ring-4 ring-primary/20' :
+                      'bg-stone-100 text-stone-400'
+                    }`}>
+                      {i < currentPart ? <Check size={14} /> : i + 1}
+                    </div>
+                    <span className={`text-xs font-medium hidden sm:block ${
+                      i === currentPart ? 'text-primary' : 'text-stone-400'
+                    }`}>{step}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-500 ease-out"
+                  style={{ width: `${((currentPart) / 4) * 100}%` }}
+                />
+              </div>
+            </div>
+          );
+        })()}
 
         {currentPart === 0 && renderPart0()}
         {currentPart === 1 && renderPart1()}
@@ -1153,11 +1216,16 @@ function Onboarding() {
             </button>
           ) : (
             <button
-              className="flex-1 px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all ml-auto disabled:opacity-50"
+              className="flex-1 px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all ml-auto disabled:opacity-50 flex items-center justify-center gap-2"
               onClick={handleSubmit}
               disabled={loading}
             >
-              {loading ? 'Enregistrement...' : 'Terminer'}
+              {loading ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  Enregistrement...
+                </>
+              ) : 'Accéder à mes recommandations →'}
             </button>
           )}
         </div>
