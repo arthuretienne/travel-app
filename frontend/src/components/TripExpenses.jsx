@@ -11,12 +11,12 @@ import {
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const CATEGORIES = [
-  { id: 'food', label: 'Food & Drinks', icon: Utensils, color: 'text-orange-600 bg-orange-50' },
+  { id: 'food', label: 'Repas & Boissons', icon: Utensils, color: 'text-orange-600 bg-orange-50' },
   { id: 'transport', label: 'Transport', icon: Plane, color: 'text-blue-600 bg-blue-50' },
-  { id: 'accommodation', label: 'Accommodation', icon: Home, color: 'text-purple-600 bg-purple-50' },
-  { id: 'activity', label: 'Activity', icon: Ticket, color: 'text-green-600 bg-green-50' },
+  { id: 'accommodation', label: 'Hébergement', icon: Home, color: 'text-purple-600 bg-purple-50' },
+  { id: 'activity', label: 'Activité', icon: Ticket, color: 'text-green-600 bg-green-50' },
   { id: 'shopping', label: 'Shopping', icon: ShoppingBag, color: 'text-pink-600 bg-pink-50' },
-  { id: 'other', label: 'Other', icon: HelpCircle, color: 'text-stone-600 bg-stone-50' },
+  { id: 'other', label: 'Autre', icon: HelpCircle, color: 'text-stone-600 bg-stone-50' },
 ];
 
 function getCategoryInfo(id) {
@@ -109,7 +109,7 @@ export default function TripExpenses({ tripId, currentUserId }) {
   };
 
   const handleDelete = async (expenseId) => {
-    if (!confirm('Delete this expense?')) return;
+    if (!confirm('Supprimer cette dépense ?')) return;
     try {
       const token = await getToken();
       await fetch(`${API_URL}/api/trips/${tripId}/expenses/${expenseId}`, {
@@ -138,15 +138,15 @@ export default function TripExpenses({ tripId, currentUserId }) {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl p-4 border border-stone-100">
-          <p className="text-xs text-text-secondary mb-1">Total expenses</p>
+          <p className="text-xs text-text-secondary mb-1">Total dépenses</p>
           <p className="text-2xl font-bold text-text-main">{totalExpenses.toFixed(2)}</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-stone-100">
-          <p className="text-xs text-text-secondary mb-1">Per person</p>
+          <p className="text-xs text-text-secondary mb-1">Par personne</p>
           <p className="text-2xl font-bold text-primary">{perPerson.toFixed(2)}</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-stone-100 col-span-2 md:col-span-1">
-          <p className="text-xs text-text-secondary mb-1">Members</p>
+          <p className="text-xs text-text-secondary mb-1">Membres</p>
           <p className="text-2xl font-bold text-text-main">{members.length}</p>
         </div>
       </div>
@@ -154,13 +154,13 @@ export default function TripExpenses({ tripId, currentUserId }) {
       {/* Settlements (who owes whom) */}
       {settlements.length > 0 && (
         <div className="bg-white rounded-xl border border-stone-100 p-5">
-          <h3 className="font-semibold text-text-main mb-3">Settlements</h3>
+          <h3 className="font-semibold text-text-main mb-3">Remboursements</h3>
           <div className="space-y-3">
             {settlements.map((s, idx) => (
               <div key={idx} className="flex items-center gap-3 p-3 bg-surface-subtle rounded-lg">
-                <span className="font-medium text-text-main text-sm">{s.from?.firstName || 'Unknown'}</span>
+                <span className="font-medium text-text-main text-sm">{s.from?.firstName || 'Inconnu'}</span>
                 <ArrowRight size={16} className="text-text-light flex-shrink-0" />
-                <span className="font-medium text-text-main text-sm">{s.to?.firstName || 'Unknown'}</span>
+                <span className="font-medium text-text-main text-sm">{s.to?.firstName || 'Inconnu'}</span>
                 <span className="ml-auto font-bold text-primary">{s.amount.toFixed(2)}</span>
               </div>
             ))}
@@ -171,7 +171,7 @@ export default function TripExpenses({ tripId, currentUserId }) {
       {/* Balances per member */}
       {Object.keys(balances).length > 0 && (
         <div className="bg-white rounded-xl border border-stone-100 p-5">
-          <h3 className="font-semibold text-text-main mb-3">Balances</h3>
+          <h3 className="font-semibold text-text-main mb-3">Soldes</h3>
           <div className="space-y-2">
             {members.map(m => {
               const balance = balances[m.id] || 0;
@@ -204,15 +204,15 @@ export default function TripExpenses({ tripId, currentUserId }) {
           className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
         >
           <Plus size={18} />
-          Add Expense
+          Ajouter une dépense
         </button>
       ) : (
         <form onSubmit={handleAddExpense} className="bg-white rounded-xl border border-stone-100 p-5 space-y-4">
-          <h3 className="font-semibold text-text-main">New Expense</h3>
+          <h3 className="font-semibold text-text-main">Nouvelle dépense</h3>
 
           <input
             type="text"
-            placeholder="Description (e.g. Restaurant dinner)"
+            placeholder="Description (ex : Dîner au restaurant)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="w-full px-4 py-2.5 border border-stone-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
@@ -221,7 +221,7 @@ export default function TripExpenses({ tripId, currentUserId }) {
 
           <input
             type="number"
-            placeholder="Amount"
+            placeholder="Montant"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             min="0.01"
@@ -250,7 +250,7 @@ export default function TripExpenses({ tripId, currentUserId }) {
             })}
           </div>
 
-          <p className="text-xs text-text-light">Split equally among all {members.length} members</p>
+          <p className="text-xs text-text-light">Divisé équitablement entre les {members.length} membres</p>
 
           <div className="flex gap-2">
             <button
@@ -258,14 +258,14 @@ export default function TripExpenses({ tripId, currentUserId }) {
               disabled={submitting || !description.trim() || !amount}
               className="flex-1 py-2.5 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50"
             >
-              {submitting ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Add'}
+              {submitting ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Ajouter'}
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
               className="px-4 py-2.5 bg-stone-100 text-stone-600 font-medium rounded-lg hover:bg-stone-200 transition-colors"
             >
-              Cancel
+              Annuler
             </button>
           </div>
         </form>
@@ -287,7 +287,7 @@ export default function TripExpenses({ tripId, currentUserId }) {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-text-main text-sm truncate">{expense.description}</p>
                   <p className="text-xs text-text-secondary">
-                    Paid by {expense.paidBy?.firstName || 'Unknown'} — {new Date(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    Payé par {expense.paidBy?.firstName || 'Inconnu'} — {new Date(expense.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
@@ -310,8 +310,8 @@ export default function TripExpenses({ tripId, currentUserId }) {
           <div className="w-12 h-12 bg-primary-light rounded-full flex items-center justify-center mx-auto mb-3">
             <Utensils size={24} className="text-primary" />
           </div>
-          <p className="font-medium text-text-main mb-1">No expenses yet</p>
-          <p className="text-sm text-text-secondary">Add expenses to split costs with your group</p>
+          <p className="font-medium text-text-main mb-1">Aucune dépense pour l'instant</p>
+          <p className="text-sm text-text-secondary">Ajoutez des dépenses pour les partager avec votre groupe</p>
         </div>
       )}
     </div>
