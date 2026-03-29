@@ -52,3 +52,9 @@ coverage/
 tmp/
 temp/
 mcp/*/node_modules/
+
+# Debug artifacts
+*.png
+.mcp.json
+.playwright-mcp/
+SPRINT2_BRIEF.md
