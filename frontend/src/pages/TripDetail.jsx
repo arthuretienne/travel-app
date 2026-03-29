@@ -158,20 +158,20 @@ export default function TripDetail() {
       // Basic email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        setInviteError('Invalid email format');
+        setInviteError('Format d\'email invalide');
         return;
       }
 
       // Check for duplicates
       if (inviteEmails.includes(email)) {
-        setInviteError('Email already added');
+        setInviteError('Email déjà ajouté');
         return;
       }
 
       // In development, allow self-invite for testing (Resend sandbox)
       const isDevelopment = import.meta.env.DEV;
       if (user?.primaryEmailAddress?.emailAddress === email && !isDevelopment) {
-        setInviteError('Cannot invite yourself');
+        setInviteError('Vous ne pouvez pas vous inviter vous-même');
         return;
       }
 
@@ -217,7 +217,7 @@ export default function TripDetail() {
       // Refresh trip data to show new invitations
       await fetchTripDetails();
 
-      alert(`✅ ${inviteEmails.length} invitation(s) sent successfully!`);
+      alert(`✅ ${inviteEmails.length} invitation(s) envoyée(s) avec succès !`);
     } catch (err) {
       console.error('Error sending invitations:', err);
       setInviteError(err.message);
@@ -227,7 +227,7 @@ export default function TripDetail() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this trip? This action cannot be undone.')) return;
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce voyage ? Cette action est irréversible.')) return;
 
     try {
       const token = await getToken();
@@ -241,7 +241,7 @@ export default function TripDetail() {
       navigate('/dashboard');
     } catch (err) {
       console.error('Error deleting trip:', err);
-      alert('Failed to delete trip');
+      alert('Impossible de supprimer le voyage.');
     }
   };
 
@@ -294,24 +294,24 @@ export default function TripDetail() {
     // Determine the actual status based on trip data
     if (trip.finalDestination) {
       return {
-        label: 'Confirmed',
+        label: 'Confirmé',
         color: 'bg-green-100 text-green-800',
-        description: 'Destination chosen, ready for bookings',
+        description: 'Destination choisie, prêt pour les réservations',
       };
     }
 
     if (trip.proposedTrips && trip.proposedTrips.length > 0) {
       return {
-        label: 'Voting',
+        label: 'Vote',
         color: 'bg-purple-100 text-purple-800',
-        description: 'Vote for your favorite destination',
+        description: 'Votez pour votre destination préférée',
       };
     }
 
     return {
-      label: 'Planning',
+      label: 'Planification',
       color: 'bg-blue-100 text-blue-800',
-      description: 'Propose destinations for the group',
+      description: 'Proposez des destinations pour le groupe',
     };
   };
 
@@ -320,7 +320,7 @@ export default function TripDetail() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-          <p className="text-text-secondary">Loading trip...</p>
+          <p className="text-text-secondary">Chargement...</p>
         </div>
       </div>
     );
@@ -331,13 +331,13 @@ export default function TripDetail() {
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-md text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-red-900 mb-2">Error</h3>
+          <h3 className="text-lg font-semibold text-red-900 mb-2">Erreur</h3>
           <p className="text-red-700 mb-4">{error}</p>
           <button
             onClick={() => navigate('/dashboard')}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
-            Back to Dashboard
+            Retour au tableau de bord
           </button>
         </div>
       </div>
@@ -377,7 +377,7 @@ export default function TripDetail() {
               className="flex items-center gap-2 text-text-secondary hover:text-text-main mb-6 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Back to Trips</span>
+              <span className="text-sm font-medium">Retour aux voyages</span>
             </button>
           )}
 
@@ -402,13 +402,13 @@ export default function TripDetail() {
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
               >
                 <UserPlus size={18} />
-                Invite Friends
+                Inviter
               </button>
               {userRole === 'creator' && (
                 <button
                   onClick={handleDelete}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Delete trip"
+                  title="Supprimer le voyage"
                 >
                   <Trash2 size={20} />
                 </button>
@@ -421,11 +421,11 @@ export default function TripDetail() {
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
               <Clock className="w-5 h-5 text-gray-400" />
               <div>
-                <p className="text-xs text-text-secondary">Duration</p>
+                <p className="text-xs text-text-secondary">Durée</p>
                 <p className="font-semibold text-text-main">
                   {trip.finalStartDate && trip.finalEndDate
-                    ? `${Math.ceil((new Date(trip.finalEndDate) - new Date(trip.finalStartDate)) / (1000 * 60 * 60 * 24))} Days`
-                    : '15 Days'}
+                    ? `${Math.ceil((new Date(trip.finalEndDate) - new Date(trip.finalStartDate)) / (1000 * 60 * 60 * 24))} j`
+                    : '15 j'}
                 </p>
               </div>
             </div>
@@ -434,12 +434,12 @@ export default function TripDetail() {
               <Calendar className="w-5 h-5 text-gray-400" />
               <div>
                 <p className="text-xs text-text-secondary">
-                  {trip.finalStartDate ? 'Start date' : 'Dates'}
+                  {trip.finalStartDate ? 'Date de départ' : 'Dates'}
                 </p>
                 <p className="font-semibold text-text-main">
                   {trip.finalStartDate
-                    ? new Date(trip.finalStartDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-                    : 'To be defined'}
+                    ? new Date(trip.finalStartDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+                    : 'À définir'}
                 </p>
               </div>
             </div>
@@ -448,9 +448,9 @@ export default function TripDetail() {
               <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
                 <Calendar className="w-5 h-5 text-gray-400" />
                 <div>
-                  <p className="text-xs text-text-secondary">End date</p>
+                  <p className="text-xs text-text-secondary">Date de fin</p>
                   <p className="font-semibold text-text-main">
-                    {new Date(trip.finalEndDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                    {new Date(trip.finalEndDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                   </p>
                 </div>
               </div>
@@ -467,8 +467,8 @@ export default function TripDetail() {
               { id: 'overview', label: 'Aperçu', icon: LayoutDashboard },
               { id: 'participants', label: 'Participants', icon: Users, badge: trip.members?.length || 0 },
               { id: 'chat', label: 'Chat', icon: MessageCircle },
-              { id: 'expenses', label: 'Expenses', icon: Wallet },
-              { id: 'checklist', label: 'Checklist', icon: ListChecks },
+              { id: 'expenses', label: 'Dépenses', icon: Wallet },
+              { id: 'checklist', label: 'À faire', icon: ListChecks },
               { id: 'settings', label: 'Réglages', icon: Settings },
             ].map((tab) => (
               <button
@@ -575,7 +575,7 @@ export default function TripDetail() {
                           {member.user?.firstName} {member.user?.lastName}
                         </p>
                         <p className="text-sm text-text-secondary">
-                          {member.user?.email || 'Email not available'}
+                          {member.user?.email || 'Email non disponible'}
                         </p>
                       </div>
                     </div>
@@ -828,7 +828,7 @@ export default function TripDetail() {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-bold text-text-main flex items-center gap-2">
                 <UserPlus className="w-6 h-6 text-primary" />
-                Invite Friends
+                Inviter des amis
               </h3>
               <button
                 onClick={() => {
@@ -846,7 +846,7 @@ export default function TripDetail() {
             {/* Modal Content */}
             <div className="space-y-4">
               <p className="text-sm text-text-secondary">
-                Invite friends to join "<strong>{trip.name}</strong>" by entering their email addresses.
+                Invitez des amis à rejoindre "<strong>{trip.name}</strong>" en entrant leurs adresses email.
               </p>
 
               {/* Quick add from friends list */}
@@ -867,7 +867,7 @@ export default function TripDetail() {
               {/* Email Input */}
               <div>
                 <label className="block text-sm font-medium text-text-main mb-2">
-                  Email Address
+                  Adresse email
                 </label>
                 {inviteError && <p className="text-red-500 text-sm mb-2">{inviteError}</p>}
                 <input
@@ -875,11 +875,11 @@ export default function TripDetail() {
                   value={currentEmail}
                   onChange={(e) => setCurrentEmail(e.target.value)}
                   onKeyDown={addInviteEmail}
-                  placeholder="friend@example.com (Press Enter)"
+                  placeholder="ami@exemple.com (Appuyez sur Entrée)"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
                 <p className="mt-2 text-xs text-text-secondary">
-                  Press Enter after each email to add it to the list
+                  Appuyez sur Entrée après chaque email pour l'ajouter à la liste
                 </p>
               </div>
 
@@ -887,7 +887,7 @@ export default function TripDetail() {
               {inviteEmails.length > 0 && (
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-text-main">
-                    Emails to Invite ({inviteEmails.length})
+                    Emails à inviter ({inviteEmails.length})
                   </label>
                   <div className="max-h-40 overflow-y-auto space-y-2">
                     {inviteEmails.map((email, index) => (
@@ -922,7 +922,7 @@ export default function TripDetail() {
                   }}
                   className="flex-1 px-4 py-3 border border-gray-300 text-text-secondary font-medium rounded-xl hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  Annuler
                 </button>
                 <button
                   onClick={handleSendInvitations}
@@ -932,12 +932,12 @@ export default function TripDetail() {
                   {inviting ? (
                     <>
                       <Loader2 size={18} className="animate-spin" />
-                      Sending...
+                      Envoi...
                     </>
                   ) : (
                     <>
                       <Send size={18} />
-                      Send {inviteEmails.length} Invitation{inviteEmails.length !== 1 ? 's' : ''}
+                      Envoyer {inviteEmails.length} invitation{inviteEmails.length !== 1 ? 's' : ''}
                     </>
                   )}
                 </button>
@@ -1071,7 +1071,7 @@ function PlanningSection({ trip, navigate }) {
       }
     } catch (err) {
       console.error('Error searching:', err);
-      alert('Failed to search. Please try again.');
+      alert('Erreur lors de la recherche. Veuillez réessayer.');
     } finally {
       setSearching(false);
     }
@@ -1146,7 +1146,7 @@ function PlanningSection({ trip, navigate }) {
       }
     } catch (err) {
       console.error('Error searching:', err);
-      alert('Failed to search. Please try again.');
+      alert('Erreur lors de la recherche. Veuillez réessayer.');
     } finally {
       setSearching(false);
     }
@@ -1154,34 +1154,34 @@ function PlanningSection({ trip, navigate }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-      <h2 className="text-lg font-bold text-text-main mb-4">Propose a Destination</h2>
+      <h2 className="text-lg font-bold text-text-main mb-4">Proposer une destination</h2>
 
       {/* Group Preferences Summary */}
       {loadingPrefs ? (
         <div className="text-center py-8">
           <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
-          <p className="text-sm text-text-secondary">Loading group preferences...</p>
+          <p className="text-sm text-text-secondary">Chargement des préférences du groupe...</p>
         </div>
       ) : groupPrefs ? (
         <>
           <div className="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
-            <h3 className="text-sm font-semibold text-text-main mb-3">Group Preferences:</h3>
+            <h3 className="text-sm font-semibold text-text-main mb-3">Préférences du groupe :</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div>
                 <p className="text-text-secondary">Budget</p>
                 <p className="font-semibold text-text-main">€{groupPrefs.budget.average}</p>
               </div>
               <div>
-                <p className="text-text-secondary">Travelers</p>
+                <p className="text-text-secondary">Voyageurs</p>
                 <p className="font-semibold text-text-main">{groupPrefs.defaultTravelers}</p>
               </div>
               <div>
-                <p className="text-text-secondary">Max Flight</p>
+                <p className="text-text-secondary">Vol max</p>
                 <p className="font-semibold text-text-main">{groupPrefs.maxFlightHours}h</p>
               </div>
               <div>
-                <p className="text-text-secondary">Top Activity</p>
-                <p className="font-semibold text-text-main capitalize">{groupPrefs.activities[0] || 'Any'}</p>
+                <p className="text-text-secondary">Activité principale</p>
+                <p className="font-semibold text-text-main capitalize">{groupPrefs.activities[0] || 'Toutes'}</p>
               </div>
             </div>
           </div>
@@ -1191,24 +1191,24 @@ function PlanningSection({ trip, navigate }) {
             <div className="mb-6 p-4 bg-green-50 rounded-xl border border-green-100">
               <h3 className="text-sm font-semibold text-text-main mb-2 flex items-center gap-2">
                 <Calendar size={16} className="text-green-600" />
-                Group Availability
+                Disponibilités du groupe
               </h3>
               <p className="text-xs text-text-secondary mb-3">{groupPrefs.availability.availabilityMessage}</p>
 
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                 <div>
-                  <p className="text-text-secondary">Suggested Duration</p>
-                  <p className="font-semibold text-text-main">{groupPrefs.availability.recommendedDuration} days</p>
+                  <p className="text-text-secondary">Durée suggérée</p>
+                  <p className="font-semibold text-text-main">{groupPrefs.availability.recommendedDuration} j</p>
                 </div>
                 {groupPrefs.availability.minAvailableLeaveDays !== null && (
                   <div>
-                    <p className="text-text-secondary">Min. Leave Days</p>
-                    <p className="font-semibold text-text-main">{groupPrefs.availability.minAvailableLeaveDays} days</p>
+                    <p className="text-text-secondary">Congés min.</p>
+                    <p className="font-semibold text-text-main">{groupPrefs.availability.minAvailableLeaveDays} j</p>
                   </div>
                 )}
                 {groupPrefs.availability.preferredMonths.length > 0 && (
                   <div>
-                    <p className="text-text-secondary">Preferred Months</p>
+                    <p className="text-text-secondary">Mois préférés</p>
                     <p className="font-semibold text-text-main capitalize">{groupPrefs.availability.preferredMonths.join(', ')}</p>
                   </div>
                 )}
@@ -1230,9 +1230,9 @@ function PlanningSection({ trip, navigate }) {
                 <Sparkles size={24} />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-text-main mb-1">Smart AI Search</h3>
+                <h3 className="text-lg font-bold text-text-main mb-1">Recherche IA intelligente</h3>
                 <p className="text-sm text-text-secondary">
-                  Let AI find the best destinations based on everyone's preferences
+                  Laissez l'IA trouver les meilleures destinations selon les préférences de tous
                 </p>
               </div>
             </div>
@@ -1247,9 +1247,9 @@ function PlanningSection({ trip, navigate }) {
                 <MapPin size={24} />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-text-main mb-1">Custom Idea</h3>
+                <h3 className="text-lg font-bold text-text-main mb-1">Idée personnalisée</h3>
                 <p className="text-sm text-text-secondary">
-                  Have a specific place in mind? Tell us and we'll find the best options
+                  Vous avez un endroit en tête ? Dites-le nous et nous trouverons les meilleures options
                 </p>
               </div>
             </div>
@@ -1259,16 +1259,16 @@ function PlanningSection({ trip, navigate }) {
         <div className="space-y-4">
           <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
             <p className="text-sm text-text-main">
-              <strong>AI will search for destinations matching:</strong>
+              <strong>L'IA cherchera des destinations correspondant à :</strong>
             </p>
             <ul className="mt-2 space-y-1 text-sm text-text-secondary">
-              <li>• Budget: €{groupPrefs?.budget.average || 1500} per person</li>
-              <li>• {groupPrefs?.defaultTravelers || trip.members.length} travelers</li>
-              <li>• Duration: {groupPrefs?.availability?.recommendedDuration || 7} days</li>
-              <li>• Activities: {groupPrefs?.activities.slice(0, 3).join(', ') || 'Cultural, Nature'}</li>
-              <li>• Max flight time: {groupPrefs?.maxFlightHours || 12}h</li>
+              <li>• Budget : €{groupPrefs?.budget.average || 1500} / pers.</li>
+              <li>• {groupPrefs?.defaultTravelers || trip.members.length} voyageurs</li>
+              <li>• Durée : {groupPrefs?.availability?.recommendedDuration || 7} j</li>
+              <li>• Activités : {groupPrefs?.activities.slice(0, 3).join(', ') || 'Culture, Nature'}</li>
+              <li>• Vol max : {groupPrefs?.maxFlightHours || 12}h</li>
               {groupPrefs?.availability?.preferredMonths?.length > 0 && (
-                <li>• Preferred months: {groupPrefs.availability.preferredMonths.join(', ')}</li>
+                <li>• Mois préférés : {groupPrefs.availability.preferredMonths.join(', ')}</li>
               )}
             </ul>
           </div>
@@ -1278,7 +1278,7 @@ function PlanningSection({ trip, navigate }) {
               onClick={() => setProposalMode(null)}
               className="px-6 py-3 border border-gray-300 text-text-secondary rounded-xl hover:bg-gray-50 transition-colors"
             >
-              Back
+              Retour
             </button>
             <button
               onClick={handleSmartSearch}
@@ -1288,12 +1288,12 @@ function PlanningSection({ trip, navigate }) {
               {searching ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
-                  Searching...
+                  Recherche...
                 </>
               ) : (
                 <>
                   <Sparkles size={20} />
-                  Find Best Destinations
+                  Trouver les meilleures destinations
                 </>
               )}
             </button>
@@ -1303,18 +1303,18 @@ function PlanningSection({ trip, navigate }) {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-text-main mb-2">
-              Where do you want to go?
+              Où voulez-vous aller ?
             </label>
             <input
               type="text"
               value={customDestination}
               onChange={(e) => setCustomDestination(e.target.value)}
-              placeholder="e.g., Paris, Mediterranean beach, Japan..."
+              placeholder="Ex : Paris, plage méditerranéenne, Japon..."
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               onKeyDown={(e) => e.key === 'Enter' && handleCustomSearch()}
             />
             <p className="mt-2 text-xs text-text-secondary">
-              Type a country, city, region, or vibe. AI will find the best matches!
+              Tapez un pays, une ville, une région ou une ambiance. L'IA trouvera les meilleures options !
             </p>
           </div>
 
@@ -1323,7 +1323,7 @@ function PlanningSection({ trip, navigate }) {
               onClick={() => setProposalMode(null)}
               className="px-6 py-3 border border-gray-300 text-text-secondary rounded-xl hover:bg-gray-50 transition-colors"
             >
-              Back
+              Retour
             </button>
             <button
               onClick={handleCustomSearch}
@@ -1333,12 +1333,12 @@ function PlanningSection({ trip, navigate }) {
               {searching ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
-                  Searching...
+                  Recherche...
                 </>
               ) : (
                 <>
                   <MapPin size={20} />
-                  Search Destinations
+                  Rechercher des destinations
                 </>
               )}
             </button>
@@ -1416,7 +1416,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
       await fetchTripDetails();
     } catch (err) {
       console.error('Error finalizing vote:', err);
-      alert(err.message || 'Failed to finalize vote.');
+      alert(err.message || 'Impossible de finaliser le vote.');
     } finally {
       setVoting(false);
     }
@@ -1447,7 +1447,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
       await fetchTripDetails();
     } catch (err) {
       console.error('Error voting:', err);
-      alert(err.message || 'Failed to vote. Please try again.');
+      alert(err.message || 'Impossible de voter. Veuillez réessayer.');
     } finally {
       setVoting(false);
     }
@@ -1455,9 +1455,9 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-      <h2 className="text-lg font-bold text-text-main mb-4">Proposed Destinations</h2>
+      <h2 className="text-lg font-bold text-text-main mb-4">Destinations proposées</h2>
       <p className="text-sm text-text-secondary mb-6">
-        Vote for your favorite destination. The trip with the most votes will be selected.
+        Votez pour votre destination préférée. Celle qui obtient le plus de votes sera sélectionnée.
       </p>
 
       <div className="space-y-4">
@@ -1472,7 +1472,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
                   {proposed.city || proposed.tripData?.destination?.city}, {proposed.country || proposed.tripData?.destination?.country}
                 </h3>
                 <p className="text-sm text-text-secondary">
-                  Proposed by {proposed.proposer?.firstName || proposed.proposedBy?.firstName || 'Unknown'}
+                  Proposé par {proposed.proposer?.firstName || proposed.proposedBy?.firstName || 'Inconnu'}
                 </p>
               </div>
               <button
@@ -1480,7 +1480,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
                 disabled={voting}
                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50"
               >
-                Vote
+                Voter
               </button>
             </div>
 
@@ -1686,7 +1686,7 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
                   )}
                   {member.hasBookedHotel && (
                     <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded flex items-center gap-1">
-                      <Hotel size={12} /> Hotel
+                      <Hotel size={12} /> Hôtel
                     </span>
                   )}
                   {member.bookingConfirmed && (
@@ -1732,18 +1732,18 @@ function TripEnhancementsSection({ trip, userName }) {
   const [totalDays, setTotalDays] = useState(0);
   const [error, setError] = useState(null);
   const [activeDay, setActiveDay] = useState(0);
-  const [aiLoadingText, setAiLoadingText] = useState('Planning your adventure');
+  const [aiLoadingText, setAiLoadingText] = useState('Planification de votre aventure');
 
   // AI loading text animation
   const loadingPhrases = [
-    'Planning your adventure',
-    'Finding hidden gems',
-    'Checking local favorites',
-    'Optimizing your schedule',
-    'Adding insider tips',
-    'Crafting the perfect day',
-    'Discovering must-see spots',
-    'Personalizing activities',
+    'Planification de votre aventure',
+    'Découverte des pépites cachées',
+    'Vérification des coups de cœur locaux',
+    'Optimisation de votre planning',
+    'Ajout de conseils d\'initiés',
+    'Création de la journée parfaite',
+    'Sélection des incontournables',
+    'Personnalisation des activités',
   ];
 
   useEffect(() => {
@@ -1908,7 +1908,7 @@ function TripEnhancementsSection({ trip, userName }) {
           <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl shadow-card border border-blue-100 p-6">
             <div className="flex items-center gap-3">
               <Loader2 className="w-6 h-6 text-primary animate-spin" />
-              <span className="text-text-secondary">Loading weather...</span>
+              <span className="text-text-secondary">Chargement de la météo...</span>
             </div>
           </div>
         ) : weather ? (
@@ -1922,7 +1922,7 @@ function TripEnhancementsSection({ trip, userName }) {
           <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl shadow-card border border-amber-100 p-6">
             <div className="flex items-center gap-3">
               <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
-              <span className="text-text-secondary">Preparing packing list...</span>
+              <span className="text-text-secondary">Préparation de la liste de bagages...</span>
             </div>
           </div>
         ) : null}
@@ -1934,7 +1934,7 @@ function TripEnhancementsSection({ trip, userName }) {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Calendar className="w-6 h-6 text-primary" />
-              Your Personalized Itinerary
+              Votre itinéraire personnalisé
             </h2>
             {loadingItinerary && (
               <div className="flex items-center gap-2 text-sm text-primary bg-primary/10 px-3 py-1.5 rounded-full">
@@ -1958,14 +1958,14 @@ function TripEnhancementsSection({ trip, userName }) {
                     : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
                 }`}
               >
-                Day {day.day}
+                Jour {day.day}
               </button>
             ))}
             {/* Loading placeholder for next day */}
             {loadingItinerary && generatingDay && generatingDay > itinerary.length && (
               <div className="flex-shrink-0 px-4 py-2 rounded-lg bg-primary/10 border border-primary/30 flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                <span className="text-primary font-medium">Day {generatingDay}</span>
+                <span className="text-primary font-medium">Jour {generatingDay}</span>
               </div>
             )}
             {/* Future days placeholder */}
@@ -1974,7 +1974,7 @@ function TripEnhancementsSection({ trip, userName }) {
                 key={`future-${i}`}
                 className="flex-shrink-0 px-4 py-2 rounded-lg bg-gray-100 border border-gray-200 text-gray-400"
               >
-                Day {Math.max(itinerary.length, generatingDay || 0) + i + 1}
+                Jour {Math.max(itinerary.length, generatingDay || 0) + i + 1}
               </div>
             ))}
           </div>
@@ -1990,7 +1990,7 @@ function TripEnhancementsSection({ trip, userName }) {
               </div>
               <p className="text-lg font-medium text-gray-900 mb-2">{aiLoadingText}...</p>
               <p className="text-sm text-text-secondary">
-                Creating a personalized day-by-day itinerary just for you
+                Création d'un itinéraire jour par jour personnalisé pour vous
               </p>
               <div className="flex justify-center gap-1 mt-4">
                 {[0, 1, 2].map(i => (
@@ -2014,7 +2014,7 @@ function TripEnhancementsSection({ trip, userName }) {
           ) : error ? (
             <div className="text-center py-8">
               <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-              <p className="text-gray-900 font-medium mb-1">Unable to generate itinerary</p>
+              <p className="text-gray-900 font-medium mb-1">Impossible de générer l'itinéraire</p>
               <p className="text-sm text-text-secondary">{error}</p>
             </div>
           ) : null}
@@ -2045,14 +2045,14 @@ function WeatherForecastCard({ weather, destination }) {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Sun className="w-6 h-6 text-yellow-500" />
-            Weather Forecast
+            Météo prévue
           </h2>
           <span className="text-sm text-gray-600">{destination.city}</span>
         </div>
 
         {/* Current Weather */}
         <div className="bg-white rounded-xl p-4 mb-4">
-          <p className="text-sm text-gray-600 mb-2">Current Conditions</p>
+          <p className="text-sm text-gray-600 mb-2">Conditions actuelles</p>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img src={weather.current.icon} alt={weather.current.condition} className="w-16 h-16" />
@@ -2076,12 +2076,12 @@ function WeatherForecastCard({ weather, destination }) {
 
         {/* 7-Day Forecast */}
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-gray-700 mb-3">7-Day Forecast</p>
+          <p className="text-sm font-semibold text-gray-700 mb-3">Prévisions 7 jours</p>
           {weather.forecast.map((day, idx) => (
             <div key={idx} className="bg-white rounded-lg p-3 flex items-center justify-between hover:bg-blue-50 transition-colors">
               <div className="flex items-center gap-3 flex-1">
                 <span className="text-sm font-medium text-gray-700 w-20">
-                  {idx === 0 ? 'Today' : new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                  {idx === 0 ? "Aujourd'hui" : new Date(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
                 </span>
                 <img src={day.day.icon} alt={day.day.condition} className="w-8 h-8" />
                 <span className="text-xs text-gray-600 flex-1">{day.day.condition}</span>
@@ -2113,7 +2113,7 @@ function PackingTipsCard({ packing, destination }) {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Backpack className="w-6 h-6 text-purple-600" />
-            Packing Tips
+            Conseils bagages
           </h2>
           <span className="text-sm text-gray-600">{destination.city}</span>
         </div>
@@ -2121,25 +2121,25 @@ function PackingTipsCard({ packing, destination }) {
         {/* Weather Summary */}
         {packing.weatherSummary && (
           <div className="bg-white rounded-xl p-4 mb-4">
-            <p className="text-sm font-semibold text-gray-700 mb-2">Expected Conditions</p>
+            <p className="text-sm font-semibold text-gray-700 mb-2">Conditions prévues</p>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-gray-600">Avg Temperature</p>
+                <p className="text-gray-600">Température moy.</p>
                 <p className="font-bold text-gray-900">{packing.weatherSummary.avgTemp}°C</p>
               </div>
               <div>
-                <p className="text-gray-600">Range</p>
+                <p className="text-gray-600">Plage</p>
                 <p className="font-bold text-gray-900">{packing.weatherSummary.tempRange}</p>
               </div>
               {packing.weatherSummary.rainChance > 20 && (
                 <div>
-                  <p className="text-gray-600">Rain Chance</p>
+                  <p className="text-gray-600">Risque de pluie</p>
                   <p className="font-bold text-blue-600">{packing.weatherSummary.rainChance}%</p>
                 </div>
               )}
               {packing.weatherSummary.maxUV > 5 && (
                 <div>
-                  <p className="text-gray-600">Max UV</p>
+                  <p className="text-gray-600">UV max</p>
                   <p className="font-bold text-orange-600">{packing.weatherSummary.maxUV}</p>
                 </div>
               )}
@@ -2153,7 +2153,7 @@ function PackingTipsCard({ packing, destination }) {
           <div>
             <h3 className="text-sm font-bold text-red-700 mb-2 flex items-center gap-1">
               <Heart className="w-4 h-4" />
-              Essentials (Don't Forget!)
+              Essentiels (À ne pas oublier !)
             </h3>
             <div className="bg-white rounded-lg p-3 space-y-1.5">
               {packing.essentials.map((item, idx) => {
@@ -2171,7 +2171,7 @@ function PackingTipsCard({ packing, destination }) {
 
           {/* Clothing */}
           <div>
-            <h3 className="text-sm font-bold text-purple-700 mb-2">Clothing</h3>
+            <h3 className="text-sm font-bold text-purple-700 mb-2">Vêtements</h3>
             <div className="bg-white rounded-lg p-3 space-y-1.5">
               {packing.clothing.map((item, idx) => {
                 const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
@@ -2189,7 +2189,7 @@ function PackingTipsCard({ packing, destination }) {
           {/* Optional Items */}
           {packing.optional.length > 0 && (
             <div>
-              <h3 className="text-sm font-bold text-gray-600 mb-2">Optional (Nice to Have)</h3>
+              <h3 className="text-sm font-bold text-gray-600 mb-2">Optionnel (confort)</h3>
               <div className="bg-white rounded-lg p-3 space-y-1.5">
                 {packing.optional.map((item, idx) => {
                   const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
