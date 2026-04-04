@@ -172,6 +172,7 @@ function Onboarding() {
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   const [countryInput, setCountryInput] = useState('');
 
   const handleChange = (field, value) => {
@@ -317,7 +318,7 @@ function Onboarding() {
       navigate('/dashboard');
     } catch (error) {
       console.error('Error saving preferences:', error);
-      alert('Une erreur est survenue lors de la sauvegarde. Veuillez réessayer.');
+      setSaveError('Une erreur est survenue lors de la sauvegarde. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -670,6 +671,9 @@ function Onboarding() {
             </div>
 
             <div className="pt-8 border-t border-gray-100">
+              {saveError && (
+                <p className="mb-3 text-sm text-red-600 text-center">{saveError}</p>
+              )}
               <button
                 className="w-full py-4 bg-primary text-white text-lg font-bold rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 onClick={handleSubmit}
@@ -1196,6 +1200,10 @@ function Onboarding() {
         {currentPart === 2 && renderPart2()}
         {currentPart === 3 && renderPart3()}
         {currentPart === 4 && renderPart4()}
+
+        {saveError && (
+          <p className="mt-4 text-sm text-red-600 text-center">{saveError}</p>
+        )}
 
         <div className="flex justify-between gap-4 mt-12 pt-8 border-t border-gray-100">
           {currentPart > 0 && (

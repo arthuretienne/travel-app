@@ -60,6 +60,7 @@ export default function SavedTripDetail() {
   const [creatingAlert, setCreatingAlert] = useState(false);
   const [alertCreated, setAlertCreated] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [actionError, setActionError] = useState(null);
 
   useEffect(() => {
     fetchTripDetails();
@@ -223,7 +224,7 @@ export default function SavedTripDetail() {
       }
 
       if (!itinerary || itinerary.length === 0) {
-        alert('L\'itinéraire est en cours de création. Veuillez patienter quelques secondes puis réessayer.');
+        setActionError('L\'itinéraire est en cours de génération. Patientez quelques secondes puis réessayez.');
         return;
       }
 
@@ -247,7 +248,7 @@ export default function SavedTripDetail() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('[PDF Export] Error:', err);
-      alert('Impossible de générer le PDF. Veuillez réessayer.');
+      setActionError('Impossible de générer le PDF. Veuillez réessayer.');
     } finally {
       setExportingPdf(false);
     }
@@ -268,13 +269,13 @@ export default function SavedTripDetail() {
       navigate('/dashboard');
     } catch (err) {
       console.error('Error deleting trip:', err);
-      alert('Impossible de supprimer le voyage');
+      setActionError('Impossible de supprimer le voyage. Veuillez réessayer.');
     }
   };
 
   const handleCreatePriceAlert = async () => {
     if (!trip?.tripData?.pricing?.total || !trip.startDate || !trip.endDate) {
-      alert('Données manquantes pour créer une alerte prix');
+      setActionError('Données manquantes pour créer une alerte prix.');
       return;
     }
 
@@ -308,7 +309,7 @@ export default function SavedTripDetail() {
       setTimeout(() => setAlertCreated(false), 3000);
     } catch (err) {
       console.error('Error creating price alert:', err);
-      alert(err.message || 'Impossible de créer l\'alerte prix');
+      setActionError(err.message || 'Impossible de créer l\'alerte prix.');
     } finally {
       setCreatingAlert(false);
     }
@@ -350,6 +351,12 @@ export default function SavedTripDetail() {
 
   return (
     <div className="min-h-screen bg-surface-subtle">
+      {actionError && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium bg-red-600 text-white flex items-center gap-2">
+          ✕ {actionError}
+          <button onClick={() => setActionError(null)} className="ml-2 hover:opacity-80">×</button>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

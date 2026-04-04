@@ -32,6 +32,13 @@ function Results() {
   const [alertingTripId, setAlertingTripId] = useState(null);
   const [alertCreatedFor, setAlertCreatedFor] = useState(new Set());
 
+  // Notification state (replaces alert())
+  const [notification, setNotification] = useState(null); // { type: 'success'|'error', text }
+  const showNotif = (type, text) => {
+    setNotification({ type, text });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
   // Check if we're proposing for a group trip
   const forGroupTrip = location.state?.forGroupTrip;
 
@@ -237,16 +244,16 @@ function Results() {
 
       if (!silent) {
         if (data.alreadyExists) {
-          alert('Ce voyage est déjà dans vos voyages sauvegardés !');
+          showNotif('success', 'Ce voyage est déjà dans vos voyages sauvegardés.');
         } else {
-          alert('Voyage sauvegardé avec succès !');
+          showNotif('success', 'Voyage sauvegardé avec succès !');
         }
       }
       return true;
     } catch (err) {
       console.error('Error saving trip:', err);
       if (!silent) {
-        alert('Impossible de sauvegarder le voyage. Veuillez réessayer.');
+        showNotif('error', 'Impossible de sauvegarder le voyage. Veuillez réessayer.');
       }
       return false;
     } finally {
@@ -288,14 +295,13 @@ function Results() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to propose destination');
+        throw new Error(errorData.error || 'Impossible de proposer la destination');
       }
 
-      alert('Destination proposée avec succès !');
       navigate(`/trips/${forGroupTrip}`);
     } catch (err) {
       console.error('Error proposing destination:', err);
-      alert(err.message || 'Impossible de proposer la destination.');
+      showNotif('error', err.message || 'Impossible de proposer la destination.');
     } finally {
       setProposingTripId(null);
     }
@@ -304,7 +310,7 @@ function Results() {
   const handleCreatePriceAlert = async (tripIndex) => {
     const trip = recommendations[tripIndex];
     if (!trip?.pricing?.total || !trip.slot?.startDate || !trip.slot?.endDate) {
-      alert('Données manquantes pour créer une alerte prix');
+      showNotif('error', 'Données manquantes pour créer une alerte prix');
       return;
     }
 
@@ -337,7 +343,7 @@ function Results() {
       setAlertCreatedFor(prev => new Set([...prev, tripIndex]));
     } catch (err) {
       console.error('Error creating price alert:', err);
-      alert(err.message || 'Impossible de créer l\'alerte prix');
+      showNotif('error', err.message || 'Impossible de créer l\'alerte prix');
     } finally {
       setAlertingTripId(null);
     }
@@ -489,6 +495,15 @@ function Results() {
 
   return (
     <div className="min-h-screen bg-surface-subtle">
+      {/* Inline notification (replaces alert()) */}
+      {notification && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${
+          notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+        }`}>
+          {notification.type === 'success' ? '✓' : '✕'} {notification.text}
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white border-b border-stone-200/60">
         <div className="max-w-5xl mx-auto px-6 py-8">

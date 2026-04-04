@@ -45,6 +45,7 @@ export default function Pricing() {
   const [currentPlan, setCurrentPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(null);
+  const [checkoutError, setCheckoutError] = useState(null);
 
   useEffect(() => {
     fetchPlans();
@@ -109,7 +110,7 @@ export default function Pricing() {
       window.location.href = data.url;
     } catch (error) {
       console.error('Error creating checkout:', error);
-      alert('Impossible de démarrer le paiement. Veuillez réessayer.');
+      setCheckoutError('Impossible de démarrer le paiement. Veuillez réessayer.');
       setCheckoutLoading(null);
     }
   };
@@ -131,6 +132,11 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-surface-subtle">
+      {checkoutError && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium bg-red-600 text-white">
+          ✕ {checkoutError}
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white border-b border-stone-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">

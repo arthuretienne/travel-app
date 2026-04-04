@@ -139,11 +139,11 @@ export default function TripExpenses({ tripId, currentUserId }) {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl p-4 border border-stone-100">
           <p className="text-xs text-text-secondary mb-1">Total dépenses</p>
-          <p className="text-2xl font-bold text-text-main">{totalExpenses.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-text-main">€{totalExpenses.toFixed(2)}</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-stone-100">
           <p className="text-xs text-text-secondary mb-1">Par personne</p>
-          <p className="text-2xl font-bold text-primary">{perPerson.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-primary">€{perPerson.toFixed(2)}</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-stone-100 col-span-2 md:col-span-1">
           <p className="text-xs text-text-secondary mb-1">Membres</p>
@@ -161,7 +161,7 @@ export default function TripExpenses({ tripId, currentUserId }) {
                 <span className="font-medium text-text-main text-sm">{s.from?.firstName || 'Inconnu'}</span>
                 <ArrowRight size={16} className="text-text-light flex-shrink-0" />
                 <span className="font-medium text-text-main text-sm">{s.to?.firstName || 'Inconnu'}</span>
-                <span className="ml-auto font-bold text-primary">{s.amount.toFixed(2)}</span>
+                <span className="ml-auto font-bold text-primary">€{s.amount.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -291,7 +291,7 @@ export default function TripExpenses({ tripId, currentUserId }) {
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="font-bold text-text-main text-sm">{expense.amount.toFixed(2)}</p>
+                  <p className="font-bold text-text-main text-sm">€{expense.amount.toFixed(2)}</p>
                 </div>
                 {canDelete && (
                   <button

@@ -44,7 +44,7 @@ export default function AcceptInvitation() {
 
   const handleAccept = async () => {
     if (!isSignedIn && !guestName.trim()) {
-      setError('Please enter your name');
+      setError('Veuillez entrer votre prénom pour continuer');
       return;
     }
 

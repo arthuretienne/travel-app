@@ -279,7 +279,7 @@ export default function TripDetail() {
       navigate('/dashboard');
     } catch (err) {
       console.error('Error deleting trip:', err);
-      alert('Impossible de supprimer le voyage.');
+      setError('Impossible de supprimer le voyage. Veuillez réessayer.');
     }
   };
 
@@ -475,10 +475,10 @@ export default function TripDetail() {
           {/* Lifecycle Stepper */}
           <div className="mt-5 flex items-center gap-0">
             {[
-              { key: 'plan', label: 'Invitation', active: isPlanning, done: !isPlanning },
+              { key: 'plan', label: 'Propositions', active: isPlanning, done: !isPlanning },
               { key: 'vote', label: 'Vote', active: isVoting, done: isConfirmed },
-              { key: 'confirm', label: 'Confirmé', active: isConfirmed, done: false },
-              { key: 'book', label: 'Réservation', active: false, done: false },
+              { key: 'confirm', label: 'Destination', active: false, done: isConfirmed },
+              { key: 'book', label: 'Réservation', active: isConfirmed, done: false },
             ].map((step, i, arr) => (
               <div key={step.key} className="flex items-center flex-1 last:flex-none">
                 <div className="flex items-center gap-1.5">
@@ -1013,6 +1013,7 @@ function PlanningSection({ trip, navigate }) {
   const [proposalMode, setProposalMode] = useState(null); // 'ai' or 'custom'
   const [customDestination, setCustomDestination] = useState('');
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState(null);
 
   useEffect(() => {
     fetchGroupPreferences();
@@ -1110,7 +1111,7 @@ function PlanningSection({ trip, navigate }) {
       }
     } catch (err) {
       console.error('Error searching:', err);
-      alert('Erreur lors de la recherche. Veuillez réessayer.');
+      setSearchError('Erreur lors de la recherche. Veuillez réessayer.');
     } finally {
       setSearching(false);
     }
@@ -1185,7 +1186,7 @@ function PlanningSection({ trip, navigate }) {
       }
     } catch (err) {
       console.error('Error searching:', err);
-      alert('Erreur lors de la recherche. Veuillez réessayer.');
+      setSearchError('Erreur lors de la recherche. Veuillez réessayer.');
     } finally {
       setSearching(false);
     }
@@ -1256,6 +1257,15 @@ function PlanningSection({ trip, navigate }) {
           )}
         </>
       ) : null}
+
+      {/* Search Error */}
+      {searchError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+          <AlertCircle size={16} />
+          {searchError}
+          <button onClick={() => setSearchError(null)} className="ml-auto text-red-400 hover:text-red-600"><X size={14} /></button>
+        </div>
+      )}
 
       {/* Proposal Mode Selection */}
       {!proposalMode ? (

@@ -75,6 +75,11 @@ function Account() {
   const [calendarStatus, setCalendarStatus] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [loadingBillingPortal, setLoadingBillingPortal] = useState(false);
+  const [accountNotif, setAccountNotif] = useState(null);
+  const showAccountNotif = (type, text) => {
+    setAccountNotif({ type, text });
+    setTimeout(() => setAccountNotif(null), 4000);
+  };
 
   const [formData, setFormData] = useState({
     // Style & Objectif
@@ -155,7 +160,7 @@ function Account() {
       }
     } catch (error) {
       console.error('Error opening billing portal:', error);
-      alert('Impossible d\'ouvrir le portail de facturation. Veuillez réessayer.');
+      showAccountNotif('error', 'Impossible d\'ouvrir le portail de facturation. Veuillez réessayer.');
       setLoadingBillingPortal(false);
     }
   };
@@ -188,7 +193,7 @@ function Account() {
     const calendarError = params.get('calendar_error');
 
     if (calendarSuccess === 'true') {
-      alert('Calendrier Google connecté avec succès !');
+      showAccountNotif('success', 'Calendrier Google connecté avec succès !');
       fetchPreferences();
       checkCalendarStatus();
       // Clean URL
@@ -196,7 +201,7 @@ function Account() {
     }
 
     if (calendarError) {
-      alert(`❌ Erreur lors de la connexion: ${calendarError}`);
+      showAccountNotif('error', `Erreur lors de la connexion: ${calendarError}`);
       // Clean URL
       window.history.replaceState({}, '', '/account');
     }
@@ -303,10 +308,10 @@ function Account() {
         throw new Error('Failed to save preferences');
       }
 
-      alert('Préférences sauvegardées avec succès!');
+      showAccountNotif('success', 'Préférences sauvegardées avec succès.');
     } catch (error) {
       console.error('Error saving preferences:', error);
-      alert('Erreur lors de la sauvegarde');
+      showAccountNotif('error', 'Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
     }
@@ -334,7 +339,7 @@ function Account() {
       }
     } catch (error) {
       console.error('Error connecting calendar:', error);
-      alert('Erreur lors de la connexion au calendrier');
+      showAccountNotif('error', 'Erreur lors de la connexion au calendrier');
       setConnectingCalendar(false);
     }
   };
@@ -357,7 +362,7 @@ function Account() {
       });
 
       if (response.ok) {
-        alert('Calendrier Google déconnecté.');
+        showAccountNotif('success', 'Calendrier Google déconnecté.');
         fetchPreferences();
         checkCalendarStatus();
       } else {
@@ -365,7 +370,7 @@ function Account() {
       }
     } catch (error) {
       console.error('Error disconnecting calendar:', error);
-      alert('Erreur lors de la déconnexion');
+      showAccountNotif('error', 'Erreur lors de la déconnexion');
     }
   };
 
@@ -383,6 +388,14 @@ function Account() {
 
   return (
     <div className="min-h-screen bg-surface-subtle p-4 md:p-8">
+      {/* Inline notification */}
+      {accountNotif && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium ${
+          accountNotif.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+        }`}>
+          {accountNotif.type === 'success' ? '✓' : '✕'} {accountNotif.text}
+        </div>
+      )}
       <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-card border border-gray-100 overflow-hidden">
         <div className="p-8 border-b border-gray-100">
           <h1 className="text-3xl font-bold text-text-main mb-2">Mon Compte</h1>
