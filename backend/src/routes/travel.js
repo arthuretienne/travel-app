@@ -1113,7 +1113,15 @@ router.post('/recommendations/stream',
         ? `${req.user.firstName} ${req.user.lastName || ''}`.trim()
         : req.user.email;
 
-      const destinationsToProcess = topDestinations.slice(0, 3);
+      // Process up to 5 candidates in parallel — Booking sometimes can't book
+      // a destination Claude suggested (no flights from origin, no hotels in
+      // budget, etc.). Trying just slice(0,3) and seeing all three fail meant
+      // the user got "Aucun résultat trouvé" even though Claude had 2-3 more
+      // perfectly good candidates ready. We process 5; the stream emits each
+      // success as it lands; the frontend shows whatever made it through.
+      // If you tighten this back, the per-second RapidAPI rate limit is the
+      // ceiling — 5 in parallel currently fits the Pro tier.
+      const destinationsToProcess = topDestinations.slice(0, 5);
       let completedCount = 0;
 
       // Extract trip context for streaming (same as non-streaming)

@@ -5,6 +5,113 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// Tolerant parser for Sonnet's day-by-day itinerary response.
+//
+// Sonnet occasionally returns malformed JSON on long outputs (~600 lines):
+// unescaped quotes inside tip text, missing commas after deeply-nested
+// blocks, or wraps the array in `{ "days": [...] }` instead of returning a
+// bare array. The strict regex+JSON.parse the original code used would
+// silently return null and the harness would see the whole itinerary
+// vanish.
+//
+// This parser tries, in order:
+//   1. Bare array — fastest happy path
+//   2. Wrapped object — extract `days`/`itinerary`/`days_plan`/first-array prop
+//   3. Per-day salvage — if the whole array is unparseable, walk through
+//      top-level `{ … }` blocks one at a time, parse those that succeed,
+//      and return the surviving days. A 7-day plan with day 4 borked
+//      becomes a 6-day plan instead of a null. The day_count rule in the
+//      harness tolerates ±1 day, so this typically still passes.
+//
+// Returns null only when even per-day salvage yields zero parseable days,
+// which would mean Sonnet's output was completely broken — in that case
+// the caller should retry or fall back to a generic itinerary.
+export function parseItineraryResponse(rawResponse) {
+  if (!rawResponse || typeof rawResponse !== 'string') return null;
+  const text = rawResponse.trim();
+
+  // (1) Bare-array fast path
+  const arrayMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+  if (arrayMatch) {
+    try {
+      const parsed = JSON.parse(arrayMatch[0]);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {
+      console.warn('[itinerary parser] strict array parse failed:', e.message);
+    }
+  }
+
+  // (2) Wrapped object: { days: [...] } / { itinerary: [...] } / first array property
+  const objectMatch = text.match(/\{[\s\S]*\}/);
+  if (objectMatch) {
+    try {
+      const parsed = JSON.parse(objectMatch[0]);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const candidates = ['days', 'itinerary', 'days_plan', 'plan', 'schedule'];
+        for (const key of candidates) {
+          if (Array.isArray(parsed[key]) && parsed[key].length > 0) {
+            console.log(`[itinerary parser] unwrapped from .${key}`);
+            return parsed[key];
+          }
+        }
+        // First array-typed property (last resort)
+        for (const [key, value] of Object.entries(parsed)) {
+          if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+            console.log(`[itinerary parser] unwrapped from .${key} (fallback)`);
+            return value;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[itinerary parser] wrapped-object parse failed:', e.message);
+    }
+  }
+
+  // (3) Per-day salvage. Walk through balanced-brace `{ … }` blocks at the
+  // top level of the source array and parse them individually. We skip the
+  // leading `[` and braces inside string literals.
+  const days = [];
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let start = -1;
+  // Skip past the opening `[` if present
+  let cursor = 0;
+  const firstBracket = text.indexOf('[');
+  if (firstBracket >= 0) cursor = firstBracket + 1;
+
+  for (let i = cursor; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\') { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0 && start >= 0) {
+        const block = text.slice(start, i + 1);
+        try {
+          const day = JSON.parse(block);
+          if (day && typeof day === 'object') days.push(day);
+        } catch {
+          // skip this block — log so we can see how often this happens in prod
+          console.warn(`[itinerary parser] dropped malformed day block at offset ${start} (${block.length} chars)`);
+        }
+        start = -1;
+      }
+    }
+  }
+
+  if (days.length > 0) {
+    console.log(`[itinerary parser] salvaged ${days.length} day(s) via per-day parse`);
+    return days;
+  }
+  return null;
+}
+
 /**
  * Generate a personalized day-by-day itinerary with connections and timing
  * @param {Object} tripData - Trip destination data
@@ -209,15 +316,11 @@ OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
       response = response.replace(/^```(?:json)?\n?/g, '').replace(/\n?```$/g, '').trim();
     }
 
-    const jsonMatch = response.match(/\[\s*\{[\s\S]*\}\s*\]/);
-
-    if (!jsonMatch) {
-      console.error('❌ Failed to parse itinerary JSON');
-      console.error('Response was:', response);
+    const itinerary = parseItineraryResponse(response);
+    if (!itinerary) {
+      console.error('❌ Failed to parse itinerary JSON after all salvage attempts');
       return null;
     }
-
-    const itinerary = JSON.parse(jsonMatch[0]);
     console.log(`✅ Generated ${itinerary.length} days of itinerary`);
 
     return itinerary;

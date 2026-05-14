@@ -18,7 +18,7 @@ function parseArgs(argv) {
   const out = {
     filter: null,
     limit: Infinity,
-    destinations: 1,
+    destinations: 3,
     outDir: null,
   };
 

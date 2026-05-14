@@ -213,19 +213,45 @@ async function runProfile(profile) {
       return { profile, errored: true, error: 'discovery returned no destinations', latencyMs: Date.now() - t0 };
     }
 
-    // Stage 2: optimize the first destination
-    const target = destinations[0];
-    const trip = await optimizeDestination({
-      destination: target.name || target.cityName,
-      userProfile,
-      budget: totalBudget,
-      origin,
-      duration,
-      departureDate: userProfile.availability?.startDate || null,
-      isFixedDate: false,
-    });
+    // Stage 2: try optimizing destinations until one succeeds.
+    // Previously this only attempted destinations[0] — if Booking had no
+    // hotels in budget or no flights within maxFlightHours for that one,
+    // the whole profile failed even though 4 other candidates were
+    // available. Now we walk down the shortlist until one yields a
+    // complete trip.
+    const optimizeAttempts = [];
+    let trip = null;
+    let target = null;
+    for (const candidate of destinations.slice(0, 5)) {
+      const candidateName = candidate.name || candidate.cityName;
+      try {
+        const attempt = await optimizeDestination({
+          destination: candidateName,
+          userProfile,
+          budget: totalBudget,
+          origin,
+          duration,
+          departureDate: userProfile.availability?.startDate || null,
+          isFixedDate: false,
+        });
+        if (attempt) {
+          trip = attempt;
+          target = candidate;
+          break;
+        }
+        optimizeAttempts.push({ destination: candidateName, error: 'returned null' });
+      } catch (err) {
+        optimizeAttempts.push({ destination: candidateName, error: err.message });
+      }
+    }
     if (!trip) {
-      return { profile, errored: true, error: 'optimizeDestination returned null', latencyMs: Date.now() - t0 };
+      return {
+        profile,
+        errored: true,
+        error: `no destination optimizable after ${optimizeAttempts.length} attempts`,
+        optimizeAttempts,
+        latencyMs: Date.now() - t0,
+      };
     }
 
     // Stage 3: itinerary
@@ -248,6 +274,7 @@ async function runProfile(profile) {
       profile,
       latencyMs: elapsed,
       destination: target.name,
+      optimizeAttempts,  // surfaces which destinations failed before success
       itineraryLength: Array.isArray(itinerary) ? itinerary.length : 0,
       itinerary,  // store full itinerary in the per-profile raw dump
       ...evalResult,
