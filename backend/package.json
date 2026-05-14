@@ -11,6 +11,7 @@
     "poc:managed-agent": "node scripts/poc-managed-agent.js",
     "test:reco": "node scripts/test-reco-quality.js",
     "test:trip-packages": "node scripts/test-trip-package-quality.js",
+    "test:itinerary": "node scripts/test-itinerary-quality.js",
     "precache:destinations": "node scripts/precache-destinations.js"
   },
   "dependencies": {

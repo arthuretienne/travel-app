@@ -337,7 +337,7 @@ HOTEL INFORMATION:
     const dayPrompt = `Tu es un expert local créant le JOUR ${dayNum} sur ${days} d'un voyage ${groupText} à ${city}, ${country}.
 Date: ${dateStr}
 ${isFirstDay ? `\n⚡ C'est le jour d'arrivée. ${flightInfoText}` : ''}
-${isLastDay ? '\n⚡ C'est le jour de départ — inclure checkout + transfert aéroport avec timing précis.' : ''}
+${isLastDay ? `\n⚡ C'est le jour de départ — inclure checkout + transfert aéroport avec timing précis.` : ''}
 ${hotelInfoText}
 
 PROFIL VOYAGEUR:
