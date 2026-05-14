@@ -16,6 +16,7 @@ const FLIGHT_PRICE_CEILING_EUR = 5_000;
 const HOTEL_PER_NIGHT_FLOOR_EUR = 15;
 const HOTEL_PER_NIGHT_CEILING_EUR = 2_000;
 const VALID_CITY_STATE_NAMES = new Set(['singapore', 'monaco', 'san marino', 'vatican city']);
+const FLIGHT_DURATION_TOLERANCE_MINUTES = 30;
 
 function isFinitePositive(n) {
   return typeof n === 'number' && Number.isFinite(n) && n > 0;
@@ -87,6 +88,22 @@ export const rules = {
       if (!isFinitePositive(p)) return { ok: false, reason: `${d.name}: flight price missing/invalid (${p})` };
       if (p < floor) return { ok: false, reason: `${d.name}: flight price suspiciously low €${p}` };
       if (p > ceiling) return { ok: false, reason: `${d.name}: flight price unreasonable €${p}` };
+    }
+    return { ok: true };
+  },
+
+  flight_duration_within_profile: ({ destinations, profile }) => {
+    const maxHours = profile.payload?.basic?.maxFlightHours || profile.payload?.constraints?.maxFlightHours || null;
+    if (!maxHours) return { ok: true };
+
+    const maxMinutes = (Number(maxHours) * 60) + FLIGHT_DURATION_TOLERANCE_MINUTES;
+    for (const d of destinations) {
+      const outboundDuration = d.flight?.outbound?.duration || 0;
+      const returnDuration = d.flight?.return?.duration || 0;
+      const longestLeg = Math.max(outboundDuration, returnDuration);
+      if (longestLeg > maxMinutes) {
+        return { ok: false, reason: `${d.name}: longest flight leg ${longestLeg}min exceeds max ${maxHours}h + ${FLIGHT_DURATION_TOLERANCE_MINUTES}min` };
+      }
     }
     return { ok: true };
   },

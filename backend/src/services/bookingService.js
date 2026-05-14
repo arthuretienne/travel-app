@@ -134,8 +134,11 @@ const DESTINATION_CORRECTIONS = {
   'seychelles': 'Mahe',         // Main island
   'zanzibar': 'Zanzibar',       // Tanzania
   'canary islands': 'Tenerife', // Main island
+  'cape verde': 'Sal',          // Main tourist island / SID airport
+  'gran canaria': 'Las Palmas de Gran Canaria',
   'azores': 'Ponta Delgada',    // Main island
   'madeira': 'Funchal',         // Main city
+  'djerba': 'Djerba',
   'crete': 'Heraklion',         // Main airport in Crete
   'rhodes': 'Rhodes',           // Greek island
   'corfu': 'Corfu',             // Greek island
@@ -203,6 +206,97 @@ function normalizeCachedDestination(destination, destinationName) {
   };
 }
 
+const EXPECTED_COUNTRIES_BY_DESTINATION = {
+  'bali': 'indonesia',
+  'denpasar': 'indonesia',
+  'phuket': 'thailand',
+  'bangkok': 'thailand',
+  'tokyo': 'japan',
+  'japan': 'japan',
+  'maldives': 'maldives',
+  'male': 'maldives',
+  'marrakech': 'morocco',
+  'fez': 'morocco',
+  'dubai': 'united arab emirates',
+  'cape town': 'south africa',
+  'zanzibar': 'tanzania',
+  'mauritius': 'mauritius',
+  'seychelles': 'seychelles',
+  'porto': 'portugal',
+  'lisbon': 'portugal',
+  'funchal': 'portugal',
+  'ponta delgada': 'portugal',
+  'valencia': 'spain',
+  'seville': 'spain',
+  'malaga': 'spain',
+  'bilbao': 'spain',
+  'palma de mallorca': 'spain',
+  'ibiza': 'spain',
+  'tenerife': 'spain',
+  'gran canaria': 'spain',
+  'las palmas de gran canaria': 'spain',
+  'cape verde': 'cape verde',
+  'sal': 'cape verde',
+  'djerba': 'tunisia',
+  'hurghada': 'egypt',
+  'agadir': 'morocco',
+  'faro': 'portugal',
+  'barcelona': 'spain',
+  'madrid': 'spain',
+  'florence': 'italy',
+  'bologna': 'italy',
+  'naples': 'italy',
+  'palermo': 'italy',
+  'turin': 'italy',
+  'catania': 'italy',
+  'cagliari': 'italy',
+  'ajaccio': 'france',
+  'edinburgh': 'united kingdom',
+  'dublin': 'ireland',
+  'athens': 'greece',
+  'thessaloniki': 'greece',
+  'santorini': 'greece',
+  'heraklion': 'greece',
+  'rhodes': 'greece',
+  'corfu': 'greece',
+  'mykonos': 'greece',
+  'split': 'croatia',
+  'dubrovnik': 'croatia',
+  'krakow': 'poland',
+  'gdansk': 'poland',
+  'wroclaw': 'poland',
+  'budapest': 'hungary',
+  'ljubljana': 'slovenia',
+  'sofia': 'bulgaria',
+  'tallinn': 'estonia',
+  'riga': 'latvia',
+  'vilnius': 'lithuania',
+  'helsinki': 'finland',
+  'stockholm': 'sweden',
+  'copenhagen': 'denmark',
+  'reykjavik': 'iceland',
+  'bergen': 'norway',
+  'istanbul': 'turkey',
+  'tbilisi': 'georgia',
+  'amman': 'jordan',
+  'muscat': 'oman',
+  'oman': 'oman',
+};
+
+function expectedCountryFor(queryName = '') {
+  const baseQuery = normalizeDestinationKey(queryName);
+  return EXPECTED_COUNTRIES_BY_DESTINATION[baseQuery] || null;
+}
+
+function resultCountryName(result) {
+  return (result.countryName || result.country || '').toLowerCase();
+}
+
+function matchesExpectedCountry(result, expectedCountry) {
+  if (!expectedCountry) return true;
+  return resultCountryName(result).includes(expectedCountry);
+}
+
 /**
  * Check if a destination result matches the expected query
  * Prevents mismatches like "Bali" → "Kraków-Balice"
@@ -210,31 +304,14 @@ function normalizeCachedDestination(destination, destinationName) {
 function isDestinationMatch(result, queryName) {
   const query = queryName.toLowerCase().trim();
   const resultName = (result.name || '').toLowerCase();
-  const resultCountry = (result.countryName || result.country || '').toLowerCase();
+  const resultCountry = resultCountryName(result);
 
   // Extract base query (remove country suffix like "Bali, Indonesia")
   const baseQuery = query.split(',')[0].trim();
 
-  // Known country associations for common destinations
-  const expectedCountries = {
-    'bali': 'indonesia',
-    'denpasar': 'indonesia',
-    'phuket': 'thailand',
-    'bangkok': 'thailand',
-    'tokyo': 'japan',
-    'maldives': 'maldives',
-    'male': 'maldives',
-    'marrakech': 'morocco',
-    'dubai': 'united arab emirates',
-    'cape town': 'south africa',
-    'zanzibar': 'tanzania',
-    'mauritius': 'mauritius',
-    'seychelles': 'seychelles',
-  };
-
   // If we know the expected country, verify it matches
-  const expectedCountry = expectedCountries[baseQuery];
-  if (expectedCountry && !resultCountry.includes(expectedCountry)) {
+  const expectedCountry = expectedCountryFor(baseQuery);
+  if (expectedCountry && !matchesExpectedCountry(result, expectedCountry)) {
     console.log(`   ⚠️ Country mismatch: "${resultName}" is in ${resultCountry}, expected ${expectedCountry}`);
     return false;
   }
@@ -311,6 +388,7 @@ export async function getDestinationId(destinationName) {
     }
 
     const results = response.data.data;
+    const expectedCountry = expectedCountryFor(destinationName);
 
     // Smart destination selection:
     // 1. First try to find a CITY that matches the query
@@ -337,16 +415,16 @@ export async function getDestinationId(destinationName) {
 
     // Priority 3: First CITY (if no match found but might be correct)
     if (!selectedDest) {
-      const firstCity = results.find(d => d.type === 'CITY');
+      const firstCity = results.find(d => d.type === 'CITY' && matchesExpectedCountry(d, expectedCountry));
       if (firstCity) {
         console.log(`   ⚠️ No exact match, using first CITY: ${firstCity.name} (${firstCity.countryName || firstCity.country})`);
         selectedDest = firstCity;
       }
     }
 
-    // Priority 4: First result (last resort)
+    // Priority 4: First result in the expected country, then first result as last resort
     if (!selectedDest) {
-      selectedDest = results[0];
+      selectedDest = results.find(d => matchesExpectedCountry(d, expectedCountry)) || results[0];
       console.log(`   ⚠️ No CITY found, using first result: ${selectedDest.name} (${selectedDest.countryName || selectedDest.country})`);
     }
 
@@ -928,6 +1006,18 @@ function getHotelSearchFilters(accommodationPref, materialComfort = 50) {
   return filters;
 }
 
+function calculateHotelNights(arrivalDate, departureDate) {
+  const arrival = new Date(`${arrivalDate}T00:00:00Z`);
+  const departure = new Date(`${departureDate}T00:00:00Z`);
+  const diffMs = departure.getTime() - arrival.getTime();
+
+  if (!Number.isFinite(diffMs) || diffMs <= 0) {
+    return 1;
+  }
+
+  return Math.max(1, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+}
+
 /**
  * Search hotels in a destination with user preferences
  * @param {Object} params
@@ -964,7 +1054,8 @@ export async function searchHotels({
   // Create a simple hash of tripContext to include in cache key
   const contextHash = tripContext ? tripContext.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '') : 'none';
   const typeHash = tripType || 'any';
-  const cacheKey = `booking:hotels:${destinationQuery}:${arrivalDate}:${departureDate}:${adults}:${children}:${rooms}:${prefKey}:${contextHash}:${typeHash}`;
+  const priceKey = maxPrice ? Math.round(maxPrice) : 'any';
+  const cacheKey = `booking:hotels:${destinationQuery}:${arrivalDate}:${departureDate}:${adults}:${children}:${rooms}:${currency}:${priceKey}:${prefKey}:${contextHash}:${typeHash}`;
 
   // Check cache
   const cached = await cache.get(cacheKey);
@@ -1119,6 +1210,7 @@ export async function searchHotels({
     const hotels = hotelData.map(hotel => {
       // Price is in property.priceBreakdown.grossPrice.value
       const grossPrice = hotel.property?.priceBreakdown?.grossPrice?.value || 0;
+      const nights = calculateHotelNights(arrivalDate, departureDate);
 
       // Extract description from accessibilityLabel
       const description = hotel.accessibilityLabel || '';
@@ -1141,7 +1233,8 @@ export async function searchHotels({
           currency: hotel.property?.priceBreakdown?.grossPrice?.currency || currency,
           formatted: `${currency} ${Math.round(grossPrice)}`
         },
-        pricePerNight: grossPrice,
+        pricePerNight: grossPrice ? Math.round(grossPrice / nights) : 0,
+        totalNights: nights,
         location: destinationQuery,
         photos: hotel.property?.photoUrls || [],
         mainPhoto: hotel.property?.photoUrls?.[0] || null,

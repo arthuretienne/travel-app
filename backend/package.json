@@ -10,6 +10,7 @@
     "seed:new-destinations": "node src/scripts/seedNewDestinations.js",
     "poc:managed-agent": "node scripts/poc-managed-agent.js",
     "test:reco": "node scripts/test-reco-quality.js",
+    "test:trip-packages": "node scripts/test-trip-package-quality.js",
     "precache:destinations": "node scripts/precache-destinations.js"
   },
   "dependencies": {
