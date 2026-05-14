@@ -24,6 +24,17 @@ function getBudget(profile) {
   return profile.payload?.basic?.budget ?? profile.payload?.constraints?.budget ?? 0;
 }
 
+// The profile.budget is per-person (matches the UI: "Budget par personne").
+// Flight prices returned by Booking are for the whole group (we pass
+// adults=travelers in the search). So when comparing flight cost against
+// budget we have to multiply the per-person budget by traveler count, or we
+// reject perfectly reasonable trips for couples/families.
+function getTotalBudget(profile) {
+  const perPerson = getBudget(profile);
+  const travelers = profile.payload?.basic?.travelers || 1;
+  return perPerson * travelers;
+}
+
 function getDuration(profile) {
   return profile.payload?.availability?.duration ?? 7;
 }
@@ -66,12 +77,15 @@ export const rules = {
     return { ok: true };
   },
 
-  flight_prices_plausible: ({ destinations }) => {
+  flight_prices_plausible: ({ destinations, profile }) => {
+    const travelers = profile.payload?.basic?.travelers || 1;
+    const floor = FLIGHT_PRICE_FLOOR_EUR * travelers;
+    const ceiling = FLIGHT_PRICE_CEILING_EUR * travelers;
     for (const d of destinations) {
       const p = d.price?.amount ?? d.flight?.price ?? d.flight?.totalCost;
       if (!isFinitePositive(p)) return { ok: false, reason: `${d.name}: flight price missing/invalid (${p})` };
-      if (p < FLIGHT_PRICE_FLOOR_EUR) return { ok: false, reason: `${d.name}: flight price suspiciously low €${p}` };
-      if (p > FLIGHT_PRICE_CEILING_EUR) return { ok: false, reason: `${d.name}: flight price unreasonable €${p}` };
+      if (p < floor) return { ok: false, reason: `${d.name}: flight price suspiciously low €${p}` };
+      if (p > ceiling) return { ok: false, reason: `${d.name}: flight price unreasonable €${p}` };
     }
     return { ok: true };
   },
@@ -122,7 +136,7 @@ export const rules = {
   },
 
   budget_per_destination_within_limit: ({ destinations, profile }) => {
-    const budget = getBudget(profile);
+    const budget = getTotalBudget(profile);
     if (!budget) return { ok: true };
     const ceiling = budget * (1 + BUDGET_OVERRUN_TOLERANCE);
     for (const d of destinations) {
