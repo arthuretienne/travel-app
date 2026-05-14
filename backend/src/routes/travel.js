@@ -1090,6 +1090,24 @@ router.post('/recommendations/stream',
         destinations: topDestinations.slice(0, 3).map(d => d.name)
       });
 
+      // Defense in depth: discoverDestinations now always falls back to a
+      // curated list, but if some unforeseen path still returns empty we send
+      // a specific error event with actionable advice instead of letting the
+      // frontend display the generic "Aucun résultat trouvé" with no context.
+      if (topDestinations.length === 0) {
+        console.warn('[stream] ⚠️  topDestinations is empty after discovery — sending no_destinations event');
+        sendEvent('no_destinations', {
+          message: 'Aucune destination ne correspond à votre profil exact. Essayez d\'élargir le budget, d\'allonger la durée, ou de retirer une activité contraignante.',
+          suggestions: [
+            'Augmentez le budget de 20%',
+            'Essayez +/- 3 jours de durée',
+            'Retirez la contrainte de saison',
+          ],
+        });
+        res.end();
+        return;
+      }
+
       // Step 2: Process each destination and stream results as they complete
       const userName = req.user.firstName
         ? `${req.user.firstName} ${req.user.lastName || ''}`.trim()

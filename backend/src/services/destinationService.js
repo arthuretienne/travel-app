@@ -96,27 +96,33 @@ function findNearestAirport(destinationName) {
 /**
  * Estimate flight budget ratio based on actual flight prices found.
  * Uses the median flight price to infer whether destinations are short/medium/long-haul.
- * - Short-haul (Europe/Maghreb): flights ~€80-250 → 30% of budget for flights
- * - Medium-haul (Turkey, Canaries, Egypt): flights ~€200-400 → 40%
- * - Long-haul (Asia, Americas, Sub-Saharan Africa): flights ~€400+ → 55%
+ *
+ * Ratios were widened in May 2026 because the old 30/40/55 thresholds filtered
+ * everything out for users with realistic budgets — a €1000 trip filtered to
+ * "€300 max for flights" was rejecting destinations like Lisbon, Barcelona,
+ * Naples that the user would have gladly taken at €350-400 flights.
+ *
+ * - Short-haul (Europe/Maghreb): flights ~€80-250 → 40% of budget for flights
+ * - Medium-haul (Turkey, Canaries, Egypt): flights ~€200-400 → 50%
+ * - Long-haul (Asia, Americas, Sub-Saharan Africa): flights ~€400+ → 65%
  */
 function getFlightBudgetRatio(destinationsWithFlights) {
-  if (!destinationsWithFlights || destinationsWithFlights.length === 0) return 0.40;
+  if (!destinationsWithFlights || destinationsWithFlights.length === 0) return 0.50;
 
   const prices = destinationsWithFlights.map(d => d.price?.amount || 0).filter(p => p > 0);
-  if (prices.length === 0) return 0.40;
+  if (prices.length === 0) return 0.50;
 
   const median = prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)];
 
   if (median <= 250) {
-    console.log(`   ✈️  Short-haul detected (median €${Math.round(median)}) → 30% flight budget ratio`);
-    return 0.30;
-  } else if (median <= 450) {
-    console.log(`   ✈️  Medium-haul detected (median €${Math.round(median)}) → 40% flight budget ratio`);
+    console.log(`   ✈️  Short-haul detected (median €${Math.round(median)}) → 40% flight budget ratio`);
     return 0.40;
+  } else if (median <= 450) {
+    console.log(`   ✈️  Medium-haul detected (median €${Math.round(median)}) → 50% flight budget ratio`);
+    return 0.50;
   } else {
-    console.log(`   ✈️  Long-haul detected (median €${Math.round(median)}) → 55% flight budget ratio`);
-    return 0.55;
+    console.log(`   ✈️  Long-haul detected (median €${Math.round(median)}) → 65% flight budget ratio`);
+    return 0.65;
   }
 }
 
@@ -234,8 +240,26 @@ export async function discoverDestinations({
 
     console.log(`✅ Found flights for ${destinationsWithFlights.length} destinations`);
 
+    // BAILOUT: Booking found zero flights for any destination Claude suggested.
+    // Previously this fell through silently and returned an empty array, which
+    // the stream route would relay as "Aucun résultat trouvé" — the bug Arthur
+    // hit live on 2026-05-14. Instead, fall back to the curated list so the
+    // user gets *something*. The route handler still runs optimizeDestination
+    // on each, which does its own flight search and may succeed where the
+    // bulk search didn't.
+    if (destinationsWithFlights.length === 0) {
+      console.warn('[discoverDestinations] ⚠️  Booking returned 0 flights for all candidates — falling back to curated list');
+      console.log('[discoverDestinations] Pipeline summary:', {
+        origin, budget, duration,
+        shortlist_size: shortlist.length,
+        destination_ids_found: validDestinations.length,
+        flights_found: 0,
+        outcome: 'fallback_curated',
+      });
+      return await fallbackDestinations(origin, budget, userProfile);
+    }
+
     // STEP 4: Filter by budget and select best matches
-    // Dynamic flight ratio: short-haul (Europe) = 30%, medium (N.Africa/Turkey/Middle East) = 40%, long-haul = 55%
     const flightBudgetRatio = getFlightBudgetRatio(destinationsWithFlights);
     const maxFlightBudget = budget * flightBudgetRatio;
 
@@ -302,6 +326,29 @@ export async function discoverDestinations({
     selected.forEach((d, i) => {
       console.log(`  ${i + 1}. ${d.name} (${d.countryName || d.country}) - €${d.price.amount} (${d.flightCount} flights)`);
     });
+
+    // Single-line pipeline summary, grep-friendly for Render log queries.
+    console.log('[discoverDestinations] Pipeline summary:', {
+      origin, budget, duration,
+      shortlist_size: shortlist.length,
+      destination_ids_found: validDestinations.length,
+      flights_found: destinationsWithFlights.length,
+      flight_budget_ratio: flightBudgetRatio,
+      max_flight_budget: Math.round(maxFlightBudget),
+      affordable_after_filter: affordable.length,
+      selected_returned: selected.length,
+      countries: usedCountries.size,
+      outcome: 'ok',
+    });
+
+    // Last-mile safety net: somehow we got here with nothing selected (e.g.
+    // diversity selection bug, off-by-one). Better to fall back to a curated
+    // list than return empty silently — the calling stream route would relay
+    // [] as "no results found" with no explanation.
+    if (selected.length === 0) {
+      console.warn('[discoverDestinations] ⚠️  Selected is empty after diversity pass — falling back');
+      return await fallbackDestinations(origin, budget, userProfile);
+    }
 
     return selected;
 
