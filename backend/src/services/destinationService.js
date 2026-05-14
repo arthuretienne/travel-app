@@ -212,10 +212,11 @@ export async function discoverDestinations({
         }
 
         const cheapestFlight = flights.flights[0];
+        const displayName = dest.cityName || cityName;
 
         return {
-          name: cityName, // Use clean city name instead of airport name
-          cityName,
+          name: displayName, // Use normalized city/destination name instead of airport name
+          cityName: displayName,
           code: dest.code,
           country: dest.country,
           countryName: dest.countryName,

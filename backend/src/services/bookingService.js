@@ -106,6 +106,15 @@ function extractCityName(apiName, originalQuery) {
   return apiName; // Already a city name
 }
 
+function normalizeDestinationKey(name = '') {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(',')[0]
+    .trim();
+}
+
 /**
  * Known destination mappings for problematic queries
  * Maps common names to their correct search term for flights API
@@ -121,7 +130,7 @@ const DESTINATION_CORRECTIONS = {
   'sicily': 'Catania',          // Main airport in Sicily
   'sardinia': 'Cagliari',       // Main airport in Sardinia
   'corsica': 'Ajaccio',         // Main airport in Corsica
-  'mauritius': 'Port Louis',    // Capital of Mauritius
+  'mauritius': 'Mauritius',     // Booking flight search does not resolve Port Louis reliably
   'seychelles': 'Mahe',         // Main island
   'zanzibar': 'Zanzibar',       // Tanzania
   'canary islands': 'Tenerife', // Main island
@@ -131,7 +140,68 @@ const DESTINATION_CORRECTIONS = {
   'rhodes': 'Rhodes',           // Greek island
   'corfu': 'Corfu',             // Greek island
   'mykonos': 'Mykonos',         // Greek island
+  'oman': 'Muscat',             // Country-level query resolves to Muscat airport
+  'fiji': 'Fiji',               // Display as Nadi when NAN is selected
+  'barbados': 'Barbados',       // Display as Bridgetown when BGI is selected
+  'cayman islands': 'Cayman Islands', // Display as Grand Cayman when GCM is selected
 };
+
+const DESTINATION_DISPLAY_NAMES_BY_QUERY = {
+  'maldives': 'Male',
+  'male': 'Male',
+  'seychelles': 'Mahe',
+  'mahe': 'Mahe',
+  'mauritius': 'Port Louis',
+  'oman': 'Muscat',
+  'muscat': 'Muscat',
+  'fiji': 'Nadi',
+  'barbados': 'Bridgetown',
+  'cayman islands': 'Grand Cayman',
+  'faroe islands': 'Vagar',
+  'sri lanka': 'Colombo',
+  'new zealand': 'New Plymouth',
+  'costa rica': 'San Jose',
+  'costa rica (guanacaste)': 'Liberia',
+  'japan': 'Tokyo',
+};
+
+const DESTINATION_DISPLAY_NAMES_BY_CODE = {
+  MLE: 'Male',
+  SEZ: 'Mahe',
+  MRU: 'Port Louis',
+  MCT: 'Muscat',
+  NAN: 'Nadi',
+  BGI: 'Bridgetown',
+  GCM: 'Grand Cayman',
+  FAE: 'Vagar',
+  CMB: 'Colombo',
+  NPL: 'New Plymouth',
+  SJO: 'San Jose',
+  LIR: 'Liberia',
+  TYO: 'Tokyo',
+};
+
+function getDisplayCityName(selectedDest, originalQuery, resolvedName) {
+  const originalKey = normalizeDestinationKey(originalQuery);
+  const resolvedKey = normalizeDestinationKey(resolvedName);
+  const codeOverride = DESTINATION_DISPLAY_NAMES_BY_CODE[(selectedDest.code || '').toUpperCase()];
+  const queryOverride = DESTINATION_DISPLAY_NAMES_BY_QUERY[originalKey] || DESTINATION_DISPLAY_NAMES_BY_QUERY[resolvedKey];
+
+  return codeOverride || queryOverride || extractCityName(selectedDest.name, resolvedName || originalQuery);
+}
+
+function normalizeCachedDestination(destination, destinationName) {
+  if (!destination) return destination;
+
+  const cityName = getDisplayCityName(destination, destinationName, destination.originalQuery || destinationName);
+  if (cityName === destination.cityName) return destination;
+
+  return {
+    ...destination,
+    cityName,
+    originalQuery: destination.originalQuery || destinationName,
+  };
+}
 
 /**
  * Check if a destination result matches the expected query
@@ -216,7 +286,11 @@ export async function getDestinationId(destinationName) {
   const cached = await cache.get(cacheKey);
   if (cached) {
     console.log(`✅ Cache HIT for "${destinationName}" → ${cached.id}`);
-    return cached;
+    const normalized = normalizeCachedDestination(cached, destinationName);
+    if (normalized !== cached) {
+      cache.set(cacheKey, normalized, CACHE_TTL.DESTINATION_ID);
+    }
+    return normalized;
   }
 
   console.log(`🔍 Searching destination "${resolvedName}"...`);
@@ -284,7 +358,7 @@ export async function getDestinationId(destinationName) {
       country: selectedDest.country,
       countryName: selectedDest.countryName,
       // Add cityName for hotel/attraction searches
-      cityName: extractCityName(selectedDest.name, destinationName),
+      cityName: getDisplayCityName(selectedDest, destinationName, resolvedName),
       flightCode: selectedDest.id, // Explicit flight code for clarity
       originalQuery: destinationName // Keep original query for reference
     };

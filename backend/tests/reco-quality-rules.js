@@ -15,6 +15,7 @@ const FLIGHT_PRICE_FLOOR_EUR = 20;
 const FLIGHT_PRICE_CEILING_EUR = 5_000;
 const HOTEL_PER_NIGHT_FLOOR_EUR = 15;
 const HOTEL_PER_NIGHT_CEILING_EUR = 2_000;
+const VALID_CITY_STATE_NAMES = new Set(['singapore', 'monaco', 'san marino', 'vatican city']);
 
 function isFinitePositive(n) {
   return typeof n === 'number' && Number.isFinite(n) && n > 0;
@@ -99,7 +100,7 @@ export const rules = {
       // Catch the "Albania, Albania" / "France, France" bug.
       const name = (d.name || '').toLowerCase();
       const ctry = (country || '').toLowerCase();
-      if (name && ctry && name === ctry) {
+      if (name && ctry && name === ctry && !VALID_CITY_STATE_NAMES.has(ctry)) {
         return { ok: false, reason: `${d.name}: city name == country name (data corruption)` };
       }
     }
