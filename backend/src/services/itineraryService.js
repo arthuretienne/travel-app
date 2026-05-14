@@ -271,8 +271,9 @@ IMPORTANT RULES:
 1. Day 1: Include arrival logistics (airport transfer to hotel, check-in time, first meal)
    ${flightDetails ? `- Use REAL flight arrival time to plan Day 1 (arriving ${flightDetails.outbound?.arrivalTime || 'morning'})` : '- Assume morning arrival'}
    ${hotelDetails ? `- Hotel check-in at ${hotelDetails.name || 'hotel'}: typically 3 PM but can store luggage earlier` : ''}
-2. Last day: Include checkout time (usually 11 AM), departure logistics, airport timing
+2. Last day: MUST include the words "checkout" and "airport" (or "departure") in at least one activity. Include hotel checkout time (usually 11 AM), transfer to airport with timing, and airport arrival 2-3h before flight.
    ${flightDetails?.return ? `- Return flight departs at ${flightDetails.return?.departureTime || 'evening'} - plan accordingly!` : ''}
+   - Example for last day: { "time": "11:00 AM", "activity": "Hotel checkout & taxi to airport", "type": "Departure" }
 3. Include REALISTIC transport times (walking, metro, taxi with estimated costs)
 4. Budget breakdown per day (stay under €${userProfile?.budget || 1500} total)
 5. Mix free and paid activities
@@ -297,7 +298,7 @@ OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 8000, // Increased for detailed multi-day itineraries
+      max_tokens: 16000, // Bumped from 8000 — 10+ day trips were being truncated mid-array and the last days dropped, so the harness saw days_generated < days_requested and missed the departure logistics that Sonnet was about to emit.
       temperature: 0.7,
       messages: [{
         role: 'user',

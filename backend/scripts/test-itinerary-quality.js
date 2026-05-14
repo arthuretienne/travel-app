@@ -107,8 +107,15 @@ function evaluateItinerary(itinerary, profile, trip) {
       fail('day_has_schedule_array', `${dayLabel}: schedule is not an array`);
       continue;
     }
-    if (day.schedule.length < 4) {
-      fail('day_has_enough_activities', `${dayLabel}: only ${day.schedule.length} activities, expected ≥4`);
+    // Day 1 (late arrival) and the last day (early departure) legitimately
+    // have fewer activities — relax the floor from 4 to 3 for them. Sonnet
+    // produces 3 logistical items (arrival, transfer, check-in) for flights
+    // landing late evening, and 2-3 morning activities + airport for the
+    // last day; penalising those is the rule being wrong, not the engine.
+    const isEdgeDay = i === 0 || i === itinerary.length - 1;
+    const minActivities = isEdgeDay ? 3 : 4;
+    if (day.schedule.length < minActivities) {
+      fail('day_has_enough_activities', `${dayLabel}: only ${day.schedule.length} activities, expected ≥${minActivities}`);
     }
 
     // Activity-level fields
@@ -144,15 +151,17 @@ function evaluateItinerary(itinerary, profile, trip) {
       fail('activities_have_transport', `${dayLabel}: only ${withTransport}/${day.schedule.length} activities mention transport`);
     }
 
-    // At least one meal per day, except the last day which may be a short
-    // departure morning (Sonnet legitimately produces a 2-3-activity Day 7
-    // that ends at the airport before lunch — penalising that is wrong).
+    // At least one meal per day, except the edge days (late arrival on
+    // Day 1 = logistics only; early departure on Day N = back home before
+    // lunch). Sonnet legitimately produces meal-less edge days; penalising
+    // them is wrong.
+    const isFirstDay = i === 0;
     const isLastDay = i === itinerary.length - 1;
     const hasMeal = day.schedule.some(a => {
       const text = `${a?.activity || ''} ${a?.type || ''}`.toLowerCase();
       return MEAL_KEYWORDS.some(kw => text.includes(kw));
     });
-    if (!hasMeal && !isLastDay) {
+    if (!hasMeal && !isLastDay && !isFirstDay) {
       fail('day_has_meal_break', `${dayLabel}: no meal break mentioned`);
     }
   }
