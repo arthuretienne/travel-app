@@ -166,6 +166,21 @@ const DESTINATION_DISPLAY_NAMES_BY_QUERY = {
   'costa rica': 'San Jose',
   'costa rica (guanacaste)': 'Liberia',
   'japan': 'Tokyo',
+  // Skusku 2026-05-14: Malta and Cape Verde slipped through the original
+  // normalisation map — Booking returns them as country-named entries which
+  // then renders as "Malta (Malta)" / "Cape Verde (Cape Verde)" in the UI
+  // and trips the no_null_country quality rule.
+  'malta': 'Valletta',
+  'cape verde': 'Praia',
+  'cabo verde': 'Praia',
+  // Other country-level queries Claude tends to suggest:
+  'bahrain': 'Manama',
+  'brunei': 'Bandar Seri Begawan',
+  'qatar': 'Doha',
+  'kuwait': 'Kuwait City',
+  'andorra': 'Andorra la Vella',
+  'liechtenstein': 'Vaduz',
+  'luxembourg': 'Luxembourg City',
 };
 
 const DESTINATION_DISPLAY_NAMES_BY_CODE = {
@@ -182,6 +197,15 @@ const DESTINATION_DISPLAY_NAMES_BY_CODE = {
   SJO: 'San Jose',
   LIR: 'Liberia',
   TYO: 'Tokyo',
+  MLA: 'Valletta',           // Malta
+  RAI: 'Praia',              // Cape Verde
+  SID: 'Sal',                // Cape Verde alt airport
+  BAH: 'Manama',             // Bahrain
+  BWN: 'Bandar Seri Begawan',// Brunei
+  DOH: 'Doha',               // Qatar
+  KWI: 'Kuwait City',
+  ALV: 'Andorra la Vella',
+  LUX: 'Luxembourg City',
 };
 
 function getDisplayCityName(selectedDest, originalQuery, resolvedName) {

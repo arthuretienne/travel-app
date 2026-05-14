@@ -1147,7 +1147,7 @@ async function fallbackDestinations(origin, budget, userProfile) {
     { name: 'Tenerife', country: 'Spain', region: 'Europe', themes: ['tropical', 'beach', 'family', 'nature', 'nightlife'] },
     { name: 'Gran Canaria', country: 'Spain', region: 'Europe', themes: ['tropical', 'beach', 'family', 'nature', 'nightlife'] },
     { name: 'Madeira', country: 'Portugal', region: 'Europe', themes: ['tropical', 'beach', 'nature', 'hiking'] },
-    { name: 'Cape Verde', country: 'Cape Verde', region: 'Africa', themes: ['tropical', 'beach', 'nightlife'] },
+    { name: 'Praia', country: 'Cape Verde', region: 'Africa', themes: ['tropical', 'beach', 'nightlife'] },
     { name: 'Djerba', country: 'Tunisia', region: 'Africa', themes: ['tropical', 'beach', 'family'] },
     { name: 'Hurghada', country: 'Egypt', region: 'Africa', themes: ['tropical', 'beach', 'diving', 'nightlife'] },
     { name: 'Agadir', country: 'Morocco', region: 'Africa', themes: ['tropical', 'beach', 'nightlife'] },
