@@ -146,7 +146,7 @@ async function runOnce({ agentId, environmentId, vaultId, label }) {
   // Open stream BEFORE sending the message — early events are buffered until
   // a stream attaches, but you can still miss frames on slow networks if
   // you send first.
-  const streamRes = await api(`/sessions/${session.id}/stream`, { stream: true });
+  const streamRes = await api(`/sessions/${session.id}/events/stream`, { stream: true });
 
   await api(`/sessions/${session.id}/events`, {
     method: 'POST',

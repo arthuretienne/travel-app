@@ -4,3 +4,7 @@ node_modules/
 *.log
 
 /src/generated/prisma
+
+# Reco quality harness — each run dumps reports/<timestamp>/ with raw JSON.
+# Never committed; the report.md is meant to live in the commit message body.
+reports/
