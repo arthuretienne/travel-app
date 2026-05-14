@@ -9,7 +9,8 @@
     "cron:check-prices": "node scripts/check-prices.js",
     "seed:new-destinations": "node src/scripts/seedNewDestinations.js",
     "poc:managed-agent": "node scripts/poc-managed-agent.js",
-    "test:reco": "node scripts/test-reco-quality.js"
+    "test:reco": "node scripts/test-reco-quality.js",
+    "precache:destinations": "node scripts/precache-destinations.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
