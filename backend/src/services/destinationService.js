@@ -915,6 +915,26 @@ export async function optimizeDestination({
         return nightlyRate >= minNightlyRate && nightlyRate <= maxNightlyRate;
       });
 
+      // Graceful degradation: if the strict budget filter rejected everything
+      // (every hotel in this destination is above the computed nightly rate
+      // ceiling), fall back to the cheapest options available. The user gets
+      // a destination with a flagged over-budget hotel rather than the dreaded
+      // "no hotel available" cascade that took out Split / Lisbon / Valletta
+      // on €1000 solo profiles. We still respect the hostel floor and we
+      // sort by price ascending so the cheapest options surface first. The
+      // package quality rule (budget_package_within_limit) will still surface
+      // the overrun, but at least the destination is reachable from the UI.
+      if (affordableHotels.length === 0 && hotelSearchResults.hotels.length > 0) {
+        const sortedByPrice = hotelSearchResults.hotels
+          .filter(h => (h.price.amount / totalNights) >= minNightlyRate)
+          .sort((a, b) => a.price.amount - b.price.amount);
+        if (sortedByPrice.length > 0) {
+          affordableHotels = sortedByPrice.slice(0, 5);
+          const cheapestNightly = Math.round(sortedByPrice[0].price.amount / totalNights);
+          console.log(`   ⬆️  No hotels under €${Math.round(maxNightlyRate)}/night — falling back to cheapest available (from €${cheapestNightly}/night)`);
+        }
+      }
+
       // Filter out hostel-type properties for users who care about comfort
       if (!acceptsHostels) {
         const hostelKeywords = [
