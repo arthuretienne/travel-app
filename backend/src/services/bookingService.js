@@ -1174,28 +1174,39 @@ export async function searchHotels({
       };
     }
 
-    let hotelData = hotelsResponse.data.data.hotels;
+    const rawHotelData = hotelsResponse.data.data.hotels;
 
-    // Step 3: Apply post-filtering based on user preferences
-    // (API filters don't always work, so we filter client-side)
-    hotelData = hotelData.filter(hotel => {
-      const stars = hotel.property?.propertyClass || 0;
-      const rating = hotel.property?.reviewScore || 0;
+    // Step 3: Apply post-filtering based on user preferences.
+    // The API filters don't always work, so we filter client-side.
+    //
+    // Graceful degradation: if the strict filter returns zero hotels (e.g.
+    // tight budget on adventure trip → no 3★ in Bastia), step the star
+    // requirement down one notch at a time until we find at least one
+    // candidate or hit 0. Returning *some* hotel that's slightly under the
+    // requested star level beats returning nothing — the alternative is
+    // "no_hotel_available" cascading all the way up and the user sees a
+    // blank trip detail page.
+    let appliedMinStars = filters.minStars;
+    let hotelData;
+    while (true) {
+      hotelData = rawHotelData.filter(hotel => {
+        const stars = hotel.property?.propertyClass || 0;
+        const rating = hotel.property?.reviewScore || 0;
+        if (appliedMinStars > 0 && stars < appliedMinStars) return false;
+        if (filters.minRating > 0 && rating > 0 && rating < filters.minRating) return false;
+        return true;
+      });
+      if (hotelData.length > 0 || appliedMinStars <= 1) break;
+      const previous = appliedMinStars;
+      appliedMinStars -= 1;
+      console.log(`   ⬇️  No hotels at ${previous}★ — relaxing to ${appliedMinStars}★ minimum`);
+    }
 
-      // Apply minimum star filter (exclude unclassified 0-star properties too)
-      if (filters.minStars > 0 && stars < filters.minStars) {
-        return false;
-      }
+    if (appliedMinStars !== filters.minStars) {
+      console.log(`   ℹ️  Star floor relaxed from ${filters.minStars} to ${appliedMinStars} to find at least one hotel`);
+    }
 
-      // Apply minimum rating filter (only if hotel has reviews)
-      if (filters.minRating > 0 && rating > 0 && rating < filters.minRating) {
-        return false;
-      }
-
-      return true;
-    });
-
-    console.log(`   🔍 After preference filter: ${hotelData.length} hotels (from ${hotelsResponse.data.data.hotels.length})`);
+    console.log(`   🔍 After preference filter: ${hotelData.length} hotels (from ${rawHotelData.length})`);
 
     // Step 4: Extract trip context and score hotels accordingly
     // Now includes both tripType (selector) and tripContext (free text)

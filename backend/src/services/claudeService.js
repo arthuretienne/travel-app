@@ -727,9 +727,15 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
     count = 6,
     excludeDestinations = [], // Previously recommended destinations to exclude
     userId = null, // For fetching past recommendations
-    maxFlightHours = null // User's max flight duration preference
+    maxFlightHours = null, // User's max flight duration preference
+    avoidCountries = [], // Countries the user explicitly excludes (hard constraint)
   } = options;
   const effectiveMaxFlightHours = maxFlightHours || userProfile.basic?.maxFlightHours || userProfile.constraints?.maxFlightHours || null;
+  const effectiveAvoidCountries = (avoidCountries.length > 0
+    ? avoidCountries
+    : (userProfile.constraints?.avoidCountries || []))
+    .map(c => String(c).trim())
+    .filter(Boolean);
 
   // Generate a random seed for this session to encourage variety
   const randomSeed = Math.floor(Math.random() * 10000);
@@ -956,6 +962,12 @@ If the request is unusual or specific, PRIORITIZE matching the user's exact inte
 - Don't waste a €${budget} budget on nearby destinations the user could visit cheaply`;
   }
 
+  const avoidCountriesBlock = effectiveAvoidCountries.length > 0
+    ? `\n🚫 HARD COUNTRY EXCLUSION (user explicitly does not want to visit these countries):
+${effectiveAvoidCountries.map(c => `   - ${c}`).join('\n')}
+Do NOT suggest ANY city located in these countries. This overrides every other preference.\n`
+    : '';
+
   const prompt = `You are a world travel expert. Recommend ${count} destinations that PERFECTLY match this traveler.
 
 👤 TRAVELER:
@@ -967,6 +979,7 @@ If the request is unusual or specific, PRIORITIZE matching the user's exact inte
 - ${activityContext}
 ${activityConstraint}
 ${exclusionText}
+${avoidCountriesBlock}
 ${interpretationGuide}
 
 ${geographicGuidance}
@@ -977,6 +990,7 @@ ${geographicGuidance}
 3. Match traveler's interests perfectly
 4. Good weather in ${currentMonth}
 5. Realistic for €${budget} budget
+${effectiveAvoidCountries.length > 0 ? `6. NEVER suggest cities in: ${effectiveAvoidCountries.join(', ')}` : ''}
 
 🎯 MAXIMIZE VARIETY:
 - Suggest ${count + 4} destinations (more than needed) so we can randomize

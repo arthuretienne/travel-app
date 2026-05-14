@@ -144,12 +144,15 @@ function evaluateItinerary(itinerary, profile, trip) {
       fail('activities_have_transport', `${dayLabel}: only ${withTransport}/${day.schedule.length} activities mention transport`);
     }
 
-    // At least one meal per day
+    // At least one meal per day, except the last day which may be a short
+    // departure morning (Sonnet legitimately produces a 2-3-activity Day 7
+    // that ends at the airport before lunch — penalising that is wrong).
+    const isLastDay = i === itinerary.length - 1;
     const hasMeal = day.schedule.some(a => {
       const text = `${a?.activity || ''} ${a?.type || ''}`.toLowerCase();
       return MEAL_KEYWORDS.some(kw => text.includes(kw));
     });
-    if (!hasMeal) {
+    if (!hasMeal && !isLastDay) {
       fail('day_has_meal_break', `${dayLabel}: no meal break mentioned`);
     }
   }

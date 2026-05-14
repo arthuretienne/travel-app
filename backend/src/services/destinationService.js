@@ -215,6 +215,10 @@ export async function discoverDestinations({
     // STEP 1: Claude AI generates personalized shortlist (4 destinations - faster)
     console.log('🤖 Step 1: Generating personalized shortlist with Claude AI...');
 
+    const avoidCountries = (userProfile?.constraints?.avoidCountries || [])
+      .map(c => String(c).trim())
+      .filter(Boolean);
+
     const shortlist = await generateDestinationShortlist(userProfile, {
       budget,
       duration,
@@ -222,6 +226,7 @@ export async function discoverDestinations({
       count: 8, // More candidates → better country diversity after filtering
       userId, // Pass userId for diversity (avoids recently recommended destinations)
       maxFlightHours: userProfile?.basic?.maxFlightHours || userProfile?.constraints?.maxFlightHours || null,
+      avoidCountries, // hard-exclusion list passed straight to the prompt
     });
 
     console.log(`✅ Claude suggested: ${shortlist.join(', ')}`);
@@ -318,6 +323,24 @@ export async function discoverDestinations({
       if (removedCount > 0) {
         const maxHours = Math.round((maxFlightMinutes - FLIGHT_DURATION_TOLERANCE_MINUTES) / 60);
         console.log(`⏱️  Filtered out ${removedCount} destination(s) exceeding max flight duration (${maxHours}h + ${FLIGHT_DURATION_TOLERANCE_MINUTES}min tolerance)`);
+      }
+    }
+
+    // Defense in depth on avoidCountries: Claude is supposed to honour the
+    // hard exclusion in the shortlist prompt, but Sonnet occasionally slips
+    // a forbidden country through ("Florence" instead of obeying "no Italy").
+    // We re-filter here so the route never ships a destination that violates
+    // an explicit user exclusion.
+    if (avoidCountries.length > 0) {
+      const lcAvoid = avoidCountries.map(c => c.toLowerCase());
+      const beforeAvoid = destinationsWithFlights.length;
+      destinationsWithFlights = destinationsWithFlights.filter(d => {
+        const country = (d.countryName || d.country || '').toLowerCase();
+        return !lcAvoid.some(forbid => country.includes(forbid));
+      });
+      const dropped = beforeAvoid - destinationsWithFlights.length;
+      if (dropped > 0) {
+        console.log(`🚫 Filtered out ${dropped} destination(s) in user-excluded countries: ${avoidCountries.join(', ')}`);
       }
     }
 
