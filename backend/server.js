@@ -4,6 +4,8 @@ import './env.js';
 
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import crypto from 'crypto';
 import { createServer } from 'http';
 import travelRoutes from './src/routes/travel.js';
 import userRoutes from './src/routes/user.js';
@@ -36,6 +38,15 @@ initializeSocketServer(httpServer);
 // Trust proxy - Required for Railway/Vercel deployments to properly handle X-Forwarded-For headers
 app.set('trust proxy', true);
 
+// Security headers. We disable contentSecurityPolicy (this is a JSON API, not
+// a page server) and crossOriginResourcePolicy (CORS is configured separately
+// below). Everything else stays at helmet's defaults: HSTS, X-Frame-Options
+// DENY, X-Content-Type-Options nosniff, Referrer-Policy, etc.
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: false,
+}));
+
 // Middleware
 app.use(cors({
   origin: [
@@ -56,6 +67,18 @@ app.use('/api/', apiLimiter); // Apply general rate limit to all API routes
 
 // Stripe webhook needs raw body - must be before express.json() middleware
 // So we need to handle it specially in the billing routes
+
+// Constant-time comparison for the cron shared-secret header. Falls back to
+// `false` on length mismatch (timingSafeEqual throws if buffers differ in
+// length, which would itself leak length info via a thrown exception).
+function isValidCronSecret(provided) {
+  const expected = process.env.CRON_SECRET;
+  if (!expected || typeof provided !== 'string') return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
 
 // Routes
 app.use('/api/travel', travelRoutes);
@@ -93,7 +116,7 @@ app.use('/api/opportunities', opportunitiesRoutes);
 app.post('/api/cron/check-prices', async (req, res) => {
   // Verify cron secret to prevent unauthorized access
   const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
-  if (cronSecret !== process.env.CRON_SECRET) {
+  if (!isValidCronSecret(cronSecret)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -110,7 +133,7 @@ app.post('/api/cron/check-prices', async (req, res) => {
 // Cron: send weekly digest email to all users (Monday 8am)
 app.post('/api/cron/weekly-digest', async (req, res) => {
   const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
-  if (cronSecret !== process.env.CRON_SECRET) {
+  if (!isValidCronSecret(cronSecret)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   try {
@@ -126,7 +149,7 @@ app.post('/api/cron/weekly-digest', async (req, res) => {
 // Cron: scan all users for proactive travel opportunities (daily)
 app.post('/api/cron/scan-opportunities', async (req, res) => {
   const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
-  if (cronSecret !== process.env.CRON_SECRET) {
+  if (!isValidCronSecret(cronSecret)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   try {
@@ -139,40 +162,52 @@ app.post('/api/cron/scan-opportunities', async (req, res) => {
   }
 });
 
-// Health check
+// Public health check. Intentionally minimal: anything beyond liveness leaks
+// information about the deployment (which integrations are configured, which
+// mode the server is in, etc.) and is high-signal for attackers. For
+// operational diagnostics, use the protected /api/health/internal endpoint
+// below or check server logs.
 app.get('/api/health', async (req, res) => {
   try {
-    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok' });
+  } catch {
+    res.status(503).json({ status: 'error' });
+  }
+});
+
+// Detailed health endpoint — gated behind the same shared secret as cron jobs
+// so it can be hit by uptime monitors / on-call but not by the public web.
+app.get('/api/health/internal', async (req, res) => {
+  const provided = req.headers['x-cron-secret'] || req.query.secret;
+  if (!isValidCronSecret(provided)) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  try {
     await prisma.$queryRaw`SELECT 1`;
     res.json({
       status: 'ok',
-      message: 'Travel AI API is running',
       database: 'connected',
       environment: {
-        clerkSecretKey: process.env.CLERK_SECRET_KEY ? '✅ SET' : '❌ MISSING',
-        anthropicApiKey: process.env.ANTHROPIC_API_KEY ? '✅ SET' : '❌ MISSING',
-        bookingApiKey: process.env.BOOKING_API_KEY ? '✅ SET' : '❌ MISSING',
-        databaseUrl: process.env.DATABASE_URL ? '✅ SET' : '❌ MISSING',
-        resendApiKey: process.env.RESEND_API_KEY ? '✅ SET' : '❌ MISSING',
-        stripeSecretKey: process.env.STRIPE_SECRET_KEY ? '✅ SET' : '❌ MISSING',
-        stripePriceExplorer: process.env.STRIPE_PRICE_ID_EXPLORER ? '✅ SET' : '❌ MISSING',
-        stripePriceWanderer: process.env.STRIPE_PRICE_ID_WANDERER ? '✅ SET' : '❌ MISSING',
-        stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ? '✅ SET' : '❌ MISSING',
-        vapidPublicKey: process.env.VAPID_PUBLIC_KEY ? '✅ SET' : '❌ MISSING',
-        vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ? '✅ SET' : '❌ MISSING',
-        upstashRedis: process.env.UPSTASH_REDIS_REST_URL ? '✅ SET' : '⚠️ NOT SET (using in-memory)',
-        betaMode: process.env.BETA_MODE === 'false' ? '🔴 LIMITS ACTIVE' : '🟡 BETA (no limits)',
-        googleClientId: process.env.GOOGLE_CLIENT_ID ? '✅ SET' : '❌ MISSING',
+        clerkSecretKey: !!process.env.CLERK_SECRET_KEY,
+        anthropicApiKey: !!process.env.ANTHROPIC_API_KEY,
+        bookingApiKey: !!process.env.BOOKING_API_KEY,
+        databaseUrl: !!process.env.DATABASE_URL,
+        resendApiKey: !!process.env.RESEND_API_KEY,
+        stripeSecretKey: !!process.env.STRIPE_SECRET_KEY,
+        stripePriceExplorer: !!process.env.STRIPE_PRICE_ID_EXPLORER,
+        stripePriceWanderer: !!process.env.STRIPE_PRICE_ID_WANDERER,
+        stripeWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
+        vapidPublicKey: !!process.env.VAPID_PUBLIC_KEY,
+        vapidPrivateKey: !!process.env.VAPID_PRIVATE_KEY,
+        upstashRedis: !!process.env.UPSTASH_REDIS_REST_URL,
+        betaModeActive: process.env.BETA_MODE === 'true' || process.env.STRIPE_DISABLED === 'true',
+        googleClientId: !!process.env.GOOGLE_CLIENT_ID,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    res.status(503).json({
-      status: 'error',
-      message: 'Service unavailable',
-      database: 'disconnected',
-      error: error.message
-    });
+  } catch {
+    res.status(503).json({ status: 'error', database: 'disconnected' });
   }
 });
 
