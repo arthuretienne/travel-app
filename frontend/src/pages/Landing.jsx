@@ -103,11 +103,11 @@ function Landing() {
 
     if (isSignedIn) {
       // Keep users in the funnel — go to AI search with destination pre-filled
-      navigate('/create', { state: { prefilledDestination: dest } });
+      navigate('/create-trip', { state: { prefilledDestination: dest } });
     } else {
       // Guests: store destination and redirect after sign-in
       sessionStorage.setItem('pendingDestination', JSON.stringify(dest));
-      navigate('/create', { state: { prefilledDestination: dest } });
+      navigate('/create-trip', { state: { prefilledDestination: dest } });
     }
   };
 
@@ -202,7 +202,7 @@ function Landing() {
               </SignedOut>
               <SignedIn>
                 <button
-                  onClick={() => navigate('/create')}
+                  onClick={() => navigate('/create-trip')}
                   className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white text-lg font-medium rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5"
                 >
                   Planifier un voyage
