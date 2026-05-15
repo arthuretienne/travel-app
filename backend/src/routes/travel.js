@@ -1330,6 +1330,9 @@ router.post('/recommendations/stream',
               recommendation: recommendation,
               score: score,
               links: affiliateLinks,
+              // Train/bus recommendation when flying this route is absurd
+              // (e.g. Paris→Nice). null = fly. Estimated fare until FlixBus.
+              recommendedTransport: trip.recommendedTransport || null,
               // Include search context for itinerary personalization later
               searchContext: {
                 travelVibeDescription: userProfile.basic?.travelVibeDescription || null,
