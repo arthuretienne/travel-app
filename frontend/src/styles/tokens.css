@@ -1,0 +1,119 @@
+/* Skusku redesign tokens from the Claude Design handoff. */
+:root {
+  --ember-50: #fbf2ec;
+  --ember-100: #f5ddcb;
+  --ember-200: #ebb89a;
+  --ember-300: #db8e66;
+  --ember-400: #c96e44;
+  --ember-500: #b85a3c;
+  --ember-600: #a44d30;
+  --ember-700: #843a23;
+  --ember-800: #642b1a;
+  --ember-900: #421c10;
+
+  --sand-50: #faf7f2;
+  --sand-100: #f4efe6;
+  --sand-200: #e8e0d2;
+  --sand-300: #d4c8b3;
+  --sand-400: #a89880;
+  --sand-500: #7a6c56;
+  --sand-600: #574b3a;
+  --sand-700: #3a3128;
+  --sand-800: #25201a;
+  --sand-900: #1a1612;
+
+  --clay-100: #f5dde0;
+  --clay-500: #9b4757;
+  --gold-100: #f5ecd4;
+  --gold-500: #c89b3c;
+  --moss-100: #e6efd9;
+  --moss-500: #6b8b4a;
+
+  --color-bg: var(--sand-50);
+  --color-surface: #ffffff;
+  --color-raised: var(--sand-100);
+  --color-ink: var(--sand-900);
+  --color-ink-soft: var(--sand-700);
+  --color-ink-mute: var(--sand-500);
+  --color-hairline: var(--sand-200);
+  --color-primary: var(--ember-600);
+  --color-primary-h: var(--ember-700);
+  --color-on-primary: #ffffff;
+  --color-success: var(--moss-500);
+  --color-warning: var(--gold-500);
+  --color-coup: var(--clay-500);
+
+  --font-display: "Fraunces", "Times New Roman", serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(26, 22, 18, .04), 0 1px 1px rgba(26, 22, 18, .03);
+  --shadow-2: 0 2px 4px rgba(26, 22, 18, .04), 0 6px 16px rgba(26, 22, 18, .06);
+  --shadow-3: 0 4px 8px rgba(26, 22, 18, .05), 0 16px 40px rgba(26, 22, 18, .08);
+
+  --ease-out: cubic-bezier(.2, .7, .3, 1);
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+}
+
+.sk-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+}
+
+.sk-mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum";
+}
+
+.sk-photo {
+  background-color: var(--sand-300);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+  position: relative;
+}
+
+.sk-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 48%, rgba(26, 22, 18, .38));
+  pointer-events: none;
+}
+
+.sk-photo--noscrim::after {
+  display: none;
+}
+
+@keyframes sk-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sk-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: .35;
+    transform: scale(1.5);
+  }
+}

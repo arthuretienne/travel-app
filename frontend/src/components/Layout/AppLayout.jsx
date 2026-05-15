@@ -1,7 +1,8 @@
 // frontend/src/components/Layout/AppLayout.jsx
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserButton, useUser } from '@clerk/clerk-react';
-import { LayoutDashboard, PlusCircle, User, Plane } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, User } from 'lucide-react';
+import { Logo } from '../ui';
 
 function AppLayout({ children }) {
   const navigate = useNavigate();
@@ -19,13 +20,10 @@ function AppLayout({ children }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <button
-              className="flex items-center gap-2 text-xl font-bold text-text-main hover:opacity-80 transition-opacity"
+              className="flex items-center text-xl font-bold text-text-main hover:opacity-80 transition-opacity"
               onClick={() => navigate('/dashboard')}
             >
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/30">
-                <Plane size={20} />
-              </div>
-              Skusku
+              <Logo size={32} />
             </button>
 
             <nav className="hidden md:flex items-center gap-1">
@@ -130,8 +128,8 @@ function AppLayout({ children }) {
               <span>&copy; 2026</span>
             </div>
             <div className="flex gap-6 text-sm text-text-secondary">
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-primary transition-colors">Privacy Policy</a>
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-primary transition-colors">Terms of Service</a>
+              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-primary transition-colors">Confidentialité</a>
+              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-primary transition-colors">Conditions</a>
               <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-primary transition-colors">Support</a>
             </div>
           </div>

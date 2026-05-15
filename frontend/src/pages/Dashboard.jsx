@@ -1,24 +1,33 @@
-// frontend/src/pages/Dashboard.jsx
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useUser, useAuth } from '@clerk/clerk-react';
-import { OptimalPeriodsWidget } from '../components/OptimalPeriodsWidget';
-import { OpportunitiesWidget } from '../components/OpportunitiesWidget';
-import { DashboardCardSkeleton } from '../components/SkeletonLoaders';
-import { SearchUsageWidget } from '../components/SearchUsageWidget';
-import { Plane, Globe, Target, AlertTriangle, Map, Calendar, Clock, DollarSign, Plus, Users, MapPin, ChevronRight, Bell } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { getDestinationImage } from '../utils/destinationImages';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth, useUser } from '@clerk/clerk-react';
+import { useTranslation } from 'react-i18next';
+import {
+  AlertTriangle,
+  Bell,
+  Calendar,
+  ChevronRight,
+  Globe,
+  Map,
+  Plane,
+  Plus,
+  Target,
+  Users,
+} from 'lucide-react';
+import { AvatarStack, Badge, Button, EmptyState, PhotoBlock, StatCard } from '../components/ui';
+import { useFormat } from '../i18n/format';
 
 function Dashboard() {
   const navigate = useNavigate();
   const { user } = useUser();
   const { getToken } = useAuth();
+  const { t } = useTranslation();
+  const { fmtDate, fmtCurrency } = useFormat();
   const [savedTrips, setSavedTrips] = useState([]);
   const [collaborativeTrips, setCollaborativeTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'solo', 'group'
+  const [activeFilter, setActiveFilter] = useState('all');
 
   useEffect(() => {
     if (user) {
@@ -32,54 +41,40 @@ function Dashboard() {
       const token = await getToken();
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-      // Check if user has completed onboarding
       const prefsResponse = await fetch(`${API_URL}/api/users/preferences`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (prefsResponse.ok) {
         const prefsData = await prefsResponse.json();
-
-        // If no preferences or onboarding not completed, redirect to onboarding
         if (!prefsData.preferences || !prefsData.preferences.onboardingCompleted) {
           navigate('/onboarding');
           return;
         }
       }
 
-      // Fetch saved solo trips
       const tripsResponse = await fetch(`${API_URL}/api/searches/trips/saved`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!tripsResponse.ok) {
         const errorData = await tripsResponse.json().catch(() => ({}));
-        console.error('Trips fetch failed:', tripsResponse.status, errorData);
         throw new Error(errorData.message || `Failed to fetch saved trips (${tripsResponse.status})`);
       }
 
       const tripsData = await tripsResponse.json();
       setSavedTrips(tripsData.savedTrips || []);
 
-      // Fetch collaborative trips
       const collabResponse = await fetch(`${API_URL}/api/trips`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (collabResponse.ok) {
         const collabData = await collabResponse.json();
-        // Combine created trips and member trips
-        const allCollabTrips = [
+        setCollaborativeTrips([
           ...(collabData.data?.createdTrips || []),
-          ...(collabData.data?.memberTrips || [])
-        ];
-        setCollaborativeTrips(allCollabTrips);
+          ...(collabData.data?.memberTrips || []),
+        ]);
       }
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -97,14 +92,11 @@ function Dashboard() {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
       const tripsResponse = await fetch(`${API_URL}/api/searches/trips/saved`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!tripsResponse.ok) {
         const errorData = await tripsResponse.json().catch(() => ({}));
-        console.error('Trips fetch failed:', tripsResponse.status, errorData);
         throw new Error(errorData.message || `Failed to fetch saved trips (${tripsResponse.status})`);
       }
 
@@ -118,361 +110,362 @@ function Dashboard() {
     }
   };
 
-  const handleCreateTrip = () => {
-    navigate('/create-trip');
-  };
+  const handleCreateTrip = () => navigate('/create-trip');
 
-  const handleViewTrip = (searchId) => {
-    navigate(`/results/${searchId}`);
-  };
+  const formatDate = (dateStr) => (dateStr ? fmtDate(dateStr) : t('dashboard.dateTBD'));
 
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
+  const stats = useMemo(() => {
+    const countryCount = new Set(savedTrips.map((trip) => trip.country).filter(Boolean)).size;
+    const avgScore = savedTrips.length > 0
+      ? Math.round(savedTrips.reduce((acc, trip) => acc + (trip.tripData?.score?.total || 0), 0) / savedTrips.length)
+      : null;
+
+    return [
+      { label: t('dashboard.statSaved'), value: loading ? '...' : savedTrips.length, icon: <Plane size={21} />, delta: savedTrips.length > 0 ? t('dashboard.statActive') : null },
+      { label: t('dashboard.statExplored'), value: loading ? '...' : (countryCount || '0'), icon: <Globe size={21} /> },
+      { label: t('dashboard.statCompat'), value: loading ? '...' : (avgScore ? `${avgScore}%` : '-'), icon: <Target size={21} />, delta: avgScore ? t('dashboard.statAligned') : null },
+      { label: t('dashboard.statGroup'), value: loading ? '...' : collaborativeTrips.length, icon: <Users size={21} />, progress: Math.min(100, collaborativeTrips.length * 25) },
+    ];
+  }, [collaborativeTrips.length, loading, savedTrips, t]);
+
+  const soloTripsFiltered = activeFilter === 'group' ? [] : savedTrips;
+  const groupTripsFiltered = activeFilter === 'solo' ? [] : collaborativeTrips;
+  const hasTrips = savedTrips.length > 0 || collaborativeTrips.length > 0;
+  const totalTrips = savedTrips.length + collaborativeTrips.length;
 
   return (
     <div className="min-h-screen bg-surface-subtle">
-      {/* Hero Header */}
-      <div className="bg-white border-b border-stone-100">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-12">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div>
-              <h1 className="font-display text-3xl md:text-4xl font-medium text-text-main mb-2">
-                Bon retour, {user?.firstName || 'Voyageur'} 👋
-              </h1>
-              <p className="text-text-secondary text-lg">Votre tableau de bord voyage</p>
-            </div>
-            <button
-              className="flex items-center gap-2 px-6 py-3.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
-              onClick={handleCreateTrip}
-            >
-              <Plus size={20} strokeWidth={2} />
-              Nouveau voyage
-            </button>
+      <div className="border-b border-sand-200 bg-surface-subtle">
+        <div className="mx-auto flex max-w-6xl flex-col gap-5 px-5 py-8 md:flex-row md:items-end md:justify-between md:px-8">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-ember-700">{t('dashboard.eyebrow')}</p>
+            <h1 className="mt-2 font-display text-4xl font-medium leading-tight text-text-main md:text-[40px]">
+              {t('dashboard.welcome', { name: user?.firstName || t('dashboard.voyagerFallback') })}
+            </h1>
+            <p className="mt-2 text-text-secondary">
+              {t('dashboard.tripsInSpace', { count: totalTrips })}
+            </p>
           </div>
+          <Button onClick={handleCreateTrip} icon={<Plus size={18} />}>
+            {t('dashboard.newTrip')}
+          </Button>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-          <div className="bg-white p-5 rounded-2xl border border-stone-100 flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center flex-shrink-0">
-              <Plane size={22} />
-            </div>
-            <div>
-              {loading ? (
-                <div className="h-7 w-8 bg-stone-100 rounded animate-pulse mb-1" />
-              ) : (
-                <div className="text-2xl font-semibold text-text-main">{savedTrips.length}</div>
-              )}
-              <div className="text-sm text-text-secondary">Voyages sauvegardés</div>
-            </div>
-          </div>
-          <div className="bg-white p-5 rounded-2xl border border-stone-100 flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center flex-shrink-0">
-              <Globe size={22} />
-            </div>
-            <div>
-              {loading ? (
-                <div className="h-7 w-8 bg-stone-100 rounded animate-pulse mb-1" />
-              ) : (
-                <div className="text-2xl font-semibold text-text-main">
-                  {new Set(savedTrips.map(t => t.country).filter(Boolean)).size || '—'}
-                </div>
-              )}
-              <div className="text-sm text-text-secondary">Destinations explorées</div>
-            </div>
-          </div>
-          <div className="bg-white p-5 rounded-2xl border border-stone-100 flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary-light text-primary rounded-xl flex items-center justify-center flex-shrink-0">
-              <Target size={22} />
-            </div>
-            <div>
-              {loading ? (
-                <div className="h-7 w-14 bg-stone-100 rounded animate-pulse mb-1" />
-              ) : (
-                <div className="text-2xl font-semibold text-text-main">
-                  {savedTrips.length > 0
-                    ? `${Math.round(savedTrips.reduce((acc, t) => acc + (t.tripData?.score?.total || 0), 0) / savedTrips.length)}%`
-                    : '—'}
-                </div>
-              )}
-              <div className="text-sm text-text-secondary">Compatibilité moy.</div>
-            </div>
-          </div>
-          <SearchUsageWidget />
+      <div className="mx-auto max-w-6xl px-5 py-8 md:px-8">
+        <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat) => (
+            <StatCard key={stat.label} {...stat} />
+          ))}
         </div>
 
-        {/* Proactive deal opportunities */}
-        <div className="mb-6">
-          <OpportunitiesWidget />
-        </div>
+        <NextGetawayWidget onCreate={handleCreateTrip} />
 
-        {/* Optimal Periods Widget */}
-        <div className="mb-12">
-          <OptimalPeriodsWidget />
-        </div>
-
-        {/* Price Alerts Link */}
         <Link
           to="/price-alerts"
-          className="flex items-center justify-between p-5 mb-10 bg-white rounded-2xl border border-stone-100 hover:border-primary/30 hover:shadow-sm transition-all group"
+          className="mb-8 mt-6 flex items-center justify-between rounded-[18px] border border-sand-200 bg-white p-5 shadow-1 transition-all hover:border-gold-500/40 hover:shadow-2"
         >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
-              <Bell size={22} />
+            <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-gold-100 text-gold-500">
+              <Bell size={21} />
             </div>
             <div>
-              <h3 className="font-semibold text-text-main">Alertes prix</h3>
-              <p className="text-sm text-text-secondary">Suivez les prix et soyez notifié quand ils baissent</p>
+              <h3 className="font-semibold text-text-main">{t('dashboard.priceAlerts')}</h3>
+              <p className="text-sm text-text-secondary">{t('dashboard.priceAlertsDesc')}</p>
             </div>
           </div>
-          <ChevronRight size={20} className="text-text-secondary group-hover:text-primary transition-colors" />
+          <ChevronRight size={20} className="text-text-secondary" />
         </Link>
 
-        {/* All Trips Section */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-2xl font-medium text-text-main">Mes voyages</h2>
-            <div className="flex gap-1 p-1 bg-stone-100 rounded-lg">
-              <button
-                onClick={() => setActiveFilter('all')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  activeFilter === 'all' ? 'bg-white text-text-main shadow-sm' : 'text-text-secondary hover:text-text-main'
-                }`}
-              >
-                Tous
-              </button>
-              <button
-                onClick={() => setActiveFilter('solo')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  activeFilter === 'solo' ? 'bg-white text-text-main shadow-sm' : 'text-text-secondary hover:text-text-main'
-                }`}
-              >
-                Solo
-              </button>
-              <button
-                onClick={() => setActiveFilter('group')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  activeFilter === 'group' ? 'bg-white text-text-main shadow-sm' : 'text-text-secondary hover:text-text-main'
-                }`}
-              >
-                Groupe
-              </button>
+        <section>
+          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="font-display text-3xl font-medium text-text-main">{t('dashboard.myTrips')}</h2>
+            <div className="flex w-fit rounded-full bg-sand-100 p-1">
+              {[
+                ['all', t('dashboard.filterAll')],
+                ['solo', t('dashboard.filterSolo')],
+                ['group', t('dashboard.filterGroup')],
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveFilter(key)}
+                  className={[
+                    'rounded-full px-4 py-2 text-sm font-medium transition-all',
+                    activeFilter === key ? 'bg-white text-text-main shadow-1' : 'text-text-secondary hover:text-text-main',
+                  ].join(' ')}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              <DashboardCardSkeleton />
-              <DashboardCardSkeleton />
-              <DashboardCardSkeleton />
-            </div>
+            <LoadingGrid />
           ) : error ? (
-            <div className="bg-white rounded-2xl p-12 text-center border border-stone-100">
-              <div className="inline-flex p-4 bg-stone-50 text-text-secondary rounded-full mb-4">
-                <AlertTriangle size={28} />
-              </div>
-              <p className="text-text-secondary mb-6">Erreur lors du chargement : {error}</p>
-              <button
-                className="px-5 py-2.5 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
-                onClick={fetchSavedTrips}
-              >
-                Réessayer
-              </button>
+            <EmptyState
+              icon={<AlertTriangle size={28} />}
+              title={t('dashboard.loadErrorTitle')}
+              sub={t('dashboard.loadErrorSub', { error })}
+              action={{ label: t('dashboard.retry'), onClick: fetchSavedTrips, variant: 'primary' }}
+            />
+          ) : !hasTrips ? (
+            <EmptyState
+              icon={<Map size={30} />}
+              title={t('dashboard.emptyTitle')}
+              sub={t('dashboard.emptySub')}
+              action={{ label: t('dashboard.plan'), onClick: handleCreateTrip, iconRight: <ChevronRight size={16} /> }}
+            />
+          ) : (
+            <div className="space-y-8">
+              {soloTripsFiltered.length > 0 && (
+                <TripSection title={activeFilter === 'all' ? t('dashboard.soloTrips') : null}>
+                  {soloTripsFiltered.map((trip, index) => (
+                    <SoloTripCard
+                      key={`solo-${trip.id || index}`}
+                      trip={trip}
+                      formatDate={formatDate}
+                      fmtCurrency={fmtCurrency}
+                      onClick={() => navigate(`/saved-trips/${trip.id}`)}
+                    />
+                  ))}
+                </TripSection>
+              )}
+
+              {groupTripsFiltered.length > 0 && (
+                <TripSection title={activeFilter === 'all' ? t('dashboard.groupTrips') : null}>
+                  {groupTripsFiltered.map((trip) => (
+                    <GroupTripCard
+                      key={`group-${trip.id}`}
+                      trip={trip}
+                      formatDate={formatDate}
+                      onClick={() => navigate(`/trips/${trip.id}`)}
+                    />
+                  ))}
+                </TripSection>
+              )}
             </div>
-          ) : (savedTrips.length === 0 && collaborativeTrips.length === 0) ? (
-            <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
-              <div className="p-10 md:p-14 text-center border-b border-stone-50">
-                <div className="inline-flex p-4 bg-primary-light text-primary rounded-2xl mb-5">
-                  <Map size={32} />
-                </div>
-                <h3 className="font-display text-xl font-medium text-text-main mb-2">Planifiez votre premier voyage</h3>
-                <p className="text-text-secondary mb-8 max-w-sm mx-auto">
-                  L'IA analyse votre profil et trouve les destinations idéales avec vols et hôtels en temps réel.
-                </p>
-                <button
-                  className="px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors shadow-sm shadow-primary/20"
-                  onClick={handleCreateTrip}
-                >
-                  Lancer ma première recherche
-                </button>
-              </div>
-              <div className="grid grid-cols-3 divide-x divide-stone-100">
-                {[
-                  { icon: '🤖', label: 'IA personnalisée', desc: 'Selon votre profil' },
-                  { icon: '✈️', label: 'Prix en temps réel', desc: 'Vols + hôtels' },
-                  { icon: '⚡', label: 'Résultats en 15s', desc: '3 destinations top' },
-                ].map((item) => (
-                  <div key={item.label} className="p-5 text-center">
-                    <div className="text-2xl mb-2">{item.icon}</div>
-                    <div className="text-sm font-medium text-text-main">{item.label}</div>
-                    <div className="text-xs text-text-secondary mt-0.5">{item.desc}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (() => {
-            // Filter trips based on active filter
-            const soloTripsFiltered = activeFilter === 'group' ? [] : savedTrips;
-            const groupTripsFiltered = activeFilter === 'solo' ? [] : collaborativeTrips;
+          )}
+        </section>
 
-            return (
-              <div className="space-y-8">
-                {/* Solo Trips */}
-                {soloTripsFiltered.length > 0 && (
-                  <div>
-                    {activeFilter === 'all' && (
-                      <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wide mb-4">Voyages solo</h3>
-                    )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {soloTripsFiltered.map((trip, index) => (
-                        <div
-                          key={`solo-${trip.id || index}`}
-                          className="bg-white rounded-2xl overflow-hidden border border-stone-100 hover:border-primary/20 hover:shadow-sm transition-all cursor-pointer group"
-                          onClick={() => navigate(`/saved-trips/${trip.id}`)}
-                        >
-                          {/* Destination image */}
-                          <div className="relative h-36 overflow-hidden">
-                            <img
-                              src={getDestinationImage({ city: trip.city, country: trip.country, tripData: trip.tripData })}
-                              alt={`${trip.city}, ${trip.country}`}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              loading="lazy"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                            {trip.tripData?.score?.total > 0 && (
-                              <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-primary text-xs font-bold px-2 py-1 rounded-lg">
-                                {Math.round(trip.tripData.score.total)}% compatible
-                              </div>
-                            )}
-                            <div className="absolute bottom-3 left-4 right-4">
-                              <h3 className="text-lg font-semibold text-white leading-tight">{trip.city || 'Unknown'}</h3>
-                              <p className="text-white/75 text-xs">{trip.country || 'Unknown'}</p>
-                            </div>
-                          </div>
-
-                          <div className="p-4">
-                            <div className="flex items-center justify-between text-sm mb-2.5">
-                              <div className="flex items-center gap-1.5 text-text-secondary">
-                                <Calendar size={13} />
-                                <span className="text-xs">{trip.startDate ? formatDate(trip.startDate) : 'Date à définir'}</span>
-                              </div>
-                              <div className="text-xs text-text-secondary">
-                                {trip.startDate && trip.endDate
-                                  ? `${Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))} j`
-                                  : ''}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <div className="text-base font-semibold text-text-main">
-                                {trip.tripData?.pricing?.total ? `€${Math.round(trip.tripData.pricing.total)}` : '—'}
-                              </div>
-                              <div className="flex items-center gap-1 text-primary text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                Voir le voyage
-                                <ChevronRight size={14} />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Collaborative Trips */}
-                {groupTripsFiltered.length > 0 && (
-                  <div>
-                  {activeFilter === 'all' && (
-                    <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wide mb-4">Voyages en groupe</h3>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {groupTripsFiltered.map((trip) => (
-                      <div
-                        key={`group-${trip.id}`}
-                        className="bg-white rounded-2xl overflow-hidden border border-stone-100 hover:border-stone-200 transition-all cursor-pointer group"
-                        onClick={() => navigate(`/trips/${trip.id}`)}
-                      >
-                        {/* Group trip header with image */}
-                        <div className="relative h-32 overflow-hidden">
-                          <img
-                            src={trip.finalDestination
-                              ? getDestinationImage({ city: trip.finalDestination.city, country: trip.finalDestination.country })
-                              : 'https://images.pexels.com/photos/1008155/pexels-photo-1008155.jpeg?auto=compress&cs=tinysrgb&w=800'
-                            }
-                            alt={trip.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                          <div className="absolute top-4 right-4">
-                            <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full text-white text-xs font-medium">
-                              <Users size={12} />
-                              {trip.members?.length || 0}
-                            </div>
-                          </div>
-                          <div className="absolute bottom-4 left-4 right-4">
-                            <h3 className="text-xl font-semibold text-white mb-0.5">{trip.name}</h3>
-                            {trip.finalDestination && (
-                              <p className="text-white/80 text-sm">{trip.finalDestination.city}, {trip.finalDestination.country}</p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="p-5">
-                          {trip.finalDestination ? (
-                            <div className="flex items-center justify-between text-sm">
-                              <div className="flex items-center gap-2 text-text-secondary">
-                                <Calendar size={15} />
-                                <span>{trip.finalStartDate ? formatDate(trip.finalStartDate) : 'Date à définir'}</span>
-                              </div>
-                              <div className="flex items-center gap-1 text-primary text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                Voir
-                                <ChevronRight size={16} />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between">
-                              <div className="text-sm text-text-secondary">
-                                {trip.status === 'draft' && 'Planification en cours'}
-                                {trip.status === 'voting' && 'Vote en cours'}
-                                {trip.proposedTrips?.length > 0 && `${trip.proposedTrips.length} destination(s)`}
-                              </div>
-                              <div className="flex items-center gap-1 text-primary text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                Voir
-                                <ChevronRight size={16} />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* CTA Section */}
         {savedTrips.length > 0 && (
-          <div className="bg-white rounded-2xl p-10 md:p-12 text-center border border-stone-100">
-            <h3 className="font-display text-xl md:text-2xl font-medium text-text-main mb-2">Envie de partir encore ?</h3>
-            <p className="text-text-secondary mb-8">Créez un nouveau voyage et découvrez votre prochaine destination</p>
-            <button
-              className="px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
-              onClick={handleCreateTrip}
-            >
-              Planifier un autre voyage
-            </button>
+          <div className="mt-10 rounded-[22px] bg-sand-900 p-8 text-center text-white shadow-3">
+            <h3 className="font-display text-3xl font-medium">{t('dashboard.again')}</h3>
+            <p className="mx-auto mt-2 max-w-lg text-sm text-white/65">{t('dashboard.againDesc')}</p>
+            <Button variant="outline" className="mt-6" onClick={handleCreateTrip} iconRight={<ChevronRight size={16} />}>
+              {t('dashboard.planAnother')}
+            </Button>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function NextGetawayWidget({ onCreate }) {
+  const { t } = useTranslation();
+  return (
+    <section className="overflow-hidden rounded-[22px] border border-sand-200 bg-white shadow-2">
+      <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="border-b border-sand-200 p-6 lg:border-b-0 lg:border-r lg:p-7">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <Badge tone="ember" dot>{t('dashboard.nextGetaways')}</Badge>
+              <h2 className="mt-4 font-display text-3xl font-medium leading-tight">
+                {t('dashboard.beforeSummer')} <span className="italic text-ember-700">{t('dashboard.summerWord')}</span> ?
+              </h2>
+              <p className="mt-2 text-sm text-text-secondary">{t('dashboard.bestMoments')}</p>
+            </div>
+            <div className="flex w-fit rounded-full bg-sand-100 p-1 text-xs">
+              <span className="rounded-full bg-white px-3 py-1.5 font-semibold shadow-1">{t('dashboard.soon')}</span>
+              <span className="px-3 py-1.5 font-medium text-text-secondary">{t('dashboard.later')}</span>
+            </div>
+          </div>
+          <MiniCalendar />
+        </div>
+
+        <div className="bg-gradient-to-b from-sand-50 to-white p-6 lg:p-7">
+          <p className="text-xs font-semibold uppercase tracking-widest text-ember-700">{t('dashboard.recommendedPeriod')}</p>
+          <h3 className="mt-2 font-display text-4xl font-medium">{t('dashboard.demoTitle')}</h3>
+          <p className="mt-1 text-sm text-text-secondary">{t('dashboard.demoDates')}</p>
+          <PhotoBlock city="Rome" country="Italy" className="mt-5 h-36 rounded-[16px]" alt="Rome" />
+
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="rounded-[14px] border border-sand-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-secondary">{t('dashboard.savings')}</p>
+              <p className="mt-1 font-display text-3xl text-moss-500">€120</p>
+            </div>
+            <div className="rounded-[14px] border border-sand-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-secondary">{t('dashboard.reliability')}</p>
+              <p className="mt-1 font-display text-3xl">92%</p>
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-[14px] border border-sand-200 border-l-gold-500 bg-white p-4">
+            <p className="text-xs font-semibold uppercase tracking-widest text-text-secondary">{t('dashboard.whyPeriod')}</p>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">{t('dashboard.whyPeriodDesc')}</p>
+          </div>
+
+          <Button variant="ink" full className="mt-5" onClick={onCreate} iconRight={<ChevronRight size={16} />}>
+            {t('dashboard.composeProposal')}
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MiniCalendar() {
+  const { t } = useTranslation();
+  const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  const highlight = [21, 22, 23, 24];
+  const weekdays = t('dashboard.weekdaysMin', { returnObjects: true });
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="font-display text-lg font-medium">{t('dashboard.demoMonth')}</p>
+        <div className="flex gap-2 text-xs text-text-secondary">
+          <span className="rounded-full bg-ember-50 px-2.5 py-1 text-ember-800">{t('dashboard.idealWindow')}</span>
+        </div>
+      </div>
+      <div className="mb-2 grid grid-cols-7 gap-2 text-center text-xs text-text-secondary">
+        {(Array.isArray(weekdays) ? weekdays : []).map((day, index) => <div key={`${day}-${index}`}>{day}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-2">
+        {Array.from({ length: 3 }).map((_, index) => <div key={`empty-${index}`} />)}
+        {days.map((day) => {
+          const isMain = day === 21;
+          const isHighlighted = highlight.includes(day);
+          return (
+            <div
+              key={day}
+              className={[
+                'grid aspect-square place-items-center rounded-full text-sm',
+                isMain ? 'bg-primary font-bold text-white shadow-[0_0_0_4px_var(--color-ember-100)]' : '',
+                !isMain && isHighlighted ? 'bg-ember-50 font-medium text-ember-800' : '',
+                !isHighlighted ? 'text-text-secondary' : '',
+              ].join(' ')}
+            >
+              {day}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TripSection({ title, children }) {
+  return (
+    <div>
+      {title && <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-text-secondary">{title}</h3>}
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">{children}</div>
+    </div>
+  );
+}
+
+function SoloTripCard({ trip, formatDate, fmtCurrency, onClick }) {
+  const { t } = useTranslation();
+  const score = trip.tripData?.score?.total ? Math.round(trip.tripData.score.total) : null;
+  const days = trip.startDate && trip.endDate
+    ? Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))
+    : null;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group overflow-hidden rounded-[18px] border border-sand-200 bg-white text-left shadow-1 transition-all hover:border-ember-200 hover:shadow-2"
+    >
+      <PhotoBlock city={trip.city} country={trip.country} tripData={trip.tripData} className="h-40" alt={`${trip.city}, ${trip.country}`}>
+        {score && <Badge tone="ember" className="absolute right-3 top-3 bg-white/90">{score}%</Badge>}
+        <div className="absolute bottom-4 left-4 right-4 text-white">
+          <h3 className="font-display text-2xl font-medium leading-none">{trip.city || t('dashboard.destination')}</h3>
+          <p className="mt-1 text-sm text-white/75">{trip.country || t('dashboard.toConfirm')}</p>
+        </div>
+      </PhotoBlock>
+      <div className="p-5">
+        <div className="mb-4 flex items-center justify-between text-sm text-text-secondary">
+          <span className="flex items-center gap-1.5"><Calendar size={14} />{formatDate(trip.startDate)}</span>
+          {days && <span>{t('dashboard.daysShort', { count: days })}</span>}
+        </div>
+        <div className="flex items-end justify-between">
+          <p className="font-display text-2xl font-medium text-text-main">
+            {trip.tripData?.pricing?.total ? fmtCurrency(trip.tripData.pricing.total) : '-'}
+          </p>
+          <span className="flex items-center gap-1 text-sm font-medium text-ember-700 opacity-0 transition-opacity group-hover:opacity-100">
+            {t('dashboard.view')} <ChevronRight size={15} />
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function GroupTripCard({ trip, formatDate, onClick }) {
+  const { t } = useTranslation();
+  const destination = trip.finalDestination;
+  const people = (trip.members || []).map((member) => ({
+    name: [member.user?.firstName, member.user?.lastName].filter(Boolean).join(' ') || member.email || t('dashboard.inviteFallback'),
+    src: member.user?.imageUrl,
+  }));
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group overflow-hidden rounded-[18px] border border-sand-200 bg-white text-left shadow-1 transition-all hover:border-ember-200 hover:shadow-2"
+    >
+      <PhotoBlock
+        city={destination?.city || trip.name}
+        country={destination?.country}
+        className="h-40"
+        alt={trip.name}
+      >
+        <div className="absolute left-3 top-3">
+          <Badge tone={destination ? 'moss' : 'gold'} dot className="bg-white/90">
+            {destination ? t('dashboard.confirmed') : trip.status === 'voting' ? t('dashboard.voting') : t('dashboard.planning')}
+          </Badge>
+        </div>
+        <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-text-main">
+          {t('dashboard.people', { count: trip.members?.length || 0 })}
+        </div>
+        <div className="absolute bottom-4 left-4 right-4 text-white">
+          <h3 className="font-display text-2xl font-medium leading-none">{destination?.city || trip.name}</h3>
+          <p className="mt-1 text-sm text-white/75">{destination ? destination.country : t('dashboard.chooseDest')}</p>
+        </div>
+      </PhotoBlock>
+      <div className="p-5">
+        <div className="mb-4 flex items-center justify-between text-sm text-text-secondary">
+          <span className="flex items-center gap-1.5"><Calendar size={14} />{formatDate(trip.finalStartDate)}</span>
+          {people.length > 0 && <AvatarStack people={people} size={26} max={4} />}
+        </div>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-text-secondary">
+            {destination ? t('dashboard.coordinate') : t('dashboard.proposals', { count: trip.proposedTrips?.length || 0 })}
+          </p>
+          <span className="flex items-center gap-1 text-sm font-medium text-ember-700 opacity-0 transition-opacity group-hover:opacity-100">
+            {t('dashboard.view')} <ChevronRight size={15} />
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function LoadingGrid() {
+  return (
+    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+      {[0, 1, 2].map((item) => (
+        <div key={item} className="overflow-hidden rounded-[18px] border border-sand-200 bg-white shadow-1">
+          <div className="h-40 animate-pulse bg-sand-100" />
+          <div className="space-y-3 p-5">
+            <div className="h-4 w-2/3 animate-pulse rounded bg-sand-100" />
+            <div className="h-4 w-1/2 animate-pulse rounded bg-sand-100" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

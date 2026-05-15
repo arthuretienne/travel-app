@@ -27,6 +27,67 @@ import {
 } from 'lucide-react';
 import { CompleteTripPlanCard, PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
 import { generateFlightLink, generateHotelLink, generateActivitiesLink } from '../utils/bookingLinks';
+import { Badge, Button, PhotoBlock, EmptyState } from '../components/ui';
+import { useTranslation } from 'react-i18next';
+import { useFormat } from '../i18n/format';
+
+// Build a warm, human-readable flight sentence (spec Étape 5). Locale-aware:
+// FR renders "22 h 15", other locales use the locale's own time format.
+const fmtClock = (iso, locale) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const s = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(d);
+  return locale.startsWith('fr') ? s.replace(':', ' h ') : s;
+};
+
+const fmtRaw = (iso, locale) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(d);
+};
+
+const flightSentence = (leg, fromFallback, toFallback, t, locale) => {
+  if (!leg) return null;
+  const dep = fmtClock(leg.departureTime, locale);
+  const arr = fmtClock(leg.arrivalTime, locale);
+  const depPlace = leg.departureAirport || fromFallback || t('savedTrip.fsDepFallback');
+  const arrPlace = leg.arrivalAirport || toFallback || t('savedTrip.fsArrFallback');
+  let nextDay = false;
+  if (leg.departureTime && leg.arrivalTime) {
+    const d1 = new Date(leg.departureTime);
+    const d2 = new Date(leg.arrivalTime);
+    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
+      nextDay = d2 > d1 && d2.toDateString() !== d1.toDateString();
+    }
+  }
+  const stops = Array.isArray(leg.segments)
+    ? Math.max(0, leg.segments.length - 1)
+    : (typeof leg.stops === 'number' ? leg.stops : null);
+  let stopPart = '';
+  if (stops === 0) stopPart = t('savedTrip.fsDirect');
+  else if (stops === 1) stopPart = t('savedTrip.fsOneStop');
+  else if (stops > 1) stopPart = t('savedTrip.fsStops', { count: stops });
+  const first = `${t('savedTrip.fsDepart')} ${depPlace}${dep ? ` ${dep}` : ''}, ${t('savedTrip.fsArrive')} ${arrPlace}${nextDay ? ` ${t('savedTrip.fsNextDay')}` : ''}${arr ? ` ${arr}` : ''}.`;
+  const durBit = leg.duration ? `${leg.duration} ${t('savedTrip.fsTotal')}` : '';
+  let second = '';
+  if (stopPart && durBit) second = ` ${stopPart}, ${durBit}.`;
+  else if (stopPart) second = ` ${stopPart}.`;
+  else if (durBit) second = ` ${durBit}.`;
+  return `${first}${second}`;
+};
+
+const flightMono = (leg, locale) => {
+  if (!leg) return null;
+  const from = leg.departureAirport;
+  const to = leg.arrivalAirport;
+  const rawDep = fmtRaw(leg.departureTime, locale);
+  const rawArr = fmtRaw(leg.arrivalTime, locale);
+  const route = from && to ? `${from} → ${to}` : null;
+  const times = rawDep && rawArr ? `${rawDep} – ${rawArr}` : null;
+  return [route, times].filter(Boolean).join(' · ') || null;
+};
 // PDF imports are lazy-loaded in handleExportPdf to keep bundle small
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -47,11 +108,12 @@ export default function SavedTripDetail() {
   const navigate = useNavigate();
   const { getToken } = useAuth();
   const { user } = useUser();
+  const { t } = useTranslation();
+  const { fmtDate, fmtCurrency, locale } = useFormat();
 
   const [trip, setTrip] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [converting, setConverting] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmails, setInviteEmails] = useState([]);
   const [currentEmail, setCurrentEmail] = useState('');
@@ -106,20 +168,20 @@ export default function SavedTripDetail() {
       // Basic email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        setInviteError('Format d\'e-mail invalide');
+        setInviteError(t('savedTrip.errInvalidEmail'));
         return;
       }
 
       // Check for duplicates
       if (inviteEmails.includes(email)) {
-        setInviteError('E-mail déjà ajouté');
+        setInviteError(t('savedTrip.errEmailDup'));
         return;
       }
 
       // In development, allow self-invite for testing (Resend sandbox)
       const isDevelopment = import.meta.env.DEV;
       if (user?.primaryEmailAddress?.emailAddress === email && !isDevelopment) {
-        setInviteError('Vous ne pouvez pas vous inviter vous-même');
+        setInviteError(t('savedTrip.errSelfInvite'));
         return;
       }
 
@@ -136,7 +198,7 @@ export default function SavedTripDetail() {
   const handleInviteFriends = async () => {
     // Convert to group trip first, then send invitations
     if (inviteEmails.length === 0) {
-      setInviteError('Veuillez ajouter au moins un e-mail');
+      setInviteError(t('savedTrip.errAddEmail'));
       return;
     }
 
@@ -224,11 +286,11 @@ export default function SavedTripDetail() {
       }
 
       if (!itinerary || itinerary.length === 0) {
-        setActionError('L\'itinéraire est en cours de génération. Patientez quelques secondes puis réessayez.');
+        setActionError(t('savedTrip.errPdfPending'));
         return;
       }
 
-      const userName = user?.firstName || 'Voyageur';
+      const userName = user?.firstName || t('savedTrip.voyagerFallback');
       // Dynamic import to keep PDF renderer out of main bundle
       const [{ pdf }, { default: ItineraryPDF }] = await Promise.all([
         import('@react-pdf/renderer'),
@@ -248,14 +310,14 @@ export default function SavedTripDetail() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('[PDF Export] Error:', err);
-      setActionError('Impossible de générer le PDF. Veuillez réessayer.');
+      setActionError(t('savedTrip.errPdf'));
     } finally {
       setExportingPdf(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce voyage ?')) return;
+    if (!confirm(t('savedTrip.confirmDelete'))) return;
 
     try {
       const token = await getToken();
@@ -269,13 +331,13 @@ export default function SavedTripDetail() {
       navigate('/dashboard');
     } catch (err) {
       console.error('Error deleting trip:', err);
-      setActionError('Impossible de supprimer le voyage. Veuillez réessayer.');
+      setActionError(t('savedTrip.errDelete'));
     }
   };
 
   const handleCreatePriceAlert = async () => {
     if (!trip?.tripData?.pricing?.total || !trip.startDate || !trip.endDate) {
-      setActionError('Données manquantes pour créer une alerte prix.');
+      setActionError(t('savedTrip.errAlertData'));
       return;
     }
 
@@ -309,7 +371,7 @@ export default function SavedTripDetail() {
       setTimeout(() => setAlertCreated(false), 3000);
     } catch (err) {
       console.error('Error creating price alert:', err);
-      setActionError(err.message || 'Impossible de créer l\'alerte prix.');
+      setActionError(err.message || t('savedTrip.errAlert'));
     } finally {
       setCreatingAlert(false);
     }
@@ -321,18 +383,18 @@ export default function SavedTripDetail() {
 
   if (error || !trip) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-md text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-red-900 mb-2">Erreur</h3>
-          <p className="text-red-700 mb-4">{error || 'Voyage introuvable'}</p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Retour au tableau de bord
-          </button>
-        </div>
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <EmptyState
+          className="max-w-md"
+          icon={<AlertCircle size={24} />}
+          title={t('savedTrip.notFoundTitle')}
+          sub={t('savedTrip.notFoundSub')}
+          action={{
+            label: t('savedTrip.back'),
+            variant: 'outline',
+            onClick: () => navigate('/dashboard'),
+          }}
+        />
       </div>
     );
   }
@@ -343,338 +405,268 @@ export default function SavedTripDetail() {
   const slot = tripData.slot || {};
   const flightDetails = tripData.flightDetails || {};
   const hotelOptions = tripData.hotelOptions || {};
-  const links = tripData.links || {};
-
   const duration = Math.max(1, trip.startDate && trip.endDate
     ? Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))
     : slot.duration || 1);
+  const primaryBookingUrl = flightDetails.bookingUrl || generateFlightLink({
+    destinationCity: safeText(trip.city),
+    destinationIata: destination.iataCode,
+    destinationCountry: safeText(trip.country),
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    adults: 1,
+  });
 
   return (
     <div className="min-h-screen bg-surface-subtle">
       {actionError && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium bg-red-600 text-white flex items-center gap-2">
-          ✕ {actionError}
+        <div className="fixed top-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl bg-clay-500 px-5 py-3 text-sm font-medium text-white shadow-2">
+          <AlertCircle size={16} /> {actionError}
           <button onClick={() => setActionError(null)} className="ml-2 hover:opacity-80">×</button>
         </div>
       )}
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {/* Back nav */}
+      <section className="relative h-[430px] overflow-hidden">
+        <PhotoBlock
+          city={safeText(trip.city)}
+          country={safeText(trip.country)}
+          tripData={trip.tripData}
+          className="absolute inset-0 h-full w-full"
+          imgClassName="h-full"
+          alt={`${safeText(trip.city)}, ${safeText(trip.country)}`}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-sand-900 via-sand-900/70 to-sand-900/10" />
+        <div className="relative mx-auto flex h-full max-w-6xl flex-col justify-end px-4 pb-10 text-white sm:px-6 lg:px-8">
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors text-sm font-medium mb-4"
+            className="absolute left-4 top-6 flex items-center gap-2 rounded-full bg-white/14 px-3 py-2 text-sm font-medium text-white backdrop-blur transition-colors hover:bg-white/22 sm:left-6 lg:left-8"
           >
             <ArrowLeft size={16} />
-            Retour au tableau de bord
+            {t('savedTrip.back')}
           </button>
-
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-4xl font-bold text-text-main">
-                  {safeText(trip.city)}, {safeText(trip.country)}
-                </h1>
-              </div>
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-primary-light text-primary">
-                Voyage solo
-              </span>
+          <Badge tone="ink" className="mb-5 w-fit bg-white/15 text-white">
+            {t('savedTrip.soloBadge', { count: duration })}
+          </Badge>
+          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/65">{t('savedTrip.eyebrow')}</p>
+              <h1 className="mt-2 font-display text-6xl font-medium leading-[0.94] md:text-[80px]">
+                {safeText(trip.city)}, <span className="italic text-ember-200">{safeText(trip.country)}</span>
+              </h1>
+              <p className="mt-4 max-w-2xl text-white/78">
+                {tripData.matchReason ? safeText(tripData.matchReason) : t('savedTrip.defaultIntro')}
+              </p>
             </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setShowInviteModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
-              >
-                <UserPlus size={16} />
-                <span className="hidden sm:inline">Inviter des amis</span>
-                <span className="sm:hidden">Inviter</span>
-              </button>
-              <button
-                onClick={handleCreatePriceAlert}
-                disabled={creatingAlert || alertCreated}
-                className={`flex items-center gap-2 px-4 py-2 font-medium rounded-lg transition-colors ${
-                  alertCreated
-                    ? 'bg-green-100 text-green-700 cursor-default'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
-                title="Créer une alerte prix pour ce voyage"
-              >
-                {creatingAlert ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : alertCreated ? (
-                  <CheckCircle2 size={16} />
-                ) : (
-                  <Bell size={16} />
-                )}
-                {alertCreated ? 'Alerte créée' : 'Alerte prix'}
-              </button>
-              <button
-                onClick={handleExportPdf}
-                disabled={exportingPdf}
-                className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-700 font-medium rounded-lg hover:bg-stone-200 transition-colors disabled:opacity-50"
-                title="Exporter en PDF"
-              >
-                {exportingPdf ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Download size={16} />
-                )}
-                Exporter PDF
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex items-center gap-2 px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
-                title="Supprimer ce voyage"
-              >
-                <Trash2 size={16} />
-                <span className="hidden sm:inline">Supprimer</span>
-              </button>
+            <div className="md:text-right">
+              <p className="text-sm text-white/65">
+                {trip.startDate
+                  ? fmtDate(trip.startDate, { day: 'numeric', month: 'short' })
+                  : t('savedTrip.dateTBD')}
+              </p>
+              <p className="mt-1 font-display text-5xl font-medium">{fmtCurrency(pricing.total || 0)}</p>
+              <p className="text-xs text-white/55">{t('savedTrip.totalEstimate')}</p>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Quick Info */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-              <Calendar className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="text-xs text-text-secondary">Départ</p>
-                <p className="font-semibold text-text-main">
-                  {trip.startDate
-                    ? new Date(trip.startDate).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric', year: 'numeric' })
-                    : 'Date non définie'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-              <Clock className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="text-xs text-text-secondary">Durée</p>
-                <p className="font-semibold text-text-main">{duration} jours</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-              <DollarSign className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="text-xs text-text-secondary">Budget total</p>
-                <p className="font-semibold text-text-main">
-                  €{Math.round(pricing.total || 0)}
-                </p>
-              </div>
-            </div>
+      <div className="sticky top-0 z-30 border-b border-sand-200 bg-white/95 shadow-1 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+          <div className="flex gap-5 overflow-x-auto text-sm">
+            {[
+              ['vol', t('savedTrip.tabFlight')],
+              ['hôtel', t('savedTrip.tabHotel')],
+              ['jours', t('savedTrip.tabDays')],
+              ['météo', t('savedTrip.tabWeather')],
+            ].map(([anchor, label], index) => (
+              <a
+                key={anchor}
+                href={`#${anchor}`}
+                className={`shrink-0 border-b-2 pb-1 font-medium ${index === 0 ? 'border-ember-700 text-text-main' : 'border-transparent text-text-secondary hover:text-text-main'}`}
+              >
+                {label}
+              </a>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowInviteModal(true)} icon={<UserPlus size={15} />}>
+              {t('savedTrip.invite')}
+            </Button>
+            <Button
+              variant={alertCreated ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={handleCreatePriceAlert}
+              disabled={creatingAlert || alertCreated}
+              icon={creatingAlert ? <Loader2 size={15} className="animate-spin" /> : alertCreated ? <CheckCircle2 size={15} /> : <Bell size={15} />}
+            >
+              {alertCreated ? t('savedTrip.alertCreated') : t('savedTrip.priceTrack')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPdf}
+              disabled={exportingPdf}
+              icon={exportingPdf ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+            >
+              {t('savedTrip.export')}
+            </Button>
+            <Button
+              size="sm"
+              icon={<Plane size={15} />}
+              onClick={() => window.open(primaryBookingUrl, '_blank', 'noopener,noreferrer')}
+            >
+              {t('savedTrip.bookAll')}
+            </Button>
+            <button
+              onClick={handleDelete}
+              className="grid h-8 w-8 place-items-center rounded-[10px] text-clay-500 transition-colors hover:bg-clay-100"
+              title={t('savedTrip.deleteTrip')}
+            >
+              <Trash2 size={15} />
+            </button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Flight Details */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Flight Details — human sentence by default (spec Étape 5) */}
         {flightDetails && (flightDetails.outbound || flightDetails.return) && (
-          <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Plane className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-bold text-text-main">Vols</h2>
+          <div id="vol" className="rounded-[14px] border border-sand-200 bg-white p-6 shadow-2">
+            <div className="mb-5 flex items-end justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-ember-700">{t('savedTrip.flightEyebrow')}</p>
+                <h2 className="mt-1 font-display text-2xl font-medium text-text-main">{t('savedTrip.flightTitle')}</h2>
               </div>
               {flightDetails.totalPrice && (
-                <span className="text-lg font-bold text-primary">
-                  €{Math.round(flightDetails.totalPrice)}
+                <span className="font-display text-2xl font-medium text-text-main">
+                  {fmtCurrency(flightDetails.totalPrice)}
                 </span>
               )}
             </div>
 
-            <div className="space-y-4">
-              {/* Outbound Flight */}
-              {flightDetails.outbound && (
-                <div className="p-4 bg-primary-light rounded-xl">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-text-main">Vol aller</span>
-                    <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
-                      {slot.startDate ? new Date(slot.startDate).toLocaleDateString('fr-FR', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date à confirmer'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-text-main">
-                        {flightDetails.outbound.departureTime ? new Date(flightDetails.outbound.departureTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+            <div className="space-y-3">
+              {[
+                { leg: flightDetails.outbound, label: t('savedTrip.legOut'), date: slot.startDate, fromFb: trip.city, toFb: destination.city || trip.city },
+                { leg: flightDetails.return, label: t('savedTrip.legReturn'), date: slot.endDate, fromFb: destination.city || trip.city, toFb: trip.city },
+              ].filter((f) => f.leg).map((f, i) => {
+                const sentence = flightSentence(f.leg, f.fromFb, f.toFb, t, locale);
+                const mono = flightMono(f.leg, locale);
+                const dateLabel = f.date
+                  ? fmtDate(f.date, { weekday: 'long', day: 'numeric', month: 'long' })
+                  : null;
+                return (
+                  <div key={i} className="rounded-[12px] border border-sand-200 bg-sand-50 p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-text-light">
+                          {f.label}{dateLabel ? ` · ${dateLabel}` : ''}
+                        </p>
+                        <p className="mt-2 text-base font-medium leading-relaxed text-text-main">
+                          {sentence}
+                        </p>
+                        {mono && (
+                          <p className="mt-2 font-mono text-[13px] text-text-light">{mono}</p>
+                        )}
                       </div>
-                      <div className="text-xs text-primary">{flightDetails.outbound.departureAirport || trip.city}</div>
                     </div>
-                    <div className="flex-1 flex items-center gap-2">
-                      <div className="h-px bg-primary/30 flex-1"></div>
-                      <div className="text-xs text-primary flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-full">
-                        <Plane size={10} className="rotate-90" />
-                        {flightDetails.outbound.duration || 'Durée N/D'}
-                      </div>
-                      <div className="h-px bg-primary/30 flex-1"></div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-text-main">
-                        {flightDetails.outbound.arrivalTime ? new Date(flightDetails.outbound.arrivalTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                      </div>
-                      <div className="text-xs text-primary">{flightDetails.outbound.arrivalAirport || destination.city}</div>
-                    </div>
-                  </div>
-                  {/* Airline info */}
-                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-primary/20">
-                    {flightDetails.outbound.segments?.[0]?.carrierLogo && (
-                      <img src={flightDetails.outbound.segments[0].carrierLogo} alt={flightDetails.airline} className="h-5 w-auto" />
-                    )}
-                    <span className="text-xs text-primary">{flightDetails.airline || 'Compagnie'} • {flightDetails.cabinClass || 'Economy'}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Return Flight */}
-              {flightDetails.return && (
-                <div className="p-4 bg-primary-light rounded-xl">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-text-main">Vol retour</span>
-                    <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
-                      {slot.endDate ? new Date(slot.endDate).toLocaleDateString('fr-FR', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Date à confirmer'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-text-main">
-                        {flightDetails.return.departureTime ? new Date(flightDetails.return.departureTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                      </div>
-                      <div className="text-xs text-primary">{flightDetails.return.departureAirport || destination.city}</div>
-                    </div>
-                    <div className="flex-1 flex items-center gap-2">
-                      <div className="h-px bg-primary/30 flex-1"></div>
-                      <div className="text-xs text-primary flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-full">
-                        <Plane size={10} className="-rotate-90" />
-                        {flightDetails.return.duration || 'Durée N/D'}
-                      </div>
-                      <div className="h-px bg-primary/30 flex-1"></div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-text-main">
-                        {flightDetails.return.arrivalTime ? new Date(flightDetails.return.arrivalTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                      </div>
-                      <div className="text-xs text-primary">{flightDetails.return.arrivalAirport || trip.city}</div>
+                    <div className="mt-4 flex items-center gap-2 border-t border-sand-200 pt-3 text-xs text-text-secondary">
+                      {f.leg.segments?.[0]?.carrierLogo && (
+                        <img src={f.leg.segments[0].carrierLogo} alt={safeText(flightDetails.airline)} className="h-4 w-auto" />
+                      )}
+                      <span>{safeText(flightDetails.airline) || t('savedTrip.airlineFallback')} · {safeText(flightDetails.cabinClass) || t('savedTrip.cabinFallback')}</span>
                     </div>
                   </div>
-                  {/* Airline info */}
-                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-primary/20">
-                    {flightDetails.return.segments?.[0]?.carrierLogo && (
-                      <img src={flightDetails.return.segments[0].carrierLogo} alt={flightDetails.airline} className="h-5 w-auto" />
-                    )}
-                    <span className="text-xs text-primary">{flightDetails.airline || 'Compagnie'} • {flightDetails.cabinClass || 'Economy'}</span>
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
 
-            {/* Flight booking CTAs */}
-            <div className="flex gap-3 mt-5 pt-4 border-t border-gray-100">
-              {flightDetails.bookingUrl ? (
-                <a
-                  href={flightDetails.bookingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold text-center hover:bg-primary-hover transition-colors flex items-center justify-center gap-2"
-                >
-                  <Plane size={14} />
-                  Réserver ce vol
-                </a>
-              ) : null}
-              <a
-                href={generateFlightLink({
-                  destinationCity: safeText(trip.city),
-                  destinationIata: destination.iataCode,
-                  destinationCountry: safeText(trip.country),
-                  startDate: trip.startDate,
-                  endDate: trip.endDate,
-                  adults: 1,
-                })}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`py-2.5 px-4 rounded-xl text-sm font-medium text-center border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors ${flightDetails.bookingUrl ? '' : 'flex-1'}`}
+            <div className="mt-5 border-t border-sand-200 pt-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.open(
+                  flightDetails.bookingUrl || generateFlightLink({
+                    destinationCity: safeText(trip.city),
+                    destinationIata: destination.iataCode,
+                    destinationCountry: safeText(trip.country),
+                    startDate: trip.startDate,
+                    endDate: trip.endDate,
+                    adults: 1,
+                  }),
+                  '_blank',
+                  'noopener,noreferrer'
+                )}
               >
-                Voir d'autres vols
-              </a>
+                {t('savedTrip.otherFlights')}
+              </Button>
             </div>
           </div>
         )}
 
         {/* Accommodation */}
         {(hotelOptions?.hotels?.length > 0 || pricing?.hotel) && (
-          <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Hotel className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-bold text-text-main">Hébergement</h2>
+          <div id="hôtel" className="rounded-[14px] border border-sand-200 bg-white p-6 shadow-2">
+            <div className="mb-5 flex items-end justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-ember-700">{t('savedTrip.hotelEyebrow')}</p>
+                <h2 className="mt-1 font-display text-2xl font-medium text-text-main">{t('savedTrip.hotelTitle')}</h2>
               </div>
               {pricing?.hotel && (
-                <span className="text-lg font-bold text-primary">
-                  €{Math.round(pricing.hotel)}
+                <span className="font-display text-2xl font-medium text-text-main">
+                  {fmtCurrency(pricing.hotel)}
                 </span>
               )}
             </div>
 
-            {/* Summary card */}
-            <div className="p-4 bg-green-50 rounded-xl mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-green-900">
-                  {duration} nuits
-                </span>
-                <span className="text-sm text-green-700">
-                  ~€{Math.round((pricing?.hotel || 0) / duration)} par nuit
-                </span>
-              </div>
+            <div className="mb-4 flex items-center justify-between rounded-[12px] bg-sand-50 px-4 py-3">
+              <span className="text-sm font-medium text-text-main">{t('savedTrip.nights', { count: duration })}</span>
+              <span className="text-sm text-text-secondary">
+                {t('savedTrip.perNight', { price: fmtCurrency(Math.round((pricing?.hotel || 0) / duration)) })}
+              </span>
             </div>
 
-            {/* Hotel list */}
             {hotelOptions?.hotels?.length > 0 && (
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-text-main">Hôtels recommandés :</p>
                 {hotelOptions.hotels.slice(0, 3).map((hotel, idx) => {
                   const photo = hotel.mainPhoto || hotel.photos?.[0];
                   return (
-                    <div key={idx} className="rounded-xl border border-gray-100 hover:border-primary/30 transition-colors overflow-hidden">
-                      {/* Hotel photo */}
+                    <div key={idx} className="overflow-hidden rounded-[12px] border border-sand-200 transition-colors hover:border-ember-200">
                       {photo && (
                         <img
                           src={photo}
                           alt={safeText(hotel.name)}
-                          className="w-full h-36 object-cover"
+                          className="h-36 w-full object-cover"
                           loading="lazy"
                           onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       )}
-                      <div className="p-4 bg-gray-50">
+                      <div className="bg-white p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
                             <p className="font-semibold text-text-main">{safeText(hotel.name)}</p>
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="mt-1 flex items-center gap-2">
                               {hotel.stars && (
-                                <span className="text-xs text-amber-600">
+                                <span className="text-xs text-gold-500">
                                   {'★'.repeat(typeof hotel.stars === 'number' ? hotel.stars : 0)}
                                 </span>
                               )}
                               {hotel.rating?.value && (
-                                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                                  {safeText(hotel.rating.value)}/10
-                                </span>
+                                <Badge tone="moss" dot>{safeText(hotel.rating.value)}/10</Badge>
                               )}
                               {hotel.location && (
-                                <span className="text-xs text-text-secondary flex items-center gap-1">
+                                <span className="flex items-center gap-1 text-xs text-text-secondary">
                                   <MapPin size={10} />
                                   {safeText(hotel.location)}
                                 </span>
                               )}
                             </div>
                             {hotel.amenities?.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-2">
+                              <div className="mt-2 flex flex-wrap gap-1.5">
                                 {hotel.amenities.slice(0, 4).map((amenity, i) => {
                                   const text = typeof amenity === 'string' ? amenity : (amenity?.word || amenity?.value || amenity?.name || '');
                                   if (!text) return null;
                                   return (
-                                    <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                    <span key={i} className="rounded-full bg-sand-100 px-2.5 py-0.5 text-xs text-text-secondary">
                                       {text}
                                     </span>
                                   );
@@ -682,44 +674,47 @@ export default function SavedTripDetail() {
                               </div>
                             )}
                           </div>
-                          <div className="text-right shrink-0">
-                            <span className="text-lg font-bold text-primary">
-                              €{Math.round(hotel.pricePerNight || hotel.price?.amount / duration || 0)}
+                          <div className="shrink-0 text-right">
+                            <span className="font-display text-xl font-medium text-text-main">
+                              {fmtCurrency(Math.round(hotel.pricePerNight || hotel.price?.amount / duration || 0))}
                             </span>
-                            <span className="text-xs text-text-secondary block">/nuit</span>
+                            <span className="block text-xs text-text-secondary">{t('savedTrip.perNightShort')}</span>
                           </div>
                         </div>
                         {hotel.bookingUrl && (
-                          <a
-                            href={hotel.bookingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-3 w-full py-2 bg-primary text-white rounded-lg text-sm font-semibold text-center hover:bg-primary-hover transition-colors flex items-center justify-center gap-2"
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3"
+                            icon={<Hotel size={14} />}
+                            onClick={() => window.open(hotel.bookingUrl, '_blank', 'noopener,noreferrer')}
                           >
-                            <Hotel size={14} />
-                            Réserver cet hôtel
-                          </a>
+                            {t('savedTrip.hotelDetails')}
+                          </Button>
                         )}
                       </div>
                     </div>
                   );
                 })}
 
-                {/* See more hotels CTA */}
-                <a
-                  href={generateHotelLink({
-                    city: safeText(trip.city),
-                    country: safeText(trip.country),
-                    startDate: trip.startDate,
-                    endDate: trip.endDate,
-                    adults: 1,
-                  })}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full py-2.5 text-center text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors mt-2"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-1"
+                  onClick={() => window.open(
+                    generateHotelLink({
+                      city: safeText(trip.city),
+                      country: safeText(trip.country),
+                      startDate: trip.startDate,
+                      endDate: trip.endDate,
+                      adults: 1,
+                    }),
+                    '_blank',
+                    'noopener,noreferrer'
+                  )}
                 >
-                  Voir d'autres hôtels à {safeText(trip.city)}
-                </a>
+                  {t('savedTrip.otherHotels', { city: safeText(trip.city) })}
+                </Button>
               </div>
             )}
           </div>
@@ -727,56 +722,55 @@ export default function SavedTripDetail() {
 
         {/* Activities & Highlights */}
         {destination.highlights && destination.highlights.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-bold text-text-main">Points forts & activités</h2>
-            </div>
+          <div className="rounded-[14px] border border-sand-200 bg-white p-6 shadow-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-ember-700">{t('savedTrip.activitiesEyebrow')}</p>
+            <h2 className="mt-1 mb-4 font-display text-2xl font-medium text-text-main">{t('savedTrip.highlights')}</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {destination.highlights.map((highlight, idx) => {
-                // Handle both string and object highlights {word, count, value}
                 const text = typeof highlight === 'string' ? highlight : (highlight?.word || highlight?.value || highlight?.text || '');
                 if (!text) return null;
                 return (
-                  <div key={idx} className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
-                    <div className="w-2 h-2 rounded-full bg-purple-600 mt-2"></div>
-                    <span className="text-sm text-purple-900">{text}</span>
+                  <div key={idx} className="flex items-start gap-3 rounded-[10px] bg-ember-50 p-3">
+                    <div className="mt-2 h-1.5 w-1.5 rounded-full bg-ember-600"></div>
+                    <span className="text-sm text-text-main">{text}</span>
                   </div>
                 );
               })}
             </div>
 
-            {/* Activities booking CTA */}
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <a
-                href={generateActivitiesLink({
-                  city: safeText(trip.city),
-                  country: safeText(trip.country),
-                  startDate: trip.startDate,
-                  endDate: trip.endDate,
-                })}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold text-primary border border-primary/30 bg-primary/5 rounded-xl hover:bg-primary/10 transition-colors"
+            <div className="mt-4 border-t border-sand-200 pt-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<Sparkles size={14} />}
+                onClick={() => window.open(
+                  generateActivitiesLink({
+                    city: safeText(trip.city),
+                    country: safeText(trip.country),
+                    startDate: trip.startDate,
+                    endDate: trip.endDate,
+                  }),
+                  '_blank',
+                  'noopener,noreferrer'
+                )}
               >
-                <Sparkles size={14} />
-                Trouver des activités à {safeText(trip.city)}
-              </a>
+                {t('savedTrip.findActivities', { city: safeText(trip.city) })}
+              </Button>
             </div>
           </div>
         )}
 
         {/* Match Reasons */}
         {tripData.matchReason && (
-          <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-            <h2 className="text-lg font-bold text-text-main mb-4">Pourquoi cette destination ?</h2>
-            <p className="text-text-secondary leading-relaxed">{safeText(tripData.matchReason)}</p>
+          <div className="rounded-[14px] border border-sand-200 bg-white p-6 shadow-2">
+            <h2 className="mb-4 font-display text-2xl font-medium text-text-main">{t('savedTrip.whyDest')}</h2>
+            <p className="leading-relaxed text-text-secondary">{safeText(tripData.matchReason)}</p>
 
             {tripData.seasonReason && (
-              <div className="mt-4 p-4 bg-amber-50 rounded-xl">
-                <p className="text-sm font-medium text-amber-900 mb-1">Meilleure saison</p>
-                <p className="text-sm text-amber-700">{safeText(tripData.seasonReason)}</p>
+              <div className="mt-4 rounded-[12px] bg-gold-100 p-4">
+                <p className="mb-1 text-sm font-semibold text-[#7a5c1a]">{t('savedTrip.bestSeason')}</p>
+                <p className="text-sm text-[#7a5c1a]">{safeText(tripData.seasonReason)}</p>
               </div>
             )}
           </div>
@@ -784,23 +778,23 @@ export default function SavedTripDetail() {
 
         {/* Notes */}
         {trip.notes && (
-          <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-            <h2 className="text-lg font-bold text-text-main mb-4">Notes</h2>
-            <p className="text-text-secondary whitespace-pre-wrap">{safeText(trip.notes)}</p>
+          <div className="rounded-[14px] border border-sand-200 bg-white p-6 shadow-2">
+            <h2 className="mb-4 font-display text-2xl font-medium text-text-main">{t('savedTrip.notes')}</h2>
+            <p className="whitespace-pre-wrap text-text-secondary">{safeText(trip.notes)}</p>
           </div>
         )}
 
         {/* TRIP ENHANCEMENTS - Weather, Itinerary, Packing, Events */}
-        <TripEnhancementsSection trip={trip} userName={user?.firstName || 'there'} />
+        <TripEnhancementsSection trip={trip} userName={user?.firstName || t('savedTrip.voyagerFallback')} />
       </div>
 
       {/* Invite Friends Modal */}
       {showInviteModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-sand-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[20px] border border-sand-200 bg-white p-6 shadow-3">
             {/* Modal Header */}
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-text-main">Inviter des amis</h3>
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="font-display text-2xl font-medium text-text-main">{t('savedTrip.inviteFriends')}</h3>
               <button
                 onClick={() => {
                   setShowInviteModal(false);
@@ -808,38 +802,38 @@ export default function SavedTripDetail() {
                   setCurrentEmail('');
                   setInviteError(null);
                 }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="rounded-[10px] p-2 transition-colors hover:bg-sand-100"
               >
-                <X size={20} className="text-gray-400" />
+                <X size={20} className="text-text-light" />
               </button>
             </div>
 
             {/* Modal Body */}
             <div className="space-y-4">
               <p className="text-sm text-text-secondary">
-                Votre voyage solo sera converti en voyage de groupe et des invitations seront envoyées à vos amis.
+                {t('savedTrip.inviteIntro')}
               </p>
 
               {/* Email Input */}
               <div>
                 <label className="block text-sm font-medium text-text-main mb-2">
-                  Adresses e-mail
+                  {t('savedTrip.emailLabel')}
                 </label>
                 <input
                   type="email"
                   value={currentEmail}
                   onChange={(e) => setCurrentEmail(e.target.value)}
                   onKeyDown={addInviteEmail}
-                  placeholder="Saisissez un e-mail et appuyez sur Entrée"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder={t('savedTrip.emailPlaceholder')}
+                  className="w-full rounded-[10px] border border-sand-200 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-ember-600"
                 />
-                <p className="text-xs text-text-secondary mt-1">Appuyez sur Entrée pour ajouter plusieurs e-mails</p>
+                <p className="text-xs text-text-secondary mt-1">{t('savedTrip.emailHint')}</p>
               </div>
 
               {/* Email List */}
               {inviteEmails.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-text-main">Invitations ({inviteEmails.length}) :</p>
+                  <p className="text-sm font-medium text-text-main">{t('savedTrip.invitations', { count: inviteEmails.length })}</p>
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {inviteEmails.map((email) => (
                       <div
@@ -864,44 +858,39 @@ export default function SavedTripDetail() {
 
               {/* Error Message */}
               {inviteError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-                  <AlertCircle size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-700">{inviteError}</p>
+                <div className="flex items-start gap-2 rounded-[10px] bg-clay-100 p-3">
+                  <AlertCircle size={18} className="mt-0.5 flex-shrink-0 text-clay-500" />
+                  <p className="text-sm text-[#7a3a25]">{inviteError}</p>
                 </div>
               )}
             </div>
 
             {/* Modal Footer */}
-            <div className="flex gap-3 mt-6">
-              <button
+            <div className="mt-6 flex gap-3">
+              <Button
+                variant="outline"
+                size="md"
+                full
+                disabled={inviting}
                 onClick={() => {
                   setShowInviteModal(false);
                   setInviteEmails([]);
                   setCurrentEmail('');
                   setInviteError(null);
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-text-secondary rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                disabled={inviting}
               >
-                Annuler
-              </button>
-              <button
+                {t('savedTrip.cancel')}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                full
                 onClick={handleInviteFriends}
                 disabled={inviting || inviteEmails.length === 0}
-                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                icon={inviting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
               >
-                {inviting ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    Envoi en cours...
-                  </>
-                ) : (
-                  <>
-                    <Send size={18} />
-                    Envoyer les invitations
-                  </>
-                )}
-              </button>
+                {inviting ? t('savedTrip.sending') : t('savedTrip.sendInvites')}
+              </Button>
             </div>
           </div>
         </div>
@@ -916,6 +905,7 @@ export default function SavedTripDetail() {
 // ========================================
 function TripEnhancementsSection({ trip, userName }) {
   const { getToken } = useAuth();
+  const { t } = useTranslation();
 
   // Separate states for each component
   const [weather, setWeather] = useState(null);
@@ -1026,34 +1016,24 @@ function TripEnhancementsSection({ trip, userName }) {
       {/* Weather & Packing - Load FIRST (fast) */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Weather */}
-        {weatherLoading ? (
-          <div className="bg-primary-light rounded-xl p-4 animate-pulse border border-primary/10">
-            <div className="h-4 bg-primary-muted rounded w-1/2 mb-2"></div>
-            <div className="h-6 bg-primary-muted rounded w-3/4"></div>
-          </div>
-        ) : weather ? (
+        {!weatherLoading && weather ? (
           <WeatherForecastCard weather={weather} destination={destination} />
         ) : null}
 
         {/* Packing */}
-        {packingLoading ? (
-          <div className="bg-primary-light rounded-xl p-4 animate-pulse border border-primary/10">
-            <div className="h-4 bg-primary-muted rounded w-1/2 mb-2"></div>
-            <div className="h-6 bg-primary-muted rounded w-3/4"></div>
-          </div>
-        ) : packing ? (
+        {!packingLoading && packing ? (
           <PackingTipsCard packing={packing} />
         ) : null}
       </div>
 
       {/* Itinerary - Loads in background */}
       {itineraryLoading ? (
-        <div className="bg-gradient-to-br from-primary-light via-white to-stone-50 rounded-2xl shadow-card border border-stone-200 p-8">
+        <div className="rounded-[14px] border border-sand-200 bg-white p-8 shadow-2">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-text-main mb-2">Création de votre itinéraire...</h3>
-            <p className="text-text-secondary">
-              Notre IA prépare votre voyage idéal avec les vols, transferts, activités et horaires
+            <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-ember-600" />
+            <h3 className="font-display text-2xl font-medium text-text-main">{t('savedTrip.buildingItinerary')}</h3>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-text-secondary">
+              {t('savedTrip.buildingItineraryDesc')}
             </p>
           </div>
         </div>
@@ -1074,7 +1054,8 @@ function TripEnhancementsSection({ trip, userName }) {
 }
 
 // Weather Forecast Card Component - Teal Design System
-function WeatherForecastCard({ weather, destination }) {
+function WeatherForecastCard({ weather }) {
+  const { t } = useTranslation();
   // Get average conditions for trip period (first 5-7 days)
   const tripForecast = weather.forecast.slice(0, Math.min(5, weather.forecast.length));
   const avgTemp = Math.round(
@@ -1083,21 +1064,21 @@ function WeatherForecastCard({ weather, destination }) {
   const maxRainChance = Math.max(...tripForecast.map(d => d.day.daily_chance_of_rain));
 
   return (
-    <div className="bg-white rounded-xl shadow-card border border-stone-200 p-4 hover:border-primary/30 transition-colors">
+    <div className="rounded-[14px] border border-sand-200 bg-white p-4 shadow-1 transition-colors hover:border-ember-200">
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 bg-primary-light rounded-lg flex items-center justify-center">
           <img src={weather.current.icon} alt={weather.current.condition} className="w-10 h-10" />
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold text-text-main">Météo prévue</h3>
+          <h3 className="font-semibold text-text-main">{t('savedTrip.weatherTitle')}</h3>
           <p className="text-sm text-text-secondary">
-            Actuellement {Math.round(weather.current.temp_c)}°C • {weather.current.condition}
+            {t('savedTrip.weatherNow', { temp: Math.round(weather.current.temp_c), cond: weather.current.condition })}
           </p>
           <p className="text-xs text-text-light mt-1">
-            Moyenne du séjour : ~{avgTemp}°C
+            {t('savedTrip.weatherAvg', { temp: avgTemp })}
             {maxRainChance > 30 && (
               <span className="ml-2 px-1.5 py-0.5 bg-primary-light text-primary rounded text-xs">
-                {maxRainChance}% de pluie
+                {t('savedTrip.rainChance', { pct: maxRainChance })}
               </span>
             )}
           </p>
@@ -1109,6 +1090,7 @@ function WeatherForecastCard({ weather, destination }) {
 
 // Packing Tips Card Component - handles both AI format and static format
 function PackingTipsCard({ packing }) {
+  const { t } = useTranslation();
   // AI format: { essentials: string[], clothing: string[], activityItems: string[], tip: string }
   // Static format: { essentials: string[], clothing: string[], weatherSummary: { tempRange, rainChance, maxUV } }
   const essentials = (packing.essentials || []).slice(0, 3);
@@ -1118,13 +1100,13 @@ function PackingTipsCard({ packing }) {
   const allItems = [...essentials, ...clothing, ...activityItems];
 
   return (
-    <div className="bg-white rounded-xl shadow-card border border-stone-200 p-4 hover:border-primary/30 transition-colors">
+    <div className="rounded-[14px] border border-sand-200 bg-white p-4 shadow-1 transition-colors hover:border-ember-200">
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 bg-primary-light rounded-lg flex items-center justify-center flex-shrink-0">
           <Backpack className="w-5 h-5 text-primary" />
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold text-text-main mb-2">À emporter</h3>
+          <h3 className="font-semibold text-text-main mb-2">{t('savedTrip.packTitle')}</h3>
           <div className="space-y-1.5 text-sm">
             {allItems.map((item, idx) => {
               const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
@@ -1148,10 +1130,10 @@ function PackingTipsCard({ packing }) {
             <p className="text-xs text-text-light mt-2">
               {packing.weatherSummary.tempRange}
               {packing.weatherSummary.rainChance > 30 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-primary-light text-primary rounded">Imperméable</span>
+                <span className="ml-1 px-1.5 py-0.5 bg-primary-light text-primary rounded">{t('savedTrip.raincoat')}</span>
               )}
               {packing.weatherSummary.maxUV > 6 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded">SPF 50+</span>
+                <span className="ml-1 rounded bg-gold-100 px-1.5 py-0.5 text-[#7a5c1a]">SPF 50+</span>
               )}
             </p>
           )}

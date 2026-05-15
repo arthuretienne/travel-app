@@ -1,23 +1,54 @@
 @import "tailwindcss";
+@import "./styles/tokens.css";
 
 @theme {
-  /* Teal design system */
-  --color-primary: #0D9488;
-  --color-primary-hover: #0F766E;
-  --color-primary-light: #F0FDFA;
-  --color-primary-muted: #99F6E4;
+  /* Ember redesign system */
+  --color-ember-50: #fbf2ec;
+  --color-ember-100: #f5ddcb;
+  --color-ember-200: #ebb89a;
+  --color-ember-300: #db8e66;
+  --color-ember-400: #c96e44;
+  --color-ember-500: #b85a3c;
+  --color-ember-600: #a44d30;
+  --color-ember-700: #843a23;
+  --color-ember-800: #642b1a;
+  --color-ember-900: #421c10;
+
+  --color-sand-50: #faf7f2;
+  --color-sand-100: #f4efe6;
+  --color-sand-200: #e8e0d2;
+  --color-sand-300: #d4c8b3;
+  --color-sand-400: #a89880;
+  --color-sand-500: #7a6c56;
+  --color-sand-600: #574b3a;
+  --color-sand-700: #3a3128;
+  --color-sand-800: #25201a;
+  --color-sand-900: #1a1612;
+
+  --color-clay-100: #f5dde0;
+  --color-clay-500: #9b4757;
+  --color-gold-100: #f5ecd4;
+  --color-gold-500: #c89b3c;
+  --color-moss-100: #e6efd9;
+  --color-moss-500: #6b8b4a;
+
+  /* Legacy aliases kept so existing screens migrate without churn. */
+  --color-primary: #a44d30;
+  --color-primary-hover: #843a23;
+  --color-primary-light: #fbf2ec;
+  --color-primary-muted: #ebb89a;
 
   /* Warm neutral surfaces */
   --color-surface: #FFFFFF;
-  --color-surface-subtle: #FAFAF9;
-  --color-surface-muted: #F5F5F4;
-  --color-surface-hover: #E7E5E4;
+  --color-surface-subtle: #faf7f2;
+  --color-surface-muted: #f4efe6;
+  --color-surface-hover: #e8e0d2;
 
   /* Warm text colors */
-  --color-text-main: #1C1917;
-  --color-text-secondary: #78716C;
-  --color-text-light: #A8A29E;
-  --color-text-muted: #D6D3D1;
+  --color-text-main: #1a1612;
+  --color-text-secondary: #7a6c56;
+  --color-text-light: #a89880;
+  --color-text-muted: #d4c8b3;
 
   --radius-xl: 0.875rem;
   --radius-2xl: 1rem;
@@ -25,10 +56,14 @@
 
   --font-sans: 'DM Sans', system-ui, sans-serif;
   --font-display: 'Fraunces', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
 
-  --shadow-soft: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
-  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
-  --shadow-elevated: 0 4px 24px -4px rgba(0, 0, 0, 0.08);
+  --shadow-1: 0 1px 2px rgba(26, 22, 18, .04), 0 1px 1px rgba(26, 22, 18, .03);
+  --shadow-2: 0 2px 4px rgba(26, 22, 18, .04), 0 6px 16px rgba(26, 22, 18, .06);
+  --shadow-3: 0 4px 8px rgba(26, 22, 18, .05), 0 16px 40px rgba(26, 22, 18, .08);
+  --shadow-soft: var(--shadow-1);
+  --shadow-card: var(--shadow-2);
+  --shadow-elevated: var(--shadow-3);
 }
 
 @layer base {
@@ -49,6 +84,11 @@
     font-family: 'DM Sans', system-ui, sans-serif;
   }
 
+  body,
+  #root {
+    min-height: 100vh;
+  }
+
   h1,
   h2,
   h3,
@@ -64,6 +104,15 @@
 
   button {
     @apply font-medium transition-colors duration-200;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--ember-600);
+    outline-offset: 2px;
   }
 }
 

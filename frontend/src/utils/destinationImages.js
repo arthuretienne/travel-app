@@ -1,7 +1,8 @@
 /**
- * Static destination image database
- * High-quality, reliable images from Pexels CDN
- * Used for saved trips, landing page, and fallbacks
+ * Static destination image database.
+ * These are manually selected per city. Unknown destinations render a marked
+ * placeholder instead of a generic travel image, so Lisbon can never silently
+ * become a mountain/desert photo again.
  */
 
 const STATIC_DESTINATION_PHOTOS = {
@@ -19,8 +20,8 @@ const STATIC_DESTINATION_PHOTOS = {
   'Valencia': 'https://images.pexels.com/photos/1388030/pexels-photo-1388030.jpeg?auto=compress&cs=tinysrgb&w=800',
 
   // Portugal
-  'Lisbon': 'https://images.pexels.com/photos/2356059/pexels-photo-2356059.jpeg?auto=compress&cs=tinysrgb&w=800',
-  'Porto': 'https://images.pexels.com/photos/2549018/pexels-photo-2549018.jpeg?auto=compress&cs=tinysrgb&w=800',
+  'Lisbon': 'https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=1200&q=80&auto=format&fit=crop',
+  'Porto': 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=1200&q=80&auto=format&fit=crop',
 
   // Italy
   'Rome': 'https://images.pexels.com/photos/2064827/pexels-photo-2064827.jpeg?auto=compress&cs=tinysrgb&w=800',
@@ -59,7 +60,7 @@ const STATIC_DESTINATION_PHOTOS = {
   'Munich': 'https://images.pexels.com/photos/3618540/pexels-photo-3618540.jpeg?auto=compress&cs=tinysrgb&w=800',
 
   // Morocco
-  'Marrakech': 'https://images.pexels.com/photos/3889843/pexels-photo-3889843.jpeg?auto=compress&cs=tinysrgb&w=800',
+  'Marrakech': 'https://images.unsplash.com/photo-1597212618440-806262de4f6b?w=1200&q=80&auto=format&fit=crop',
   'Casablanca': 'https://images.pexels.com/photos/4577791/pexels-photo-4577791.jpeg?auto=compress&cs=tinysrgb&w=800',
   'Fez': 'https://images.pexels.com/photos/4577793/pexels-photo-4577793.jpeg?auto=compress&cs=tinysrgb&w=800',
 
@@ -125,12 +126,32 @@ const COUNTRY_FALLBACKS = {
   'Slovenia': 'https://images.pexels.com/photos/3566187/pexels-photo-3566187.jpeg?auto=compress&cs=tinysrgb&w=800',
 };
 
-// Generic fallback
-const GENERIC_TRAVEL_PHOTO = 'https://images.pexels.com/photos/1008155/pexels-photo-1008155.jpeg?auto=compress&cs=tinysrgb&w=800';
+export function createDestinationPlaceholder(label = 'Destination') {
+  const safeLabel = String(label || 'Destination')
+    .replace(/[<>&"]/g, '')
+    .slice(0, 42);
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+      <defs>
+        <pattern id="p" width="44" height="44" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="44" height="44" fill="#d4c8b3"/>
+          <rect width="22" height="44" fill="#e8e0d2"/>
+        </pattern>
+      </defs>
+      <rect width="1200" height="800" fill="url(#p)"/>
+      <rect x="70" y="70" width="1060" height="660" rx="34" fill="rgba(250,247,242,.72)" stroke="#a89880"/>
+      <text x="100" y="410" font-family="JetBrains Mono, SFMono-Regular, monospace" font-size="32" fill="#574b3a" letter-spacing="3">PHOTO · ${safeLabel.toUpperCase()}</text>
+      <text x="100" y="460" font-family="DM Sans, Arial, sans-serif" font-size="22" fill="#7a6c56">Image a valider pour cette destination</text>
+    </svg>`;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+const GENERIC_TRAVEL_PHOTO = createDestinationPlaceholder('Destination');
 
 /**
  * Get destination image URL
- * Priority: tripData photo > static city match > country fallback > generic
+ * Priority: tripData validated photo > static city match > marked placeholder.
  *
  * @param {Object} options
  * @param {string} options.city - City name
@@ -163,13 +184,8 @@ export function getDestinationImage({ city, country, tripData } = {}) {
     }
   }
 
-  // 4. Try country fallback
-  if (country && COUNTRY_FALLBACKS[country]) {
-    return COUNTRY_FALLBACKS[country];
-  }
-
-  // 5. Generic travel photo
-  return GENERIC_TRAVEL_PHOTO;
+  // 4. No generic fallback: render a marked placeholder.
+  return createDestinationPlaceholder(normalizedCity || country || 'Destination');
 }
 
 /**

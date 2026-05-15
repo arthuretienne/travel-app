@@ -7,25 +7,61 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Signature color - teal/blue-green
+        ember: {
+          50: '#fbf2ec',
+          100: '#f5ddcb',
+          200: '#ebb89a',
+          300: '#db8e66',
+          400: '#c96e44',
+          500: '#b85a3c',
+          600: '#a44d30',
+          700: '#843a23',
+          800: '#642b1a',
+          900: '#421c10',
+        },
+        sand: {
+          50: '#faf7f2',
+          100: '#f4efe6',
+          200: '#e8e0d2',
+          300: '#d4c8b3',
+          400: '#a89880',
+          500: '#7a6c56',
+          600: '#574b3a',
+          700: '#3a3128',
+          800: '#25201a',
+          900: '#1a1612',
+        },
+        clay: {
+          100: '#f5dde0',
+          500: '#9b4757',
+        },
+        moss: {
+          100: '#e6efd9',
+          500: '#6b8b4a',
+        },
+        gold: {
+          100: '#f5ecd4',
+          500: '#c89b3c',
+        },
+        // Legacy aliases now point to the Ember signature.
         primary: {
-          DEFAULT: '#0D9488', // Teal-600
-          hover: '#0F766E',   // Teal-700
-          light: '#F0FDFA',   // Teal-50
-          muted: '#99F6E4',   // Teal-200
+          DEFAULT: '#a44d30',
+          hover: '#843a23',
+          light: '#fbf2ec',
+          muted: '#ebb89a',
         },
         // Warm neutrals
         surface: {
           DEFAULT: '#FFFFFF',
-          subtle: '#FAFAF9',  // Stone-50 (warm)
-          muted: '#F5F5F4',   // Stone-100
-          hover: '#E7E5E4',   // Stone-200
+          subtle: '#faf7f2',
+          muted: '#f4efe6',
+          hover: '#e8e0d2',
         },
         text: {
-          main: '#1C1917',    // Stone-900 (warm dark)
-          secondary: '#78716C', // Stone-500
-          light: '#A8A29E',   // Stone-400
-          muted: '#D6D3D1',   // Stone-300
+          main: '#1a1612',
+          secondary: '#7a6c56',
+          light: '#a89880',
+          muted: '#d4c8b3',
         },
         // Status colors (subtle)
         status: {
@@ -43,11 +79,15 @@ export default {
       fontFamily: {
         sans: ['DM Sans', 'system-ui', 'sans-serif'],
         display: ['Fraunces', 'Georgia', 'serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'SF Mono', 'monospace'],
       },
       boxShadow: {
-        'soft': '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 4px 12px -2px rgba(0, 0, 0, 0.03)',
-        'elevated': '0 4px 24px -4px rgba(0, 0, 0, 0.08)',
+        '1': '0 1px 2px rgba(26,22,18,.04), 0 1px 1px rgba(26,22,18,.03)',
+        '2': '0 2px 4px rgba(26,22,18,.04), 0 6px 16px rgba(26,22,18,.06)',
+        '3': '0 4px 8px rgba(26,22,18,.05), 0 16px 40px rgba(26,22,18,.08)',
+        'soft': '0 1px 2px rgba(26,22,18,.04), 0 1px 1px rgba(26,22,18,.03)',
+        'card': '0 2px 4px rgba(26,22,18,.04), 0 6px 16px rgba(26,22,18,.06)',
+        'elevated': '0 4px 8px rgba(26,22,18,.05), 0 16px 40px rgba(26,22,18,.08)',
       },
       spacing: {
         '18': '4.5rem',

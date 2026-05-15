@@ -29,10 +29,7 @@ import {
   Hotel,
   ExternalLink,
   Bell,
-  CloudRain,
   Sun,
-  Cloudy,
-  CloudSnow,
   Wind,
   Droplet,
   Backpack,
@@ -52,12 +49,12 @@ import {
   Wallet,
 } from 'lucide-react';
 import { PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
-import StickyBookingProgress, { BookingChecklistCard } from '../components/StickyBookingProgress';
+import { BookingChecklistCard } from '../components/StickyBookingProgress';
 import TripChat from '../components/TripChat';
 import FriendsManager from '../components/FriendsManager';
 import TripBookingDetails from '../components/TripBookingDetails';
 import TripExpenses from '../components/TripExpenses';
-import { generateAllBookingLinks, getIataCode } from '../utils/bookingLinks';
+import GroupTripOverview from '../components/group/GroupTripOverview';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -333,7 +330,7 @@ export default function TripDetail() {
     if (trip.finalDestination) {
       return {
         label: 'Confirmé',
-        color: 'bg-green-100 text-green-800',
+        color: 'bg-moss-100 text-[#3d5a24]',
         description: 'Destination choisie, prêt pour les réservations',
       };
     }
@@ -341,14 +338,14 @@ export default function TripDetail() {
     if (trip.proposedTrips && trip.proposedTrips.length > 0) {
       return {
         label: 'Vote',
-        color: 'bg-purple-100 text-purple-800',
+        color: 'bg-ember-50 text-ember-800',
         description: 'Votez pour votre destination préférée',
       };
     }
 
     return {
       label: 'Planification',
-      color: 'bg-blue-100 text-blue-800',
+      color: 'bg-gold-100 text-[#7a5c1a]',
       description: 'Proposez des destinations pour le groupe',
     };
   };
@@ -393,151 +390,43 @@ export default function TripDetail() {
 
   return (
     <div className="min-h-screen bg-surface-subtle">
-      {/* Sticky Booking Progress (only when confirmed) */}
-      {isConfirmed && trip.finalDestination && (
-        <StickyBookingProgress
-          city={getDestinationInfo(trip.finalDestination).city}
-          country={getDestinationInfo(trip.finalDestination).country}
-          startDate={trip.finalStartDate}
-          endDate={trip.finalEndDate}
-          adults={trip.members?.length || 1}
-          onBack={() => navigate('/dashboard')}
-        />
-      )}
+      {/* Compact page header. The group-trip overview carries the visual hierarchy. */}
+      <div className="border-b border-sand-200 bg-surface-subtle">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 md:flex-row md:items-center md:justify-between">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-main"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Retour aux voyages
+          </button>
 
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {/* Back button only when not confirmed (sticky has back button) */}
-          {!isConfirmed && (
+          <div className="flex flex-wrap items-center gap-2">
+            {inviteSuccess && (
+              <span className="flex items-center gap-1 text-sm font-medium text-moss-500">
+                <CheckCircle2 size={16} />
+                {inviteSuccess}
+              </span>
+            )}
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${statusInfo.color}`}>
+              {statusInfo.label}
+            </span>
             <button
-              onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 text-text-secondary hover:text-text-main mb-6 transition-colors"
+              onClick={() => setShowInviteModal(true)}
+              className="flex items-center gap-2 rounded-lg border border-sand-200 bg-white px-3 py-2 text-sm font-medium text-text-main transition-colors hover:bg-sand-50"
             >
-              <ArrowLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Retour aux voyages</span>
+              <UserPlus size={16} />
+              Inviter
             </button>
-          )}
-
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl md:text-4xl font-bold text-text-main leading-tight">
-                  {trip.finalDestination
-                    ? getDestinationInfo(trip.finalDestination).city
-                    : trip.name}
-                </h1>
-                {trip.finalDestination && (
-                  <span className="text-2xl">
-                    {getCountryEmoji(getDestinationInfo(trip.finalDestination).country)}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${statusInfo.color}`}>
-                  {statusInfo.label}
-                </span>
-                {trip.finalDestination && getDestinationInfo(trip.finalDestination).country && (
-                  <span className="text-sm text-text-secondary">{getDestinationInfo(trip.finalDestination).country}</span>
-                )}
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2">
-              {inviteSuccess && (
-                <span className="text-sm text-green-600 font-medium flex items-center gap-1">
-                  <CheckCircle2 size={16} />
-                  {inviteSuccess}
-                </span>
-              )}
+            {userRole === 'creator' && (
               <button
-                onClick={() => setShowInviteModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
+                onClick={handleDelete}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-clay-500 transition-colors hover:bg-clay-100"
+                title="Supprimer le voyage"
               >
-                <UserPlus size={16} />
-                <span className="hidden sm:inline">Inviter des amis</span>
-                <span className="sm:hidden">Inviter</span>
+                <Trash2 size={16} />
+                Supprimer
               </button>
-              {userRole === 'creator' && (
-                <button
-                  onClick={handleDelete}
-                  className="flex items-center gap-1.5 px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
-                  title="Supprimer le voyage"
-                >
-                  <Trash2 size={16} />
-                  <span className="hidden sm:inline">Supprimer</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Lifecycle Stepper */}
-          <div className="mt-5 flex items-center gap-0">
-            {[
-              { key: 'plan', label: 'Propositions', active: isPlanning, done: !isPlanning },
-              { key: 'vote', label: 'Vote', active: isVoting, done: isConfirmed },
-              { key: 'confirm', label: 'Destination', active: false, done: isConfirmed },
-              { key: 'book', label: 'Réservation', active: isConfirmed, done: false },
-            ].map((step, i, arr) => (
-              <div key={step.key} className="flex items-center flex-1 last:flex-none">
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors ${
-                    step.done ? 'bg-primary text-white' :
-                    step.active ? 'bg-primary text-white ring-2 ring-primary/30' :
-                    'bg-stone-200 text-stone-400'
-                  }`}>
-                    {step.done ? '✓' : i + 1}
-                  </div>
-                  <span className={`text-xs font-medium whitespace-nowrap ${
-                    step.active ? 'text-primary' : step.done ? 'text-text-main' : 'text-stone-400'
-                  }`}>{step.label}</span>
-                </div>
-                {i < arr.length - 1 && (
-                  <div className={`flex-1 h-px mx-2 ${step.done ? 'bg-primary' : 'bg-stone-200'}`} />
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Quick Info */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-              <Clock className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="text-xs text-text-secondary">Durée</p>
-                <p className="font-semibold text-text-main">
-                  {trip.finalStartDate && trip.finalEndDate
-                    ? `${Math.ceil((new Date(trip.finalEndDate) - new Date(trip.finalStartDate)) / (1000 * 60 * 60 * 24))} j`
-                    : '15 j'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-              <Calendar className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="text-xs text-text-secondary">
-                  {trip.finalStartDate ? 'Date de départ' : 'Dates'}
-                </p>
-                <p className="font-semibold text-text-main">
-                  {trip.finalStartDate
-                    ? new Date(trip.finalStartDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-                    : 'À définir'}
-                </p>
-              </div>
-            </div>
-
-            {trip.finalEndDate && (
-              <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-                <Calendar className="w-5 h-5 text-gray-400" />
-                <div>
-                  <p className="text-xs text-text-secondary">Date de fin</p>
-                  <p className="font-semibold text-text-main">
-                    {new Date(trip.finalEndDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                  </p>
-                </div>
-              </div>
             )}
           </div>
         </div>
@@ -545,7 +434,7 @@ export default function TripDetail() {
 
       {/* Tab Navigation */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex gap-1 overflow-x-auto py-2" aria-label="Tabs">
             {[
               { id: 'overview', label: 'Aperçu', icon: LayoutDashboard },
@@ -578,10 +467,19 @@ export default function TripDetail() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* ============ OVERVIEW TAB ============ */}
         {activeTab === 'overview' && (
           <>
+            <GroupTripOverview
+              trip={trip}
+              currentUserId={currentUserId}
+              userRole={userRole}
+              onInvite={() => setShowInviteModal(true)}
+              onRemind={sendReminders}
+              sendingReminder={sendingReminder}
+            />
+
             {/* Conditional Main Section based on trip status */}
             {isPlanning && <PlanningSection trip={trip} navigate={navigate} />}
             {isVoting && <VotingSection trip={trip} fetchTripDetails={fetchTripDetails} user={user} isCreator={userRole === 'creator'} />}
@@ -596,7 +494,6 @@ export default function TripDetail() {
                   endDate={trip.finalEndDate}
                   adults={trip.members?.length || 1}
                 />
-                <BookingChecklistSection trip={trip} fetchTripDetails={fetchTripDetails} getToken={getToken} />
                 <TripEnhancementsSection trip={trip} userName={user?.firstName || 'there'} />
               </>
             )}
@@ -1901,22 +1798,9 @@ function MyBookingCard({ member, tripId, getToken, onUpdate }) {
 function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
   const [sendingReminders, setSendingReminders] = useState(false);
   const [reminderResult, setReminderResult] = useState(null);
-
-  // Get trip data from finalDestination (handles both flat and nested structures)
-  const tripData = trip.finalDestination || {};
   const { city: destCity, country: destCountry } = getDestinationInfo(trip.finalDestination);
   const city = destCity || 'Unknown';
   const country = destCountry || 'Unknown';
-
-  // Generate optimized booking links
-  const links = generateAllBookingLinks({
-    destinationCity: city,
-    destinationIata: getIataCode(city, country),
-    destinationCountry: country,
-    startDate: trip.finalStartDate,
-    endDate: trip.finalEndDate,
-    adults: trip.members?.length || 1
-  });
 
   // Count members who need reminders
   const membersNeedingReminder = trip.members?.filter(
@@ -2367,16 +2251,7 @@ function TripEnhancementsSection({ trip, userName }) {
   );
 }
 
-// Weather Forecast Card Component
 function WeatherForecastCard({ weather, destination }) {
-  const getWeatherIcon = (condition) => {
-    const lower = condition.toLowerCase();
-    if (lower.includes('rain')) return <CloudRain className="w-6 h-6 text-blue-500" />;
-    if (lower.includes('snow')) return <CloudSnow className="w-6 h-6 text-blue-300" />;
-    if (lower.includes('cloud')) return <Cloudy className="w-6 h-6 text-gray-400" />;
-    return <Sun className="w-6 h-6 text-yellow-500" />;
-  };
-
   return (
     <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl shadow-card border border-blue-100 overflow-hidden">
       <div className="p-6">

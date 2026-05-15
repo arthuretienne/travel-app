@@ -62,20 +62,32 @@ export default function TripBookingDetails({
     return `${hours}h${mins > 0 ? mins + 'm' : ''}`;
   };
 
+  const flightSentence = (segment, direction) => {
+    if (!segment) return null;
+    const departure = formatTime(segment.departureTime) || 'horaire à confirmer';
+    const arrival = formatTime(segment.arrivalTime) || 'arrivée à confirmer';
+    const from = segment.departureAirport || (direction === 'outbound' ? 'départ' : city);
+    const to = segment.arrivalAirport || (direction === 'outbound' ? city : 'arrivée');
+    const duration = formatDuration(segment.duration);
+    const stops = Number(segment.stops || 0);
+    const stopText = stops > 0 ? `${stops} escale${stops > 1 ? 's' : ''}` : 'direct';
+    return `Départ ${from} ${departure}, arrivée ${to} ${arrival}${duration ? `, ${duration}` : ''}, ${stopText}.`;
+  };
+
   // If no flight or hotel data, don't render
   if (!flightDetails && !hotel) {
     return null;
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden mb-6">
-      <div className="p-6 border-b border-gray-100">
+    <div className="bg-white rounded-[20px] shadow-card border border-sand-200 overflow-hidden mb-6">
+      <div className="p-6 border-b border-sand-100">
         <h2 className="text-lg font-bold text-text-main flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary" />
           Recommandations de réservation
         </h2>
         <p className="text-sm text-text-secondary mt-1">
-          Basé sur votre recherche - cliquez pour réserver
+          Formats lisibles pour décider vite, détails techniques en sous-ligne.
         </p>
       </div>
 
@@ -85,11 +97,11 @@ export default function TripBookingDetails({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-text-main flex items-center gap-2">
-                <Plane className="w-5 h-5 text-blue-500" />
+                <Plane className="w-5 h-5 text-primary" />
                 Vol recommandé
               </h3>
               {pricing?.flight && (
-                <span className="text-lg font-bold text-blue-600">
+                <span className="font-display text-2xl text-primary">
                   €{Math.round(pricing.flight)}
                 </span>
               )}
@@ -97,11 +109,15 @@ export default function TripBookingDetails({
 
             {/* Outbound Flight */}
             {flightDetails.outbound && (
-              <div className="bg-blue-50 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2 text-sm text-blue-700 font-medium">
+              <div className="bg-ember-50 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2 text-sm text-ember-800 font-medium">
                   <Calendar className="w-4 h-4" />
                   Aller - {startDate ? new Date(startDate).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : 'N/A'}
                 </div>
+
+                <p className="text-sm leading-6 text-text-main">
+                  {flightSentence(flightDetails.outbound, 'outbound')}
+                </p>
 
                 <div className="flex items-center justify-between">
                   <div className="text-center">
@@ -118,12 +134,12 @@ export default function TripBookingDetails({
                       {formatDuration(flightDetails.outbound.duration) || 'Direct'}
                     </div>
                     <div className="w-full flex items-center gap-1 my-1">
-                      <div className="h-0.5 flex-1 bg-blue-300" />
-                      <Plane className="w-4 h-4 text-blue-500 rotate-90" />
-                      <div className="h-0.5 flex-1 bg-blue-300" />
+                      <div className="h-px flex-1 bg-ember-200" />
+                      <Plane className="w-4 h-4 text-primary rotate-90" />
+                      <div className="h-px flex-1 bg-ember-200" />
                     </div>
                     {flightDetails.outbound.stops > 0 && (
-                      <div className="text-xs text-amber-600">
+                      <div className="text-xs text-gold-500">
                         {flightDetails.outbound.stops} escale{flightDetails.outbound.stops > 1 ? 's' : ''}
                       </div>
                     )}
@@ -149,11 +165,15 @@ export default function TripBookingDetails({
 
             {/* Return Flight */}
             {flightDetails.return && (
-              <div className="bg-blue-50 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2 text-sm text-blue-700 font-medium">
+              <div className="bg-ember-50 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2 text-sm text-ember-800 font-medium">
                   <Calendar className="w-4 h-4" />
                   Retour - {endDate ? new Date(endDate).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : 'N/A'}
                 </div>
+
+                <p className="text-sm leading-6 text-text-main">
+                  {flightSentence(flightDetails.return, 'return')}
+                </p>
 
                 <div className="flex items-center justify-between">
                   <div className="text-center">
@@ -170,12 +190,12 @@ export default function TripBookingDetails({
                       {formatDuration(flightDetails.return.duration) || 'Direct'}
                     </div>
                     <div className="w-full flex items-center gap-1 my-1">
-                      <div className="h-0.5 flex-1 bg-blue-300" />
-                      <Plane className="w-4 h-4 text-blue-500 -rotate-90" />
-                      <div className="h-0.5 flex-1 bg-blue-300" />
+                      <div className="h-px flex-1 bg-ember-200" />
+                      <Plane className="w-4 h-4 text-primary -rotate-90" />
+                      <div className="h-px flex-1 bg-ember-200" />
                     </div>
                     {flightDetails.return.stops > 0 && (
-                      <div className="text-xs text-amber-600">
+                      <div className="text-xs text-gold-500">
                         {flightDetails.return.stops} escale{flightDetails.return.stops > 1 ? 's' : ''}
                       </div>
                     )}
@@ -197,7 +217,7 @@ export default function TripBookingDetails({
               href={links.flight}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
+              className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
             >
               <Plane className="w-5 h-5" />
               Rechercher ce vol
@@ -211,17 +231,17 @@ export default function TripBookingDetails({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-text-main flex items-center gap-2">
-                <Hotel className="w-5 h-5 text-green-500" />
+                <Hotel className="w-5 h-5 text-moss-500" />
                 Hébergement recommandé
               </h3>
               {hotel.pricePerNight && (
-                <span className="text-lg font-bold text-green-600">
+                <span className="font-display text-2xl text-moss-500">
                   €{Math.round(hotel.pricePerNight)}/nuit
                 </span>
               )}
             </div>
 
-            <div className="bg-green-50 rounded-xl overflow-hidden">
+            <div className="bg-sand-50 rounded-xl overflow-hidden border border-sand-100">
               {/* Hotel Photo */}
               {hotel.mainPhoto && (
                 <div className="h-48 w-full overflow-hidden">
@@ -252,18 +272,18 @@ export default function TripBookingDetails({
                   {hotel.stars > 0 && (
                     <div className="flex items-center gap-1">
                       {Array.from({ length: hotel.stars }).map((_, i) => (
-                        <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                        <Star key={i} className="w-4 h-4 text-gold-500 fill-gold-500" />
                       ))}
                     </div>
                   )}
                   {hotel.rating?.value && (
-                    <div className="flex items-center gap-1 px-2 py-1 bg-green-100 rounded-lg">
-                      <span className="font-bold text-green-700">{hotel.rating.value}</span>
+                    <div className="flex items-center gap-1 px-2 py-1 bg-moss-100 rounded-lg">
+                      <span className="font-bold text-[#3d5a24]">{hotel.rating.value}</span>
                       {hotel.rating.word && (
-                        <span className="text-xs text-green-600">{hotel.rating.word}</span>
+                        <span className="text-xs text-[#3d5a24]">{hotel.rating.word}</span>
                       )}
                       {hotel.rating.count && (
-                        <span className="text-xs text-green-500">({hotel.rating.count} avis)</span>
+                        <span className="text-xs text-moss-500">({hotel.rating.count} avis)</span>
                       )}
                     </div>
                   )}
@@ -287,7 +307,7 @@ export default function TripBookingDetails({
                     {hotel.amenities.slice(0, 5).map((amenity, i) => (
                       <span
                         key={i}
-                        className="px-2 py-1 bg-white text-xs text-text-secondary rounded-full border border-gray-200"
+                        className="px-2 py-1 bg-white text-xs text-text-secondary rounded-full border border-sand-200"
                       >
                         {amenity}
                       </span>
@@ -302,7 +322,7 @@ export default function TripBookingDetails({
 
                 {/* Total Price */}
                 {hotel.totalPrice && (
-                  <div className="pt-2 border-t border-green-100">
+                  <div className="pt-2 border-t border-sand-200">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-text-secondary">
                         {hotelOptions?.nights || Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) - 1} nuits
@@ -320,7 +340,7 @@ export default function TripBookingDetails({
               href={links.hotel}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors"
+              className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-sand-900 text-white font-medium rounded-xl hover:bg-sand-800 transition-colors"
             >
               <Hotel className="w-5 h-5" />
               Réserver cet hôtel
@@ -331,7 +351,7 @@ export default function TripBookingDetails({
 
         {/* Total Price Summary */}
         {pricing && (pricing.flight || pricing.hotel) && (
-          <div className="pt-4 border-t border-gray-200">
+          <div className="pt-4 border-t border-sand-200">
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Budget estimé total</span>
               <div className="text-right">
