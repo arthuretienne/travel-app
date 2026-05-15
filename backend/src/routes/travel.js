@@ -9,7 +9,26 @@ import { getDestinationPhotos as getPexelsPhoto } from '../services/pexelsServic
 import { authenticateUser } from '../middleware/auth.js';
 import { strictLimiter, userStrictLimiter, userSearchLimiter } from '../middleware/rateLimiter.js';
 import { checkLimit, incrementUsage } from '../middleware/checkSubscription.js';
+import { validateBody } from '../middleware/validateBody.js';
+import { recommendationsBodySchema, signalBodySchema } from '../schemas/recommendationSchemas.js';
 import prisma from '../db/prisma.js';
+
+// Manually consume a "search" quota slot. Used only when a request actually
+// returned a non-empty result, so failed/empty searches do not count against
+// the user. Mirrors the BETA_MODE / DEV_MODE escape hatches from the
+// incrementUsage middleware. Fire-and-forget — never block the response on it.
+function consumeSearchQuota(userId) {
+  if (!userId) return;
+  const BETA_MODE = process.env.BETA_MODE === 'true' || process.env.STRIPE_DISABLED === 'true';
+  const DEV_MODE = process.env.DEV_MODE === 'true' || process.env.NODE_ENV === 'development';
+  if (BETA_MODE || DEV_MODE) return;
+  prisma.subscription
+    .updateMany({
+      where: { userId },
+      data: { searchesThisMonth: { increment: 1 } },
+    })
+    .catch(err => console.error('[quota] failed to increment searchesThisMonth:', err.message));
+}
 
 // Helper function to determine season
 function getSeason(dateStr) {
@@ -149,8 +168,9 @@ router.post('/recommendations',
   strictLimiter,
   authenticateUser,
   userStrictLimiter,
+  validateBody(recommendationsBodySchema),
   checkLimit('maxSearchesPerMonth', 'searchesThisMonth'),
-  incrementUsage('searchesThisMonth'),
+  // Quota is consumed manually only when results are returned; see consumeSearchQuota below.
   async (req, res) => {
   try {
     const userProfile = req.body;
@@ -424,6 +444,7 @@ router.post('/recommendations',
 
       console.log(`✅ Returning 1 complete trip recommendation for ${destination}`);
 
+      consumeSearchQuota(req.user?.id);
       return res.json({
         success: true,
         recommendations: [result],
@@ -551,6 +572,7 @@ router.post('/recommendations',
 
           console.log('✅ Returning roadtrip recommendation');
 
+          consumeSearchQuota(req.user?.id);
           return res.json({
             success: true,
             recommendations: [roadtripResult],
@@ -869,6 +891,11 @@ router.post('/recommendations',
 
       console.log(`✅ Returning ${results.length} diverse trip recommendations`);
 
+      if (results.length > 0) {
+        consumeSearchQuota(req.user?.id);
+      } else {
+        console.warn('⚠️  0 results returned — quota not consumed for user', req.user?.id);
+      }
       return res.json({
         success: true,
         recommendations: results,
@@ -969,8 +996,11 @@ router.post('/recommendations/stream',
   strictLimiter,
   authenticateUser,
   userStrictLimiter,
+  validateBody(recommendationsBodySchema),
   checkLimit('maxSearchesPerMonth', 'searchesThisMonth'),
-  incrementUsage('searchesThisMonth'),
+  // SSE responses don't go through res.json, so the incrementUsage middleware
+  // would never fire here anyway. Quota is consumed manually below only when
+  // at least one recommendation was streamed back.
   async (req, res) => {
     // Set SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -1060,12 +1090,38 @@ router.post('/recommendations/stream',
         destinations: topDestinations.slice(0, 3).map(d => d.name)
       });
 
+      // Defense in depth: discoverDestinations now always falls back to a
+      // curated list, but if some unforeseen path still returns empty we send
+      // a specific error event with actionable advice instead of letting the
+      // frontend display the generic "Aucun résultat trouvé" with no context.
+      if (topDestinations.length === 0) {
+        console.warn('[stream] ⚠️  topDestinations is empty after discovery — sending no_destinations event');
+        sendEvent('no_destinations', {
+          message: 'Aucune destination ne correspond à votre profil exact. Essayez d\'élargir le budget, d\'allonger la durée, ou de retirer une activité contraignante.',
+          suggestions: [
+            'Augmentez le budget de 20%',
+            'Essayez +/- 3 jours de durée',
+            'Retirez la contrainte de saison',
+          ],
+        });
+        res.end();
+        return;
+      }
+
       // Step 2: Process each destination and stream results as they complete
       const userName = req.user.firstName
         ? `${req.user.firstName} ${req.user.lastName || ''}`.trim()
         : req.user.email;
 
-      const destinationsToProcess = topDestinations.slice(0, 3);
+      // Process up to 5 candidates in parallel — Booking sometimes can't book
+      // a destination Claude suggested (no flights from origin, no hotels in
+      // budget, etc.). Trying just slice(0,3) and seeing all three fail meant
+      // the user got "Aucun résultat trouvé" even though Claude had 2-3 more
+      // perfectly good candidates ready. We process 5; the stream emits each
+      // success as it lands; the frontend shows whatever made it through.
+      // If you tighten this back, the per-second RapidAPI rate limit is the
+      // ceiling — 5 in parallel currently fits the Pro tier.
+      const destinationsToProcess = topDestinations.slice(0, 5);
       let completedCount = 0;
 
       // Extract trip context for streaming (same as non-streaming)
@@ -1304,6 +1360,12 @@ router.post('/recommendations/stream',
         processingTime: new Date().toISOString()
       });
 
+      if (completedCount > 0) {
+        consumeSearchQuota(req.user?.id);
+      } else {
+        console.warn('⚠️  Streaming: 0 results delivered — quota not consumed for user', req.user?.id);
+      }
+
       res.end();
 
     } catch (error) {
@@ -1315,7 +1377,7 @@ router.post('/recommendations/stream',
 );
 
 // POST /api/travel/signal — capture behavioral signal (click, save, reject)
-router.post('/signal', authenticateUser, async (req, res) => {
+router.post('/signal', authenticateUser, validateBody(signalBodySchema), async (req, res) => {
   const { destinationCity, signalType } = req.body;
   if (!destinationCity || !signalType) {
     return res.status(400).json({ error: 'destinationCity and signalType are required' });

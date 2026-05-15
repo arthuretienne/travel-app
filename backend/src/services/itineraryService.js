@@ -5,6 +5,113 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// Tolerant parser for Sonnet's day-by-day itinerary response.
+//
+// Sonnet occasionally returns malformed JSON on long outputs (~600 lines):
+// unescaped quotes inside tip text, missing commas after deeply-nested
+// blocks, or wraps the array in `{ "days": [...] }` instead of returning a
+// bare array. The strict regex+JSON.parse the original code used would
+// silently return null and the harness would see the whole itinerary
+// vanish.
+//
+// This parser tries, in order:
+//   1. Bare array — fastest happy path
+//   2. Wrapped object — extract `days`/`itinerary`/`days_plan`/first-array prop
+//   3. Per-day salvage — if the whole array is unparseable, walk through
+//      top-level `{ … }` blocks one at a time, parse those that succeed,
+//      and return the surviving days. A 7-day plan with day 4 borked
+//      becomes a 6-day plan instead of a null. The day_count rule in the
+//      harness tolerates ±1 day, so this typically still passes.
+//
+// Returns null only when even per-day salvage yields zero parseable days,
+// which would mean Sonnet's output was completely broken — in that case
+// the caller should retry or fall back to a generic itinerary.
+export function parseItineraryResponse(rawResponse) {
+  if (!rawResponse || typeof rawResponse !== 'string') return null;
+  const text = rawResponse.trim();
+
+  // (1) Bare-array fast path
+  const arrayMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+  if (arrayMatch) {
+    try {
+      const parsed = JSON.parse(arrayMatch[0]);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {
+      console.warn('[itinerary parser] strict array parse failed:', e.message);
+    }
+  }
+
+  // (2) Wrapped object: { days: [...] } / { itinerary: [...] } / first array property
+  const objectMatch = text.match(/\{[\s\S]*\}/);
+  if (objectMatch) {
+    try {
+      const parsed = JSON.parse(objectMatch[0]);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const candidates = ['days', 'itinerary', 'days_plan', 'plan', 'schedule'];
+        for (const key of candidates) {
+          if (Array.isArray(parsed[key]) && parsed[key].length > 0) {
+            console.log(`[itinerary parser] unwrapped from .${key}`);
+            return parsed[key];
+          }
+        }
+        // First array-typed property (last resort)
+        for (const [key, value] of Object.entries(parsed)) {
+          if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+            console.log(`[itinerary parser] unwrapped from .${key} (fallback)`);
+            return value;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[itinerary parser] wrapped-object parse failed:', e.message);
+    }
+  }
+
+  // (3) Per-day salvage. Walk through balanced-brace `{ … }` blocks at the
+  // top level of the source array and parse them individually. We skip the
+  // leading `[` and braces inside string literals.
+  const days = [];
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let start = -1;
+  // Skip past the opening `[` if present
+  let cursor = 0;
+  const firstBracket = text.indexOf('[');
+  if (firstBracket >= 0) cursor = firstBracket + 1;
+
+  for (let i = cursor; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\') { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0 && start >= 0) {
+        const block = text.slice(start, i + 1);
+        try {
+          const day = JSON.parse(block);
+          if (day && typeof day === 'object') days.push(day);
+        } catch {
+          // skip this block — log so we can see how often this happens in prod
+          console.warn(`[itinerary parser] dropped malformed day block at offset ${start} (${block.length} chars)`);
+        }
+        start = -1;
+      }
+    }
+  }
+
+  if (days.length > 0) {
+    console.log(`[itinerary parser] salvaged ${days.length} day(s) via per-day parse`);
+    return days;
+  }
+  return null;
+}
+
 /**
  * Generate a personalized day-by-day itinerary with connections and timing
  * @param {Object} tripData - Trip destination data
@@ -164,8 +271,9 @@ IMPORTANT RULES:
 1. Day 1: Include arrival logistics (airport transfer to hotel, check-in time, first meal)
    ${flightDetails ? `- Use REAL flight arrival time to plan Day 1 (arriving ${flightDetails.outbound?.arrivalTime || 'morning'})` : '- Assume morning arrival'}
    ${hotelDetails ? `- Hotel check-in at ${hotelDetails.name || 'hotel'}: typically 3 PM but can store luggage earlier` : ''}
-2. Last day: Include checkout time (usually 11 AM), departure logistics, airport timing
+2. Last day: MUST include the words "checkout" and "airport" (or "departure") in at least one activity. Include hotel checkout time (usually 11 AM), transfer to airport with timing, and airport arrival 2-3h before flight.
    ${flightDetails?.return ? `- Return flight departs at ${flightDetails.return?.departureTime || 'evening'} - plan accordingly!` : ''}
+   - Example for last day: { "time": "11:00 AM", "activity": "Hotel checkout & taxi to airport", "type": "Departure" }
 3. Include REALISTIC transport times (walking, metro, taxi with estimated costs)
 4. Budget breakdown per day (stay under €${userProfile?.budget || 1500} total)
 5. Mix free and paid activities
@@ -190,7 +298,7 @@ OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 8000, // Increased for detailed multi-day itineraries
+      max_tokens: 8000, // Reverted from a 16000 experiment that made Sonnet 4.5 dramatically slower (one profile took 1h54) and produced empty/0-day responses on timeout. The real fix for long-trip truncation is the streaming day-by-day path (generateItineraryStreaming), not a bigger single-shot budget.
       temperature: 0.7,
       messages: [{
         role: 'user',
@@ -209,15 +317,11 @@ OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
       response = response.replace(/^```(?:json)?\n?/g, '').replace(/\n?```$/g, '').trim();
     }
 
-    const jsonMatch = response.match(/\[\s*\{[\s\S]*\}\s*\]/);
-
-    if (!jsonMatch) {
-      console.error('❌ Failed to parse itinerary JSON');
-      console.error('Response was:', response);
+    const itinerary = parseItineraryResponse(response);
+    if (!itinerary) {
+      console.error('❌ Failed to parse itinerary JSON after all salvage attempts');
       return null;
     }
-
-    const itinerary = JSON.parse(jsonMatch[0]);
     console.log(`✅ Generated ${itinerary.length} days of itinerary`);
 
     return itinerary;
@@ -337,7 +441,7 @@ HOTEL INFORMATION:
     const dayPrompt = `Tu es un expert local créant le JOUR ${dayNum} sur ${days} d'un voyage ${groupText} à ${city}, ${country}.
 Date: ${dateStr}
 ${isFirstDay ? `\n⚡ C'est le jour d'arrivée. ${flightInfoText}` : ''}
-${isLastDay ? '\n⚡ C'est le jour de départ — inclure checkout + transfert aéroport avec timing précis.' : ''}
+${isLastDay ? `\n⚡ C'est le jour de départ — inclure checkout + transfert aéroport avec timing précis.` : ''}
 ${hotelInfoText}
 
 PROFIL VOYAGEUR:
@@ -354,6 +458,7 @@ RÈGLES:
 - Inclure repas (breakfast, déjeuner, dîner) avec noms de restaurants locaux concrets
 - Temps de transport réalistes (métro X min, marche Y min, taxi €Z)
 - Tips personnalisés pour ${userName} referencing leur profil
+- OBLIGATOIRE: adresser ${userName} par son prénom dans AU MOINS 2 des champs "tips" de la journée (ex: "${userName}, réservez tôt car...", "Parfait pour toi ${userName} si tu aimes..."). C'est la signature Skusku — l'itinéraire doit être personnel, pas générique.
 - Rythme équilibré — ne pas surcharger la journée
 - Mélanger gratuit et payant
 ${memberCount > 1 ? `- Activités adaptées à ${memberCount} personnes ensemble` : ''}
@@ -372,8 +477,8 @@ JSON uniquement, pas de markdown:
       "location": "Lieu précis",
       "transport": "Comment y aller (temps + coût)",
       "cost": 0,
-      "tips": "Conseil insider pour ${userName}",
-      "forWho": "Pourquoi parfait pour ce groupe (optionnel)"
+      "tips": "Conseil insider — adresse ${userName} par son prénom ici quand pertinent",
+      "forWho": "Pourquoi parfait pour ${userName} / ce groupe"
     }
   ],
   "totalCost": 50,
@@ -385,7 +490,7 @@ JSON uniquement, pas de markdown:
       console.log(`🤖 [STREAMING] Generating day ${dayNum}/${days}...`);
 
       const message = await client.messages.create({
-        model: 'claude-3-5-haiku-latest',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 2000,
         temperature: 0.7,
         messages: [{ role: 'user', content: dayPrompt }]

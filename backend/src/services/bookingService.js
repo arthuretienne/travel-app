@@ -106,6 +106,15 @@ function extractCityName(apiName, originalQuery) {
   return apiName; // Already a city name
 }
 
+function normalizeDestinationKey(name = '') {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(',')[0]
+    .trim();
+}
+
 /**
  * Known destination mappings for problematic queries
  * Maps common names to their correct search term for flights API
@@ -121,17 +130,196 @@ const DESTINATION_CORRECTIONS = {
   'sicily': 'Catania',          // Main airport in Sicily
   'sardinia': 'Cagliari',       // Main airport in Sardinia
   'corsica': 'Ajaccio',         // Main airport in Corsica
-  'mauritius': 'Port Louis',    // Capital of Mauritius
+  'mauritius': 'Mauritius',     // Booking flight search does not resolve Port Louis reliably
   'seychelles': 'Mahe',         // Main island
   'zanzibar': 'Zanzibar',       // Tanzania
   'canary islands': 'Tenerife', // Main island
+  'cape verde': 'Sal',          // Main tourist island / SID airport
+  'gran canaria': 'Las Palmas de Gran Canaria',
   'azores': 'Ponta Delgada',    // Main island
   'madeira': 'Funchal',         // Main city
+  'djerba': 'Djerba',
   'crete': 'Heraklion',         // Main airport in Crete
   'rhodes': 'Rhodes',           // Greek island
   'corfu': 'Corfu',             // Greek island
   'mykonos': 'Mykonos',         // Greek island
+  'oman': 'Muscat',             // Country-level query resolves to Muscat airport
+  'fiji': 'Fiji',               // Display as Nadi when NAN is selected
+  'barbados': 'Barbados',       // Display as Bridgetown when BGI is selected
+  'cayman islands': 'Cayman Islands', // Display as Grand Cayman when GCM is selected
 };
+
+const DESTINATION_DISPLAY_NAMES_BY_QUERY = {
+  'maldives': 'Male',
+  'male': 'Male',
+  'seychelles': 'Mahe',
+  'mahe': 'Mahe',
+  'mauritius': 'Port Louis',
+  'oman': 'Muscat',
+  'muscat': 'Muscat',
+  'fiji': 'Nadi',
+  'barbados': 'Bridgetown',
+  'cayman islands': 'Grand Cayman',
+  'faroe islands': 'Vagar',
+  'sri lanka': 'Colombo',
+  'new zealand': 'New Plymouth',
+  'costa rica': 'San Jose',
+  'costa rica (guanacaste)': 'Liberia',
+  'japan': 'Tokyo',
+  // Skusku 2026-05-14: Malta and Cape Verde slipped through the original
+  // normalisation map — Booking returns them as country-named entries which
+  // then renders as "Malta (Malta)" / "Cape Verde (Cape Verde)" in the UI
+  // and trips the no_null_country quality rule.
+  'malta': 'Valletta',
+  'cape verde': 'Praia',
+  'cabo verde': 'Praia',
+  // Other country-level queries Claude tends to suggest:
+  'bahrain': 'Manama',
+  'brunei': 'Bandar Seri Begawan',
+  'qatar': 'Doha',
+  'kuwait': 'Kuwait City',
+  'andorra': 'Andorra la Vella',
+  'liechtenstein': 'Vaduz',
+  'luxembourg': 'Luxembourg City',
+};
+
+const DESTINATION_DISPLAY_NAMES_BY_CODE = {
+  MLE: 'Male',
+  SEZ: 'Mahe',
+  MRU: 'Port Louis',
+  MCT: 'Muscat',
+  NAN: 'Nadi',
+  BGI: 'Bridgetown',
+  GCM: 'Grand Cayman',
+  FAE: 'Vagar',
+  CMB: 'Colombo',
+  NPL: 'New Plymouth',
+  SJO: 'San Jose',
+  LIR: 'Liberia',
+  TYO: 'Tokyo',
+  MLA: 'Valletta',           // Malta
+  RAI: 'Praia',              // Cape Verde
+  SID: 'Sal',                // Cape Verde alt airport
+  BAH: 'Manama',             // Bahrain
+  BWN: 'Bandar Seri Begawan',// Brunei
+  DOH: 'Doha',               // Qatar
+  KWI: 'Kuwait City',
+  ALV: 'Andorra la Vella',
+  LUX: 'Luxembourg City',
+};
+
+function getDisplayCityName(selectedDest, originalQuery, resolvedName) {
+  const originalKey = normalizeDestinationKey(originalQuery);
+  const resolvedKey = normalizeDestinationKey(resolvedName);
+  const codeOverride = DESTINATION_DISPLAY_NAMES_BY_CODE[(selectedDest.code || '').toUpperCase()];
+  const queryOverride = DESTINATION_DISPLAY_NAMES_BY_QUERY[originalKey] || DESTINATION_DISPLAY_NAMES_BY_QUERY[resolvedKey];
+
+  return codeOverride || queryOverride || extractCityName(selectedDest.name, resolvedName || originalQuery);
+}
+
+function normalizeCachedDestination(destination, destinationName) {
+  if (!destination) return destination;
+
+  const cityName = getDisplayCityName(destination, destinationName, destination.originalQuery || destinationName);
+  if (cityName === destination.cityName) return destination;
+
+  return {
+    ...destination,
+    cityName,
+    originalQuery: destination.originalQuery || destinationName,
+  };
+}
+
+const EXPECTED_COUNTRIES_BY_DESTINATION = {
+  'bali': 'indonesia',
+  'denpasar': 'indonesia',
+  'phuket': 'thailand',
+  'bangkok': 'thailand',
+  'tokyo': 'japan',
+  'japan': 'japan',
+  'maldives': 'maldives',
+  'male': 'maldives',
+  'marrakech': 'morocco',
+  'fez': 'morocco',
+  'dubai': 'united arab emirates',
+  'cape town': 'south africa',
+  'zanzibar': 'tanzania',
+  'mauritius': 'mauritius',
+  'seychelles': 'seychelles',
+  'porto': 'portugal',
+  'lisbon': 'portugal',
+  'funchal': 'portugal',
+  'ponta delgada': 'portugal',
+  'valencia': 'spain',
+  'seville': 'spain',
+  'malaga': 'spain',
+  'bilbao': 'spain',
+  'palma de mallorca': 'spain',
+  'ibiza': 'spain',
+  'tenerife': 'spain',
+  'gran canaria': 'spain',
+  'las palmas de gran canaria': 'spain',
+  'cape verde': 'cape verde',
+  'sal': 'cape verde',
+  'djerba': 'tunisia',
+  'hurghada': 'egypt',
+  'agadir': 'morocco',
+  'faro': 'portugal',
+  'barcelona': 'spain',
+  'madrid': 'spain',
+  'florence': 'italy',
+  'bologna': 'italy',
+  'naples': 'italy',
+  'palermo': 'italy',
+  'turin': 'italy',
+  'catania': 'italy',
+  'cagliari': 'italy',
+  'ajaccio': 'france',
+  'edinburgh': 'united kingdom',
+  'dublin': 'ireland',
+  'athens': 'greece',
+  'thessaloniki': 'greece',
+  'santorini': 'greece',
+  'heraklion': 'greece',
+  'rhodes': 'greece',
+  'corfu': 'greece',
+  'mykonos': 'greece',
+  'split': 'croatia',
+  'dubrovnik': 'croatia',
+  'krakow': 'poland',
+  'gdansk': 'poland',
+  'wroclaw': 'poland',
+  'budapest': 'hungary',
+  'ljubljana': 'slovenia',
+  'sofia': 'bulgaria',
+  'tallinn': 'estonia',
+  'riga': 'latvia',
+  'vilnius': 'lithuania',
+  'helsinki': 'finland',
+  'stockholm': 'sweden',
+  'copenhagen': 'denmark',
+  'reykjavik': 'iceland',
+  'bergen': 'norway',
+  'istanbul': 'turkey',
+  'tbilisi': 'georgia',
+  'amman': 'jordan',
+  'muscat': 'oman',
+  'oman': 'oman',
+};
+
+function expectedCountryFor(queryName = '') {
+  const baseQuery = normalizeDestinationKey(queryName);
+  return EXPECTED_COUNTRIES_BY_DESTINATION[baseQuery] || null;
+}
+
+function resultCountryName(result) {
+  return (result.countryName || result.country || '').toLowerCase();
+}
+
+function matchesExpectedCountry(result, expectedCountry) {
+  if (!expectedCountry) return true;
+  return resultCountryName(result).includes(expectedCountry);
+}
 
 /**
  * Check if a destination result matches the expected query
@@ -140,31 +328,14 @@ const DESTINATION_CORRECTIONS = {
 function isDestinationMatch(result, queryName) {
   const query = queryName.toLowerCase().trim();
   const resultName = (result.name || '').toLowerCase();
-  const resultCountry = (result.countryName || result.country || '').toLowerCase();
+  const resultCountry = resultCountryName(result);
 
   // Extract base query (remove country suffix like "Bali, Indonesia")
   const baseQuery = query.split(',')[0].trim();
 
-  // Known country associations for common destinations
-  const expectedCountries = {
-    'bali': 'indonesia',
-    'denpasar': 'indonesia',
-    'phuket': 'thailand',
-    'bangkok': 'thailand',
-    'tokyo': 'japan',
-    'maldives': 'maldives',
-    'male': 'maldives',
-    'marrakech': 'morocco',
-    'dubai': 'united arab emirates',
-    'cape town': 'south africa',
-    'zanzibar': 'tanzania',
-    'mauritius': 'mauritius',
-    'seychelles': 'seychelles',
-  };
-
   // If we know the expected country, verify it matches
-  const expectedCountry = expectedCountries[baseQuery];
-  if (expectedCountry && !resultCountry.includes(expectedCountry)) {
+  const expectedCountry = expectedCountryFor(baseQuery);
+  if (expectedCountry && !matchesExpectedCountry(result, expectedCountry)) {
     console.log(`   ⚠️ Country mismatch: "${resultName}" is in ${resultCountry}, expected ${expectedCountry}`);
     return false;
   }
@@ -216,7 +387,11 @@ export async function getDestinationId(destinationName) {
   const cached = await cache.get(cacheKey);
   if (cached) {
     console.log(`✅ Cache HIT for "${destinationName}" → ${cached.id}`);
-    return cached;
+    const normalized = normalizeCachedDestination(cached, destinationName);
+    if (normalized !== cached) {
+      cache.set(cacheKey, normalized, CACHE_TTL.DESTINATION_ID);
+    }
+    return normalized;
   }
 
   console.log(`🔍 Searching destination "${resolvedName}"...`);
@@ -237,6 +412,7 @@ export async function getDestinationId(destinationName) {
     }
 
     const results = response.data.data;
+    const expectedCountry = expectedCountryFor(destinationName);
 
     // Smart destination selection:
     // 1. First try to find a CITY that matches the query
@@ -263,16 +439,16 @@ export async function getDestinationId(destinationName) {
 
     // Priority 3: First CITY (if no match found but might be correct)
     if (!selectedDest) {
-      const firstCity = results.find(d => d.type === 'CITY');
+      const firstCity = results.find(d => d.type === 'CITY' && matchesExpectedCountry(d, expectedCountry));
       if (firstCity) {
         console.log(`   ⚠️ No exact match, using first CITY: ${firstCity.name} (${firstCity.countryName || firstCity.country})`);
         selectedDest = firstCity;
       }
     }
 
-    // Priority 4: First result (last resort)
+    // Priority 4: First result in the expected country, then first result as last resort
     if (!selectedDest) {
-      selectedDest = results[0];
+      selectedDest = results.find(d => matchesExpectedCountry(d, expectedCountry)) || results[0];
       console.log(`   ⚠️ No CITY found, using first result: ${selectedDest.name} (${selectedDest.countryName || selectedDest.country})`);
     }
 
@@ -284,7 +460,7 @@ export async function getDestinationId(destinationName) {
       country: selectedDest.country,
       countryName: selectedDest.countryName,
       // Add cityName for hotel/attraction searches
-      cityName: extractCityName(selectedDest.name, destinationName),
+      cityName: getDisplayCityName(selectedDest, destinationName, resolvedName),
       flightCode: selectedDest.id, // Explicit flight code for clarity
       originalQuery: destinationName // Keep original query for reference
     };
@@ -854,6 +1030,18 @@ function getHotelSearchFilters(accommodationPref, materialComfort = 50) {
   return filters;
 }
 
+function calculateHotelNights(arrivalDate, departureDate) {
+  const arrival = new Date(`${arrivalDate}T00:00:00Z`);
+  const departure = new Date(`${departureDate}T00:00:00Z`);
+  const diffMs = departure.getTime() - arrival.getTime();
+
+  if (!Number.isFinite(diffMs) || diffMs <= 0) {
+    return 1;
+  }
+
+  return Math.max(1, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+}
+
 /**
  * Search hotels in a destination with user preferences
  * @param {Object} params
@@ -890,7 +1078,8 @@ export async function searchHotels({
   // Create a simple hash of tripContext to include in cache key
   const contextHash = tripContext ? tripContext.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '') : 'none';
   const typeHash = tripType || 'any';
-  const cacheKey = `booking:hotels:${destinationQuery}:${arrivalDate}:${departureDate}:${adults}:${children}:${rooms}:${prefKey}:${contextHash}:${typeHash}`;
+  const priceKey = maxPrice ? Math.round(maxPrice) : 'any';
+  const cacheKey = `booking:hotels:${destinationQuery}:${arrivalDate}:${departureDate}:${adults}:${children}:${rooms}:${currency}:${priceKey}:${prefKey}:${contextHash}:${typeHash}`;
 
   // Check cache
   const cached = await cache.get(cacheKey);
@@ -985,28 +1174,39 @@ export async function searchHotels({
       };
     }
 
-    let hotelData = hotelsResponse.data.data.hotels;
+    const rawHotelData = hotelsResponse.data.data.hotels;
 
-    // Step 3: Apply post-filtering based on user preferences
-    // (API filters don't always work, so we filter client-side)
-    hotelData = hotelData.filter(hotel => {
-      const stars = hotel.property?.propertyClass || 0;
-      const rating = hotel.property?.reviewScore || 0;
+    // Step 3: Apply post-filtering based on user preferences.
+    // The API filters don't always work, so we filter client-side.
+    //
+    // Graceful degradation: if the strict filter returns zero hotels (e.g.
+    // tight budget on adventure trip → no 3★ in Bastia), step the star
+    // requirement down one notch at a time until we find at least one
+    // candidate or hit 0. Returning *some* hotel that's slightly under the
+    // requested star level beats returning nothing — the alternative is
+    // "no_hotel_available" cascading all the way up and the user sees a
+    // blank trip detail page.
+    let appliedMinStars = filters.minStars;
+    let hotelData;
+    while (true) {
+      hotelData = rawHotelData.filter(hotel => {
+        const stars = hotel.property?.propertyClass || 0;
+        const rating = hotel.property?.reviewScore || 0;
+        if (appliedMinStars > 0 && stars < appliedMinStars) return false;
+        if (filters.minRating > 0 && rating > 0 && rating < filters.minRating) return false;
+        return true;
+      });
+      if (hotelData.length > 0 || appliedMinStars <= 1) break;
+      const previous = appliedMinStars;
+      appliedMinStars -= 1;
+      console.log(`   ⬇️  No hotels at ${previous}★ — relaxing to ${appliedMinStars}★ minimum`);
+    }
 
-      // Apply minimum star filter (exclude unclassified 0-star properties too)
-      if (filters.minStars > 0 && stars < filters.minStars) {
-        return false;
-      }
+    if (appliedMinStars !== filters.minStars) {
+      console.log(`   ℹ️  Star floor relaxed from ${filters.minStars} to ${appliedMinStars} to find at least one hotel`);
+    }
 
-      // Apply minimum rating filter (only if hotel has reviews)
-      if (filters.minRating > 0 && rating > 0 && rating < filters.minRating) {
-        return false;
-      }
-
-      return true;
-    });
-
-    console.log(`   🔍 After preference filter: ${hotelData.length} hotels (from ${hotelsResponse.data.data.hotels.length})`);
+    console.log(`   🔍 After preference filter: ${hotelData.length} hotels (from ${rawHotelData.length})`);
 
     // Step 4: Extract trip context and score hotels accordingly
     // Now includes both tripType (selector) and tripContext (free text)
@@ -1045,6 +1245,7 @@ export async function searchHotels({
     const hotels = hotelData.map(hotel => {
       // Price is in property.priceBreakdown.grossPrice.value
       const grossPrice = hotel.property?.priceBreakdown?.grossPrice?.value || 0;
+      const nights = calculateHotelNights(arrivalDate, departureDate);
 
       // Extract description from accessibilityLabel
       const description = hotel.accessibilityLabel || '';
@@ -1067,7 +1268,8 @@ export async function searchHotels({
           currency: hotel.property?.priceBreakdown?.grossPrice?.currency || currency,
           formatted: `${currency} ${Math.round(grossPrice)}`
         },
-        pricePerNight: grossPrice,
+        pricePerNight: grossPrice ? Math.round(grossPrice / nights) : 0,
+        totalNights: nights,
         location: destinationQuery,
         photos: hotel.property?.photoUrls || [],
         mainPhoto: hotel.property?.photoUrls?.[0] || null,

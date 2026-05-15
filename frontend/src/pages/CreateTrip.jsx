@@ -339,7 +339,18 @@ function CreateTrip() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validate()) return;
+    if (!validate()) {
+      // The inline red text below each field was too subtle — users were
+      // clicking the submit button and seeing nothing happen. Scroll the
+      // first invalid field into view so the failure is obvious.
+      requestAnimationFrame(() => {
+        const firstError = document.querySelector('[data-error="true"], .text-red-500');
+        if (firstError) {
+          firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+      return;
+    }
 
     setLoading(true);
     setLoadingStage('analyzing');
@@ -1022,10 +1033,30 @@ function CreateTrip() {
           )}
         </div>
 
-        {/* ── Erreur globale ── */}
-        {errors.submit && (
-          <div className="mx-6 md:mx-10 mb-4 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm">
-            <strong>Erreur :</strong> {errors.submit}
+        {/* ── Erreur globale + résumé des erreurs de validation ── */}
+        {(errors.submit || Object.keys(errors).filter(k => k !== 'submit' && errors[k]).length > 0) && (
+          <div
+            data-error="true"
+            className="mx-6 md:mx-10 mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm"
+            role="alert"
+            aria-live="polite"
+          >
+            {errors.submit ? (
+              <>
+                <strong>Erreur :</strong> {errors.submit}
+              </>
+            ) : (
+              <>
+                <strong>Complétez les champs requis pour continuer :</strong>
+                <ul className="mt-1 ml-5 list-disc">
+                  {Object.entries(errors)
+                    .filter(([k, v]) => k !== 'submit' && v)
+                    .map(([k, v]) => (
+                      <li key={k}>{v}</li>
+                    ))}
+                </ul>
+              </>
+            )}
           </div>
         )}
 

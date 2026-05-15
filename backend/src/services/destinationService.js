@@ -7,6 +7,8 @@ import { generateDestinationShortlist } from './claudeService.js';
 import * as airScraper from './airScraperService.js'; // Keep for fallback
 import * as hotelService from './hotelService.js'; // Old hotel service (not used)
 
+const FLIGHT_DURATION_TOLERANCE_MINUTES = 30;
+
 /**
  * Mapping of popular destinations without airports to their nearest airport
  * Includes ground transport info (type, duration, estimated cost)
@@ -96,28 +98,102 @@ function findNearestAirport(destinationName) {
 /**
  * Estimate flight budget ratio based on actual flight prices found.
  * Uses the median flight price to infer whether destinations are short/medium/long-haul.
- * - Short-haul (Europe/Maghreb): flights ~€80-250 → 30% of budget for flights
- * - Medium-haul (Turkey, Canaries, Egypt): flights ~€200-400 → 40%
- * - Long-haul (Asia, Americas, Sub-Saharan Africa): flights ~€400+ → 55%
+ *
+ * Ratios were widened in May 2026 because the old 30/40/55 thresholds filtered
+ * everything out for users with realistic budgets — a €1000 trip filtered to
+ * "€300 max for flights" was rejecting destinations like Lisbon, Barcelona,
+ * Naples that the user would have gladly taken at €350-400 flights.
+ *
+ * - Short-haul (Europe/Maghreb): flights ~€80-250 → 40% of budget for flights
+ * - Medium-haul (Turkey, Canaries, Egypt): flights ~€200-400 → 50%
+ * - Long-haul (Asia, Americas, Sub-Saharan Africa): flights ~€400+ → 65%
  */
 function getFlightBudgetRatio(destinationsWithFlights) {
-  if (!destinationsWithFlights || destinationsWithFlights.length === 0) return 0.40;
+  if (!destinationsWithFlights || destinationsWithFlights.length === 0) return 0.50;
 
   const prices = destinationsWithFlights.map(d => d.price?.amount || 0).filter(p => p > 0);
-  if (prices.length === 0) return 0.40;
+  if (prices.length === 0) return 0.50;
 
   const median = prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)];
 
   if (median <= 250) {
-    console.log(`   ✈️  Short-haul detected (median €${Math.round(median)}) → 30% flight budget ratio`);
-    return 0.30;
-  } else if (median <= 450) {
-    console.log(`   ✈️  Medium-haul detected (median €${Math.round(median)}) → 40% flight budget ratio`);
+    console.log(`   ✈️  Short-haul detected (median €${Math.round(median)}) → 40% flight budget ratio`);
     return 0.40;
+  } else if (median <= 450) {
+    console.log(`   ✈️  Medium-haul detected (median €${Math.round(median)}) → 50% flight budget ratio`);
+    return 0.50;
   } else {
-    console.log(`   ✈️  Long-haul detected (median €${Math.round(median)}) → 55% flight budget ratio`);
-    return 0.55;
+    console.log(`   ✈️  Long-haul detected (median €${Math.round(median)}) → 65% flight budget ratio`);
+    return 0.65;
   }
+}
+
+function getMaxFlightMinutes(userProfile) {
+  const hours = userProfile?.basic?.maxFlightHours || userProfile?.constraints?.maxFlightHours || null;
+  if (!hours) return null;
+  return (Number(hours) * 60) + FLIGHT_DURATION_TOLERANCE_MINUTES;
+}
+
+function flightFitsMaxDuration(flight, maxFlightMinutes) {
+  if (!maxFlightMinutes) return true;
+  const outboundDuration = flight?.outbound?.duration || 0;
+  const returnDuration = flight?.return?.duration || 0;
+  const longestLeg = Math.max(outboundDuration, returnDuration);
+  return !longestLeg || longestLeg <= maxFlightMinutes;
+}
+
+function getProfileTravelSignals(userProfile) {
+  const basic = userProfile?.basic || {};
+  const preferences = userProfile?.preferences || {};
+  const onboarding = userProfile?.onboardingPreferences || {};
+  const activities = [
+    ...(basic.activities || []),
+    ...(preferences.activities || []),
+    ...(onboarding.topActivities || []),
+  ].map(a => String(a).toLowerCase());
+  const style = String(basic.style || '').toLowerCase();
+  const climate = preferences.climate || basic.climate || onboarding.climate || 'any';
+
+  return {
+    activities,
+    style,
+    climate,
+    wantsNature: style.includes('nature') ||
+      style.includes('adventure') ||
+      activities.some(a => ['nature', 'hiking', 'mountain', 'ski', 'outdoor', 'family-friendly'].includes(a)),
+    wantsBeach: activities.some(a => ['beach', 'plage', 'diving', 'surf', 'snorkeling'].includes(a)),
+    wantsCulture: style.includes('culture') ||
+      activities.some(a => ['culture', 'art', 'gastronomy', 'wine', 'festival'].includes(a)),
+    wantsTropical: climate === 'tropical',
+  };
+}
+
+function destinationFitScore(destination, userProfile) {
+  const signals = getProfileTravelSignals(userProfile);
+  const haystack = `${destination.name || ''} ${destination.cityName || ''} ${destination.countryName || ''} ${destination.country || ''}`.toLowerCase();
+  let score = 0;
+
+  const tropicalOrSubtropical = [
+    'tenerife', 'canary', 'gran canaria', 'fuerteventura', 'lanzarote',
+    'cape verde', 'sal', 'madeira', 'djerba', 'hurghada', 'agadir',
+    'zanzibar', 'phuket', 'bali', 'denpasar', 'aruba', 'cartagena',
+    'caribbean', 'cancun', 'playa del carmen', 'koh samui', 'palawan',
+    'maldives', 'mauritius', 'seychelles',
+  ];
+  const warmCoastal = ['essaouira', 'marrakech', 'malaga', 'valencia', 'palma', 'faro', 'athens', 'split'];
+  const nature = ['nice', 'ajaccio', 'bastia', 'geneva', 'zurich', 'innsbruck', 'split', 'madeira', 'tenerife'];
+  const culture = ['rome', 'florence', 'vienna', 'lisbon', 'barcelona', 'istanbul', 'marrakech', 'prague'];
+
+  if (signals.wantsTropical) {
+    if (tropicalOrSubtropical.some(term => haystack.includes(term))) score += 80;
+    else if (warmCoastal.some(term => haystack.includes(term))) score += 25;
+    else score -= 25;
+  }
+  if (signals.wantsBeach && [...tropicalOrSubtropical, ...warmCoastal].some(term => haystack.includes(term))) score += 25;
+  if (signals.wantsNature && nature.some(term => haystack.includes(term))) score += 25;
+  if (signals.wantsCulture && culture.some(term => haystack.includes(term))) score += 15;
+
+  return score;
 }
 
 /**
@@ -139,12 +215,18 @@ export async function discoverDestinations({
     // STEP 1: Claude AI generates personalized shortlist (4 destinations - faster)
     console.log('🤖 Step 1: Generating personalized shortlist with Claude AI...');
 
+    const avoidCountries = (userProfile?.constraints?.avoidCountries || [])
+      .map(c => String(c).trim())
+      .filter(Boolean);
+
     const shortlist = await generateDestinationShortlist(userProfile, {
       budget,
       duration,
       origin,
       count: 8, // More candidates → better country diversity after filtering
-      userId // Pass userId for diversity (avoids recently recommended destinations)
+      userId, // Pass userId for diversity (avoids recently recommended destinations)
+      maxFlightHours: userProfile?.basic?.maxFlightHours || userProfile?.constraints?.maxFlightHours || null,
+      avoidCountries, // hard-exclusion list passed straight to the prompt
     });
 
     console.log(`✅ Claude suggested: ${shortlist.join(', ')}`);
@@ -206,10 +288,11 @@ export async function discoverDestinations({
         }
 
         const cheapestFlight = flights.flights[0];
+        const displayName = dest.cityName || cityName;
 
         return {
-          name: cityName, // Use clean city name instead of airport name
-          cityName,
+          name: displayName, // Use normalized city/destination name instead of airport name
+          cityName: displayName,
           code: dest.code,
           country: dest.country,
           countryName: dest.countryName,
@@ -230,12 +313,59 @@ export async function discoverDestinations({
     });
 
     const flightResults = await Promise.all(flightPromises);
-    const destinationsWithFlights = flightResults.filter(d => d !== null);
+    const maxFlightMinutes = getMaxFlightMinutes(userProfile);
+    let destinationsWithFlights = flightResults.filter(d => d !== null);
+
+    if (maxFlightMinutes) {
+      const beforeCount = destinationsWithFlights.length;
+      destinationsWithFlights = destinationsWithFlights.filter(d => flightFitsMaxDuration(d.flight, maxFlightMinutes));
+      const removedCount = beforeCount - destinationsWithFlights.length;
+      if (removedCount > 0) {
+        const maxHours = Math.round((maxFlightMinutes - FLIGHT_DURATION_TOLERANCE_MINUTES) / 60);
+        console.log(`⏱️  Filtered out ${removedCount} destination(s) exceeding max flight duration (${maxHours}h + ${FLIGHT_DURATION_TOLERANCE_MINUTES}min tolerance)`);
+      }
+    }
+
+    // Defense in depth on avoidCountries: Claude is supposed to honour the
+    // hard exclusion in the shortlist prompt, but Sonnet occasionally slips
+    // a forbidden country through ("Florence" instead of obeying "no Italy").
+    // We re-filter here so the route never ships a destination that violates
+    // an explicit user exclusion.
+    if (avoidCountries.length > 0) {
+      const lcAvoid = avoidCountries.map(c => c.toLowerCase());
+      const beforeAvoid = destinationsWithFlights.length;
+      destinationsWithFlights = destinationsWithFlights.filter(d => {
+        const country = (d.countryName || d.country || '').toLowerCase();
+        return !lcAvoid.some(forbid => country.includes(forbid));
+      });
+      const dropped = beforeAvoid - destinationsWithFlights.length;
+      if (dropped > 0) {
+        console.log(`🚫 Filtered out ${dropped} destination(s) in user-excluded countries: ${avoidCountries.join(', ')}`);
+      }
+    }
 
     console.log(`✅ Found flights for ${destinationsWithFlights.length} destinations`);
 
+    // BAILOUT: Booking found zero flights for any destination Claude suggested.
+    // Previously this fell through silently and returned an empty array, which
+    // the stream route would relay as "Aucun résultat trouvé" — the bug Arthur
+    // hit live on 2026-05-14. Instead, fall back to the curated list so the
+    // user gets *something*. The route handler still runs optimizeDestination
+    // on each, which does its own flight search and may succeed where the
+    // bulk search didn't.
+    if (destinationsWithFlights.length === 0) {
+      console.warn('[discoverDestinations] ⚠️  Booking returned 0 flights for all candidates — falling back to curated list');
+      console.log('[discoverDestinations] Pipeline summary:', {
+        origin, budget, duration,
+        shortlist_size: shortlist.length,
+        destination_ids_found: validDestinations.length,
+        flights_found: 0,
+        outcome: 'fallback_curated',
+      });
+      return await fallbackDestinations(origin, budget, userProfile);
+    }
+
     // STEP 4: Filter by budget and select best matches
-    // Dynamic flight ratio: short-haul (Europe) = 30%, medium (N.Africa/Turkey/Middle East) = 40%, long-haul = 55%
     const flightBudgetRatio = getFlightBudgetRatio(destinationsWithFlights);
     const maxFlightBudget = budget * flightBudgetRatio;
 
@@ -260,12 +390,19 @@ export async function discoverDestinations({
 
       // Add train/bus alternatives for nearby destinations
       const trainAlternatives = getTrainAlternatives(origin, budget);
+      const contextualFallbacks = await fallbackDestinations(origin, budget, userProfile);
+      const fallbackOptions = contextualFallbacks.slice(0, 3).map(d => ({
+        ...d,
+        fallbackReason: 'No affordable live flight candidate survived budget/time filters; recheck this contextual alternative during optimization.',
+      }));
 
       console.log(`🚂 Adding ${trainAlternatives.length} train/bus alternatives`);
+      console.log(`🧭 Adding ${fallbackOptions.length} contextual fallback flight option(s)`);
 
       return {
-        flightOptions: overBudgetOptions,
+        flightOptions: fallbackOptions.length ? fallbackOptions : overBudgetOptions,
         alternatives: trainAlternatives,
+        overBudgetOptions,
         budgetWarning: {
           message: `Flight prices exceed your €${budget} budget. Here are your best options:`,
           suggestions: [
@@ -278,15 +415,28 @@ export async function discoverDestinations({
       };
     }
 
-    // Sort by price (cheapest first)
-    affordable.sort((a, b) => a.price.amount - b.price.amount);
+    let selectionCandidates = [...affordable];
+    if (selectionCandidates.length > 0 && selectionCandidates.length < 3) {
+      const supplemental = await fallbackDestinations(origin, budget, userProfile);
+      const existingNames = new Set(selectionCandidates.map(d => (d.name || d.cityName || '').toLowerCase()));
+      const additions = supplemental.filter(d => !existingNames.has((d.name || '').toLowerCase()));
+      selectionCandidates = [...selectionCandidates, ...additions].slice(0, 5);
+      console.log(`🧭 Added ${additions.length} contextual fallback candidate(s) because only ${affordable.length} affordable flight option(s) survived filters`);
+    }
+
+    // Sort by profile fit first, then by price.
+    selectionCandidates.sort((a, b) => {
+      const fitDiff = destinationFitScore(b, userProfile) - destinationFitScore(a, userProfile);
+      if (fitDiff !== 0) return fitDiff;
+      return (a.price?.amount || 9999) - (b.price?.amount || 9999);
+    });
 
     // Apply country diversity: prioritize destinations from different countries
     // First pass: one destination per country (cheapest)
     const usedCountries = new Set();
     const diverseFirst = [];
     const countryDuplicates = [];
-    for (const dest of affordable) {
+    for (const dest of selectionCandidates) {
       const country = dest.countryName || dest.country || dest.name;
       if (!usedCountries.has(country)) {
         usedCountries.add(country);
@@ -296,12 +446,35 @@ export async function discoverDestinations({
       }
     }
     // Diverse countries first, then fill with duplicates if needed
-    const selected = [...diverseFirst, ...countryDuplicates].slice(0, Math.min(5, affordable.length));
+    const selected = [...diverseFirst, ...countryDuplicates].slice(0, Math.min(5, selectionCandidates.length));
 
     console.log(`🎯 Selected ${selected.length} best destinations (${usedCountries.size} countries):`);
     selected.forEach((d, i) => {
       console.log(`  ${i + 1}. ${d.name} (${d.countryName || d.country}) - €${d.price.amount} (${d.flightCount} flights)`);
     });
+
+    // Single-line pipeline summary, grep-friendly for Render log queries.
+    console.log('[discoverDestinations] Pipeline summary:', {
+      origin, budget, duration,
+      shortlist_size: shortlist.length,
+      destination_ids_found: validDestinations.length,
+      flights_found: destinationsWithFlights.length,
+      flight_budget_ratio: flightBudgetRatio,
+      max_flight_budget: Math.round(maxFlightBudget),
+      affordable_after_filter: affordable.length,
+      selected_returned: selected.length,
+      countries: usedCountries.size,
+      outcome: 'ok',
+    });
+
+    // Last-mile safety net: somehow we got here with nothing selected (e.g.
+    // diversity selection bug, off-by-one). Better to fall back to a curated
+    // list than return empty silently — the calling stream route would relay
+    // [] as "no results found" with no explanation.
+    if (selected.length === 0) {
+      console.warn('[discoverDestinations] ⚠️  Selected is empty after diversity pass — falling back');
+      return await fallbackDestinations(origin, budget, userProfile);
+    }
 
     return selected;
 
@@ -392,6 +565,7 @@ export async function optimizeDestination({
   departureDate = null,
   tripContext = null, // NEW: User's free text description for context-aware hotel selection
   isFixedDate = false, // If true, use exact dates without flexibility
+  allowEstimatedHotel = false, // Real inventory is required by default for precise recommendations
 }) {
   console.log(`🎯 NEW WORKFLOW: Optimizing ${destination} trip for €${budget} budget`);
 
@@ -411,6 +585,10 @@ export async function optimizeDestination({
   }
 
   console.log(`   👥 Trip for ${numAdults} adult(s)${numChildren ? ` + ${numChildren} child(ren)` : ''} (source: basic.travelers=${userProfile?.basic?.travelers})`);
+
+  // Extract trip context once, before hotel budget and room logic.
+  const effectiveTripContext = tripContext || userProfile?.basic?.travelVibeDescription || null;
+  const effectiveTripType = userProfile?.basic?.tripType || null;
 
   try {
     // STEP 1: Get flight destination IDs in parallel (origin + destination)
@@ -567,6 +745,20 @@ export async function optimizeDestination({
       throw new Error(`No flights found from ${origin} to ${actualFlightDestination} for any date`);
     }
 
+    const maxFlightMinutes = getMaxFlightMinutes(userProfile);
+    if (maxFlightMinutes) {
+      const beforeCount = flightSearches.length;
+      flightSearches = flightSearches.filter(r => flightFitsMaxDuration(r.flight, maxFlightMinutes));
+      if (flightSearches.length === 0) {
+        const maxHours = Math.round((maxFlightMinutes - FLIGHT_DURATION_TOLERANCE_MINUTES) / 60);
+        throw new Error(`No flights found within max flight duration (${maxHours}h + ${FLIGHT_DURATION_TOLERANCE_MINUTES}min tolerance)`);
+      }
+      if (flightSearches.length < beforeCount) {
+        const removedCount = beforeCount - flightSearches.length;
+        console.log(`⏱️  Removed ${removedCount} date option(s) exceeding user's max flight duration`);
+      }
+    }
+
     // Find the best date option: price + comfort (penalize very early departures)
     // A 6am flight means waking up at 3am — treat it as €25 more expensive for ranking
     function adjustedPrice(r) {
@@ -597,8 +789,8 @@ export async function optimizeDestination({
 
     // STEP 3: Calculate remaining budget for hotel
     // Use tripType selector (explicit choice) + tripContext (free text) to determine hotel budget ratio
-    const tripTypeFromProfile = userProfile?.basic?.tripType || null;
-    const tripContextForBudget = tripContext || userProfile?.basic?.travelVibeDescription || '';
+    const tripTypeFromProfile = effectiveTripType;
+    const tripContextForBudget = effectiveTripContext || '';
     const tripContextLower = tripContextForBudget.toLowerCase();
 
     // Detect if this is a special occasion / luxury / romantic trip
@@ -638,6 +830,10 @@ export async function optimizeDestination({
     }
 
     const remainingForAccommodation = budget - flightCost;
+    if (remainingForAccommodation <= 0) {
+      throw new Error(`Flight cost (€${flightCost}) leaves no hotel budget from total budget (€${budget})`);
+    }
+
     const totalNights = duration;
     const maxNightlyRate = (remainingForAccommodation / totalNights) * hotelBudgetRatio;
 
@@ -680,11 +876,6 @@ export async function optimizeDestination({
     console.log(`   👥 Hotel search: ${numAdults} adults${numChildren ? `, ${numChildren} children` : ''} → ${rooms} room(s)`);
     console.log(`   🏨 Preference: ${accommodationPref || 'default'}, Comfort: ${materialComfort}/100`);
 
-    // Extract tripContext from userProfile if not passed directly
-    const effectiveTripContext = tripContext || userProfile?.basic?.travelVibeDescription || null;
-    // Extract tripType from userProfile (solo, couple, family, friends, business)
-    const effectiveTripType = userProfile?.basic?.tripType || null;
-
     if (effectiveTripContext || effectiveTripType) {
       const contextDesc = effectiveTripContext ? `"${effectiveTripContext.substring(0, 50)}..."` : '';
       const typeDesc = effectiveTripType ? `type=${effectiveTripType}` : '';
@@ -723,6 +914,26 @@ export async function optimizeDestination({
         const nightlyRate = h.price.amount / totalNights;
         return nightlyRate >= minNightlyRate && nightlyRate <= maxNightlyRate;
       });
+
+      // Graceful degradation: if the strict budget filter rejected everything
+      // (every hotel in this destination is above the computed nightly rate
+      // ceiling), fall back to the cheapest options available. The user gets
+      // a destination with a flagged over-budget hotel rather than the dreaded
+      // "no hotel available" cascade that took out Split / Lisbon / Valletta
+      // on €1000 solo profiles. We still respect the hostel floor and we
+      // sort by price ascending so the cheapest options surface first. The
+      // package quality rule (budget_package_within_limit) will still surface
+      // the overrun, but at least the destination is reachable from the UI.
+      if (affordableHotels.length === 0 && hotelSearchResults.hotels.length > 0) {
+        const sortedByPrice = hotelSearchResults.hotels
+          .filter(h => (h.price.amount / totalNights) >= minNightlyRate)
+          .sort((a, b) => a.price.amount - b.price.amount);
+        if (sortedByPrice.length > 0) {
+          affordableHotels = sortedByPrice.slice(0, 5);
+          const cheapestNightly = Math.round(sortedByPrice[0].price.amount / totalNights);
+          console.log(`   ⬆️  No hotels under €${Math.round(maxNightlyRate)}/night — falling back to cheapest available (from €${cheapestNightly}/night)`);
+        }
+      }
 
       // Filter out hostel-type properties for users who care about comfort
       if (!acceptsHostels) {
@@ -774,6 +985,12 @@ export async function optimizeDestination({
           mainPhoto: bestHotel.mainPhoto,
           checkInTime: bestHotel.checkInTime,
           checkOutTime: bestHotel.checkOutTime,
+          provider: 'booking.com',
+          isEstimate: false,
+          bookingUrl: bestHotel.bookingUrl,
+          coordinates: bestHotel.coordinates,
+          roomDetails: bestHotel.roomDetails,
+          contextScore: bestHotel.contextScore || 0,
         };
 
         console.log(`✅ Found hotel: ${suggestedHotel.name} (${suggestedHotel.stars}★) - €${suggestedHotel.pricePerNight}/night`);
@@ -781,10 +998,15 @@ export async function optimizeDestination({
         throw new Error('No hotels within budget');
       }
     } catch (error) {
-      console.warn('⚠️  Hotel search failed, using fallback:', error.message);
+      console.warn('⚠️  Hotel search failed:', error.message);
+
+      if (!allowEstimatedHotel) {
+        throw new Error(`No real hotel inventory available for ${destination}: ${error.message}`);
+      }
 
       // Fallback: Create estimated hotel
       suggestedHotel = {
+        id: null,
         name: `Hotel in ${destination}`,
         stars: 3,
         pricePerNight: Math.round(maxNightlyRate),
@@ -793,6 +1015,16 @@ export async function optimizeDestination({
         location: 'City Center',
         amenities: ['WiFi', 'Breakfast'],
         distanceToCenter: '0.5 km',
+        provider: 'estimate',
+        isEstimate: true,
+        fallbackReason: error.message,
+        rating: {
+          value: 0,
+          count: 0,
+          word: 'Estimate',
+        },
+        mainPhoto: null,
+        bookingUrl: null,
       };
     }
 
@@ -918,44 +1150,98 @@ export async function optimizeDestination({
 async function fallbackDestinations(origin, budget, userProfile) {
   console.log('📋 Using fallback destination list');
 
-  // Curated destinations by region
+  const basic = userProfile?.basic || {};
+  const constraints = userProfile?.constraints || {};
+  const signals = getProfileTravelSignals(userProfile);
+  const tripType = basic.tripType;
+  const maxFlightHours = basic.maxFlightHours || constraints.maxFlightHours || null;
+  const avoidCountries = (constraints.avoidCountries || []).map(c => String(c).toLowerCase());
+
+  // Curated destinations by region/theme. These are only candidates; the route
+  // still runs optimizeDestination with real Booking flights/hotels afterwards.
   const europeanDestinations = [
-    { name: 'Barcelona', country: 'Spain', region: 'Europe' },
-    { name: 'Lisbon', country: 'Portugal', region: 'Europe' },
-    { name: 'Rome', country: 'Italy', region: 'Europe' },
-    { name: 'Amsterdam', country: 'Netherlands', region: 'Europe' },
-    { name: 'Prague', country: 'Czech Republic', region: 'Europe' },
+    { name: 'Barcelona', country: 'Spain', region: 'Europe', themes: ['culture', 'food', 'family', 'beach'] },
+    { name: 'Lisbon', country: 'Portugal', region: 'Europe', themes: ['culture', 'food', 'beach'] },
+    { name: 'Rome', country: 'Italy', region: 'Europe', themes: ['culture', 'food', 'family'] },
+    { name: 'Amsterdam', country: 'Netherlands', region: 'Europe', themes: ['culture', 'family'] },
+    { name: 'Prague', country: 'Czech Republic', region: 'Europe', themes: ['culture'] },
+  ];
+
+  const natureDestinations = [
+    { name: 'Ajaccio', country: 'France', region: 'Europe', themes: ['nature', 'family', 'beach', 'hiking'] },
+    { name: 'Bastia', country: 'France', region: 'Europe', themes: ['nature', 'family', 'beach', 'hiking'] },
+    { name: 'Nice', country: 'France', region: 'Europe', themes: ['nature', 'family', 'beach'] },
+    { name: 'Geneva', country: 'Switzerland', region: 'Europe', themes: ['nature', 'family', 'mountain'] },
+    { name: 'Zurich', country: 'Switzerland', region: 'Europe', themes: ['nature', 'family', 'mountain'] },
+    { name: 'Palma de Mallorca', country: 'Spain', region: 'Europe', themes: ['nature', 'family', 'beach'] },
+    { name: 'Innsbruck', country: 'Austria', region: 'Europe', themes: ['nature', 'family', 'mountain', 'hiking'] },
+    { name: 'Split', country: 'Croatia', region: 'Europe', themes: ['nature', 'family', 'beach'] },
+  ];
+
+  const beachDestinations = [
+    { name: 'Malaga', country: 'Spain', region: 'Europe', themes: ['beach', 'family', 'food'] },
+    { name: 'Valencia', country: 'Spain', region: 'Europe', themes: ['beach', 'family', 'food'] },
+    { name: 'Palma de Mallorca', country: 'Spain', region: 'Europe', themes: ['beach', 'family', 'nature'] },
+    { name: 'Faro', country: 'Portugal', region: 'Europe', themes: ['beach', 'family', 'nature'] },
+    { name: 'Athens', country: 'Greece', region: 'Europe', themes: ['beach', 'culture', 'family'] },
+  ];
+
+  const tropicalDestinations = [
+    { name: 'Tenerife', country: 'Spain', region: 'Europe', themes: ['tropical', 'beach', 'family', 'nature', 'nightlife'] },
+    { name: 'Gran Canaria', country: 'Spain', region: 'Europe', themes: ['tropical', 'beach', 'family', 'nature', 'nightlife'] },
+    { name: 'Madeira', country: 'Portugal', region: 'Europe', themes: ['tropical', 'beach', 'nature', 'hiking'] },
+    { name: 'Praia', country: 'Cape Verde', region: 'Africa', themes: ['tropical', 'beach', 'nightlife'] },
+    { name: 'Djerba', country: 'Tunisia', region: 'Africa', themes: ['tropical', 'beach', 'family'] },
+    { name: 'Hurghada', country: 'Egypt', region: 'Africa', themes: ['tropical', 'beach', 'diving', 'nightlife'] },
+    { name: 'Agadir', country: 'Morocco', region: 'Africa', themes: ['tropical', 'beach', 'nightlife'] },
+    { name: 'Essaouira', country: 'Morocco', region: 'Africa', themes: ['beach', 'nightlife'] },
   ];
 
   const globalDestinations = [
-    { name: 'Marrakech', country: 'Morocco', region: 'Africa' },
-    { name: 'Istanbul', country: 'Turkey', region: 'Asia' },
-    { name: 'Dubai', country: 'UAE', region: 'Asia' },
-    { name: 'Bangkok', country: 'Thailand', region: 'Asia' },
-    { name: 'New York', country: 'USA', region: 'Americas' },
+    { name: 'Marrakech', country: 'Morocco', region: 'Africa', themes: ['culture', 'food'] },
+    { name: 'Istanbul', country: 'Turkey', region: 'Asia', themes: ['culture', 'food'] },
+    { name: 'Dubai', country: 'UAE', region: 'Asia', themes: ['beach', 'family'] },
+    { name: 'Bangkok', country: 'Thailand', region: 'Asia', themes: ['culture', 'food'] },
+    { name: 'New York', country: 'USA', region: 'Americas', themes: ['culture'] },
   ];
 
   // For European origins, include global destinations
-  const isEuropeanOrigin = ['Paris', 'London', 'Berlin', 'Madrid', 'Amsterdam'].some(
+  const isEuropeanOrigin = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'London', 'Berlin', 'Madrid', 'Amsterdam'].some(
     city => origin.toLowerCase().includes(city.toLowerCase())
   );
 
-  const candidateList = isEuropeanOrigin
-    ? [...europeanDestinations, ...globalDestinations]
-    : europeanDestinations;
+  let candidateList = [
+    ...(signals.wantsTropical ? tropicalDestinations : []),
+    ...(signals.wantsNature ? natureDestinations : []),
+    ...(signals.wantsBeach ? beachDestinations : []),
+    ...europeanDestinations,
+    ...(isEuropeanOrigin && (!maxFlightHours || maxFlightHours > 6) ? globalDestinations : []),
+  ];
+
+  candidateList = candidateList
+    .filter((dest, index, arr) => arr.findIndex(d => d.name === dest.name) === index)
+    .filter(dest => !avoidCountries.some(country => dest.country.toLowerCase().includes(country)));
+
+  if (candidateList.length === 0) {
+    candidateList = europeanDestinations.filter(dest => !avoidCountries.some(country => dest.country.toLowerCase().includes(country)));
+  }
 
   // Score fallback destinations
   const scored = candidateList.map(dest => {
     let score = Math.random() * 20; // Random variance
+    const themes = dest.themes || [];
 
-    const interests = userProfile.interests || [];
-    if (interests.includes('beach') && ['Barcelona', 'Lisbon', 'Dubai'].includes(dest.name)) score += 30;
-    if (interests.includes('culture') && ['Rome', 'Istanbul', 'Marrakech'].includes(dest.name)) score += 25;
-    if (interests.includes('food') && ['Barcelona', 'Bangkok', 'Rome'].includes(dest.name)) score += 20;
+    if (signals.wantsTropical && themes.includes('tropical')) score += 55;
+    if (signals.wantsNature && themes.some(t => ['nature', 'mountain', 'hiking'].includes(t))) score += 40;
+    if (signals.wantsBeach && themes.includes('beach')) score += 35;
+    if (signals.wantsCulture && themes.some(t => ['culture', 'food'].includes(t))) score += 25;
+    if (tripType === 'family' && themes.includes('family')) score += 20;
+    if (maxFlightHours && maxFlightHours <= 4 && dest.region === 'Europe') score += 15;
+    if (maxFlightHours && maxFlightHours <= 4 && dest.region !== 'Europe') score -= 40;
 
     const costOfLiving = estimateCostOfLiving(dest.country);
-    if (userProfile.budgetLevel === 'budget' && costOfLiving < 60) score += 10;
-    if (userProfile.budgetLevel === 'medium' && costOfLiving >= 60 && costOfLiving <= 120) score += 10;
+    if (budget < 1200 && costOfLiving < 60) score += 10;
+    if (budget >= 1200 && budget < 3000 && costOfLiving >= 60 && costOfLiving <= 120) score += 10;
 
     return {
       ...dest,

@@ -601,7 +601,7 @@ export async function generateDestinationRecommendationWithData(tripData, userId
     });
 
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022', // Fast model for quick recommendations
+      model: 'claude-haiku-4-5-20251001', // Fast model for quick recommendations
       max_tokens: 1500, // Enough for tagline + matchReason + seasonReason + 5-6 activities + budgetTips
       temperature: 0.7,
       messages: [promptMessage]
@@ -662,6 +662,51 @@ function generateProfileHash(userProfile, options) {
 // TESTING MODE: Set to true to disable cache and see fresh results each time
 const TESTING_MODE = true;
 
+function extractFirstJsonArray(text) {
+  const cleaned = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+
+  const start = cleaned.indexOf('[');
+  if (start === -1) {
+    throw new Error('Claude returned no JSON array');
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === '[') {
+      depth++;
+    } else if (ch === ']') {
+      depth--;
+      if (depth === 0) {
+        return cleaned.slice(start, i + 1);
+      }
+    }
+  }
+
+  throw new Error('Claude returned an unterminated JSON array');
+}
+
 /**
  * Generate personalized destination shortlist for Booking.com API workflow
  * Returns 5-8 diverse destination names to search flights for
@@ -682,8 +727,15 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
     count = 6,
     excludeDestinations = [], // Previously recommended destinations to exclude
     userId = null, // For fetching past recommendations
-    maxFlightHours = null // User's max flight duration preference
+    maxFlightHours = null, // User's max flight duration preference
+    avoidCountries = [], // Countries the user explicitly excludes (hard constraint)
   } = options;
+  const effectiveMaxFlightHours = maxFlightHours || userProfile.basic?.maxFlightHours || userProfile.constraints?.maxFlightHours || null;
+  const effectiveAvoidCountries = (avoidCountries.length > 0
+    ? avoidCountries
+    : (userProfile.constraints?.avoidCountries || []))
+    .map(c => String(c).trim())
+    .filter(Boolean);
 
   // Generate a random seed for this session to encourage variety
   const randomSeed = Math.floor(Math.random() * 10000);
@@ -764,6 +816,7 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
   const activities = userProfile.basic?.activities || [];
   const budgetLevel = budget < 500 ? 'budget' : budget < 1000 ? 'mid-range' : budget < 2000 ? 'comfortable' : 'luxury';
   const onboarding = userProfile.onboardingPreferences || {};
+  const climate = userProfile.preferences?.climate || userProfile.basic?.climate || onboarding.climate || 'any';
 
   // CRITICAL: Extract the custom field (travelVibeDescription) - THIS IS THE USER'S MAIN INPUT
   const customField = userProfile.basic?.travelVibeDescription || '';
@@ -803,6 +856,14 @@ export async function generateDestinationShortlist(userProfile, options = {}) {
   // Coastal constraint is CRITICAL - prevents landlocked cities for water activities
   if (needsCoast) {
     activityConstraint = `\n⚠️ WATER/COASTAL ACTIVITY DETECTED: User wants beach/surf/diving/water sports. ONLY suggest COASTAL cities or islands. NO landlocked cities (Budapest, Vienna, Prague, Belgrade, Sofia, Munich, etc.)`;
+  }
+
+  if (climate === 'tropical') {
+    activityConstraint += `\n🌴 TROPICAL/WARM CLIMATE REQUEST: Prioritize tropical or subtropical beach destinations. For tight budgets or flight-time limits, include feasible warm alternatives such as Canary Islands, Cape Verde, Madeira, Djerba, Hurghada, Agadir, Zanzibar, Phuket, Bali, Caribbean islands, or Mexico coast. Avoid temperate city breaks unless no warm coastal option exists.`;
+  } else if (climate === 'warm') {
+    activityConstraint += `\n☀️ WARM CLIMATE REQUEST: Prefer destinations with reliably warm weather in ${currentMonth}.`;
+  } else if (climate === 'cool' || climate === 'cold') {
+    activityConstraint += `\n❄️ COOL/COLD CLIMATE REQUEST: Prefer mountain, northern, or cooler-weather destinations.`;
   }
 
   // Trip type context (from structured data, not keyword detection)
@@ -864,18 +925,18 @@ If the request is unusual or specific, PRIORITIZE matching the user's exact inte
   let geographicGuidance = '';
 
   // If user has a max flight hours constraint, this OVERRIDES budget-based distance suggestions
-  if (maxFlightHours && maxFlightHours <= 4) {
+  if (effectiveMaxFlightHours && effectiveMaxFlightHours <= 4) {
     // User wants SHORT flights - focus on nearby but PREMIUM experiences
-    geographicGuidance = `🌍 SHORT FLIGHTS ONLY (max ${maxFlightHours}h from ${origin}):
-- ONLY suggest destinations reachable in ${maxFlightHours} hours or less from ${origin}
+    geographicGuidance = `🌍 SHORT FLIGHTS ONLY (max ${effectiveMaxFlightHours}h from ${origin}):
+- ONLY suggest destinations reachable in ${effectiveMaxFlightHours} hours or less from ${origin}
 - User prefers COMFORT over distance - respect this preference!
 - With €${budget} budget: focus on PREMIUM/LUXURY experiences at nearby destinations
 - Suggest: upscale hotels, fine dining, exclusive experiences
-- Examples from ${origin}: ${maxFlightHours <= 2 ? 'neighboring countries only' : 'same continent, nearby regions'}`;
-  } else if (maxFlightHours && maxFlightHours <= 6) {
+- Examples from ${origin}: ${effectiveMaxFlightHours <= 2 ? 'neighboring countries only' : 'same continent, nearby regions'}`;
+  } else if (effectiveMaxFlightHours && effectiveMaxFlightHours <= 6) {
     // Medium-haul preferred
-    geographicGuidance = `🌍 MEDIUM-HAUL FLIGHTS (max ${maxFlightHours}h from ${origin}):
-- Prefer destinations reachable in ${maxFlightHours} hours or less
+    geographicGuidance = `🌍 MEDIUM-HAUL FLIGHTS (max ${effectiveMaxFlightHours}h from ${origin}):
+- Prefer destinations reachable in ${effectiveMaxFlightHours} hours or less
 - Can include some closer long-haul if within time limit
 - Budget €${budget} allows for quality experiences`;
   } else if (budget < 600) {
@@ -901,16 +962,24 @@ If the request is unusual or specific, PRIORITIZE matching the user's exact inte
 - Don't waste a €${budget} budget on nearby destinations the user could visit cheaply`;
   }
 
+  const avoidCountriesBlock = effectiveAvoidCountries.length > 0
+    ? `\n🚫 HARD COUNTRY EXCLUSION (user explicitly does not want to visit these countries):
+${effectiveAvoidCountries.map(c => `   - ${c}`).join('\n')}
+Do NOT suggest ANY city located in these countries. This overrides every other preference.\n`
+    : '';
+
   const prompt = `You are a world travel expert. Recommend ${count} destinations that PERFECTLY match this traveler.
 
 👤 TRAVELER:
-- Budget: €${budget} total (flights from ${origin} + ${duration-1} nights hotel + activities)
-- Duration: ${duration} days
+- Budget: €${budget} total (flights from ${origin} + ${duration} nights hotel + activities)
+- Stay length: ${duration} nights
 - Travel month: ${currentMonth}
+- Climate preference: ${climate}
 - Style: ${style}
 - ${activityContext}
 ${activityConstraint}
 ${exclusionText}
+${avoidCountriesBlock}
 ${interpretationGuide}
 
 ${geographicGuidance}
@@ -921,6 +990,7 @@ ${geographicGuidance}
 3. Match traveler's interests perfectly
 4. Good weather in ${currentMonth}
 5. Realistic for €${budget} budget
+${effectiveAvoidCountries.length > 0 ? `6. NEVER suggest cities in: ${effectiveAvoidCountries.join(', ')}` : ''}
 
 🎯 MAXIMIZE VARIETY:
 - Suggest ${count + 4} destinations (more than needed) so we can randomize
@@ -966,15 +1036,16 @@ Return ONLY a JSON array of ${count + 4} cities: ["City1", "City2", ...]`;
       duration: apiDuration,
     });
 
-    // Strip markdown code blocks if present (```json ... ``` or ``` ... ```)
-    if (response.startsWith('```')) {
-      console.log('⚠️  Detected markdown wrapper in Claude response, stripping...');
-      response = response.replace(/^```(?:json)?\n?/g, '').replace(/\n?```$/g, '').trim();
-      console.log('✅ Cleaned response:', response);
+    // Parse the first JSON array in the response. Claude sometimes obeys the
+    // JSON instruction first, then appends self-correction prose; keep the
+    // valid array instead of falling back to generic destinations.
+    const jsonArray = extractFirstJsonArray(response);
+    if (jsonArray !== response) {
+      console.log('⚠️  Extracted JSON array from wrapped/prose response');
+      console.log('✅ Cleaned response:', jsonArray);
     }
 
-    // Parse JSON response
-    const destinations = JSON.parse(response);
+    const destinations = JSON.parse(jsonArray);
 
     if (!Array.isArray(destinations) || destinations.length === 0) {
       throw new Error('Invalid destination shortlist format');
@@ -994,7 +1065,8 @@ Return ONLY a JSON array of ${count + 4} cities: ["City1", "City2", ...]`;
     console.log(`   - Style: ${style}`);
     console.log(`   - Activities: ${userActivities.join(', ') || 'none specified'}`);
     console.log(`   - Budget: €${budget} (${budgetLevel})`);
-    console.log(`   - Duration: ${duration} days`);
+    console.log(`   - Stay length: ${duration} nights`);
+    console.log(`   - Climate: ${climate}`);
     console.log(`   - Origin: ${origin}`);
     console.log(`📍 Activity constraint: ${activityConstraint || 'none'}`);
     console.log(`📍 Excluded (past recommendations): ${pastDestinations.length} destinations`);

@@ -1,0 +1,225 @@
+{
+  "$schema": "Profile harness inputs for /api/travel/recommendations style payload",
+  "profiles": [
+    {
+      "id": "solo-paris-plage-gastro-budget",
+      "label": "Solo Paris plage+gastro budget moyen",
+      "tags": ["solo", "europe", "summer", "budget-mid"],
+      "payload": {
+        "basic": { "budget": 1000, "style": "cultural", "tripType": "solo", "activities": ["beach", "gastronomy"], "maxFlightHours": 6, "travelers": 1 },
+        "preferences": { "climate": "warm", "accommodation": "hotel", "pace": "moderate" },
+        "constraints": { "budget": 1000, "maxFlightHours": 6, "avoidCountries": [] },
+        "availability": { "duration": 7, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "solo-paris-culture-bigbudget",
+      "label": "Solo Paris culture confortable",
+      "tags": ["solo", "europe", "any", "budget-high"],
+      "payload": {
+        "basic": { "budget": 2500, "style": "cultural", "tripType": "solo", "activities": ["culture", "art", "gastronomy"], "maxFlightHours": 4, "travelers": 1 },
+        "preferences": { "climate": "any", "accommodation": "hotel", "pace": "slow" },
+        "constraints": { "budget": 2500, "maxFlightHours": 4, "avoidCountries": [] },
+        "availability": { "duration": 5, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "solo-lyon-aventure-montagne",
+      "label": "Solo Lyon aventure montagne",
+      "tags": ["solo", "europe", "outdoor", "budget-mid"],
+      "payload": {
+        "basic": { "budget": 1500, "style": "adventure", "tripType": "solo", "activities": ["hiking", "mountain", "nature"], "maxFlightHours": 4, "travelers": 1 },
+        "preferences": { "climate": "cool", "accommodation": "hotel", "pace": "active" },
+        "constraints": { "budget": 1500, "maxFlightHours": 4, "avoidCountries": [] },
+        "availability": { "duration": 10, "originCity": "Lyon", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "couple-paris-romantique-court",
+      "label": "Couple Paris weekend romantique",
+      "tags": ["couple", "europe", "short", "budget-mid"],
+      "payload": {
+        "basic": { "budget": 1500, "style": "romantic", "tripType": "couple", "activities": ["culture", "gastronomy"], "maxFlightHours": 3, "travelers": 2 },
+        "preferences": { "climate": "any", "accommodation": "hotel", "pace": "slow" },
+        "constraints": { "budget": 1500, "maxFlightHours": 3, "avoidCountries": [] },
+        "availability": { "duration": 4, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "couple-marseille-luxe-gastro",
+      "label": "Couple Marseille luxe gastronomie",
+      "tags": ["couple", "europe", "luxury", "budget-high"],
+      "payload": {
+        "basic": { "budget": 3500, "style": "luxury", "tripType": "couple", "activities": ["gastronomy", "wellness", "culture"], "maxFlightHours": 5, "travelers": 2 },
+        "preferences": { "climate": "warm", "accommodation": "hotel", "pace": "slow" },
+        "constraints": { "budget": 3500, "maxFlightHours": 5, "avoidCountries": [] },
+        "availability": { "duration": 7, "originCity": "Marseille", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "couple-paris-aventure-plongee",
+      "label": "Couple Paris plongée chaleur",
+      "tags": ["couple", "tropical", "outdoor", "budget-high"],
+      "payload": {
+        "basic": { "budget": 4000, "style": "adventure", "tripType": "couple", "activities": ["diving", "beach", "nature"], "maxFlightHours": 12, "travelers": 2 },
+        "preferences": { "climate": "tropical", "accommodation": "hotel", "pace": "active" },
+        "constraints": { "budget": 4000, "maxFlightHours": 12, "avoidCountries": [] },
+        "availability": { "duration": 12, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "famille-paris-plage-enfants",
+      "label": "Famille 4 Paris plage enfants",
+      "tags": ["family", "europe", "summer", "budget-high"],
+      "payload": {
+        "basic": { "budget": 4000, "style": "family", "tripType": "family", "activities": ["beach", "family-friendly", "nature"], "maxFlightHours": 4, "travelers": 4 },
+        "preferences": { "climate": "warm", "accommodation": "hotel", "pace": "moderate" },
+        "constraints": { "budget": 4000, "maxFlightHours": 4, "avoidCountries": [] },
+        "availability": { "duration": 14, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "famille-lyon-nature-budget",
+      "label": "Famille 3 Lyon nature budget",
+      "tags": ["family", "europe", "outdoor", "budget-mid"],
+      "payload": {
+        "basic": { "budget": 2400, "style": "nature", "tripType": "family", "activities": ["nature", "family-friendly", "hiking"], "maxFlightHours": 3, "travelers": 3 },
+        "preferences": { "climate": "mild", "accommodation": "hotel", "pace": "moderate" },
+        "constraints": { "budget": 2400, "maxFlightHours": 3, "avoidCountries": [] },
+        "availability": { "duration": 10, "originCity": "Lyon", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "amis-paris-nightlife-culture",
+      "label": "Amis 4 Paris nightlife culture",
+      "tags": ["friends", "europe", "any", "budget-mid"],
+      "payload": {
+        "basic": { "budget": 1400, "style": "social", "tripType": "friends", "activities": ["nightlife", "culture", "gastronomy"], "maxFlightHours": 4, "travelers": 4 },
+        "preferences": { "climate": "any", "accommodation": "hotel", "pace": "active" },
+        "constraints": { "budget": 1400, "maxFlightHours": 4, "avoidCountries": [] },
+        "availability": { "duration": 4, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "amis-paris-ski-weekend",
+      "label": "Amis 6 weekend ski montagne",
+      "tags": ["friends", "europe", "winter", "budget-mid"],
+      "payload": {
+        "basic": { "budget": 1800, "style": "adventure", "tripType": "friends", "activities": ["ski", "mountain", "nightlife"], "maxFlightHours": 3, "travelers": 6 },
+        "preferences": { "climate": "cold", "accommodation": "hotel", "pace": "active" },
+        "constraints": { "budget": 1800, "maxFlightHours": 3, "avoidCountries": [] },
+        "availability": { "duration": 3, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "business-paris-ville-court",
+      "label": "Business solo Paris court séjour ville",
+      "tags": ["business", "europe", "short", "budget-low"],
+      "payload": {
+        "basic": { "budget": 800, "style": "business", "tripType": "business", "activities": ["culture"], "maxFlightHours": 3, "travelers": 1 },
+        "preferences": { "climate": "any", "accommodation": "hotel", "pace": "active" },
+        "constraints": { "budget": 800, "maxFlightHours": 3, "avoidCountries": [] },
+        "availability": { "duration": 2, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "business-lyon-ville-mid",
+      "label": "Business Lyon 3 jours",
+      "tags": ["business", "europe", "short", "budget-low"],
+      "payload": {
+        "basic": { "budget": 1000, "style": "business", "tripType": "business", "activities": ["culture", "gastronomy"], "maxFlightHours": 3, "travelers": 1 },
+        "preferences": { "climate": "any", "accommodation": "hotel", "pace": "active" },
+        "constraints": { "budget": 1000, "maxFlightHours": 3, "avoidCountries": [] },
+        "availability": { "duration": 3, "originCity": "Lyon", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "solo-paris-asie-longvoyage",
+      "label": "Solo Paris Asie long voyage",
+      "tags": ["solo", "asia", "long", "budget-high"],
+      "payload": {
+        "basic": { "budget": 3500, "style": "cultural", "tripType": "solo", "activities": ["culture", "gastronomy", "adventure"], "maxFlightHours": 14, "travelers": 1 },
+        "preferences": { "climate": "warm", "accommodation": "hotel", "pace": "active" },
+        "constraints": { "budget": 3500, "maxFlightHours": 14, "avoidCountries": [] },
+        "availability": { "duration": 18, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "couple-amerique-longvoyage",
+      "label": "Couple Amérique long voyage",
+      "tags": ["couple", "americas", "long", "budget-high"],
+      "payload": {
+        "basic": { "budget": 5500, "style": "adventure", "tripType": "couple", "activities": ["nature", "adventure", "culture"], "maxFlightHours": 14, "travelers": 2 },
+        "preferences": { "climate": "any", "accommodation": "hotel", "pace": "active" },
+        "constraints": { "budget": 5500, "maxFlightHours": 14, "avoidCountries": [] },
+        "availability": { "duration": 21, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "solo-paris-weekend-shortbudget",
+      "label": "Solo Paris weekend court petit budget",
+      "tags": ["solo", "europe", "short", "budget-low", "edge"],
+      "payload": {
+        "basic": { "budget": 500, "style": "cultural", "tripType": "solo", "activities": ["culture"], "maxFlightHours": 3, "travelers": 1 },
+        "preferences": { "climate": "any", "accommodation": "hotel", "pace": "moderate" },
+        "constraints": { "budget": 500, "maxFlightHours": 3, "avoidCountries": [] },
+        "availability": { "duration": 3, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "famille-paris-mediterranee",
+      "label": "Famille 5 Paris Méditerranée",
+      "tags": ["family", "europe", "summer", "budget-high"],
+      "payload": {
+        "basic": { "budget": 5000, "style": "family", "tripType": "family", "activities": ["beach", "family-friendly", "gastronomy"], "maxFlightHours": 4, "travelers": 5 },
+        "preferences": { "climate": "warm", "accommodation": "hotel", "pace": "moderate" },
+        "constraints": { "budget": 5000, "maxFlightHours": 4, "avoidCountries": [] },
+        "availability": { "duration": 10, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "solo-paris-festival-courte-duree",
+      "label": "Solo Paris festival musique 4j",
+      "tags": ["solo", "europe", "short", "budget-mid"],
+      "payload": {
+        "basic": { "budget": 1100, "style": "social", "tripType": "solo", "activities": ["nightlife", "culture", "festival"], "maxFlightHours": 4, "travelers": 1 },
+        "preferences": { "climate": "any", "accommodation": "hotel", "pace": "active" },
+        "constraints": { "budget": 1100, "maxFlightHours": 4, "avoidCountries": [] },
+        "availability": { "duration": 4, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "couple-toulouse-vin-gastro",
+      "label": "Couple Toulouse vin gastronomie",
+      "tags": ["couple", "europe", "any", "budget-mid"],
+      "payload": {
+        "basic": { "budget": 1800, "style": "cultural", "tripType": "couple", "activities": ["gastronomy", "wine", "culture"], "maxFlightHours": 3, "travelers": 2 },
+        "preferences": { "climate": "mild", "accommodation": "hotel", "pace": "slow" },
+        "constraints": { "budget": 1800, "maxFlightHours": 3, "avoidCountries": [] },
+        "availability": { "duration": 5, "originCity": "Toulouse", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "amis-paris-tropical-budget-tight",
+      "label": "Amis tropical budget serré",
+      "tags": ["friends", "tropical", "any", "budget-low", "edge"],
+      "payload": {
+        "basic": { "budget": 1300, "style": "adventure", "tripType": "friends", "activities": ["beach", "nightlife"], "maxFlightHours": 12, "travelers": 4 },
+        "preferences": { "climate": "tropical", "accommodation": "hotel", "pace": "active" },
+        "constraints": { "budget": 1300, "maxFlightHours": 12, "avoidCountries": [] },
+        "availability": { "duration": 7, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    },
+    {
+      "id": "couple-paris-eviter-pays",
+      "label": "Couple Paris excluant pays (edge constraint)",
+      "tags": ["couple", "europe", "edge", "budget-mid"],
+      "payload": {
+        "basic": { "budget": 1600, "style": "cultural", "tripType": "couple", "activities": ["culture", "gastronomy"], "maxFlightHours": 4, "travelers": 2 },
+        "preferences": { "climate": "any", "accommodation": "hotel", "pace": "moderate" },
+        "constraints": { "budget": 1600, "maxFlightHours": 4, "avoidCountries": ["Spain", "Italy", "Portugal"] },
+        "availability": { "duration": 6, "originCity": "Paris", "departureFlexibility": "flexible" }
+      }
+    }
+  ]
+}
