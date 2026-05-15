@@ -1233,7 +1233,13 @@ router.post('/recommendations/stream',
                 activities: estimatedActivitiesCost,
                 total: actualTotal,
                 remaining: actualRemaining,
-                currency: 'EUR'
+                currency: 'EUR',
+                // All-in profile-aware estimate (food + local transport +
+                // extras), so the user sees a realistic number, not just
+                // flight+hotel. null-safe for older trip shapes.
+                onGround: trip.budget.onGround || null,
+                realisticTotal: trip.budget.realisticTotal ?? null,
+                overBudget: trip.budget.overBudget ?? false,
               },
               flightDetails: {
                 outbound: {

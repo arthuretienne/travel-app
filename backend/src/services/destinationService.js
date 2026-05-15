@@ -1120,16 +1120,35 @@ export async function optimizeDestination({
         estimatedCostRoundTrip: groundTransport.estimatedCost * 2, // Round trip
         distance: groundTransport.distance,
       } : null,
-      budget: {
-        total: budget,
-        flight: flightCost,
-        hotel: hotelCost,
-        groundTransport: groundTransport ? groundTransport.estimatedCost * 2 : 0, // Round trip cost
-        remaining: remainingBudget - (groundTransport ? groundTransport.estimatedCost * 2 : 0),
-        // Activity estimation based on destination cost of living, not leftover budget
-        activities: Math.min(estimatedActivitiesBudget, remainingBudget - (groundTransport ? groundTransport.estimatedCost * 2 : 0)),
-        dailyActivities: estimatedDailyActivities,
-      },
+      budget: (() => {
+        const groundCost = groundTransport ? groundTransport.estimatedCost * 2 : 0;
+        const onGround = estimateOnGroundBudget(
+          destDest.countryName || destDest.country || 'Unknown',
+          userProfile,
+          duration
+        );
+        // realisticTotal = the number the user should actually expect to
+        // spend: main transport (flight here; ground-transport substitution
+        // in the next commit) + hotel + airport-to-city transfer + the
+        // all-in on-the-ground budget (food + local transport + extras).
+        // This is what Arthur asked for — not just flight+hotel.
+        const realisticTotal = flightCost + hotelCost + groundCost + onGround.total;
+        return {
+          total: budget,
+          flight: flightCost,
+          hotel: hotelCost,
+          groundTransport: groundCost, // airport→city transfer, round trip
+          remaining: budget - realisticTotal,
+          // Kept for backward compatibility with existing UI bindings:
+          activities: Math.min(estimatedActivitiesBudget, remainingBudget - groundCost),
+          dailyActivities: estimatedDailyActivities,
+          // New all-in estimate, profile-aware:
+          onGround,                 // { dailyFood, dailyLocalTransport, dailyExtras, dailyTotal, total, multiplier }
+          realisticTotal,           // flight + hotel + transfer + onGround.total
+          realisticPerPerson: realisticTotal, // (per-person; group math is applied upstream)
+          overBudget: realisticTotal > budget,
+        };
+      })(),
     };
 
     const transportCost = groundTransport ? groundTransport.estimatedCost * 2 : 0;
@@ -1281,6 +1300,59 @@ function estimateCostOfLiving(country) {
   };
 
   return costIndex[country] || 80; // Default to medium
+}
+
+/**
+ * Spend multiplier derived from the traveller's profile. The same country
+ * costs very different amounts depending on whether you're a backpacker
+ * eating street food or staying comfortable. Drives the all-in estimate so
+ * "budget réaliste sur place" reflects who the user actually is.
+ *
+ * Sources, in priority order: explicit accommodationPref, personality,
+ * then the 0-100 materialComfort slider.
+ */
+function spendProfileMultiplier(userProfile) {
+  const ob = userProfile?.onboardingPreferences || {};
+  const pref = (ob.accommodationPref || '').toLowerCase();
+  const personality = (ob.personality || '').toLowerCase();
+  const comfort = typeof ob.materialComfort === 'number' ? ob.materialComfort : 50;
+
+  if (['budget', 'hostel', 'backpacker', 'routard'].includes(pref) || personality === 'routard') {
+    return 0.6;  // street food, public transport, free activities
+  }
+  if (personality === 'luxe' || pref === 'luxury' || comfort >= 75) {
+    return 1.7;  // restaurants, taxis, paid experiences
+  }
+  if (comfort < 35) return 0.7;
+  if (comfort >= 60) return 1.25;
+  return 1.0;     // "confort" / explorateur — balanced default
+}
+
+/**
+ * Realistic on-the-ground daily budget per person: food + local transport +
+ * extras (the "faux frais" Arthur flagged — souvenirs, tips, the museum you
+ * didn't plan, the unexpected). Country cost-of-living × profile multiplier,
+ * split into a breakdown the UI can show transparently.
+ */
+function estimateOnGroundBudget(country, userProfile, duration) {
+  const base = estimateCostOfLiving(country);          // €/day baseline
+  const mult = spendProfileMultiplier(userProfile);
+  const daily = Math.round(base * mult);
+
+  // Split: food ~45%, local transport ~20%, extras/faux-frais ~35%
+  const dailyFood = Math.round(daily * 0.45);
+  const dailyLocalTransport = Math.round(daily * 0.20);
+  const dailyExtras = daily - dailyFood - dailyLocalTransport;
+  const days = Math.max(1, duration || 7);
+
+  return {
+    multiplier: mult,
+    dailyFood,
+    dailyLocalTransport,
+    dailyExtras,
+    dailyTotal: daily,
+    total: daily * days,
+  };
 }
 
 /**
