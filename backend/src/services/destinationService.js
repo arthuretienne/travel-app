@@ -1032,6 +1032,37 @@ export async function optimizeDestination({
     const hotelCost = suggestedHotel.totalPrice;
     const remainingBudget = budget - flightCost - hotelCost;
 
+    // ── Ground-transport substitution ──────────────────────────────────
+    // Arthur's red flag: Paris→Nice proposed as a 772€ flight when the TGV
+    // is ~120€ round trip. Skusku's whole promise is cheap travel, so when
+    // a destination has a known cheap train/bus route from the origin and
+    // the flight is disproportionate, we recommend the ground option
+    // instead of the flight. Price is an estimate (flagged) until the
+    // FlixBus API is wired. We do NOT drop the destination here — the
+    // runtime guard (next commit) decides drop-vs-keep with full context;
+    // here we just attach the smarter transport so realisticTotal is sane.
+    const groundRoute = findGroundRoute(origin, destination);
+    let recommendedTransport = null;
+    if (groundRoute) {
+      const groundRoundTrip = groundRoute.price * 2;
+      // "absurd" = flying costs more than 2× the ground round trip
+      if (flightCost > groundRoundTrip * 2) {
+        recommendedTransport = {
+          mode: groundRoute.transport,            // 'train' | 'bus'
+          operator: groundRoute.operator,
+          durationOneWay: groundRoute.duration,
+          priceRoundTrip: groundRoundTrip,
+          estimated: true,                        // approx fare, not live API
+          vsFlight: flightCost - groundRoundTrip, // €X saved vs the flight
+          note: `${groundRoute.transport === 'train' ? '🚄' : '🚌'} ${groundRoute.operator} ~€${groundRoundTrip} A/R (estimé) — ${Math.round(flightCost - groundRoundTrip)}€ moins cher que l'avion`,
+        };
+        console.log(`🚆 Ground substitution for ${destination}: ${groundRoute.transport} €${groundRoundTrip} R/T vs €${flightCost} flight`);
+      }
+    }
+    // Effective main-transport cost feeding realisticTotal: the ground
+    // option when we substituted, otherwise the flight.
+    const mainTransportCost = recommendedTransport ? recommendedTransport.priceRoundTrip : flightCost;
+
     // Extract city name from airport name (e.g., "Amsterdam Schiphol" → "Amsterdam")
     const extractCityName = (airportName) => {
       // Remove common airport suffixes
@@ -1120,16 +1151,50 @@ export async function optimizeDestination({
         estimatedCostRoundTrip: groundTransport.estimatedCost * 2, // Round trip
         distance: groundTransport.distance,
       } : null,
-      budget: {
-        total: budget,
-        flight: flightCost,
-        hotel: hotelCost,
-        groundTransport: groundTransport ? groundTransport.estimatedCost * 2 : 0, // Round trip cost
-        remaining: remainingBudget - (groundTransport ? groundTransport.estimatedCost * 2 : 0),
-        // Activity estimation based on destination cost of living, not leftover budget
-        activities: Math.min(estimatedActivitiesBudget, remainingBudget - (groundTransport ? groundTransport.estimatedCost * 2 : 0)),
-        dailyActivities: estimatedDailyActivities,
-      },
+      budget: (() => {
+        const groundCost = groundTransport ? groundTransport.estimatedCost * 2 : 0;
+        const onGround = estimateOnGroundBudget(
+          destDest.countryName || destDest.country || 'Unknown',
+          userProfile,
+          duration
+        );
+        // realisticTotal = the number the user should actually EXPECT to
+        // spend end to end: main transport (ground option when we
+        // substituted an absurd flight, else the flight) + hotel +
+        // airport-to-city transfer + the all-in on-the-ground budget
+        // (food + local transport + extras). This is purely INFORMATIONAL
+        // — Arthur wants it shown, but it must NOT redefine `remaining`.
+        //
+        // `remaining` keeps its classic meaning (budget minus the booked
+        // costs: transport + hotel + transfer) because it feeds the
+        // activities allowance and the quality rules. Folding the
+        // discretionary on-ground spend into `remaining` made it go
+        // negative on perfectly fine trips and cascaded false failures
+        // through budget_remaining_non_negative / _activities_non_negative.
+        const bookedCost = mainTransportCost + hotelCost + groundCost;
+        const remaining = budget - bookedCost;
+        const realisticTotal = bookedCost + onGround.total;
+        return {
+          total: budget,
+          flight: flightCost,
+          hotel: hotelCost,
+          groundTransport: groundCost, // airport→city transfer, round trip
+          remaining,                   // budget − booked (transport+hotel+transfer)
+          // Kept for backward compatibility with existing UI bindings:
+          activities: Math.min(estimatedActivitiesBudget, Math.max(0, remaining)),
+          dailyActivities: estimatedDailyActivities,
+          // New all-in estimate, profile-aware (informational overlay):
+          onGround,                 // { dailyFood, dailyLocalTransport, dailyExtras, dailyTotal, total, multiplier }
+          mainTransportCost,        // ground RT when substituted, else flight
+          realisticTotal,           // booked + onGround.total — what to truly expect
+          realisticPerPerson: realisticTotal, // (per-person; group math applied upstream)
+          overBudget: realisticTotal > budget, // flag for UI, not a hard gate
+        };
+      })(),
+      // Smarter transport recommendation (train/bus) when flying is absurd
+      // for this origin→destination. null = fly (no cheap ground route or
+      // the flight is reasonable). Estimated price until FlixBus API.
+      recommendedTransport,
     };
 
     const transportCost = groundTransport ? groundTransport.estimatedCost * 2 : 0;
@@ -1284,37 +1349,132 @@ function estimateCostOfLiving(country) {
 }
 
 /**
+ * Spend multiplier derived from the traveller's profile. The same country
+ * costs very different amounts depending on whether you're a backpacker
+ * eating street food or staying comfortable. Drives the all-in estimate so
+ * "budget réaliste sur place" reflects who the user actually is.
+ *
+ * Sources, in priority order: explicit accommodationPref, personality,
+ * then the 0-100 materialComfort slider.
+ */
+function spendProfileMultiplier(userProfile) {
+  const ob = userProfile?.onboardingPreferences || {};
+  const pref = (ob.accommodationPref || '').toLowerCase();
+  const personality = (ob.personality || '').toLowerCase();
+  const comfort = typeof ob.materialComfort === 'number' ? ob.materialComfort : 50;
+
+  if (['budget', 'hostel', 'backpacker', 'routard'].includes(pref) || personality === 'routard') {
+    return 0.6;  // street food, public transport, free activities
+  }
+  if (personality === 'luxe' || pref === 'luxury' || comfort >= 75) {
+    return 1.7;  // restaurants, taxis, paid experiences
+  }
+  if (comfort < 35) return 0.7;
+  if (comfort >= 60) return 1.25;
+  return 1.0;     // "confort" / explorateur — balanced default
+}
+
+/**
+ * Realistic on-the-ground daily budget per person: food + local transport +
+ * extras (the "faux frais" Arthur flagged — souvenirs, tips, the museum you
+ * didn't plan, the unexpected). Country cost-of-living × profile multiplier,
+ * split into a breakdown the UI can show transparently.
+ */
+function estimateOnGroundBudget(country, userProfile, duration) {
+  const base = estimateCostOfLiving(country);          // €/day baseline
+  const mult = spendProfileMultiplier(userProfile);
+  const daily = Math.round(base * mult);
+
+  // Split: food ~45%, local transport ~20%, extras/faux-frais ~35%
+  const dailyFood = Math.round(daily * 0.45);
+  const dailyLocalTransport = Math.round(daily * 0.20);
+  const dailyExtras = daily - dailyFood - dailyLocalTransport;
+  const days = Math.max(1, duration || 7);
+
+  return {
+    multiplier: mult,
+    dailyFood,
+    dailyLocalTransport,
+    dailyExtras,
+    dailyTotal: daily,
+    total: daily * days,
+  };
+}
+
+// Module-scoped so both getTrainAlternatives (budget-warning path) and
+// findGroundRoute (transport substitution) share one source of truth.
+// Prices are per-person ONE WAY estimates of typical fares. When we wire
+// the FlixBus API (later, per Arthur), these become the fallback for routes
+// the API doesn't cover. Until then they are flagged `estimated: true`
+// everywhere they surface so the UI can show "~120€ estimé".
+const GROUND_ALTERNATIVES = {
+  'Paris': [
+    { name: 'Brussels', country: 'Belgium', transport: 'train', duration: '1h22', price: 29, operator: 'Thalys', hasBeach: false },
+    { name: 'London', country: 'UK', transport: 'train', duration: '2h15', price: 50, operator: 'Eurostar', hasBeach: false },
+    { name: 'Amsterdam', country: 'Netherlands', transport: 'train', duration: '3h15', price: 35, operator: 'Thalys', hasBeach: false },
+    { name: 'Lyon', country: 'France', transport: 'train', duration: '2h00', price: 30, operator: 'TGV', hasBeach: false },
+    { name: 'Marseille', country: 'France', transport: 'train', duration: '3h20', price: 45, operator: 'TGV', hasBeach: true },
+    { name: 'Nice', country: 'France', transport: 'train', duration: '5h45', price: 60, operator: 'TGV', hasBeach: true },
+    { name: 'Barcelona', country: 'Spain', transport: 'train', duration: '6h30', price: 39, operator: 'AVE', hasBeach: true },
+    { name: 'Milan', country: 'Italy', transport: 'train', duration: '7h00', price: 29, operator: 'TGV', hasBeach: false },
+    { name: 'Bordeaux', country: 'France', transport: 'train', duration: '2h05', price: 35, operator: 'TGV', hasBeach: true },
+    { name: 'Brussels', country: 'Belgium', transport: 'bus', duration: '4h00', price: 9, operator: 'FlixBus', hasBeach: false },
+    { name: 'Amsterdam', country: 'Netherlands', transport: 'bus', duration: '6h30', price: 15, operator: 'FlixBus', hasBeach: false },
+    { name: 'Lyon', country: 'France', transport: 'bus', duration: '5h30', price: 12, operator: 'FlixBus', hasBeach: false },
+    { name: 'Barcelona', country: 'Spain', transport: 'bus', duration: '14h00', price: 35, operator: 'FlixBus', hasBeach: true },
+  ],
+  'Lyon': [
+    { name: 'Paris', country: 'France', transport: 'train', duration: '2h00', price: 30, operator: 'TGV', hasBeach: false },
+    { name: 'Marseille', country: 'France', transport: 'train', duration: '1h40', price: 25, operator: 'TGV', hasBeach: true },
+    { name: 'Nice', country: 'France', transport: 'train', duration: '4h30', price: 45, operator: 'TGV', hasBeach: true },
+    { name: 'Geneva', country: 'Switzerland', transport: 'train', duration: '2h00', price: 28, operator: 'TGV Lyria', hasBeach: false },
+    { name: 'Turin', country: 'Italy', transport: 'train', duration: '4h00', price: 35, operator: 'TGV', hasBeach: false },
+    { name: 'Barcelona', country: 'Spain', transport: 'train', duration: '5h00', price: 39, operator: 'AVE', hasBeach: true },
+  ],
+  'Marseille': [
+    { name: 'Nice', country: 'France', transport: 'train', duration: '2h30', price: 25, operator: 'TER', hasBeach: true },
+    { name: 'Lyon', country: 'France', transport: 'train', duration: '1h40', price: 25, operator: 'TGV', hasBeach: false },
+    { name: 'Paris', country: 'France', transport: 'train', duration: '3h20', price: 45, operator: 'TGV', hasBeach: false },
+    { name: 'Barcelona', country: 'Spain', transport: 'bus', duration: '7h00', price: 25, operator: 'FlixBus', hasBeach: true },
+  ],
+};
+
+function resolveGroundOrigin(origin) {
+  if (!origin) return 'Paris';
+  const o = origin.toLowerCase();
+  if (o.includes('paris') || o === 'cdg' || o === 'ory' || o === 'bva') return 'Paris';
+  if (o.includes('lyon') || o === 'lys') return 'Lyon';
+  if (o.includes('marseille') || o === 'mrs') return 'Marseille';
+  return null; // no known ground network for this origin → flight only
+}
+
+/**
+ * Is there a known cheap train/bus route from `origin` to `destinationName`?
+ * Returns the cheapest matching option (one-way price) or null. Used to
+ * substitute an absurd flight (Paris→Nice 772€) with the obvious ground
+ * option (TGV ~60€/way). City-name match, accent/diacritic tolerant.
+ */
+function findGroundRoute(origin, destinationName) {
+  const key = resolveGroundOrigin(origin);
+  if (!key) return null;
+  const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(',')[0].trim();
+  const target = norm(destinationName);
+  if (!target) return null;
+  const matches = (GROUND_ALTERNATIVES[key] || [])
+    .filter(a => norm(a.name) === target || target.includes(norm(a.name)) || norm(a.name).includes(target));
+  if (matches.length === 0) return null;
+  // cheapest option wins (usually bus over train)
+  return matches.sort((a, b) => a.price - b.price)[0];
+}
+
+/**
  * Get train/bus alternatives for budget travelers
  * Returns alternative transport options from major cities
  * Prices are estimates based on typical fares
  */
 function getTrainAlternatives(origin, budget) {
-  // Train/bus alternatives from major European cities
-  const ALTERNATIVES = {
-    'Paris': [
-      { name: 'Brussels', country: 'Belgium', transport: 'train', duration: '1h22', price: 29, operator: 'Thalys', hasBeach: false },
-      { name: 'London', country: 'UK', transport: 'train', duration: '2h15', price: 50, operator: 'Eurostar', hasBeach: false },
-      { name: 'Amsterdam', country: 'Netherlands', transport: 'train', duration: '3h15', price: 35, operator: 'Thalys', hasBeach: false },
-      { name: 'Lyon', country: 'France', transport: 'train', duration: '2h00', price: 30, operator: 'TGV', hasBeach: false },
-      { name: 'Marseille', country: 'France', transport: 'train', duration: '3h20', price: 45, operator: 'TGV', hasBeach: true },
-      { name: 'Nice', country: 'France', transport: 'train', duration: '5h45', price: 60, operator: 'TGV', hasBeach: true },
-      { name: 'Barcelona', country: 'Spain', transport: 'train', duration: '6h30', price: 39, operator: 'AVE', hasBeach: true },
-      { name: 'Milan', country: 'Italy', transport: 'train', duration: '7h00', price: 29, operator: 'TGV', hasBeach: false },
-      { name: 'Bordeaux', country: 'France', transport: 'train', duration: '2h05', price: 35, operator: 'TGV', hasBeach: true },
-      // Bus alternatives (cheaper but slower)
-      { name: 'Brussels', country: 'Belgium', transport: 'bus', duration: '4h00', price: 9, operator: 'FlixBus', hasBeach: false },
-      { name: 'Amsterdam', country: 'Netherlands', transport: 'bus', duration: '6h30', price: 15, operator: 'FlixBus', hasBeach: false },
-      { name: 'Lyon', country: 'France', transport: 'bus', duration: '5h30', price: 12, operator: 'FlixBus', hasBeach: false },
-      { name: 'Barcelona', country: 'Spain', transport: 'bus', duration: '14h00', price: 35, operator: 'FlixBus', hasBeach: true },
-    ],
-    'CDG': [], // Will use Paris alternatives
-    'ORY': [], // Will use Paris alternatives
-  };
-
-  // Normalize origin
-  const normalizedOrigin = origin.includes('Paris') || origin === 'CDG' || origin === 'ORY' ? 'Paris' : origin;
-
-  const alternatives = ALTERNATIVES[normalizedOrigin] || ALTERNATIVES['Paris'];
+  const normalizedOrigin = resolveGroundOrigin(origin) || 'Paris';
+  const alternatives = GROUND_ALTERNATIVES[normalizedOrigin] || GROUND_ALTERNATIVES['Paris'];
 
   // Filter by budget (transport should be max 30% of total budget for alternatives)
   const maxTransportBudget = budget * 0.3;

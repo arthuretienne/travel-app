@@ -4,6 +4,7 @@ import { generateDestinationRecommendationWithData, generateRoadtripNarrative } 
 import * as destinationService from '../services/destinationService.js';
 import * as roadtripService from '../services/roadtripService.js';
 import { getRecommendations, captureSignal } from '../services/recommendationEngine.js';
+import { guardRecommendation } from '../services/recoGuard.js';
 import { generateAffiliateLinks } from '../services/affiliateService.js';
 import { getDestinationPhotos as getPexelsPhoto } from '../services/pexelsService.js';
 import { authenticateUser } from '../middleware/auth.js';
@@ -1233,7 +1234,13 @@ router.post('/recommendations/stream',
                 activities: estimatedActivitiesCost,
                 total: actualTotal,
                 remaining: actualRemaining,
-                currency: 'EUR'
+                currency: 'EUR',
+                // All-in profile-aware estimate (food + local transport +
+                // extras), so the user sees a realistic number, not just
+                // flight+hotel. null-safe for older trip shapes.
+                onGround: trip.budget.onGround || null,
+                realisticTotal: trip.budget.realisticTotal ?? null,
+                overBudget: trip.budget.overBudget ?? false,
               },
               flightDetails: {
                 outbound: {
@@ -1324,6 +1331,9 @@ router.post('/recommendations/stream',
               recommendation: recommendation,
               score: score,
               links: affiliateLinks,
+              // Train/bus recommendation when flying this route is absurd
+              // (e.g. Paris→Nice). null = fly. Estimated fare until FlixBus.
+              recommendedTransport: trip.recommendedTransport || null,
               // Include search context for itinerary personalization later
               searchContext: {
                 travelVibeDescription: userProfile.basic?.travelVibeDescription || null,
@@ -1337,6 +1347,18 @@ router.post('/recommendations/stream',
                 idealRhythm: userProfile.onboardingPreferences?.idealRhythm || null,
               }
             };
+
+            // Runtime relevance guard — deterministic, ~0ms. Drop results
+            // that are individually broken/absurd before the user ever
+            // sees them. Safe: discoverDestinations falls back to a
+            // curated list and the route emits no_destinations if every
+            // result is dropped, so we never blank the page.
+            const verdict = guardRecommendation(result, { budget });
+            if (!verdict.keep) {
+              console.warn(`🛡️  Guard dropped ${result?.destination?.city || dest.name}: ${verdict.reason}`);
+              sendEvent('warning', { destination: dest.name, error: 'Filtered as not relevant' });
+              return;
+            }
 
             completedCount++;
 
