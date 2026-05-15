@@ -1158,27 +1158,37 @@ export async function optimizeDestination({
           userProfile,
           duration
         );
-        // realisticTotal = the number the user should actually expect to
-        // spend: main transport (ground option when we substituted an
-        // absurd flight, else the flight) + hotel + airport-to-city
-        // transfer + the all-in on-the-ground budget (food + local
-        // transport + extras). This is what Arthur asked for.
-        const realisticTotal = mainTransportCost + hotelCost + groundCost + onGround.total;
+        // realisticTotal = the number the user should actually EXPECT to
+        // spend end to end: main transport (ground option when we
+        // substituted an absurd flight, else the flight) + hotel +
+        // airport-to-city transfer + the all-in on-the-ground budget
+        // (food + local transport + extras). This is purely INFORMATIONAL
+        // — Arthur wants it shown, but it must NOT redefine `remaining`.
+        //
+        // `remaining` keeps its classic meaning (budget minus the booked
+        // costs: transport + hotel + transfer) because it feeds the
+        // activities allowance and the quality rules. Folding the
+        // discretionary on-ground spend into `remaining` made it go
+        // negative on perfectly fine trips and cascaded false failures
+        // through budget_remaining_non_negative / _activities_non_negative.
+        const bookedCost = mainTransportCost + hotelCost + groundCost;
+        const remaining = budget - bookedCost;
+        const realisticTotal = bookedCost + onGround.total;
         return {
           total: budget,
           flight: flightCost,
           hotel: hotelCost,
           groundTransport: groundCost, // airport→city transfer, round trip
-          remaining: budget - realisticTotal,
+          remaining,                   // budget − booked (transport+hotel+transfer)
           // Kept for backward compatibility with existing UI bindings:
-          activities: Math.min(estimatedActivitiesBudget, remainingBudget - groundCost),
+          activities: Math.min(estimatedActivitiesBudget, Math.max(0, remaining)),
           dailyActivities: estimatedDailyActivities,
-          // New all-in estimate, profile-aware:
+          // New all-in estimate, profile-aware (informational overlay):
           onGround,                 // { dailyFood, dailyLocalTransport, dailyExtras, dailyTotal, total, multiplier }
           mainTransportCost,        // ground RT when substituted, else flight
-          realisticTotal,           // mainTransport + hotel + transfer + onGround.total
-          realisticPerPerson: realisticTotal, // (per-person; group math is applied upstream)
-          overBudget: realisticTotal > budget,
+          realisticTotal,           // booked + onGround.total — what to truly expect
+          realisticPerPerson: realisticTotal, // (per-person; group math applied upstream)
+          overBudget: realisticTotal > budget, // flag for UI, not a hard gate
         };
       })(),
       // Smarter transport recommendation (train/bus) when flying is absurd
