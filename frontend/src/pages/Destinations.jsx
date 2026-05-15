@@ -31,7 +31,7 @@ function Destinations() {
       />
 
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-stone-100">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-sand-100">
         <div className="max-w-6xl mx-auto px-6 h-16 flex justify-between items-center">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -92,7 +92,7 @@ function Destinations() {
                   <Link
                     key={dest.slug}
                     to={`/destination/${dest.slug}`}
-                    className="bg-white rounded-xl overflow-hidden border border-stone-100 hover:border-primary/30 hover:shadow-lg transition-all group"
+                    className="bg-white rounded-xl overflow-hidden border border-sand-100 hover:border-primary/30 hover:shadow-lg transition-all group"
                   >
                     <div className="h-36 overflow-hidden relative">
                       <img
@@ -116,7 +116,7 @@ function Destinations() {
                           <p className="text-sm text-text-secondary">{dest.country}</p>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between pt-3 border-t border-stone-50 mt-3">
+                      <div className="flex items-center justify-between pt-3 border-t border-sand-50 mt-3">
                         <div>
                           <span className="text-xs text-text-secondary">From </span>
                           <span className="font-semibold text-primary">€{dest.avgFlightPrice}</span>
@@ -135,7 +135,7 @@ function Destinations() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 px-6 bg-stone-50">
+      <section className="py-16 px-6 bg-sand-50">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-display text-3xl font-medium text-text-main mb-4">
             Don't see your dream destination?
@@ -164,7 +164,7 @@ function Destinations() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-stone-100">
+      <footer className="py-8 px-6 border-t border-sand-100">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">

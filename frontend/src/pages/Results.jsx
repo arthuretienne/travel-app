@@ -3,14 +3,13 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useUser, useAuth } from '@clerk/clerk-react';
-import { TripCardSkeleton } from '../components/SkeletonLoaders';
+import { useAuth } from '@clerk/clerk-react';
+import { Loader2 } from 'lucide-react';
 
 function Results() {
   const { searchId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useUser();
   const { getToken } = useAuth();
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +44,9 @@ function Results() {
   // Start streaming if we have streamingMode
   useEffect(() => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const controller = new AbortController();
+    let cancelled = false;
+    let timeoutId = null;
 
     if (location.state?.streamingMode && location.state?.searchPayload) {
       const { searchPayload, token } = location.state;
@@ -52,6 +54,17 @@ function Results() {
       setIsStreaming(true);
       setLoading(false);
       setStreamingStatus('Recherche des destinations parfaites...');
+
+      // Hard cap so a hung backend stream can't spin forever (cold starts
+      // can be slow, so keep this generous).
+      timeoutId = setTimeout(() => {
+        if (!cancelled) {
+          controller.abort();
+          setIsStreaming(false);
+          setStreamingStatus('');
+          setError((prev) => prev || 'La recherche prend trop de temps. Réessayez dans un instant (le serveur démarre peut-être).');
+        }
+      }, 120000);
 
       const startStreaming = async () => {
         try {
@@ -62,6 +75,7 @@ function Results() {
               'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify(searchPayload),
+            signal: controller.signal,
           });
 
           if (!response.ok) {
@@ -89,12 +103,15 @@ function Results() {
             processSSEChunks(chunks);
           }
 
+          if (timeoutId) clearTimeout(timeoutId);
           setIsStreaming(false);
           setStreamingStatus('');
 
         } catch (err) {
+          if (err.name === 'AbortError' || cancelled) return;
           console.error('Streaming error:', err);
-          setError(err.message);
+          if (timeoutId) clearTimeout(timeoutId);
+          setError('La recherche a échoué. Réessayez dans un instant.');
           setIsStreaming(false);
         }
       };
@@ -141,7 +158,10 @@ function Results() {
                   setTrainAlternatives(eventData.trainAlternatives);
                 }
                 setStreamingStatus('Budget dépassé - affichage d\'alternatives...');
+                if (timeoutId) clearTimeout(timeoutId);
+                setIsStreaming(false);
               } else if (eventType === 'complete') {
+                if (timeoutId) clearTimeout(timeoutId);
                 setIsStreaming(false);
                 setStreamingStatus('');
               } else if (eventType === 'error') {
@@ -155,7 +175,11 @@ function Results() {
       };
 
       startStreaming();
-      return;
+      return () => {
+        cancelled = true;
+        controller.abort();
+        if (timeoutId) clearTimeout(timeoutId);
+      };
     }
 
     if (location.state?.recommendations) {
@@ -164,10 +188,39 @@ function Results() {
     } else if (searchId) {
       fetchRecommendations();
     } else {
+      // Refresh / direct visit lost the router state — rehydrate the last
+      // results instead of dead-ending the user.
+      let restored = false;
+      try {
+        const cached = sessionStorage.getItem('skLastResults');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length) {
+            setRecommendations(parsed);
+            restored = true;
+          }
+        }
+      } catch { /* ignore */ }
       setLoading(false);
-      setError('No recommendations available');
+      if (!restored) {
+        setError('Aucune recommandation à afficher. Relancez une recherche.');
+      }
     }
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [location.state, searchId]);
+
+  // Cache the latest results so a refresh/direct-visit can rehydrate them.
+  useEffect(() => {
+    if (recommendations.length && !isStreaming) {
+      try {
+        sessionStorage.setItem('skLastResults', JSON.stringify(recommendations));
+      } catch { /* quota / serialization — non-critical */ }
+    }
+  }, [recommendations, isStreaming]);
 
   const fetchRecommendations = async () => {
     try {
@@ -206,7 +259,7 @@ function Results() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ destinationCity: city, signalType }),
       }).catch(() => {}); // silent fail — non-critical
-    } catch {}
+    } catch { /* signal is best-effort */ }
   };
 
   const handleSaveTrip = async (tripIndex, silent = false) => {
@@ -386,15 +439,14 @@ function Results() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-subtle p-6 md:p-10">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-8">
-            <div className="h-8 w-48 bg-stone-200 rounded-lg animate-pulse mb-2" />
-            <div className="h-5 w-72 bg-stone-200 rounded-lg animate-pulse" />
-          </div>
-          <TripCardSkeleton />
-          <p className="text-center text-text-secondary mt-8 animate-pulse">
-            Analyse de votre profil et recherche de vols...
+      <div className="flex min-h-screen items-center justify-center bg-surface-subtle p-4">
+        <div className="w-full max-w-md rounded-[20px] border border-sand-200 bg-white p-10 text-center shadow-2">
+          <Loader2 className="mx-auto mb-5 h-10 w-10 animate-spin text-ember-600" />
+          <h3 className="font-display text-2xl font-medium text-text-main">
+            Analyse de votre profil…
+          </h3>
+          <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-text-secondary">
+            Recherche des destinations, vols et hôtels qui vous correspondent.
           </p>
         </div>
       </div>
@@ -405,9 +457,9 @@ function Results() {
   if (error) {
     return (
       <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-6">
-        <div className="bg-white rounded-2xl p-10 max-w-md w-full text-center shadow-card border border-stone-200/40">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-50 flex items-center justify-center">
-            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="bg-white rounded-2xl p-10 max-w-md w-full text-center shadow-card border border-sand-200/40">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-clay-100 flex items-center justify-center">
+            <svg className="w-8 h-8 text-clay-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
@@ -416,7 +468,7 @@ function Results() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={handleBackToDashboard}
-              className="px-5 py-2.5 text-text-secondary font-medium rounded-xl border border-stone-200 hover:bg-surface-muted transition-colors"
+              className="px-5 py-2.5 text-text-secondary font-medium rounded-xl border border-sand-200 hover:bg-surface-muted transition-colors"
             >
               Retour au tableau de bord
             </button>
@@ -447,19 +499,19 @@ function Results() {
     return (
       <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-6">
         <div className="text-center max-w-md">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-amber-50 flex items-center justify-center">
-            <svg className="w-8 h-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gold-100 flex items-center justify-center">
+            <svg className="w-8 h-8 text-gold-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
           </div>
           <h3 className="font-display text-2xl text-text-main mb-2">Aucun résultat trouvé</h3>
 
           {totalBudget && totalBudget < minEstimate ? (
-            <div className="text-left bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
-              <p className="text-sm font-semibold text-amber-900 mb-3">
+            <div className="text-left bg-gold-100 border border-gold-100 rounded-2xl p-5 mb-6">
+              <p className="text-sm font-semibold text-gold-500 mb-3">
                 Budget insuffisant pour {travelers} {travelers > 1 ? 'personnes' : 'personne'}, {nights} nuits
               </p>
-              <ul className="space-y-2 text-sm text-amber-800">
+              <ul className="space-y-2 text-sm text-gold-500">
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5">•</span>
                   Budget saisi : <strong>€{totalBudget}</strong> total (€{budget}/pers.)
@@ -469,8 +521,8 @@ function Results() {
                   Minimum estimé : <strong>~€{minEstimate}</strong> (vol ~€{80 * travelers} + hôtel ~€{50 * Math.ceil(travelers / 2) * nights})
                 </li>
               </ul>
-              <p className="text-xs text-amber-700 mt-3 font-medium">Suggestions :</p>
-              <ul className="space-y-1 text-xs text-amber-700 mt-1">
+              <p className="text-xs text-gold-500 mt-3 font-medium">Suggestions :</p>
+              <ul className="space-y-1 text-xs text-gold-500 mt-1">
                 <li>→ Augmenter le budget à €{Math.ceil(minEstimate / travelers / 50) * 50}/pers. minimum</li>
                 <li>→ Réduire la durée à {Math.max(2, nights - 2)} nuits</li>
                 {travelers > 2 && <li>→ Partir à {travelers - 1} personnes</li>}
@@ -498,14 +550,14 @@ function Results() {
       {/* Inline notification (replaces alert()) */}
       {notification && (
         <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${
-          notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+          notification.type === 'success' ? 'bg-moss-500 text-white' : 'bg-clay-500 text-white'
         }`}>
           {notification.type === 'success' ? '✓' : '✕'} {notification.text}
         </div>
       )}
 
       {/* Header */}
-      <header className="bg-white border-b border-stone-200/60">
+      <header className="bg-white border-b border-sand-200/60">
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -565,19 +617,19 @@ function Results() {
       <main className="max-w-5xl mx-auto px-6 py-10">
         {/* Budget Warning Banner */}
         {budgetWarning && (
-          <div className="mb-8 bg-amber-50 border border-amber-200 rounded-2xl p-6">
+          <div className="mb-8 bg-gold-100 border border-gold-100 rounded-2xl p-6">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-10 h-10 bg-gold-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-gold-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-amber-900 mb-2">{budgetWarning.message}</h3>
-                <ul className="text-sm text-amber-800 space-y-1 mb-4">
+                <h3 className="font-semibold text-gold-500 mb-2">{budgetWarning.message}</h3>
+                <ul className="text-sm text-gold-500 space-y-1 mb-4">
                   {budgetWarning.suggestions?.map((suggestion, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <span className="text-amber-500 mt-1">•</span>
+                      <span className="text-gold-500 mt-1">•</span>
                       {suggestion}
                     </li>
                   ))}
@@ -585,26 +637,26 @@ function Results() {
 
                 {/* Train/Bus Alternatives */}
                 {trainAlternatives.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-amber-200">
-                    <h4 className="font-medium text-amber-900 mb-3 flex items-center gap-2">
+                  <div className="mt-4 pt-4 border-t border-gold-100">
+                    <h4 className="font-medium text-gold-500 mb-3 flex items-center gap-2">
                       <span>🚂</span> Alternatives train & bus (moins cher !)
                     </h4>
                     <div className="grid gap-2">
                       {trainAlternatives.map((alt, i) => (
-                        <div key={i} className="flex items-center justify-between bg-white rounded-lg p-3 border border-amber-100">
+                        <div key={i} className="flex items-center justify-between bg-white rounded-lg p-3 border border-gold-100">
                           <div className="flex items-center gap-3">
                             <span className="text-lg">{alt.transport === 'train' ? '🚂' : '🚌'}</span>
                             <div>
-                              <p className="font-medium text-gray-900">{alt.name}, {alt.country}</p>
-                              <p className="text-xs text-gray-500">{alt.operator} • {alt.duration}</p>
+                              <p className="font-medium text-sand-900">{alt.name}, {alt.country}</p>
+                              <p className="text-xs text-sand-500">{alt.operator} • {alt.duration}</p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-green-600">€{alt.price}</p>
-                            <p className="text-xs text-gray-500">aller-retour</p>
+                            <p className="font-bold text-moss-500">€{alt.price}</p>
+                            <p className="text-xs text-sand-500">aller-retour</p>
                           </div>
                           {alt.hasBeach && (
-                            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">🏖️ Plage</span>
+                            <span className="ml-2 px-2 py-0.5 bg-gold-100 text-gold-500 text-xs rounded-full">🏖️ Plage</span>
                           )}
                         </div>
                       ))}
@@ -618,17 +670,14 @@ function Results() {
 
         {/* Streaming skeleton */}
         {isStreaming && recommendations.length === 0 && !budgetWarning && (
-          <div className="bg-white rounded-2xl shadow-card border border-stone-200/40 overflow-hidden">
-            <div className="aspect-[21/9] bg-stone-100 animate-pulse" />
-            <div className="p-8 space-y-4">
-              <div className="h-8 w-1/3 bg-stone-200 rounded animate-pulse" />
-              <div className="h-4 w-1/4 bg-stone-200 rounded animate-pulse" />
-              <div className="grid grid-cols-4 gap-4 mt-6">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-20 bg-stone-100 rounded-xl animate-pulse" />
-                ))}
-              </div>
-            </div>
+          <div className="rounded-[20px] border border-sand-200 bg-white p-12 text-center shadow-2">
+            <Loader2 className="mx-auto mb-5 h-10 w-10 animate-spin text-ember-600" />
+            <h3 className="font-display text-2xl font-medium text-text-main">
+              {streamingStatus || 'Composition de vos voyages…'}
+            </h3>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-text-secondary">
+              L’IA assemble destinations, vols et hôtels qui tiennent votre budget.
+            </p>
           </div>
         )}
 
@@ -717,9 +766,9 @@ function TripCard({
   const isUnderBudget = (pricing?.remaining ?? 0) >= 0;
 
   return (
-    <article className="bg-white rounded-2xl shadow-card overflow-hidden border border-stone-200/40 hover:shadow-elevated transition-shadow duration-300">
+    <article className="bg-white rounded-2xl shadow-card overflow-hidden border border-sand-200/40 hover:shadow-elevated transition-shadow duration-300">
       {/* Hero Image */}
-      <div className="relative aspect-[21/9] overflow-hidden bg-stone-100">
+      <div className="relative aspect-[21/9] overflow-hidden bg-sand-100">
         <img
           src={getDestinationImage(destination?.photo, destination?.city, destination?.country)}
           alt={destination?.photo?.alt || `${destination?.city}, ${destination?.country}`}
@@ -774,7 +823,7 @@ function TripCard({
             {isUnderBudget ? (
               <p className="text-sm text-status-positive">€{formatNumber(pricing?.remaining)} sous le budget</p>
             ) : (
-              <p className="text-sm text-red-600">€{formatNumber(Math.abs(pricing?.remaining))} dépassé</p>
+              <p className="text-sm text-clay-500">€{formatNumber(Math.abs(pricing?.remaining))} dépassé</p>
             )}
           </InfoCard>
 
@@ -848,7 +897,7 @@ function TripCard({
         )}
 
         {/* Expandable Details */}
-        <div className="border-t border-stone-200/60 pt-6">
+        <div className="border-t border-sand-200/60 pt-6">
           <button
             onClick={onToggle}
             className="flex items-center justify-between w-full group"
@@ -907,7 +956,7 @@ function TripCard({
                   <h4 className="text-sm font-semibold text-text-main mb-4">Hébergement suggéré</h4>
                   <div className="flex gap-4">
                     {hotel.mainPhoto && (
-                      <div className="w-28 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-stone-200">
+                      <div className="w-28 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-sand-200">
                         <img
                           src={hotel.mainPhoto}
                           alt={hotel.name}
@@ -920,7 +969,7 @@ function TripCard({
                       <p className="font-semibold text-text-main mb-1 truncate">{hotel.name}</p>
                       <div className="flex items-center gap-3 mb-1">
                         {getStarRating(hotel.rating?.value, hotel.stars) > 0 && (
-                          <span className="text-sm text-amber-500">
+                          <span className="text-sm text-gold-500">
                             {'★'.repeat(getStarRating(hotel.rating?.value, hotel.stars))}
                           </span>
                         )}
@@ -981,8 +1030,8 @@ function TripCard({
                 disabled={isAlertCreating || isAlertCreated}
                 className={`flex items-center justify-center gap-2 px-6 py-4 font-medium rounded-xl transition-colors ${
                   isAlertCreated
-                    ? 'bg-green-50 text-green-700 cursor-default'
-                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                    ? 'bg-moss-100 text-moss-500 cursor-default'
+                    : 'bg-gold-100 text-gold-500 hover:bg-gold-100'
                 }`}
                 title="Être notifié quand le prix baisse"
               >
@@ -1028,9 +1077,9 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
   };
 
   return (
-    <article className="bg-white rounded-2xl shadow-card overflow-hidden border border-stone-200/40 hover:shadow-elevated transition-shadow duration-300">
+    <article className="bg-white rounded-2xl shadow-card overflow-hidden border border-sand-200/40 hover:shadow-elevated transition-shadow duration-300">
       {/* Hero: city photo strip */}
-      <div className="relative h-64 overflow-hidden bg-stone-100">
+      <div className="relative h-64 overflow-hidden bg-sand-100">
         <div className="flex h-full">
           {cities.slice(0, 3).map((city, i) => (
             <div
@@ -1145,12 +1194,12 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
           <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-3">Étapes du voyage</p>
           <div className="space-y-3">
             {cities.map((city, i) => (
-              <div key={i} className="border border-stone-200/60 rounded-xl overflow-hidden">
+              <div key={i} className="border border-sand-200/60 rounded-xl overflow-hidden">
                 <button
                   onClick={() => setExpandedCity(expandedCity === i ? null : i)}
                   className="w-full flex items-center gap-4 p-4 text-left hover:bg-surface-subtle transition-colors"
                 >
-                  <div className="w-14 h-10 rounded-lg overflow-hidden bg-stone-100 flex-shrink-0">
+                  <div className="w-14 h-10 rounded-lg overflow-hidden bg-sand-100 flex-shrink-0">
                     <img
                       src={city.photo?.url || `https://source.unsplash.com/200x150/?${encodeURIComponent(city.name)}`}
                       alt={city.name}
@@ -1183,7 +1232,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
                 </button>
 
                 {expandedCity === i && (
-                  <div className="border-t border-stone-200/60 p-5 bg-surface-subtle space-y-4">
+                  <div className="border-t border-sand-200/60 p-5 bg-surface-subtle space-y-4">
                     {city.hotel && (
                       <div>
                         <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-2">Hébergement</p>
@@ -1226,7 +1275,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
         </div>
 
         {/* Expandable: transport + tips + hidden gems */}
-        <div className="border-t border-stone-200/60 pt-6">
+        <div className="border-t border-sand-200/60 pt-6">
           <button
             onClick={() => setShowDetails(!showDetails)}
             className="flex items-center justify-between w-full group"
@@ -1272,7 +1321,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
                   <ul className="space-y-1.5">
                     {narrative.hiddenGems.map((gem, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-text-main">
-                        <span className="text-amber-500 mt-0.5 flex-shrink-0">★</span>
+                        <span className="text-gold-500 mt-0.5 flex-shrink-0">★</span>
                         {gem}
                       </li>
                     ))}
@@ -1335,9 +1384,9 @@ function FlightSegment({ departureTime, arrivalTime, departureAirport, arrivalAi
         <p className="text-xs text-text-secondary">{departureAirport || 'DEP'}</p>
       </div>
       <div className="flex-1 flex items-center gap-2">
-        <div className="flex-1 h-px bg-stone-300" />
+        <div className="flex-1 h-px bg-sand-300" />
         <span className="text-xs text-text-light px-2">{duration}</span>
-        <div className="flex-1 h-px bg-stone-300" />
+        <div className="flex-1 h-px bg-sand-300" />
       </div>
       <div className="text-center">
         <p className="text-lg font-semibold text-text-main">{formatTime(arrivalTime)}</p>

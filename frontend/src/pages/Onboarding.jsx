@@ -164,6 +164,7 @@ function Onboarding() {
     tripsPerYear: 2,
     departureFlexibility: '',
     calendarConnected: false,
+    calendarType: '',
     annualLeaveDays: 25,
     takenLeaveDays: 0,
     avgTripDuration: 7,
@@ -330,7 +331,7 @@ function Onboarding() {
       onClick={onClick}
       className={`w-full p-4 text-left rounded-2xl border transition-all duration-200 flex items-center justify-between group ${selected
         ? 'bg-primary-light border-primary text-primary ring-1 ring-primary'
-        : 'bg-white border-gray-200 text-text-main hover:border-primary/50 hover:bg-gray-50'
+        : 'bg-white border-sand-200 text-text-main hover:border-primary/50 hover:bg-sand-50'
         } ${className}`}
     >
       <span className="font-medium">{children}</span>
@@ -347,7 +348,7 @@ function Onboarding() {
         max={max}
         value={value}
         onChange={onChange}
-        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+        className="w-full h-2 bg-sand-200 rounded-lg appearance-none cursor-pointer accent-primary"
       />
       <div className="flex justify-between mt-2 text-sm text-text-secondary font-medium">
         <span>{leftLabel}</span>
@@ -381,9 +382,9 @@ function Onboarding() {
                 setOnboardingType('short');
                 setFormData(prev => ({ ...prev, onboardingType: 'short' }));
               }}
-              className="bg-white p-8 rounded-3xl border border-gray-200 hover:border-primary hover:shadow-xl transition-all cursor-pointer group text-left relative overflow-hidden"
+              className="bg-white p-8 rounded-3xl border border-sand-200 hover:border-primary hover:shadow-xl transition-all cursor-pointer group text-left relative overflow-hidden"
             >
-              <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <div className="w-14 h-14 bg-gold-100 text-gold-500 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <Zap size={28} />
               </div>
               <h3 className="text-2xl font-bold mb-1 text-text-main">Profil express</h3>
@@ -391,7 +392,7 @@ function Onboarding() {
               <p className="text-text-secondary mb-8 leading-relaxed text-sm">
                 L'essentiel pour démarrer. Recommandations précises dès la première recherche.
               </p>
-              <button className="w-full py-3 bg-stone-100 text-text-main font-semibold rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
+              <button className="w-full py-3 bg-sand-100 text-text-main font-semibold rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
                 Commencer →
               </button>
             </div>
@@ -442,7 +443,7 @@ function Onboarding() {
       formData.idealRhythm,
       formData.tripsPerYear !== 2,
       formData.departureFlexibility,
-      formData.calendarConnected !== false || formData.calendarConnected === false,
+      formData.calendarConnected === true || formData.calendarType !== '',
       formData.preferredAirports.length > 0,
     ].filter(Boolean).length;
 
@@ -454,7 +455,7 @@ function Onboarding() {
             <h1 className="text-3xl font-bold mb-2 text-text-main">Parlez-nous de vous</h1>
             <p className="text-text-secondary mb-4">9 questions pour des recommandations personnalisées</p>
             <div className="flex items-center gap-3">
-              <div className="flex-1 h-2 bg-stone-100 rounded-full overflow-hidden">
+              <div className="flex-1 h-2 bg-sand-100 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary transition-all duration-500"
                   style={{ width: `${(shortAnswered / 9) * 100}%` }}
@@ -480,7 +481,7 @@ function Onboarding() {
                   </OptionButton>
                 ))}
               </div>
-              {errors.whyTravel && <span className="text-red-500 text-sm">{errors.whyTravel}</span>}
+              {errors.whyTravel && <span className="text-clay-500 text-sm">{errors.whyTravel}</span>}
             </div>
 
             <div className="space-y-4">
@@ -498,7 +499,7 @@ function Onboarding() {
                   </OptionButton>
                 ))}
               </div>
-              {errors.mainGoal && <span className="text-red-500 text-sm">{errors.mainGoal}</span>}
+              {errors.mainGoal && <span className="text-clay-500 text-sm">{errors.mainGoal}</span>}
             </div>
 
             <div className="space-y-4">
@@ -516,7 +517,7 @@ function Onboarding() {
                   </OptionButton>
                 ))}
               </div>
-              {errors.globalStyle && <span className="text-red-500 text-sm">{errors.globalStyle}</span>}
+              {errors.globalStyle && <span className="text-clay-500 text-sm">{errors.globalStyle}</span>}
             </div>
 
             <div className="space-y-4">
@@ -529,7 +530,7 @@ function Onboarding() {
                     key={activity}
                     className={`p-3 text-sm font-medium rounded-xl border transition-all ${formData.topActivities.includes(activity)
                       ? 'bg-primary-light border-primary text-primary'
-                      : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
+                      : 'bg-white border-sand-200 text-text-secondary hover:border-primary/50'
                       } ${!formData.topActivities.includes(activity) && formData.topActivities.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={() => toggleArrayItem('topActivities', activity)}
                     disabled={!formData.topActivities.includes(activity) && formData.topActivities.length >= 5}
@@ -539,7 +540,7 @@ function Onboarding() {
                 ))}
               </div>
               <p className="text-sm text-text-secondary text-right">{formData.topActivities.length}/5 sélectionnées</p>
-              {errors.topActivities && <span className="text-red-500 text-sm">{errors.topActivities}</span>}
+              {errors.topActivities && <span className="text-clay-500 text-sm">{errors.topActivities}</span>}
             </div>
 
             <div className="space-y-4">
@@ -558,7 +559,7 @@ function Onboarding() {
                   </OptionButton>
                 ))}
               </div>
-              {errors.idealRhythm && <span className="text-red-500 text-sm">{errors.idealRhythm}</span>}
+              {errors.idealRhythm && <span className="text-clay-500 text-sm">{errors.idealRhythm}</span>}
             </div>
 
             <div className="space-y-4">
@@ -582,7 +583,7 @@ function Onboarding() {
                   </OptionButton>
                 ))}
               </div>
-              {errors.tripsPerYear && <span className="text-red-500 text-sm">{errors.tripsPerYear}</span>}
+              {errors.tripsPerYear && <span className="text-clay-500 text-sm">{errors.tripsPerYear}</span>}
             </div>
 
             <div className="space-y-4">
@@ -601,7 +602,7 @@ function Onboarding() {
                   </OptionButton>
                 ))}
               </div>
-              {errors.departureFlexibility && <span className="text-red-500 text-sm">{errors.departureFlexibility}</span>}
+              {errors.departureFlexibility && <span className="text-clay-500 text-sm">{errors.departureFlexibility}</span>}
             </div>
 
             <div className="space-y-4">
@@ -633,7 +634,7 @@ function Onboarding() {
               </div>
 
               {formData.calendarConnected && (
-                <div className="p-4 bg-surface-subtle rounded-2xl border border-gray-200 mt-4">
+                <div className="p-4 bg-surface-subtle rounded-2xl border border-sand-200 mt-4">
                   <label className="text-sm font-medium mb-3 block">Type de calendrier</label>
                   <div className="grid sm:grid-cols-2 gap-3">
                     <OptionButton
@@ -670,9 +671,9 @@ function Onboarding() {
               />
             </div>
 
-            <div className="pt-8 border-t border-gray-100">
+            <div className="pt-8 border-t border-sand-100">
               {saveError && (
-                <p className="mb-3 text-sm text-red-600 text-center">{saveError}</p>
+                <p className="mb-3 text-sm text-clay-500 text-center">{saveError}</p>
               )}
               <button
                 className="w-full py-4 bg-primary text-white text-lg font-bold rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -711,7 +712,7 @@ function Onboarding() {
             </OptionButton>
           ))}
         </div>
-        {errors.whyTravel && <span className="text-red-500 text-sm">{errors.whyTravel}</span>}
+        {errors.whyTravel && <span className="text-clay-500 text-sm">{errors.whyTravel}</span>}
       </div>
 
       <div className="space-y-4">
@@ -727,7 +728,7 @@ function Onboarding() {
             </OptionButton>
           ))}
         </div>
-        {errors.mainGoal && <span className="text-red-500 text-sm">{errors.mainGoal}</span>}
+        {errors.mainGoal && <span className="text-clay-500 text-sm">{errors.mainGoal}</span>}
       </div>
 
       <div className="space-y-4">
@@ -743,7 +744,7 @@ function Onboarding() {
             </OptionButton>
           ))}
         </div>
-        {errors.globalStyle && <span className="text-red-500 text-sm">{errors.globalStyle}</span>}
+        {errors.globalStyle && <span className="text-clay-500 text-sm">{errors.globalStyle}</span>}
       </div>
 
       <div className="space-y-6 pt-4">
@@ -817,7 +818,7 @@ function Onboarding() {
               key={activity}
               className={`p-4 text-sm font-medium rounded-xl border transition-all ${formData.topActivities.includes(activity)
                 ? 'bg-primary-light border-primary text-primary'
-                : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
+                : 'bg-white border-sand-200 text-text-secondary hover:border-primary/50'
                 } ${!formData.topActivities.includes(activity) && formData.topActivities.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={() => toggleArrayItem('topActivities', activity)}
               disabled={!formData.topActivities.includes(activity) && formData.topActivities.length >= 5}
@@ -827,7 +828,7 @@ function Onboarding() {
           ))}
         </div>
         <p className="text-sm text-text-secondary text-right">{formData.topActivities.length}/5 sélectionnées</p>
-        {errors.topActivities && <span className="text-red-500 text-sm">{errors.topActivities}</span>}
+        {errors.topActivities && <span className="text-clay-500 text-sm">{errors.topActivities}</span>}
       </div>
     </div>
   );
@@ -850,7 +851,7 @@ function Onboarding() {
             </OptionButton>
           ))}
         </div>
-        {errors.idealRhythm && <span className="text-red-500 text-sm">{errors.idealRhythm}</span>}
+        {errors.idealRhythm && <span className="text-clay-500 text-sm">{errors.idealRhythm}</span>}
       </div>
 
       <div className="space-y-4">
@@ -866,7 +867,7 @@ function Onboarding() {
             </OptionButton>
           ))}
         </div>
-        {errors.accommodationPref && <span className="text-red-500 text-sm">{errors.accommodationPref}</span>}
+        {errors.accommodationPref && <span className="text-clay-500 text-sm">{errors.accommodationPref}</span>}
       </div>
 
       <Slider
@@ -891,7 +892,7 @@ function Onboarding() {
             </OptionButton>
           ))}
         </div>
-        {errors.stayOrMove && <span className="text-red-500 text-sm">{errors.stayOrMove}</span>}
+        {errors.stayOrMove && <span className="text-clay-500 text-sm">{errors.stayOrMove}</span>}
       </div>
 
       <div className="space-y-4">
@@ -902,7 +903,7 @@ function Onboarding() {
               key={mode}
               className={`p-3 text-sm font-medium rounded-xl border transition-all ${formData.transportModes.includes(mode)
                 ? 'bg-primary-light border-primary text-primary'
-                : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
+                : 'bg-white border-sand-200 text-text-secondary hover:border-primary/50'
                 }`}
               onClick={() => toggleArrayItem('transportModes', mode)}
             >
@@ -910,7 +911,7 @@ function Onboarding() {
             </button>
           ))}
         </div>
-        {errors.transportModes && <span className="text-red-500 text-sm">{errors.transportModes}</span>}
+        {errors.transportModes && <span className="text-clay-500 text-sm">{errors.transportModes}</span>}
       </div>
 
       <div className="space-y-4">
@@ -936,7 +937,7 @@ function Onboarding() {
           max="24"
           value={formData.maxTransportHours}
           onChange={(e) => handleChange('maxTransportHours', parseInt(e.target.value))}
-          className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+          className="w-full p-4 bg-white border border-sand-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
         />
       </div>
 
@@ -968,7 +969,7 @@ function Onboarding() {
             </OptionButton>
           ))}
         </div>
-        {errors.visaPreference && <span className="text-red-500 text-sm">{errors.visaPreference}</span>}
+        {errors.visaPreference && <span className="text-clay-500 text-sm">{errors.visaPreference}</span>}
       </div>
 
       <div className="space-y-4">
@@ -980,7 +981,7 @@ function Onboarding() {
             onChange={(e) => setCountryInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAddCountry()}
             placeholder="Entrez un pays..."
-            className="flex-1 p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+            className="flex-1 p-4 bg-white border border-sand-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
           />
           <button onClick={handleAddCountry} className="px-6 bg-text-main text-white font-medium rounded-xl hover:bg-black transition-colors">
             Ajouter
@@ -989,9 +990,9 @@ function Onboarding() {
         {formData.avoidCountries.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
             {formData.avoidCountries.map(country => (
-              <span key={country} className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-text-main rounded-lg text-sm">
+              <span key={country} className="inline-flex items-center gap-1 px-3 py-1 bg-sand-100 text-text-main rounded-lg text-sm">
                 {country}
-                <button onClick={() => removeCountry(country)} className="hover:text-red-500">×</button>
+                <button onClick={() => removeCountry(country)} className="hover:text-clay-500">×</button>
               </span>
             ))}
           </div>
@@ -1017,7 +1018,7 @@ function Onboarding() {
             value={formData.mobilityDetails}
             onChange={(e) => handleChange('mobilityDetails', e.target.value)}
             placeholder="Précisez vos besoins..."
-            className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all mt-2"
+            className="w-full p-4 bg-white border border-sand-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all mt-2"
           />
         )}
       </div>
@@ -1083,7 +1084,7 @@ function Onboarding() {
           max="20"
           value={formData.tripsPerYear}
           onChange={(e) => handleChange('tripsPerYear', parseInt(e.target.value))}
-          className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+          className="w-full p-4 bg-white border border-sand-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
         />
       </div>
 
@@ -1112,7 +1113,7 @@ function Onboarding() {
             max="60"
             value={formData.annualLeaveDays}
             onChange={(e) => handleChange('annualLeaveDays', parseInt(e.target.value))}
-            className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+            className="w-full p-4 bg-white border border-sand-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
           />
         </div>
         <div className="space-y-2">
@@ -1123,7 +1124,7 @@ function Onboarding() {
             max={formData.annualLeaveDays}
             value={formData.takenLeaveDays}
             onChange={(e) => handleChange('takenLeaveDays', parseInt(e.target.value))}
-            className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+            className="w-full p-4 bg-white border border-sand-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
           />
         </div>
       </div>
@@ -1136,27 +1137,25 @@ function Onboarding() {
           max="90"
           value={formData.avgTripDuration}
           onChange={(e) => handleChange('avgTripDuration', parseInt(e.target.value))}
-          className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+          className="w-full p-4 bg-white border border-sand-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
         />
       </div>
 
       <div className="space-y-4">
-        <label className="block font-medium text-text-main">Aéroports / Villes de départ préférées</label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {AIRPORTS.map(airport => (
-            <button
-              key={airport.code}
-              className={`p-3 text-sm font-medium rounded-xl border transition-all ${formData.preferredAirports.includes(airport.code)
-                ? 'bg-primary-light border-primary text-primary'
-                : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
-                }`}
-              onClick={() => toggleArrayItem('preferredAirports', airport.code)}
-            >
-              {airport.name}
-            </button>
-          ))}
-        </div>
-        {errors.preferredAirports && <span className="text-red-500 text-sm">{errors.preferredAirports}</span>}
+        <AirportAutocomplete
+          selectedAirports={formData.preferredAirports}
+          onChange={(airports) => {
+            setFormData({ ...formData, preferredAirports: airports });
+            if (errors.preferredAirports && airports.length > 0) {
+              setErrors({ ...errors, preferredAirports: null });
+            }
+          }}
+          maxSelection={3}
+          label="Aéroports / Villes de départ préférées"
+          placeholder="Ex : Paris, Lyon, Marseille..."
+          helperText="Choisissez jusqu'à 3 aéroports de départ. Nous optimiserons vos recommandations selon votre ville."
+          error={errors.preferredAirports}
+        />
       </div>
     </div>
   );
@@ -1175,17 +1174,17 @@ function Onboarding() {
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                       i < currentPart ? 'bg-primary text-white' :
                       i === currentPart ? 'bg-primary text-white ring-4 ring-primary/20' :
-                      'bg-stone-100 text-stone-400'
+                      'bg-sand-100 text-sand-400'
                     }`}>
                       {i < currentPart ? <Check size={14} /> : i + 1}
                     </div>
                     <span className={`text-xs font-medium hidden sm:block ${
-                      i === currentPart ? 'text-primary' : 'text-stone-400'
+                      i === currentPart ? 'text-primary' : 'text-sand-400'
                     }`}>{step}</span>
                   </div>
                 ))}
               </div>
-              <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+              <div className="w-full h-1.5 bg-sand-100 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary transition-all duration-500 ease-out"
                   style={{ width: `${((currentPart) / 4) * 100}%` }}
@@ -1202,13 +1201,13 @@ function Onboarding() {
         {currentPart === 4 && renderPart4()}
 
         {saveError && (
-          <p className="mt-4 text-sm text-red-600 text-center">{saveError}</p>
+          <p className="mt-4 text-sm text-clay-500 text-center">{saveError}</p>
         )}
 
-        <div className="flex justify-between gap-4 mt-12 pt-8 border-t border-gray-100">
+        <div className="flex justify-between gap-4 mt-12 pt-8 border-t border-sand-100">
           {currentPart > 0 && (
             <button
-              className="px-8 py-4 bg-white border border-gray-200 text-text-main font-semibold rounded-2xl hover:bg-gray-50 transition-colors"
+              className="px-8 py-4 bg-white border border-sand-200 text-text-main font-semibold rounded-2xl hover:bg-sand-50 transition-colors"
               onClick={handlePrevious}
             >
               Précédent

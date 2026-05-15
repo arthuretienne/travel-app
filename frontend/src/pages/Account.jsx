@@ -74,6 +74,7 @@ function Account() {
   const [togglingDigest, setTogglingDigest] = useState(false);
   const [calendarStatus, setCalendarStatus] = useState(null);
   const [subscription, setSubscription] = useState(null);
+  const [subscriptionError, setSubscriptionError] = useState(false);
   const [loadingBillingPortal, setLoadingBillingPortal] = useState(false);
   const [accountNotif, setAccountNotif] = useState(null);
   const showAccountNotif = (type, text) => {
@@ -133,9 +134,13 @@ function Account() {
       if (response.ok) {
         const data = await response.json();
         setSubscription(data);
+        setSubscriptionError(false);
+      } else {
+        setSubscriptionError(true);
       }
     } catch (error) {
       console.error('Error fetching subscription:', error);
+      setSubscriptionError(true);
     }
   };
 
@@ -377,10 +382,10 @@ function Account() {
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 border-4 border-gray-200 border-t-primary rounded-full animate-spin mx-auto mb-6"></div>
-          <h2 className="text-2xl font-bold text-text-main mb-2">Chargement de votre compte...</h2>
-          <p className="text-sm text-text-secondary/60">Le serveur démarre, cela peut prendre quelques secondes</p>
+        <div className="w-full max-w-md rounded-[20px] border border-sand-200 bg-white p-10 text-center shadow-2">
+          <Loader2 className="mx-auto mb-5 h-10 w-10 animate-spin text-ember-600" />
+          <h2 className="font-display text-2xl font-medium text-text-main">Chargement de votre compte…</h2>
+          <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-text-secondary">Le serveur démarre, cela peut prendre quelques secondes.</p>
         </div>
       </div>
     );
@@ -391,23 +396,23 @@ function Account() {
       {/* Inline notification */}
       {accountNotif && (
         <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium ${
-          accountNotif.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+          accountNotif.type === 'success' ? 'bg-moss-500 text-white' : 'bg-clay-500 text-white'
         }`}>
           {accountNotif.type === 'success' ? '✓' : '✕'} {accountNotif.text}
         </div>
       )}
-      <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-card border border-gray-100 overflow-hidden">
-        <div className="p-8 border-b border-gray-100">
+      <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-card border border-sand-100 overflow-hidden">
+        <div className="p-8 border-b border-sand-100">
           <h1 className="text-3xl font-bold text-text-main mb-2">Mon Compte</h1>
           <p className="text-text-secondary">Gérez vos informations et préférences de voyage</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-100 bg-gray-50/50">
+        <div className="flex border-b border-sand-100 bg-sand-50/50">
           <button
             className={`flex-1 py-4 px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'profile'
                 ? 'text-primary bg-white'
-                : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
+                : 'text-text-secondary hover:bg-sand-50 hover:text-text-main'
               }`}
             onClick={() => setActiveTab('profile')}
           >
@@ -418,7 +423,7 @@ function Account() {
           <button
             className={`flex-1 py-4 px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'preferences'
                 ? 'text-primary bg-white'
-                : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
+                : 'text-text-secondary hover:bg-sand-50 hover:text-text-main'
               }`}
             onClick={() => setActiveTab('preferences')}
           >
@@ -429,7 +434,7 @@ function Account() {
           <button
             className={`flex-1 py-4 px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'availability'
                 ? 'text-primary bg-white'
-                : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
+                : 'text-text-secondary hover:bg-sand-50 hover:text-text-main'
               }`}
             onClick={() => setActiveTab('availability')}
           >
@@ -440,7 +445,7 @@ function Account() {
           <button
             className={`flex-1 py-4 px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'subscription'
                 ? 'text-primary bg-white'
-                : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
+                : 'text-text-secondary hover:bg-sand-50 hover:text-text-main'
               }`}
             onClick={() => setActiveTab('subscription')}
           >
@@ -455,14 +460,14 @@ function Account() {
           {/* Profile Tab */}
           {activeTab === 'profile' && (
             <div className="max-w-2xl mx-auto">
-              <div className="flex flex-col md:flex-row items-center gap-6 p-8 bg-gray-50 rounded-2xl border border-gray-100 mb-6">
+              <div className="flex flex-col md:flex-row items-center gap-6 p-8 bg-sand-50 rounded-2xl border border-sand-100 mb-6">
                 <div className="relative">
                   <img
                     src={user?.imageUrl || '/default-avatar.png'}
                     alt="Profile"
                     className="w-24 h-24 rounded-full border-4 border-white shadow-sm object-cover"
                   />
-                  <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 border-2 border-white rounded-full"></div>
+                  <div className="absolute bottom-0 right-0 w-6 h-6 bg-moss-500 border-2 border-white rounded-full"></div>
                 </div>
                 <div className="text-center md:text-left">
                   <h2 className="text-2xl font-bold text-text-main mb-1">{user?.fullName || 'User'}</h2>
@@ -472,7 +477,7 @@ function Account() {
                 </div>
               </div>
 
-              <div className="bg-blue-50 text-blue-800 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+              <div className="bg-gold-100 text-gold-500 p-4 rounded-xl border border-gold-100 flex items-start gap-3">
                 <AlertCircle className="shrink-0 mt-0.5" size={20} />
                 <p className="text-sm leading-relaxed">
                   Pour modifier votre nom, email ou mot de passe, veuillez utiliser le bouton de profil en haut à droite de l'application.
@@ -480,20 +485,20 @@ function Account() {
               </div>
 
               {/* Notifications */}
-              <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-4">
+              <div className="bg-white border border-sand-200 rounded-2xl p-6">
+                <h3 className="text-base font-semibold text-sand-900 flex items-center gap-2 mb-4">
                   <Bell size={18} className="text-primary" />
                   Notifications email
                 </h3>
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Digest hebdomadaire</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Vos meilleures opportunités voyage chaque lundi matin</p>
+                    <p className="text-sm font-medium text-sand-900">Digest hebdomadaire</p>
+                    <p className="text-xs text-sand-500 mt-0.5">Vos meilleures opportunités voyage chaque lundi matin</p>
                   </div>
                   <button
                     onClick={toggleDigestOptOut}
                     disabled={togglingDigest}
-                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-60 ${!digestOptOut ? 'bg-primary' : 'bg-gray-200'}`}
+                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-60 ${!digestOptOut ? 'bg-primary' : 'bg-sand-200'}`}
                     aria-label="Toggle weekly digest"
                   >
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${!digestOptOut ? 'translate-x-5' : 'translate-x-0'}`} />
@@ -517,7 +522,7 @@ function Account() {
                       key={reason}
                       className={`p-4 rounded-xl border text-left transition-all ${formData.whyTravel === reason
                           ? 'bg-primary/5 border-primary text-primary font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-text-secondary hover:border-gray-300 hover:bg-gray-50'
+                          : 'bg-white border-sand-200 text-text-secondary hover:border-sand-300 hover:bg-sand-50'
                         }`}
                       onClick={() => handleChange('whyTravel', reason)}
                     >
@@ -538,7 +543,7 @@ function Account() {
                       key={goal}
                       className={`p-4 rounded-xl border text-left transition-all ${formData.mainGoal === goal
                           ? 'bg-primary/5 border-primary text-primary font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-text-secondary hover:border-gray-300 hover:bg-gray-50'
+                          : 'bg-white border-sand-200 text-text-secondary hover:border-sand-300 hover:bg-sand-50'
                         }`}
                       onClick={() => handleChange('mainGoal', goal)}
                     >
@@ -559,7 +564,7 @@ function Account() {
                       key={style}
                       className={`p-4 rounded-xl border text-left transition-all ${formData.globalStyle === style
                           ? 'bg-primary/5 border-primary text-primary font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-text-secondary hover:border-gray-300 hover:bg-gray-50'
+                          : 'bg-white border-sand-200 text-text-secondary hover:border-sand-300 hover:bg-sand-50'
                         }`}
                       onClick={() => handleChange('globalStyle', style)}
                     >
@@ -580,7 +585,7 @@ function Account() {
                       key={activity}
                       className={`p-3 rounded-xl border text-center text-sm transition-all ${formData.topActivities.includes(activity)
                           ? 'bg-primary/5 border-primary text-primary font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-text-secondary hover:border-gray-300 hover:bg-gray-50'
+                          : 'bg-white border-sand-200 text-text-secondary hover:border-sand-300 hover:bg-sand-50'
                         }`}
                       onClick={() => toggleArrayItem('topActivities', activity)}
                     >
@@ -601,7 +606,7 @@ function Account() {
                       key={rhythm.value}
                       className={`p-4 rounded-xl border text-left transition-all ${formData.idealRhythm === rhythm.value
                           ? 'bg-primary/5 border-primary text-primary font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-text-secondary hover:border-gray-300 hover:bg-gray-50'
+                          : 'bg-white border-sand-200 text-text-secondary hover:border-sand-300 hover:bg-sand-50'
                         }`}
                       onClick={() => handleChange('idealRhythm', rhythm.value)}
                     >
@@ -611,7 +616,7 @@ function Account() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-gray-100">
+              <div className="pt-6 border-t border-sand-100">
                 <button
                   className="w-full py-4 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                   onClick={handleSave}
@@ -652,7 +657,7 @@ function Account() {
                       key={option.value}
                       className={`p-3 rounded-xl border text-center text-sm transition-all ${formData.tripsPerYear === option.value
                           ? 'bg-primary/5 border-primary text-primary font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-text-secondary hover:border-gray-300 hover:bg-gray-50'
+                          : 'bg-white border-sand-200 text-text-secondary hover:border-sand-300 hover:bg-sand-50'
                         }`}
                       onClick={() => handleChange('tripsPerYear', option.value)}
                     >
@@ -677,7 +682,7 @@ function Account() {
                       key={option.value}
                       className={`p-3 rounded-xl border text-center text-sm transition-all ${formData.departureFlexibility === option.value
                           ? 'bg-primary/5 border-primary text-primary font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-text-secondary hover:border-gray-300 hover:bg-gray-50'
+                          : 'bg-white border-sand-200 text-text-secondary hover:border-sand-300 hover:bg-sand-50'
                         }`}
                       onClick={() => handleChange('departureFlexibility', option.value)}
                     >
@@ -698,7 +703,7 @@ function Account() {
                       key={airport.code}
                       className={`p-3 rounded-xl border text-center text-sm transition-all ${formData.preferredAirports.includes(airport.code)
                           ? 'bg-primary/5 border-primary text-primary font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-text-secondary hover:border-gray-300 hover:bg-gray-50'
+                          : 'bg-white border-sand-200 text-text-secondary hover:border-sand-300 hover:bg-sand-50'
                         }`}
                       onClick={() => toggleArrayItem('preferredAirports', airport.code)}
                     >
@@ -716,14 +721,14 @@ function Account() {
                 <p className="text-sm text-text-secondary">
                   Nous utilisons ces informations pour optimiser vos dates de voyage et maximiser vos économies
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-6 bg-sand-50 rounded-2xl border border-sand-100">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-text-main">Congés annuels (jours)</label>
                     <input
                       type="number"
                       min="0"
                       max="60"
-                      className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      className="w-full p-3 bg-white border border-sand-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                       value={formData.annualLeaveDays || ''}
                       onChange={(e) => handleChange('annualLeaveDays', parseInt(e.target.value) || null)}
                       placeholder="25"
@@ -736,7 +741,7 @@ function Account() {
                       type="number"
                       min="0"
                       max="60"
-                      className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      className="w-full p-3 bg-white border border-sand-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                       value={formData.takenLeaveDays || ''}
                       onChange={(e) => handleChange('takenLeaveDays', parseInt(e.target.value) || null)}
                       placeholder="10"
@@ -745,7 +750,7 @@ function Account() {
                   </div>
                 </div>
                 {formData.annualLeaveDays && formData.takenLeaveDays !== null && (
-                  <div className="p-4 bg-green-50 text-green-700 rounded-xl border border-green-100 flex items-center gap-3">
+                  <div className="p-4 bg-moss-100 text-moss-500 rounded-xl border border-moss-100 flex items-center gap-3">
                     <CheckCircle size={20} />
                     <p>
                       Il vous reste <strong>{formData.annualLeaveDays - formData.takenLeaveDays} jours</strong> de congés
@@ -770,7 +775,7 @@ function Account() {
                       key={option.value}
                       className={`p-4 rounded-xl border text-left transition-all ${formData.avgTripDuration === option.value
                           ? 'bg-primary/5 border-primary text-primary font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-text-secondary hover:border-gray-300 hover:bg-gray-50'
+                          : 'bg-white border-sand-200 text-text-secondary hover:border-sand-300 hover:bg-sand-50'
                         }`}
                       onClick={() => handleChange('avgTripDuration', option.value)}
                     >
@@ -785,10 +790,10 @@ function Account() {
                   <Calendar size={20} className="text-primary" />
                   Calendrier Google
                 </h3>
-                <div className="p-8 bg-gray-50 rounded-2xl border border-gray-200 border-dashed text-center">
+                <div className="p-8 bg-sand-50 rounded-2xl border border-sand-200 border-dashed text-center">
                   {calendarStatus?.connected ? (
                     <div className="flex flex-col items-center gap-4">
-                      <div className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium flex items-center gap-2">
+                      <div className="px-4 py-2 bg-moss-100 text-moss-500 rounded-full text-sm font-medium flex items-center gap-2">
                         <CheckCircle size={16} />
                         Calendrier Google connecté
                       </div>
@@ -796,7 +801,7 @@ function Account() {
                         Nous analysons automatiquement vos disponibilités pour vous proposer les meilleures dates de voyage
                       </p>
                       <button
-                        className="px-6 py-2 text-red-500 font-medium hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2"
+                        className="px-6 py-2 text-clay-500 font-medium hover:bg-clay-100 rounded-lg transition-colors flex items-center gap-2"
                         onClick={handleDisconnectCalendar}
                       >
                         <LogOut size={16} />
@@ -806,7 +811,7 @@ function Account() {
                   ) : (
                     <div className="flex flex-col items-center gap-4">
                       <button
-                        className="px-6 py-3 bg-white border border-gray-300 text-text-main font-medium rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-3 shadow-sm"
+                        className="px-6 py-3 bg-white border border-sand-300 text-text-main font-medium rounded-xl hover:bg-sand-50 transition-colors flex items-center gap-3 shadow-sm"
                         onClick={handleConnectCalendar}
                         disabled={connectingCalendar}
                       >
@@ -821,7 +826,7 @@ function Account() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-gray-100">
+              <div className="pt-6 border-t border-sand-100">
                 <button
                   className="w-full py-4 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                   onClick={handleSave}
@@ -858,14 +863,14 @@ function Account() {
                           {subscription.subscription.status === 'active' ? 'Actif' : subscription.subscription.status}
                         </p>
                       </div>
-                      <div className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                      <div className="px-4 py-2 bg-moss-100 text-moss-500 rounded-full text-sm font-semibold">
                         {subscription.planDetails.price === 0 ? 'Gratuit' : `€${subscription.planDetails.price}/${subscription.planDetails.interval}`}
                       </div>
                     </div>
 
                     {/* Usage Stats */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                      <div className="bg-white p-4 rounded-xl border border-gray-200">
+                      <div className="bg-white p-4 rounded-xl border border-sand-200">
                         <p className="text-sm text-text-secondary mb-1">Recherches ce mois</p>
                         <p className="text-2xl font-bold text-text-main">
                           {subscription.subscription.searchesThisMonth}
@@ -876,7 +881,7 @@ function Account() {
                           </span>
                         </p>
                       </div>
-                      <div className="bg-white p-4 rounded-xl border border-gray-200">
+                      <div className="bg-white p-4 rounded-xl border border-sand-200">
                         <p className="text-sm text-text-secondary mb-1">Voyages de groupe créés</p>
                         <p className="text-2xl font-bold text-text-main">
                           {subscription.subscription.groupTripsCreated}
@@ -909,7 +914,7 @@ function Account() {
                   </div>
 
                   {/* Features List */}
-                  <div className="bg-white p-6 rounded-2xl border border-gray-200">
+                  <div className="bg-white p-6 rounded-2xl border border-sand-200">
                     <h4 className="font-semibold text-text-main mb-4">Fonctionnalités incluses:</h4>
                     <ul className="space-y-3">
                       {Object.entries(subscription.planDetails.features).map(([key, value]) => {
@@ -930,11 +935,11 @@ function Account() {
                         return (
                           <li key={key} className="flex items-center gap-3">
                             {isAvailable ? (
-                              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                              <CheckCircle className="w-5 h-5 text-moss-500 flex-shrink-0" />
                             ) : (
-                              <XCircle className="w-5 h-5 text-gray-300 flex-shrink-0" />
+                              <XCircle className="w-5 h-5 text-sand-300 flex-shrink-0" />
                             )}
-                            <span className={isAvailable ? 'text-text-secondary' : 'text-gray-400 line-through'}>
+                            <span className={isAvailable ? 'text-text-secondary' : 'text-sand-400 line-through'}>
                               {labels[key] || key}: <strong>{displayValue}</strong>
                             </span>
                           </li>
@@ -956,7 +961,7 @@ function Account() {
                       <button
                         onClick={handleManageBilling}
                         disabled={loadingBillingPortal}
-                        className="flex-1 py-4 bg-white border-2 border-gray-200 text-text-main font-semibold rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="flex-1 py-4 bg-white border-2 border-sand-200 text-text-main font-semibold rounded-xl hover:bg-sand-50 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {loadingBillingPortal ? (
                           <>
@@ -979,6 +984,18 @@ function Account() {
                     </button>
                   </div>
                 </>
+              ) : subscriptionError ? (
+                <div className="text-center py-12">
+                  <AlertCircle className="w-8 h-8 text-clay-500 mx-auto mb-4" />
+                  <p className="text-text-main font-medium">Abonnement indisponible</p>
+                  <p className="text-text-secondary text-sm mt-1 mb-5">Impossible de charger votre abonnement pour le moment.</p>
+                  <button
+                    onClick={() => { setSubscriptionError(false); fetchSubscription(); }}
+                    className="inline-flex h-10 items-center rounded-[10px] bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
+                  >
+                    Réessayer
+                  </button>
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />

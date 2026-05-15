@@ -1,6 +1,6 @@
 // frontend/src/pages/TripProposal.jsx
 // Proposal acceptance page — shows AI recommendation + traveler count, then launches search
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import {
@@ -35,10 +35,13 @@ export default function TripProposal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  if (!proposal) {
-    navigate('/dashboard', { replace: true });
-    return null;
-  }
+  // Navigation must not happen during render — defer to an effect so a
+  // refresh/direct visit cleanly bounces instead of throwing.
+  useEffect(() => {
+    if (!proposal) navigate('/dashboard', { replace: true });
+  }, [proposal, navigate]);
+
+  if (!proposal) return null;
 
   const startDate = new Date(proposal.startDate);
   const endDate = new Date(proposal.endDate);
@@ -122,13 +125,13 @@ export default function TripProposal() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-5">
-        <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-sand-50 flex flex-col items-center justify-center gap-5">
+        <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-sand-100 flex items-center justify-center">
           <Loader2 size={28} className="text-primary animate-spin" />
         </div>
         <div className="text-center">
-          <p className="text-lg font-semibold text-gray-900">Recherche en cours…</p>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-lg font-semibold text-sand-900">Recherche en cours…</p>
+          <p className="text-sm text-sand-500 mt-1">
             On trouve les meilleurs vols et hébergements vers {proposal.destination || 'votre destination'}
           </p>
         </div>
@@ -137,13 +140,13 @@ export default function TripProposal() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-sand-50 flex flex-col">
       {/* Back nav */}
-      <div className="bg-white border-b border-gray-100">
+      <div className="bg-white border-b border-sand-100">
         <div className="max-w-2xl mx-auto px-6 py-4">
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors text-sm font-medium"
+            className="flex items-center gap-2 text-sand-500 hover:text-sand-800 transition-colors text-sm font-medium"
           >
             <ChevronLeft size={18} />
             Retour au tableau de bord
@@ -160,11 +163,11 @@ export default function TripProposal() {
               <Sparkles size={12} />
               Suggestion personnalisée
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 leading-tight">
+            <h1 className="text-3xl font-bold text-sand-900 leading-tight">
               {proposal.title}
             </h1>
             {proposal.destination && (
-              <div className="flex items-center justify-center gap-1.5 mt-2 text-gray-500">
+              <div className="flex items-center justify-center gap-1.5 mt-2 text-sand-500">
                 <MapPin size={15} />
                 <span className="text-base">{proposal.destination}</span>
               </div>
@@ -172,28 +175,28 @@ export default function TripProposal() {
           </div>
 
           {/* Proposal card */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-3xl shadow-sm border border-sand-100 overflow-hidden">
 
             {/* Key stats */}
-            <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
+            <div className="grid grid-cols-3 divide-x divide-sand-100 border-b border-sand-100">
               <div className="p-5 text-center">
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Dates</div>
-                <div className="font-semibold text-gray-900 text-sm leading-snug">
+                <div className="text-xs font-bold text-sand-400 uppercase tracking-wider mb-1.5">Dates</div>
+                <div className="font-semibold text-sand-900 text-sm leading-snug">
                   {startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                  <span className="text-gray-400 mx-1">→</span>
+                  <span className="text-sand-400 mx-1">→</span>
                   {endDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                 </div>
               </div>
               <div className="p-5 text-center">
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Durée</div>
-                <div className="flex items-center justify-center gap-1.5 font-semibold text-gray-900">
-                  <Clock size={14} className="text-gray-400" />
+                <div className="text-xs font-bold text-sand-400 uppercase tracking-wider mb-1.5">Durée</div>
+                <div className="flex items-center justify-center gap-1.5 font-semibold text-sand-900">
+                  <Clock size={14} className="text-sand-400" />
                   {proposal.duration} {proposal.duration === 1 ? 'jour' : 'jours'}
                 </div>
               </div>
               <div className="p-5 text-center">
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Économies</div>
-                <div className="flex items-center justify-center gap-1 font-bold text-emerald-600 text-lg">
+                <div className="text-xs font-bold text-sand-400 uppercase tracking-wider mb-1.5">Économies</div>
+                <div className="flex items-center justify-center gap-1 font-bold text-moss-500 text-lg">
                   {proposal.savings}
                   <TrendingUp size={14} />
                 </div>
@@ -201,23 +204,23 @@ export default function TripProposal() {
             </div>
 
             {/* Reason */}
-            <div className="p-6 border-b border-gray-50">
+            <div className="p-6 border-b border-sand-50">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center shrink-0">
-                  <Info size={15} className="text-amber-500" />
+                <div className="w-8 h-8 bg-gold-100 rounded-xl flex items-center justify-center shrink-0">
+                  <Info size={15} className="text-gold-500" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900 mb-1">Pourquoi maintenant ?</p>
-                  <p className="text-gray-600 text-sm leading-relaxed">{proposal.reason}</p>
+                  <p className="text-sm font-semibold text-sand-900 mb-1">Pourquoi maintenant ?</p>
+                  <p className="text-sand-600 text-sm leading-relaxed">{proposal.reason}</p>
                 </div>
               </div>
               {proposal.tags && proposal.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-50">
+                <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-sand-50">
                   {proposal.tags.map((tag, idx) => {
                     const tagText = typeof tag === 'string' ? tag : (tag?.word || tag?.value || '');
                     if (!tagText) return null;
                     return (
-                      <span key={idx} className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg">
+                      <span key={idx} className="px-2.5 py-1 bg-sand-100 text-sand-600 text-xs font-medium rounded-lg">
                         #{tagText}
                       </span>
                     );
@@ -227,11 +230,11 @@ export default function TripProposal() {
             </div>
 
             {/* Dates summary */}
-            <div className="px-6 py-4 bg-gray-50/60 border-b border-gray-100 flex items-center gap-3">
-              <CalendarDays size={16} className="text-gray-400 shrink-0" />
-              <p className="text-sm text-gray-600 capitalize">
+            <div className="px-6 py-4 bg-sand-50/60 border-b border-sand-100 flex items-center gap-3">
+              <CalendarDays size={16} className="text-sand-400 shrink-0" />
+              <p className="text-sm text-sand-600 capitalize">
                 {formattedStart}
-                <span className="text-gray-400"> — </span>
+                <span className="text-sand-400"> — </span>
                 {formattedEnd}
               </p>
             </div>
@@ -239,8 +242,8 @@ export default function TripProposal() {
             {/* Traveler count */}
             <div className="p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Users size={16} className="text-gray-500" />
-                <p className="text-sm font-semibold text-gray-900">Combien de voyageurs ?</p>
+                <Users size={16} className="text-sand-500" />
+                <p className="text-sm font-semibold text-sand-900">Combien de voyageurs ?</p>
               </div>
 
               <div className="grid grid-cols-5 gap-2">
@@ -251,11 +254,11 @@ export default function TripProposal() {
                     className={`flex flex-col items-center py-3 px-2 rounded-2xl border-2 transition-all text-center ${
                       travelers === opt.value
                         ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-gray-100 bg-white text-gray-600 hover:border-gray-200'
+                        : 'border-sand-100 bg-white text-sand-600 hover:border-sand-200'
                     }`}
                   >
                     <span className="font-bold text-sm leading-tight">{opt.label}</span>
-                    <span className="text-[10px] text-gray-400 mt-0.5 leading-tight">{opt.description}</span>
+                    <span className="text-[10px] text-sand-400 mt-0.5 leading-tight">{opt.description}</span>
                   </button>
                 ))}
               </div>
@@ -264,7 +267,7 @@ export default function TripProposal() {
 
           {/* Error */}
           {error && (
-            <div className="bg-red-50 border border-red-100 rounded-2xl px-5 py-4 text-sm text-red-700">
+            <div className="bg-clay-100 border border-clay-100 rounded-2xl px-5 py-4 text-sm text-clay-500">
               {error}
             </div>
           )}
@@ -273,14 +276,14 @@ export default function TripProposal() {
           <div className="space-y-3 pb-8">
             <button
               onClick={handleSearch}
-              className="w-full py-4 bg-gray-900 hover:bg-gray-800 text-white rounded-2xl font-semibold text-base transition-colors flex items-center justify-center gap-2.5 shadow-lg shadow-gray-200"
+              className="w-full py-4 bg-sand-900 hover:bg-sand-800 text-white rounded-2xl font-semibold text-base transition-colors flex items-center justify-center gap-2.5 shadow-lg shadow-sand-200"
             >
               Trouver vols & hébergements
               <ArrowRight size={18} />
             </button>
             <button
               onClick={() => navigate('/dashboard')}
-              className="w-full py-3 text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
+              className="w-full py-3 text-sand-500 hover:text-sand-700 text-sm font-medium transition-colors"
             >
               Pas pour cette fois
             </button>

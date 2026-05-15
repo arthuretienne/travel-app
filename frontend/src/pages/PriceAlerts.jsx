@@ -145,7 +145,7 @@ function PriceAlerts() {
     return (
       <div className="min-h-screen bg-surface-subtle flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-gray-200 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-12 h-12 border-4 border-sand-200 border-t-primary rounded-full animate-spin mx-auto mb-4" />
           <p className="text-text-secondary">Chargement des alertes...</p>
         </div>
       </div>
@@ -155,7 +155,7 @@ function PriceAlerts() {
   return (
     <div className="min-h-screen bg-surface-subtle">
       {/* Header */}
-      <div className="bg-white border-b border-stone-100">
+      <div className="bg-white border-b border-sand-100">
         <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
           <div className="flex items-center justify-between">
             <div>
@@ -181,7 +181,7 @@ function PriceAlerts() {
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white p-4 rounded-xl border border-stone-100">
+            <div className="bg-white p-4 rounded-xl border border-sand-100">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary-light text-primary rounded-lg flex items-center justify-center">
                   <Bell size={18} />
@@ -192,9 +192,9 @@ function PriceAlerts() {
                 </div>
               </div>
             </div>
-            <div className="bg-white p-4 rounded-xl border border-stone-100">
+            <div className="bg-white p-4 rounded-xl border border-sand-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 text-green-600 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-moss-100 text-moss-500 rounded-lg flex items-center justify-center">
                   <TrendingDown size={18} />
                 </div>
                 <div>
@@ -203,9 +203,9 @@ function PriceAlerts() {
                 </div>
               </div>
             </div>
-            <div className="bg-white p-4 rounded-xl border border-stone-100">
+            <div className="bg-white p-4 rounded-xl border border-sand-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-gold-100 text-gold-500 rounded-lg flex items-center justify-center">
                   <DollarSign size={18} />
                 </div>
                 <div>
@@ -216,9 +216,9 @@ function PriceAlerts() {
                 </div>
               </div>
             </div>
-            <div className="bg-white p-4 rounded-xl border border-stone-100">
+            <div className="bg-white p-4 rounded-xl border border-sand-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-stone-100 text-stone-600 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-sand-100 text-sand-600 rounded-lg flex items-center justify-center">
                   <Clock size={18} />
                 </div>
                 <div>
@@ -232,9 +232,9 @@ function PriceAlerts() {
 
         {/* Push Notification Toggle */}
         {pushSupported && (
-          <div className="bg-white rounded-xl border border-stone-100 p-4 mb-6 flex items-center justify-between">
+          <div className="bg-white rounded-xl border border-sand-100 p-4 mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${pushSubscribed ? 'bg-primary-light text-primary' : 'bg-stone-100 text-stone-500'}`}>
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${pushSubscribed ? 'bg-primary-light text-primary' : 'bg-sand-100 text-sand-500'}`}>
                 {pushSubscribed ? <Bell size={18} /> : <BellOff size={18} />}
               </div>
               <div>
@@ -248,7 +248,7 @@ function PriceAlerts() {
               onClick={pushSubscribed ? pushUnsubscribe : pushSubscribe}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 pushSubscribed
-                  ? 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  ? 'bg-sand-100 text-sand-600 hover:bg-sand-200'
                   : 'bg-primary text-white hover:bg-primary-hover'
               }`}
             >
@@ -259,15 +259,15 @@ function PriceAlerts() {
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-6 flex items-center gap-3">
-            <AlertCircle className="text-red-500" size={20} />
-            <p className="text-red-700">{error}</p>
+          <div className="bg-clay-100 border border-clay-100 rounded-xl p-4 mb-6 flex items-center gap-3">
+            <AlertCircle className="text-clay-500" size={20} />
+            <p className="text-clay-500">{error}</p>
           </div>
         )}
 
         {/* Empty State */}
         {alerts.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 text-center border border-stone-100">
+          <div className="bg-white rounded-2xl p-12 text-center border border-sand-100">
             <div className="inline-flex p-4 bg-primary-light text-primary rounded-2xl mb-6">
               <Bell size={36} />
             </div>
@@ -301,8 +301,8 @@ function PriceAlerts() {
                     isHighlighted
                       ? 'border-primary ring-2 ring-primary/20'
                       : isTriggered
-                      ? 'border-green-200 bg-green-50/50'
-                      : 'border-stone-100 hover:border-stone-200'
+                      ? 'border-moss-100 bg-moss-100/50'
+                      : 'border-sand-100 hover:border-sand-200'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -315,12 +315,12 @@ function PriceAlerts() {
                           {alert.country && <span className="text-text-secondary font-normal">, {alert.country}</span>}
                         </h3>
                         {isTriggered && (
-                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                          <span className="px-2 py-0.5 bg-moss-100 text-moss-500 text-xs font-medium rounded-full">
                             Objectif atteint
                           </span>
                         )}
                         {!alert.isActive && (
-                          <span className="px-2 py-0.5 bg-stone-100 text-stone-600 text-xs font-medium rounded-full">
+                          <span className="px-2 py-0.5 bg-sand-100 text-sand-600 text-xs font-medium rounded-full">
                             En pause
                           </span>
                         )}
@@ -357,7 +357,7 @@ function PriceAlerts() {
                           <div>
                             <div className="text-xs text-text-secondary mb-1">Variation</div>
                             <div className={`text-lg font-semibold flex items-center gap-1 ${
-                              priceChange.isDown ? 'text-green-600' : 'text-red-500'
+                              priceChange.isDown ? 'text-moss-500' : 'text-clay-500'
                             }`}>
                               {priceChange.isDown ? <TrendingDown size={16} /> : <TrendingUp size={16} />}
                               {priceChange.isDown ? '-' : '+'}€{Math.abs(Math.round(priceChange.change))}
@@ -389,8 +389,8 @@ function PriceAlerts() {
                         onClick={() => toggleAlert(alert.id, alert.isActive)}
                         className={`p-2 rounded-lg transition-colors ${
                           alert.isActive
-                            ? 'text-amber-600 hover:bg-amber-50'
-                            : 'text-green-600 hover:bg-green-50'
+                            ? 'text-gold-500 hover:bg-gold-100'
+                            : 'text-moss-500 hover:bg-moss-100'
                         }`}
                         title={alert.isActive ? 'Mettre en pause' : 'Reprendre'}
                       >
@@ -398,7 +398,7 @@ function PriceAlerts() {
                       </button>
                       <button
                         onClick={() => deleteAlert(alert.id)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-clay-500 hover:bg-clay-100 rounded-lg transition-colors"
                         title="Supprimer l'alerte"
                       >
                         <Trash2 size={18} />

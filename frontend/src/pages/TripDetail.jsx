@@ -364,13 +364,13 @@ export default function TripDetail() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="bg-clay-100 border border-clay-100 rounded-xl p-6 max-w-md text-center">
+        <div className="bg-clay-100 border border-clay-500/30 rounded-xl p-6 max-w-md text-center">
           <AlertCircle className="w-12 h-12 text-clay-500 mx-auto mb-3" />
           <h3 className="text-lg font-semibold text-clay-500 mb-2">Erreur</h3>
           <p className="text-clay-500 mb-4">{error}</p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 bg-clay-500 text-white rounded-lg hover:bg-clay-500 transition-colors"
+            className="px-4 py-2 bg-clay-500 text-white rounded-lg hover:brightness-95 transition-colors"
           >
             Retour au tableau de bord
           </button>
@@ -519,7 +519,7 @@ export default function TripDetail() {
                     <button
                       onClick={sendReminders}
                       disabled={sendingReminder}
-                      className="flex items-center gap-2 px-4 py-2 bg-gold-100 text-[#7a5c1a] font-medium rounded-lg hover:bg-gold-100 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2 bg-gold-100 text-[#7a5c1a] font-medium rounded-lg hover:brightness-95 transition-colors disabled:opacity-50"
                     >
                       {sendingReminder ? (
                         <Loader2 size={18} className="animate-spin" />
@@ -569,7 +569,7 @@ export default function TripDetail() {
                             </span>
                           )}
                           {member.hasBookedHotel && (
-                            <span className="px-2 py-1 bg-moss-100 text-moss-500 text-xs rounded flex items-center gap-1">
+                            <span className="px-2 py-1 bg-moss-100 text-[#3d5a24] text-xs rounded flex items-center gap-1">
                               <Hotel size={12} /> Hôtel
                             </span>
                           )}
@@ -688,7 +688,7 @@ export default function TripDetail() {
                     <button
                       onClick={sendReminders}
                       disabled={sendingReminder}
-                      className="flex items-center gap-2 px-4 py-2 bg-gold-100 text-[#7a5c1a] font-medium rounded-lg hover:bg-gold-100 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2 bg-gold-100 text-[#7a5c1a] font-medium rounded-lg hover:brightness-95 transition-colors disabled:opacity-50"
                     >
                       {sendingReminder ? <Loader2 size={18} className="animate-spin" /> : <Bell size={18} />}
                       {sendingReminder ? 'Envoi...' : 'Rappeler les retardataires'}
@@ -712,11 +712,11 @@ export default function TripDetail() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedFlight ? 'bg-moss-100 text-moss-500' : 'bg-sand-100 text-text-secondary'}`}>
+                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedFlight ? 'bg-moss-100 text-[#3d5a24]' : 'bg-sand-100 text-text-secondary'}`}>
                             <Plane size={14} />
                             {member.hasBookedFlight ? 'Vol réservé' : 'Vol en attente'}
                           </div>
-                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedHotel ? 'bg-moss-100 text-moss-500' : 'bg-sand-100 text-text-secondary'}`}>
+                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedHotel ? 'bg-moss-100 text-[#3d5a24]' : 'bg-sand-100 text-text-secondary'}`}>
                             <Hotel size={14} />
                             {member.hasBookedHotel ? 'Hôtel réservé' : 'Hôtel en attente'}
                           </div>
@@ -1005,6 +1005,8 @@ function PlanningSection({ trip, navigate }) {
             forGroupTrip: trip.id,
           },
         });
+      } else {
+        setSearchError(data.error || 'Aucune recommandation trouvée. Réessayez dans un instant.');
       }
     } catch (err) {
       console.error('Error searching:', err);
@@ -1080,6 +1082,8 @@ function PlanningSection({ trip, navigate }) {
             forGroupTrip: trip.id,
           },
         });
+      } else {
+        setSearchError(data.error || 'Aucune recommandation trouvée. Réessayez dans un instant.');
       }
     } catch (err) {
       console.error('Error searching:', err);
@@ -1157,10 +1161,10 @@ function PlanningSection({ trip, navigate }) {
 
       {/* Search Error */}
       {searchError && (
-        <div className="mb-4 p-3 bg-clay-100 border border-clay-100 rounded-lg text-sm text-clay-500 flex items-center gap-2">
+        <div className="mb-4 p-3 bg-clay-100 border border-clay-500/30 rounded-lg text-sm text-clay-500 flex items-center gap-2">
           <AlertCircle size={16} />
           {searchError}
-          <button onClick={() => setSearchError(null)} className="ml-auto text-clay-500 hover:text-clay-500"><X size={14} /></button>
+          <button onClick={() => setSearchError(null)} className="ml-auto text-clay-500 hover:opacity-70"><X size={14} /></button>
         </div>
       )}
 
@@ -1432,7 +1436,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
       </div>
 
       {voteError && (
-        <div className="mb-4 p-3 bg-clay-100 border border-clay-100 rounded-lg text-sm text-clay-500 flex items-center gap-2">
+        <div className="mb-4 p-3 bg-clay-100 border border-clay-500/30 rounded-lg text-sm text-clay-500 flex items-center gap-2">
           <AlertCircle size={16} />
           {voteError}
         </div>
@@ -1536,7 +1540,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
       {isCreator && trip.proposedTrips?.length > 0 && (
         <div className="mt-6 p-4 bg-sand-50 border border-sand-200 rounded-xl">
           {finalizeError && (
-            <div className="mb-3 p-2.5 bg-clay-100 border border-clay-100 rounded-lg text-sm text-clay-500 flex items-center gap-2">
+            <div className="mb-3 p-2.5 bg-clay-100 border border-clay-500/30 rounded-lg text-sm text-clay-500 flex items-center gap-2">
               <AlertCircle size={14} />
               {finalizeError}
             </div>
@@ -1683,7 +1687,7 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
                 <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${requireAllVotes ? 'left-6' : 'left-1'}`} />
               </button>
             ) : (
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${requireAllVotes ? 'bg-moss-100 text-moss-500' : 'bg-sand-200 text-text-secondary'}`}>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${requireAllVotes ? 'bg-moss-100 text-[#3d5a24]' : 'bg-sand-200 text-text-secondary'}`}>
                 {requireAllVotes ? 'Oui' : 'Non'}
               </span>
             )}
@@ -1709,12 +1713,12 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
 
       {/* Danger Zone */}
       {isCreator && (
-        <div className="bg-clay-100 rounded-2xl border border-clay-100 p-6">
+        <div className="bg-clay-100 rounded-2xl border border-clay-500/30 p-6">
           <h3 className="text-lg font-bold text-clay-500 mb-2">Zone de danger</h3>
           <p className="text-sm text-clay-500 mb-4">Ces actions sont irréversibles.</p>
           <button
             onClick={handleDelete}
-            className="flex items-center gap-2 px-4 py-2 bg-clay-500 text-white font-medium rounded-lg hover:bg-clay-500 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-clay-500 text-white font-medium rounded-lg hover:brightness-95 transition-colors"
           >
             <Trash2 size={18} />
             Supprimer ce voyage
@@ -1771,7 +1775,7 @@ function MyBookingCard({ member, tripId, getToken, onUpdate }) {
           disabled={saving}
           className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
             member.hasBookedFlight
-              ? 'bg-moss-100 text-moss-500 border-2 border-moss-100'
+              ? 'bg-moss-100 text-[#3d5a24] border-2 border-moss-500/40'
               : 'bg-sand-100 text-text-secondary hover:bg-sand-200 border-2 border-transparent'
           }`}
         >
@@ -1783,7 +1787,7 @@ function MyBookingCard({ member, tripId, getToken, onUpdate }) {
           disabled={saving}
           className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
             member.hasBookedHotel
-              ? 'bg-moss-100 text-moss-500 border-2 border-moss-100'
+              ? 'bg-moss-100 text-[#3d5a24] border-2 border-moss-500/40'
               : 'bg-sand-100 text-text-secondary hover:bg-sand-200 border-2 border-transparent'
           }`}
         >
@@ -1870,7 +1874,7 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
               <button
                 onClick={handleSendReminders}
                 disabled={sendingReminders || membersNeedingReminder.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-gold-100 text-[#7a5c1a] font-medium rounded-lg hover:bg-gold-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-gold-100 text-[#7a5c1a] font-medium rounded-lg hover:brightness-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendingReminders ? (
                   <Loader2 size={18} className="animate-spin" />
@@ -1907,7 +1911,7 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
                     </span>
                   )}
                   {member.hasBookedHotel && (
-                    <span className="px-2 py-1 bg-moss-100 text-moss-500 text-xs rounded flex items-center gap-1">
+                    <span className="px-2 py-1 bg-moss-100 text-[#3d5a24] text-xs rounded flex items-center gap-1">
                       <Hotel size={12} /> Hôtel
                     </span>
                   )}
