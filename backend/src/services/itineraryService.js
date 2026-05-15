@@ -298,7 +298,7 @@ OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 16000, // Bumped from 8000 — 10+ day trips were being truncated mid-array and the last days dropped, so the harness saw days_generated < days_requested and missed the departure logistics that Sonnet was about to emit.
+      max_tokens: 8000, // Reverted from a 16000 experiment that made Sonnet 4.5 dramatically slower (one profile took 1h54) and produced empty/0-day responses on timeout. The real fix for long-trip truncation is the streaming day-by-day path (generateItineraryStreaming), not a bigger single-shot budget.
       temperature: 0.7,
       messages: [{
         role: 'user',
