@@ -34,7 +34,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const { discoverDestinations, optimizeDestination } = await import('../src/services/destinationService.js');
-const { generatePersonalizedItinerary } = await import('../src/services/itineraryService.js');
+// We test generateItineraryStreaming (the day-by-day SSE path the TripDetail
+// page actually uses in prod), NOT generatePersonalizedItinerary (the
+// single-shot path that truncates on 10+ day trips). Each day is its own
+// Haiku call, so there is no global array to truncate — the failure mode
+// the harness was catching on the old path doesn't exist here.
+const { generateItineraryStreaming } = await import('../src/services/itineraryService.js');
 
 // ────────────────────────────────────────────────────────────────────────
 // CLI
@@ -277,7 +282,17 @@ async function runProfile(profile) {
       flightDetails: trip.flight,
       hotelDetails: trip.hotel,
     };
-    const itinerary = await generatePersonalizedItinerary(tripData, userProfile, userName, []);
+    // Day-by-day streaming path: collect days via the onDay callback AND
+    // take the returned assembled array (belt and braces — the function
+    // returns the full array, the callback lets us count progress).
+    const streamedDays = [];
+    const itinerary = await generateItineraryStreaming(
+      tripData,
+      userProfile,
+      userName,
+      [],
+      (dayData) => { streamedDays.push(dayData); }
+    );
 
     const elapsed = Date.now() - t0;
     const evalResult = evaluateItinerary(itinerary, profile, { ...trip, userName });
