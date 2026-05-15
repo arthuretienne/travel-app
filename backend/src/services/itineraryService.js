@@ -458,6 +458,7 @@ RÈGLES:
 - Inclure repas (breakfast, déjeuner, dîner) avec noms de restaurants locaux concrets
 - Temps de transport réalistes (métro X min, marche Y min, taxi €Z)
 - Tips personnalisés pour ${userName} referencing leur profil
+- OBLIGATOIRE: adresser ${userName} par son prénom dans AU MOINS 2 des champs "tips" de la journée (ex: "${userName}, réservez tôt car...", "Parfait pour toi ${userName} si tu aimes..."). C'est la signature Skusku — l'itinéraire doit être personnel, pas générique.
 - Rythme équilibré — ne pas surcharger la journée
 - Mélanger gratuit et payant
 ${memberCount > 1 ? `- Activités adaptées à ${memberCount} personnes ensemble` : ''}
@@ -476,8 +477,8 @@ JSON uniquement, pas de markdown:
       "location": "Lieu précis",
       "transport": "Comment y aller (temps + coût)",
       "cost": 0,
-      "tips": "Conseil insider pour ${userName}",
-      "forWho": "Pourquoi parfait pour ce groupe (optionnel)"
+      "tips": "Conseil insider — adresse ${userName} par son prénom ici quand pertinent",
+      "forWho": "Pourquoi parfait pour ${userName} / ce groupe"
     }
   ],
   "totalCost": 50,
