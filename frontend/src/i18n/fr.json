@@ -367,6 +367,8 @@
   },
   "common": {
     "home": "Accueil",
-    "destinations": "Destinations"
+    "destinations": "Destinations",
+    "loadingTitle": "Chargement…",
+    "loadingSub": "Un instant, on prépare votre espace."
   }
 }

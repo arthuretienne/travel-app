@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
-import { SavedTripDetailSkeleton } from '../components/SkeletonLoaders';
 import {
   ArrowLeft,
   MapPin,
@@ -378,7 +377,15 @@ export default function SavedTripDetail() {
   };
 
   if (loading) {
-    return <SavedTripDetailSkeleton />;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-subtle p-4">
+        <div className="w-full max-w-md rounded-[20px] border border-sand-200 bg-white p-10 text-center shadow-2">
+          <Loader2 className="mx-auto mb-5 h-10 w-10 animate-spin text-ember-600" />
+          <h3 className="font-display text-2xl font-medium text-text-main">{t('common.loadingTitle')}</h3>
+          <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-text-secondary">{t('common.loadingSub')}</p>
+        </div>
+      </div>
+    );
   }
 
   if (error || !trip) {
@@ -558,14 +565,14 @@ export default function SavedTripDetail() {
                   <div key={i} className="rounded-[12px] border border-sand-200 bg-sand-50 p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-text-light">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
                           {f.label}{dateLabel ? ` · ${dateLabel}` : ''}
                         </p>
                         <p className="mt-2 text-base font-medium leading-relaxed text-text-main">
                           {sentence}
                         </p>
                         {mono && (
-                          <p className="mt-2 font-mono text-[13px] text-text-light">{mono}</p>
+                          <p className="mt-2 font-mono text-[13px] text-text-secondary">{mono}</p>
                         )}
                       </div>
                     </div>
@@ -804,7 +811,7 @@ export default function SavedTripDetail() {
                 }}
                 className="rounded-[10px] p-2 transition-colors hover:bg-sand-100"
               >
-                <X size={20} className="text-text-light" />
+                <X size={20} className="text-text-secondary" />
               </button>
             </div>
 
@@ -838,17 +845,17 @@ export default function SavedTripDetail() {
                     {inviteEmails.map((email) => (
                       <div
                         key={email}
-                        className="flex items-center justify-between p-2 bg-primary-light rounded-lg"
+                        className="flex items-center justify-between rounded-[10px] bg-ember-50 p-2"
                       >
                         <div className="flex items-center gap-2">
-                          <Mail size={16} className="text-primary" />
+                          <Mail size={16} className="text-ember-700" />
                           <span className="text-sm text-text-main">{email}</span>
                         </div>
                         <button
                           onClick={() => removeInviteEmail(email)}
-                          className="p-1 hover:bg-primary/10 rounded transition-colors"
+                          className="rounded p-1 transition-colors hover:bg-ember-100"
                         >
-                          <X size={16} className="text-primary" />
+                          <X size={16} className="text-ember-700" />
                         </button>
                       </div>
                     ))}
@@ -1066,7 +1073,7 @@ function WeatherForecastCard({ weather }) {
   return (
     <div className="rounded-[14px] border border-sand-200 bg-white p-4 shadow-1 transition-colors hover:border-ember-200">
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 bg-primary-light rounded-lg flex items-center justify-center">
+        <div className="grid h-12 w-12 place-items-center rounded-[12px] bg-ember-50">
           <img src={weather.current.icon} alt={weather.current.condition} className="w-10 h-10" />
         </div>
         <div className="flex-1">
@@ -1074,10 +1081,10 @@ function WeatherForecastCard({ weather }) {
           <p className="text-sm text-text-secondary">
             {t('savedTrip.weatherNow', { temp: Math.round(weather.current.temp_c), cond: weather.current.condition })}
           </p>
-          <p className="text-xs text-text-light mt-1">
+          <p className="text-xs text-text-secondary mt-1">
             {t('savedTrip.weatherAvg', { temp: avgTemp })}
             {maxRainChance > 30 && (
-              <span className="ml-2 px-1.5 py-0.5 bg-primary-light text-primary rounded text-xs">
+              <span className="ml-2 rounded bg-gold-100 px-1.5 py-0.5 text-xs text-[#7a5c1a]">
                 {t('savedTrip.rainChance', { pct: maxRainChance })}
               </span>
             )}
@@ -1102,8 +1109,8 @@ function PackingTipsCard({ packing }) {
   return (
     <div className="rounded-[14px] border border-sand-200 bg-white p-4 shadow-1 transition-colors hover:border-ember-200">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 bg-primary-light rounded-lg flex items-center justify-center flex-shrink-0">
-          <Backpack className="w-5 h-5 text-primary" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-ember-50">
+          <Backpack className="w-5 h-5 text-ember-700" />
         </div>
         <div className="flex-1">
           <h3 className="font-semibold text-text-main mb-2">{t('savedTrip.packTitle')}</h3>
@@ -1113,7 +1120,7 @@ function PackingTipsCard({ packing }) {
               if (!text) return null;
               return (
                 <div key={idx} className="flex items-center gap-2 text-text-secondary">
-                  <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-moss-500 flex-shrink-0" />
                   <span>{text}</span>
                 </div>
               );
@@ -1121,16 +1128,16 @@ function PackingTipsCard({ packing }) {
           </div>
           {/* AI tip */}
           {packing.tip && (
-            <p className="text-xs text-primary mt-2 bg-primary-light px-2 py-1.5 rounded-lg leading-relaxed">
+            <p className="mt-2 rounded-[10px] border border-sand-200 bg-sand-50 px-3 py-2 text-xs leading-relaxed text-text-secondary">
               {packing.tip}
             </p>
           )}
           {/* Static weather summary */}
           {packing.weatherSummary && (
-            <p className="text-xs text-text-light mt-2">
+            <p className="text-xs text-text-secondary mt-2">
               {packing.weatherSummary.tempRange}
               {packing.weatherSummary.rainChance > 30 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-primary-light text-primary rounded">{t('savedTrip.raincoat')}</span>
+                <span className="ml-1 rounded bg-gold-100 px-1.5 py-0.5 text-[#7a5c1a]">{t('savedTrip.raincoat')}</span>
               )}
               {packing.weatherSummary.maxUV > 6 && (
                 <span className="ml-1 rounded bg-gold-100 px-1.5 py-0.5 text-[#7a5c1a]">SPF 50+</span>

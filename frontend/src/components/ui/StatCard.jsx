@@ -10,7 +10,7 @@ export default function StatCard({ icon, value, label, delta, progress, classNam
         <div className="min-w-0 flex-1">
           <div className="font-display text-3xl leading-none text-text-main">{value}</div>
           <div className="mt-1 text-sm text-text-secondary">{label}</div>
-          {delta && <div className="mt-2 text-xs font-medium text-moss-500">{delta}</div>}
+          {delta && <div className="mt-2 text-xs font-medium text-text-secondary">{delta}</div>}
         </div>
       </div>
       {typeof progress === 'number' && (

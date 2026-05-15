@@ -344,7 +344,7 @@ function Landing() {
               ].map((dest) => (
                 <div key={dest.city} className="overflow-hidden rounded-[16px] border border-sand-200 bg-white shadow-1">
                   <PhotoBlock city={dest.city} country={dest.country} className="h-32" alt={`${dest.city}, ${dest.country}`}>
-                    <Badge tone="ember" className="absolute right-3 top-3 bg-white/90">
+                    <Badge tone="ember" className="absolute right-3 top-3 shadow-1">
                       {dest.match}%
                     </Badge>
                   </PhotoBlock>
@@ -459,9 +459,13 @@ function Landing() {
         </section>
 
         <section className="px-5 py-20 md:px-8">
-          <div className="mx-auto max-w-4xl overflow-hidden rounded-[22px] bg-sand-900 p-8 text-center text-white shadow-3 md:p-12">
-            <h2 className="font-display text-4xl font-medium">{c.finalTitle}</h2>
-            <div className="mt-8 flex justify-center">
+          <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[22px] bg-sand-900 p-8 text-center text-white shadow-3 md:p-12">
+            <div
+              className="pointer-events-none absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2"
+              style={{ background: 'radial-gradient(circle, rgba(132,58,35,0.55) 0%, rgba(132,58,35,0) 65%)' }}
+            />
+            <h2 className="relative font-display text-4xl font-medium">{c.finalTitle}</h2>
+            <div className="relative mt-8 flex justify-center">
               <SignedOut>
                 <SignInButton mode="modal">
                   <Button size="lg" iconRight={<ArrowRight size={18} />}>{c.finalCta}</Button>

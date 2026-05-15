@@ -364,13 +364,13 @@ export default function TripDetail() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-md text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-red-900 mb-2">Erreur</h3>
-          <p className="text-red-700 mb-4">{error}</p>
+        <div className="bg-clay-100 border border-clay-100 rounded-xl p-6 max-w-md text-center">
+          <AlertCircle className="w-12 h-12 text-clay-500 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-clay-500 mb-2">Erreur</h3>
+          <p className="text-clay-500 mb-4">{error}</p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="px-4 py-2 bg-clay-500 text-white rounded-lg hover:bg-clay-500 transition-colors"
           >
             Retour au tableau de bord
           </button>
@@ -433,7 +433,7 @@ export default function TripDetail() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
+      <div className="bg-white border-b border-sand-200 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex gap-1 overflow-x-auto py-2" aria-label="Tabs">
             {[
@@ -449,13 +449,13 @@ export default function TripDetail() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${activeTab === tab.id
                   ? 'bg-primary text-white shadow-md'
-                  : 'text-text-secondary hover:bg-gray-100 hover:text-text-main'
+                  : 'text-text-secondary hover:bg-sand-100 hover:text-text-main'
                   }`}
               >
                 <tab.icon size={18} />
                 {tab.label}
                 {tab.badge !== undefined && (
-                  <span className={`px-1.5 py-0.5 text-xs rounded-full ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+                  <span className={`px-1.5 py-0.5 text-xs rounded-full ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-sand-200 text-text-secondary'
                     }`}>
                     {tab.badge}
                   </span>
@@ -504,14 +504,14 @@ export default function TripDetail() {
         {activeTab === 'participants' && (
           <div className="space-y-6">
             {/* Members List */}
-            <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
+            <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-text-main">
                   Membres ({trip.members?.length || 0})
                 </h2>
                 <div className="flex items-center gap-2">
                   {reminderMessage && (
-                    <span className={`text-sm ${reminderMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`text-sm ${reminderMessage.type === 'success' ? 'text-moss-500' : 'text-clay-500'}`}>
                       {reminderMessage.text}
                     </span>
                   )}
@@ -519,7 +519,7 @@ export default function TripDetail() {
                     <button
                       onClick={sendReminders}
                       disabled={sendingReminder}
-                      className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 font-medium rounded-lg hover:bg-amber-200 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2 bg-gold-100 text-[#7a5c1a] font-medium rounded-lg hover:bg-gold-100 transition-colors disabled:opacity-50"
                     >
                       {sendingReminder ? (
                         <Loader2 size={18} className="animate-spin" />
@@ -543,7 +543,7 @@ export default function TripDetail() {
                 {trip.members?.map((member) => (
                   <div
                     key={member.id}
-                    className="flex items-center justify-between p-4 bg-stone-50 hover:bg-stone-100 rounded-xl transition-colors"
+                    className="flex items-center justify-between p-4 bg-sand-50 hover:bg-sand-100 rounded-xl transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <img
@@ -564,21 +564,21 @@ export default function TripDetail() {
                       {isConfirmed && (
                         <>
                           {member.hasBookedFlight && (
-                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded flex items-center gap-1">
+                            <span className="px-2 py-1 bg-gold-100 text-[#7a5c1a] text-xs rounded flex items-center gap-1">
                               <Plane size={12} /> Vol
                             </span>
                           )}
                           {member.hasBookedHotel && (
-                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded flex items-center gap-1">
+                            <span className="px-2 py-1 bg-moss-100 text-moss-500 text-xs rounded flex items-center gap-1">
                               <Hotel size={12} /> Hôtel
                             </span>
                           )}
                           {member.bookingConfirmed && (
-                            <CheckCircle2 size={18} className="text-green-600" />
+                            <CheckCircle2 size={18} className="text-moss-500" />
                           )}
                         </>
                       )}
-                      <span className="text-xs font-medium px-3 py-1 bg-stone-100 text-stone-600 rounded-full">
+                      <span className="text-xs font-medium px-3 py-1 bg-sand-100 text-text-secondary rounded-full">
                         {member.role === 'creator' ? 'Créateur' : 'Membre'}
                       </span>
                     </div>
@@ -589,16 +589,16 @@ export default function TripDetail() {
 
             {/* Pending Invitations */}
             {trip.invitations && trip.invitations.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
+              <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6">
                 <h3 className="text-lg font-bold text-text-main mb-4">
                   Invitations en attente ({trip.invitations.length})
                 </h3>
                 <div className="space-y-2">
                   {trip.invitations.map((invitation) => (
-                    <div key={invitation.id} className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg">
-                      <Mail size={18} className="text-amber-600" />
+                    <div key={invitation.id} className="flex items-center gap-3 p-3 bg-gold-100 rounded-lg">
+                      <Mail size={18} className="text-gold-500" />
                       <span className="text-text-main">{invitation.email}</span>
-                      <span className="ml-auto text-xs font-medium text-amber-600 bg-amber-100 px-2 py-1 rounded">
+                      <span className="ml-auto text-xs font-medium text-gold-500 bg-gold-100 px-2 py-1 rounded">
                         En attente
                       </span>
                     </div>
@@ -608,7 +608,7 @@ export default function TripDetail() {
             )}
 
             {/* Quick Add Friends */}
-            <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
+            <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6">
               <h3 className="text-lg font-bold text-text-main mb-4">Inviter depuis mes amis</h3>
               <button
                 onClick={() => setShowFriendsManager(true)}
@@ -625,23 +625,23 @@ export default function TripDetail() {
         {activeTab === 'chat' && (
           <div className="space-y-6">
             {/* AI Assistant Info */}
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl border border-purple-100 p-6">
+            <div className="bg-ember-50 rounded-2xl border border-ember-200 p-6">
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-purple-600 rounded-xl text-white">
+                <div className="p-3 bg-ember-600 rounded-xl text-white">
                   <Bot size={24} />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-text-main mb-1">Assistant IA</h3>
                   <p className="text-sm text-text-secondary">
-                    Mentionnez <span className="font-mono bg-purple-100 px-1 rounded">@assistant</span> dans le chat pour demander à l'IA de modifier l'itinéraire, suggérer des activités, ou répondre à vos questions sur le voyage.
+                    Mentionnez <span className="font-mono bg-ember-50 px-1 rounded">@assistant</span> dans le chat pour demander à l'IA de modifier l'itinéraire, suggérer des activités, ou répondre à vos questions sur le voyage.
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Full Chat Component - Inline instead of floating */}
-            <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
-              <div className="p-4 border-b border-gray-200 bg-gray-50">
+            <div className="bg-white rounded-2xl shadow-card border border-sand-200 overflow-hidden">
+              <div className="p-4 border-b border-sand-200 bg-sand-50">
                 <h3 className="font-bold text-text-main flex items-center gap-2">
                   <MessageCircle size={20} className="text-primary" />
                   Chat du groupe
@@ -682,13 +682,13 @@ export default function TripDetail() {
                 })()}
 
                 {/* Group Booking Status */}
-                <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
+                <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-bold text-text-main">Suivi du groupe</h2>
                     <button
                       onClick={sendReminders}
                       disabled={sendingReminder}
-                      className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 font-medium rounded-lg hover:bg-amber-200 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2 bg-gold-100 text-[#7a5c1a] font-medium rounded-lg hover:bg-gold-100 transition-colors disabled:opacity-50"
                     >
                       {sendingReminder ? <Loader2 size={18} className="animate-spin" /> : <Bell size={18} />}
                       {sendingReminder ? 'Envoi...' : 'Rappeler les retardataires'}
@@ -697,7 +697,7 @@ export default function TripDetail() {
 
                   <div className="space-y-3">
                     {trip.members?.map((member) => (
-                      <div key={member.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div key={member.id} className="flex items-center justify-between p-4 bg-sand-50 rounded-xl">
                         <div className="flex items-center gap-3">
                           <img
                             src={member.user?.imageUrl || `https://ui-avatars.com/api/?name=${member.user?.firstName}`}
@@ -712,16 +712,16 @@ export default function TripDetail() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedFlight ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedFlight ? 'bg-moss-100 text-moss-500' : 'bg-sand-100 text-text-secondary'}`}>
                             <Plane size={14} />
                             {member.hasBookedFlight ? 'Vol réservé' : 'Vol en attente'}
                           </div>
-                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedHotel ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedHotel ? 'bg-moss-100 text-moss-500' : 'bg-sand-100 text-text-secondary'}`}>
                             <Hotel size={14} />
                             {member.hasBookedHotel ? 'Hôtel réservé' : 'Hôtel en attente'}
                           </div>
                           {member.bookingConfirmed && (
-                            <CheckCircle2 size={20} className="text-green-600" />
+                            <CheckCircle2 size={20} className="text-moss-500" />
                           )}
                         </div>
                       </div>
@@ -733,8 +733,8 @@ export default function TripDetail() {
                 <BookingChecklistSection trip={trip} fetchTripDetails={fetchTripDetails} getToken={getToken} />
               </>
             ) : (
-              <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-8 text-center">
-                <ListChecks size={48} className="text-gray-300 mx-auto mb-4" />
+              <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-8 text-center">
+                <ListChecks size={48} className="text-text-light mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-text-main mb-2">Checklist non disponible</h3>
                 <p className="text-text-secondary">
                   La checklist de réservation sera disponible une fois la destination confirmée.
@@ -773,9 +773,9 @@ export default function TripDetail() {
                   setCurrentEmail('');
                   setInviteError(null);
                 }}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-sand-100 rounded-full transition-colors"
               >
-                <X size={20} className="text-gray-400" />
+                <X size={20} className="text-text-light" />
               </button>
             </div>
 
@@ -795,9 +795,9 @@ export default function TripDetail() {
               </button>
 
               <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-gray-200"></div>
+                <div className="flex-1 h-px bg-sand-200"></div>
                 <span className="text-xs text-text-secondary">ou</span>
-                <div className="flex-1 h-px bg-gray-200"></div>
+                <div className="flex-1 h-px bg-sand-200"></div>
               </div>
 
               {/* Email Input */}
@@ -805,14 +805,14 @@ export default function TripDetail() {
                 <label className="block text-sm font-medium text-text-main mb-2">
                   Adresse email
                 </label>
-                {inviteError && <p className="text-red-500 text-sm mb-2">{inviteError}</p>}
+                {inviteError && <p className="text-clay-500 text-sm mb-2">{inviteError}</p>}
                 <input
                   type="email"
                   value={currentEmail}
                   onChange={(e) => setCurrentEmail(e.target.value)}
                   onKeyDown={addInviteEmail}
                   placeholder="ami@exemple.com (Appuyez sur Entrée)"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full px-4 py-3 border border-sand-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
                 <p className="mt-2 text-xs text-text-secondary">
                   Appuyez sur Entrée après chaque email pour l'ajouter à la liste
@@ -829,17 +829,17 @@ export default function TripDetail() {
                     {inviteEmails.map((email, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-gold-100 border border-gold-100 rounded-lg"
                       >
                         <div className="flex items-center gap-2">
-                          <Mail size={16} className="text-blue-600" />
-                          <span className="text-sm font-medium text-blue-900">{email}</span>
+                          <Mail size={16} className="text-[#7a5c1a]" />
+                          <span className="text-sm font-medium text-[#7a5c1a]">{email}</span>
                         </div>
                         <button
                           onClick={() => removeInviteEmail(email)}
-                          className="p-1 hover:bg-blue-100 rounded transition-colors"
+                          className="p-1 hover:bg-gold-100 rounded transition-colors"
                         >
-                          <X size={14} className="text-blue-600" />
+                          <X size={14} className="text-[#7a5c1a]" />
                         </button>
                       </div>
                     ))}
@@ -856,7 +856,7 @@ export default function TripDetail() {
                     setCurrentEmail('');
                     setInviteError(null);
                   }}
-                  className="flex-1 px-4 py-3 border border-gray-300 text-text-secondary font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-3 border border-sand-300 text-text-secondary font-medium rounded-xl hover:bg-sand-50 transition-colors"
                 >
                   Annuler
                 </button>
@@ -1090,7 +1090,7 @@ function PlanningSection({ trip, navigate }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
+    <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6">
       <h2 className="text-lg font-bold text-text-main mb-4">Proposer une destination</h2>
 
       {/* Group Preferences Summary */}
@@ -1101,7 +1101,7 @@ function PlanningSection({ trip, navigate }) {
         </div>
       ) : groupPrefs ? (
         <>
-          <div className="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+          <div className="mb-4 p-4 bg-gold-100 rounded-xl border border-gold-100">
             <h3 className="text-sm font-semibold text-text-main mb-3">Préférences du groupe :</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div>
@@ -1125,9 +1125,9 @@ function PlanningSection({ trip, navigate }) {
 
           {/* Availability Info */}
           {groupPrefs.availability && (
-            <div className="mb-6 p-4 bg-green-50 rounded-xl border border-green-100">
+            <div className="mb-6 p-4 bg-moss-100 rounded-xl border border-moss-100">
               <h3 className="text-sm font-semibold text-text-main mb-2 flex items-center gap-2">
-                <Calendar size={16} className="text-green-600" />
+                <Calendar size={16} className="text-moss-500" />
                 Disponibilités du groupe
               </h3>
               <p className="text-xs text-text-secondary mb-3">{groupPrefs.availability.availabilityMessage}</p>
@@ -1157,10 +1157,10 @@ function PlanningSection({ trip, navigate }) {
 
       {/* Search Error */}
       {searchError && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+        <div className="mb-4 p-3 bg-clay-100 border border-clay-100 rounded-lg text-sm text-clay-500 flex items-center gap-2">
           <AlertCircle size={16} />
           {searchError}
-          <button onClick={() => setSearchError(null)} className="ml-auto text-red-400 hover:text-red-600"><X size={14} /></button>
+          <button onClick={() => setSearchError(null)} className="ml-auto text-clay-500 hover:text-clay-500"><X size={14} /></button>
         </div>
       )}
 
@@ -1169,7 +1169,7 @@ function PlanningSection({ trip, navigate }) {
         <div className="space-y-4">
           <button
             onClick={() => setProposalMode('ai')}
-            className="w-full p-6 border-2 border-stone-200 rounded-xl hover:border-primary hover:bg-primary-light transition-all text-left group"
+            className="w-full p-6 border-2 border-sand-200 rounded-xl hover:border-primary hover:bg-primary-light transition-all text-left group"
           >
             <div className="flex items-start gap-4">
               <div className="p-3 bg-primary rounded-xl text-white group-hover:scale-110 transition-transform">
@@ -1186,10 +1186,10 @@ function PlanningSection({ trip, navigate }) {
 
           <button
             onClick={() => setProposalMode('custom')}
-            className="w-full p-6 border-2 border-stone-200 rounded-xl hover:border-primary hover:bg-primary-light transition-all text-left group"
+            className="w-full p-6 border-2 border-sand-200 rounded-xl hover:border-primary hover:bg-primary-light transition-all text-left group"
           >
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-purple-600 rounded-xl text-white group-hover:scale-110 transition-transform">
+              <div className="p-3 bg-ember-600 rounded-xl text-white group-hover:scale-110 transition-transform">
                 <MapPin size={24} />
               </div>
               <div className="flex-1">
@@ -1203,7 +1203,7 @@ function PlanningSection({ trip, navigate }) {
         </div>
       ) : proposalMode === 'ai' ? (
         <div className="space-y-4">
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+          <div className="p-4 bg-ember-50 rounded-xl border border-gold-100">
             <p className="text-sm text-text-main">
               <strong>L'IA cherchera des destinations correspondant à :</strong>
             </p>
@@ -1222,7 +1222,7 @@ function PlanningSection({ trip, navigate }) {
           <div className="flex gap-3">
             <button
               onClick={() => setProposalMode(null)}
-              className="px-6 py-3 border border-gray-300 text-text-secondary rounded-xl hover:bg-gray-50 transition-colors"
+              className="px-6 py-3 border border-sand-300 text-text-secondary rounded-xl hover:bg-sand-50 transition-colors"
             >
               Retour
             </button>
@@ -1256,7 +1256,7 @@ function PlanningSection({ trip, navigate }) {
               value={customDestination}
               onChange={(e) => setCustomDestination(e.target.value)}
               placeholder="Ex : Paris, plage méditerranéenne, Japon..."
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="w-full px-4 py-3 border border-sand-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               onKeyDown={(e) => e.key === 'Enter' && handleCustomSearch()}
             />
             <p className="mt-2 text-xs text-text-secondary">
@@ -1267,14 +1267,14 @@ function PlanningSection({ trip, navigate }) {
           <div className="flex gap-3">
             <button
               onClick={() => setProposalMode(null)}
-              className="px-6 py-3 border border-gray-300 text-text-secondary rounded-xl hover:bg-gray-50 transition-colors"
+              className="px-6 py-3 border border-sand-300 text-text-secondary rounded-xl hover:bg-sand-50 transition-colors"
             >
               Retour
             </button>
             <button
               onClick={handleCustomSearch}
               disabled={searching || !customDestination.trim()}
-              className="flex-1 px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl shadow-lg hover:bg-purple-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 px-6 py-3 bg-ember-600 text-white font-semibold rounded-xl shadow-lg hover:bg-ember-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {searching ? (
                 <>
@@ -1405,12 +1405,12 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
     }, new Set()).size;
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-100 p-6">
+    <div className="bg-white rounded-2xl border border-sand-200 p-6">
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
         <h2 className="text-lg font-bold text-text-main">Vote pour la destination</h2>
         {hasVoted && (
-          <span className="flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-100 px-3 py-1.5 rounded-full">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-moss-500 bg-moss-100 px-3 py-1.5 rounded-full">
             <CheckCircle2 size={14} />
             Vous avez voté
           </span>
@@ -1423,7 +1423,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
           <span>{votedMembersCount} membre{votedMembersCount !== 1 ? 's' : ''} ont voté</span>
           <span>sur {memberCount}</span>
         </div>
-        <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-sand-100 rounded-full overflow-hidden">
           <div
             className="h-full bg-primary rounded-full transition-all duration-500"
             style={{ width: `${Math.min(100, (votedMembersCount / memberCount) * 100)}%` }}
@@ -1432,7 +1432,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
       </div>
 
       {voteError && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+        <div className="mb-4 p-3 bg-clay-100 border border-clay-100 rounded-lg text-sm text-clay-500 flex items-center gap-2">
           <AlertCircle size={16} />
           {voteError}
         </div>
@@ -1453,7 +1453,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
               className={`p-5 border-2 rounded-xl transition-all ${
                 isMyVote
                   ? 'border-primary bg-primary-light'
-                  : 'border-stone-200 hover:border-stone-300'
+                  : 'border-sand-200 hover:border-sand-300'
               }`}
             >
               <div className="flex items-start justify-between gap-4 mb-3">
@@ -1480,7 +1480,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
                     isMyVote
                       ? 'bg-primary text-white'
                       : hasVoted
-                        ? 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        ? 'bg-sand-100 text-text-secondary hover:bg-sand-200'
                         : 'bg-primary text-white hover:bg-primary-hover'
                   }`}
                 >
@@ -1517,9 +1517,9 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
 
               {/* Vote bar */}
               <div className="flex items-center gap-3">
-                <div className="flex-1 h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                <div className="flex-1 h-1.5 bg-sand-100 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${isMyVote ? 'bg-primary' : 'bg-stone-400'}`}
+                    className={`h-full rounded-full transition-all duration-500 ${isMyVote ? 'bg-primary' : 'bg-sand-400'}`}
                     style={{ width: `${votePercent}%` }}
                   />
                 </div>
@@ -1534,9 +1534,9 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
 
       {/* Finalize Vote - Creator Only */}
       {isCreator && trip.proposedTrips?.length > 0 && (
-        <div className="mt-6 p-4 bg-stone-50 border border-stone-200 rounded-xl">
+        <div className="mt-6 p-4 bg-sand-50 border border-sand-200 rounded-xl">
           {finalizeError && (
-            <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+            <div className="mb-3 p-2.5 bg-clay-100 border border-clay-100 rounded-lg text-sm text-clay-500 flex items-center gap-2">
               <AlertCircle size={14} />
               {finalizeError}
             </div>
@@ -1605,11 +1605,11 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
+      <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-bold text-text-main">Paramètres du voyage</h2>
           {!isCreator && (
-            <span className="text-xs text-text-secondary bg-stone-100 px-3 py-1 rounded-full">Lecture seule</span>
+            <span className="text-xs text-text-secondary bg-sand-100 px-3 py-1 rounded-full">Lecture seule</span>
           )}
         </div>
 
@@ -1622,10 +1622,10 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="w-full px-4 py-2.5 border border-sand-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             ) : (
-              <p className="px-4 py-2.5 bg-stone-50 rounded-xl font-medium text-text-main">{trip.name}</p>
+              <p className="px-4 py-2.5 bg-sand-50 rounded-xl font-medium text-text-main">{trip.name}</p>
             )}
           </div>
 
@@ -1639,10 +1639,10 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
                 max={50}
                 value={maxMembers}
                 onChange={e => setMaxMembers(e.target.value)}
-                className="w-32 px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="w-32 px-4 py-2.5 border border-sand-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             ) : (
-              <p className="px-4 py-2.5 bg-stone-50 rounded-xl font-medium text-text-main">{trip.maxMembers || 8} personnes</p>
+              <p className="px-4 py-2.5 bg-sand-50 rounded-xl font-medium text-text-main">{trip.maxMembers || 8} personnes</p>
             )}
           </div>
 
@@ -1654,10 +1654,10 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
                 type="date"
                 value={voteDeadline}
                 onChange={e => setVoteDeadline(e.target.value)}
-                className="w-48 px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="w-48 px-4 py-2.5 border border-sand-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             ) : (
-              <p className="px-4 py-2.5 bg-stone-50 rounded-xl font-medium text-text-main">
+              <p className="px-4 py-2.5 bg-sand-50 rounded-xl font-medium text-text-main">
                 {trip.voteDeadline
                   ? new Date(trip.voteDeadline).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
                   : 'Non définie'}
@@ -1666,7 +1666,7 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
           </div>
 
           {/* Require All Votes */}
-          <div className="flex items-center justify-between p-4 bg-stone-50 rounded-xl">
+          <div className="flex items-center justify-between p-4 bg-sand-50 rounded-xl">
             <div>
               <p className="text-sm font-medium text-text-main">Tous les votes requis</p>
               <p className="text-xs text-text-secondary mt-0.5">
@@ -1678,12 +1678,12 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
             {isCreator ? (
               <button
                 onClick={() => setRequireAllVotes(!requireAllVotes)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${requireAllVotes ? 'bg-primary' : 'bg-stone-300'}`}
+                className={`relative w-11 h-6 rounded-full transition-colors ${requireAllVotes ? 'bg-primary' : 'bg-sand-300'}`}
               >
                 <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${requireAllVotes ? 'left-6' : 'left-1'}`} />
               </button>
             ) : (
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${requireAllVotes ? 'bg-green-100 text-green-700' : 'bg-stone-200 text-stone-600'}`}>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${requireAllVotes ? 'bg-moss-100 text-moss-500' : 'bg-sand-200 text-text-secondary'}`}>
                 {requireAllVotes ? 'Oui' : 'Non'}
               </span>
             )}
@@ -1693,8 +1693,8 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
         {/* Save button */}
         {isCreator && (
           <div className="mt-6 flex items-center gap-3">
-            {saveError && <p className="text-sm text-red-500">{saveError}</p>}
-            {saveSuccess && <p className="text-sm text-green-600 flex items-center gap-1"><CheckCircle2 size={14} /> Sauvegardé</p>}
+            {saveError && <p className="text-sm text-clay-500">{saveError}</p>}
+            {saveSuccess && <p className="text-sm text-moss-500 flex items-center gap-1"><CheckCircle2 size={14} /> Sauvegardé</p>}
             <button
               onClick={handleSave}
               disabled={saving}
@@ -1709,12 +1709,12 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
 
       {/* Danger Zone */}
       {isCreator && (
-        <div className="bg-red-50 rounded-2xl border border-red-200 p-6">
-          <h3 className="text-lg font-bold text-red-900 mb-2">Zone de danger</h3>
-          <p className="text-sm text-red-700 mb-4">Ces actions sont irréversibles.</p>
+        <div className="bg-clay-100 rounded-2xl border border-clay-100 p-6">
+          <h3 className="text-lg font-bold text-clay-500 mb-2">Zone de danger</h3>
+          <p className="text-sm text-clay-500 mb-4">Ces actions sont irréversibles.</p>
           <button
             onClick={handleDelete}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-clay-500 text-white font-medium rounded-lg hover:bg-clay-500 transition-colors"
           >
             <Trash2 size={18} />
             Supprimer ce voyage
@@ -1752,27 +1752,27 @@ function MyBookingCard({ member, tripId, getToken, onUpdate }) {
   const allBooked = member.hasBookedFlight && member.hasBookedHotel;
 
   return (
-    <div className={`rounded-2xl border-2 p-5 ${allBooked ? 'bg-green-50 border-green-200' : 'bg-white border-primary/20'}`}>
+    <div className={`rounded-2xl border-2 p-5 ${allBooked ? 'bg-moss-100 border-moss-100' : 'bg-white border-primary/20'}`}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-bold text-text-main flex items-center gap-2">
-          <CheckSquare size={18} className={allBooked ? 'text-green-600' : 'text-primary'} />
+          <CheckSquare size={18} className={allBooked ? 'text-moss-500' : 'text-primary'} />
           Mes réservations
         </h3>
         {allBooked && (
-          <span className="text-xs font-semibold text-green-700 bg-green-100 px-2.5 py-1 rounded-full flex items-center gap-1">
+          <span className="text-xs font-semibold text-moss-500 bg-moss-100 px-2.5 py-1 rounded-full flex items-center gap-1">
             <CheckCircle2 size={13} /> Tout réservé
           </span>
         )}
       </div>
-      {saveError && <p className="text-red-500 text-sm mb-3">{saveError}</p>}
+      {saveError && <p className="text-clay-500 text-sm mb-3">{saveError}</p>}
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => updateStatus('hasBookedFlight', !member.hasBookedFlight)}
           disabled={saving}
           className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
             member.hasBookedFlight
-              ? 'bg-green-100 text-green-700 border-2 border-green-300'
-              : 'bg-stone-100 text-stone-600 hover:bg-stone-200 border-2 border-transparent'
+              ? 'bg-moss-100 text-moss-500 border-2 border-moss-100'
+              : 'bg-sand-100 text-text-secondary hover:bg-sand-200 border-2 border-transparent'
           }`}
         >
           {saving ? <Loader2 size={16} className="animate-spin" /> : <Plane size={16} />}
@@ -1783,8 +1783,8 @@ function MyBookingCard({ member, tripId, getToken, onUpdate }) {
           disabled={saving}
           className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
             member.hasBookedHotel
-              ? 'bg-green-100 text-green-700 border-2 border-green-300'
-              : 'bg-stone-100 text-stone-600 hover:bg-stone-200 border-2 border-transparent'
+              ? 'bg-moss-100 text-moss-500 border-2 border-moss-100'
+              : 'bg-sand-100 text-text-secondary hover:bg-sand-200 border-2 border-transparent'
           }`}
         >
           {saving ? <Loader2 size={16} className="animate-spin" /> : <Hotel size={16} />}
@@ -1858,19 +1858,19 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
     <>
       {/* Group Members Booking Status */}
       {trip.members && trip.members.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-text-main">Suivi du groupe</h2>
             <div className="flex items-center gap-2">
               {reminderResult && (
-                <span className={`text-sm ${reminderResult.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`text-sm ${reminderResult.type === 'success' ? 'text-moss-500' : 'text-clay-500'}`}>
                   {reminderResult.message}
                 </span>
               )}
               <button
                 onClick={handleSendReminders}
                 disabled={sendingReminders || membersNeedingReminder.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 font-medium rounded-lg hover:bg-amber-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-gold-100 text-[#7a5c1a] font-medium rounded-lg hover:bg-gold-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendingReminders ? (
                   <Loader2 size={18} className="animate-spin" />
@@ -1879,7 +1879,7 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
                 )}
                 {sendingReminders ? 'Envoi...' : 'Rappeler les amis'}
                 {membersNeedingReminder.length > 0 && !sendingReminders && (
-                  <span className="bg-amber-800 text-white text-xs px-1.5 py-0.5 rounded-full">
+                  <span className="bg-gold-500 text-white text-xs px-1.5 py-0.5 rounded-full">
                     {membersNeedingReminder.length}
                   </span>
                 )}
@@ -1889,7 +1889,7 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
 
           <div className="space-y-2">
             {trip.members.map((member) => (
-              <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={member.id} className="flex items-center justify-between p-3 bg-sand-50 rounded-lg">
                 <div className="flex items-center gap-3">
                   <img
                     src={member.user?.imageUrl || `https://ui-avatars.com/api/?name=${member.user?.firstName}`}
@@ -1902,17 +1902,17 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
                 </div>
                 <div className="flex items-center gap-2">
                   {member.hasBookedFlight && (
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded flex items-center gap-1">
+                    <span className="px-2 py-1 bg-gold-100 text-[#7a5c1a] text-xs rounded flex items-center gap-1">
                       <Plane size={12} /> Vol
                     </span>
                   )}
                   {member.hasBookedHotel && (
-                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded flex items-center gap-1">
+                    <span className="px-2 py-1 bg-moss-100 text-moss-500 text-xs rounded flex items-center gap-1">
                       <Hotel size={12} /> Hôtel
                     </span>
                   )}
                   {member.bookingConfirmed && (
-                    <CheckCircle2 size={18} className="text-green-600" />
+                    <CheckCircle2 size={18} className="text-moss-500" />
                   )}
                   {!member.hasBookedFlight && !member.hasBookedHotel && (
                     <span className="text-xs text-text-secondary">En attente</span>
@@ -2127,7 +2127,7 @@ function TripEnhancementsSection({ trip, userName }) {
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Weather Forecast */}
         {loadingWeather ? (
-          <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl shadow-card border border-blue-100 p-6">
+          <div className="bg-ember-50 rounded-2xl shadow-card border border-gold-100 p-6">
             <div className="flex items-center gap-3">
               <Loader2 className="w-6 h-6 text-primary animate-spin" />
               <span className="text-text-secondary">Chargement de la météo...</span>
@@ -2141,9 +2141,9 @@ function TripEnhancementsSection({ trip, userName }) {
         {packing ? (
           <PackingTipsCard packing={packing} destination={destination} />
         ) : loadingItinerary ? (
-          <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl shadow-card border border-amber-100 p-6">
+          <div className="bg-ember-50 rounded-2xl shadow-card border border-gold-100 p-6">
             <div className="flex items-center gap-3">
-              <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
+              <Loader2 className="w-6 h-6 text-gold-500 animate-spin" />
               <span className="text-text-secondary">Préparation de la liste de bagages...</span>
             </div>
           </div>
@@ -2151,10 +2151,10 @@ function TripEnhancementsSection({ trip, userName }) {
       </div>
 
       {/* Personalized Itinerary - Streaming */}
-      <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow-card border border-sand-200 overflow-hidden">
+        <div className="p-6 border-b border-sand-200">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
               <Calendar className="w-6 h-6 text-primary" />
               Votre itinéraire personnalisé
             </h2>
@@ -2169,7 +2169,7 @@ function TripEnhancementsSection({ trip, userName }) {
 
         {/* Day tabs */}
         {(itinerary.length > 0 || generatingDay) && (
-          <div className="flex overflow-x-auto gap-2 p-4 border-b border-gray-100 bg-gray-50">
+          <div className="flex overflow-x-auto gap-2 p-4 border-b border-sand-200 bg-sand-50">
             {itinerary.map((day, idx) => (
               <button
                 key={day.day}
@@ -2177,7 +2177,7 @@ function TripEnhancementsSection({ trip, userName }) {
                 className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-all ${
                   activeDay === idx
                     ? 'bg-primary text-white shadow-md'
-                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    : 'bg-white text-text-secondary hover:bg-sand-100 border border-sand-200'
                 }`}
               >
                 Jour {day.day}
@@ -2194,7 +2194,7 @@ function TripEnhancementsSection({ trip, userName }) {
             {loadingItinerary && totalDays > 0 && Array.from({ length: Math.max(0, totalDays - Math.max(itinerary.length, generatingDay || 0)) }, (_, i) => (
               <div
                 key={`future-${i}`}
-                className="flex-shrink-0 px-4 py-2 rounded-lg bg-gray-100 border border-gray-200 text-gray-400"
+                className="flex-shrink-0 px-4 py-2 rounded-lg bg-sand-100 border border-sand-200 text-text-light"
               >
                 Jour {Math.max(itinerary.length, generatingDay || 0) + i + 1}
               </div>
@@ -2210,7 +2210,7 @@ function TripEnhancementsSection({ trip, userName }) {
                 <Sparkles className="w-16 h-16 text-primary animate-pulse mx-auto mb-4" />
                 <div className="absolute inset-0 w-16 h-16 mx-auto border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
               </div>
-              <p className="text-lg font-medium text-gray-900 mb-2">{aiLoadingText}...</p>
+              <p className="text-lg font-medium text-text-main mb-2">{aiLoadingText}...</p>
               <p className="text-sm text-text-secondary">
                 Création d'un itinéraire jour par jour personnalisé pour vous
               </p>
@@ -2235,8 +2235,8 @@ function TripEnhancementsSection({ trip, userName }) {
             />
           ) : error ? (
             <div className="text-center py-8">
-              <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-              <p className="text-gray-900 font-medium mb-1">Impossible de générer l'itinéraire</p>
+              <AlertCircle className="w-12 h-12 text-gold-500 mx-auto mb-3" />
+              <p className="text-text-main font-medium mb-1">Impossible de générer l'itinéraire</p>
               <p className="text-sm text-text-secondary">{error}</p>
             </div>
           ) : null}
@@ -2253,28 +2253,28 @@ function TripEnhancementsSection({ trip, userName }) {
 
 function WeatherForecastCard({ weather, destination }) {
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl shadow-card border border-blue-100 overflow-hidden">
+    <div className="bg-ember-50 rounded-2xl shadow-card border border-gold-100 overflow-hidden">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
             <Sun className="w-6 h-6 text-yellow-500" />
             Météo prévue
           </h2>
-          <span className="text-sm text-gray-600">{destination.city}</span>
+          <span className="text-sm text-text-secondary">{destination.city}</span>
         </div>
 
         {/* Current Weather */}
         <div className="bg-white rounded-xl p-4 mb-4">
-          <p className="text-sm text-gray-600 mb-2">Conditions actuelles</p>
+          <p className="text-sm text-text-secondary mb-2">Conditions actuelles</p>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img src={weather.current.icon} alt={weather.current.condition} className="w-16 h-16" />
               <div>
-                <p className="text-3xl font-bold text-gray-900">{Math.round(weather.current.temp_c)}°C</p>
-                <p className="text-sm text-gray-600">{weather.current.condition}</p>
+                <p className="text-3xl font-bold text-text-main">{Math.round(weather.current.temp_c)}°C</p>
+                <p className="text-sm text-text-secondary">{weather.current.condition}</p>
               </div>
             </div>
-            <div className="text-right text-sm text-gray-600">
+            <div className="text-right text-sm text-text-secondary">
               <div className="flex items-center gap-1 justify-end">
                 <Droplet className="w-4 h-4" />
                 <span>{weather.current.humidity}%</span>
@@ -2289,24 +2289,24 @@ function WeatherForecastCard({ weather, destination }) {
 
         {/* 7-Day Forecast */}
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-gray-700 mb-3">Prévisions 7 jours</p>
+          <p className="text-sm font-semibold text-text-secondary mb-3">Prévisions 7 jours</p>
           {weather.forecast.map((day, idx) => (
-            <div key={idx} className="bg-white rounded-lg p-3 flex items-center justify-between hover:bg-blue-50 transition-colors">
+            <div key={idx} className="bg-white rounded-lg p-3 flex items-center justify-between hover:bg-gold-100 transition-colors">
               <div className="flex items-center gap-3 flex-1">
-                <span className="text-sm font-medium text-gray-700 w-20">
+                <span className="text-sm font-medium text-text-secondary w-20">
                   {idx === 0 ? "Aujourd'hui" : new Date(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
                 </span>
                 <img src={day.day.icon} alt={day.day.condition} className="w-8 h-8" />
-                <span className="text-xs text-gray-600 flex-1">{day.day.condition}</span>
+                <span className="text-xs text-text-secondary flex-1">{day.day.condition}</span>
               </div>
               <div className="flex items-center gap-3">
                 {day.day.daily_chance_of_rain > 30 && (
-                  <span className="text-xs text-blue-600 flex items-center gap-1">
+                  <span className="text-xs text-[#7a5c1a] flex items-center gap-1">
                     <Droplet className="w-3 h-3" />
                     {day.day.daily_chance_of_rain}%
                   </span>
                 )}
-                <span className="text-sm font-semibold text-gray-900">
+                <span className="text-sm font-semibold text-text-main">
                   {Math.round(day.day.maxtemp_c)}° / {Math.round(day.day.mintemp_c)}°
                 </span>
               </div>
@@ -2321,39 +2321,39 @@ function WeatherForecastCard({ weather, destination }) {
 // Packing Tips Card Component
 function PackingTipsCard({ packing, destination }) {
   return (
-    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-card border border-purple-100 overflow-hidden">
+    <div className="bg-ember-50 rounded-2xl shadow-card border border-ember-200 overflow-hidden">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Backpack className="w-6 h-6 text-purple-600" />
+          <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
+            <Backpack className="w-6 h-6 text-ember-700" />
             Conseils bagages
           </h2>
-          <span className="text-sm text-gray-600">{destination.city}</span>
+          <span className="text-sm text-text-secondary">{destination.city}</span>
         </div>
 
         {/* Weather Summary */}
         {packing.weatherSummary && (
           <div className="bg-white rounded-xl p-4 mb-4">
-            <p className="text-sm font-semibold text-gray-700 mb-2">Conditions prévues</p>
+            <p className="text-sm font-semibold text-text-secondary mb-2">Conditions prévues</p>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-gray-600">Température moy.</p>
-                <p className="font-bold text-gray-900">{packing.weatherSummary.avgTemp}°C</p>
+                <p className="text-text-secondary">Température moy.</p>
+                <p className="font-bold text-text-main">{packing.weatherSummary.avgTemp}°C</p>
               </div>
               <div>
-                <p className="text-gray-600">Plage</p>
-                <p className="font-bold text-gray-900">{packing.weatherSummary.tempRange}</p>
+                <p className="text-text-secondary">Plage</p>
+                <p className="font-bold text-text-main">{packing.weatherSummary.tempRange}</p>
               </div>
               {packing.weatherSummary.rainChance > 20 && (
                 <div>
-                  <p className="text-gray-600">Risque de pluie</p>
-                  <p className="font-bold text-blue-600">{packing.weatherSummary.rainChance}%</p>
+                  <p className="text-text-secondary">Risque de pluie</p>
+                  <p className="font-bold text-[#7a5c1a]">{packing.weatherSummary.rainChance}%</p>
                 </div>
               )}
               {packing.weatherSummary.maxUV > 5 && (
                 <div>
-                  <p className="text-gray-600">UV max</p>
-                  <p className="font-bold text-orange-600">{packing.weatherSummary.maxUV}</p>
+                  <p className="text-text-secondary">UV max</p>
+                  <p className="font-bold text-ember-700">{packing.weatherSummary.maxUV}</p>
                 </div>
               )}
             </div>
@@ -2364,7 +2364,7 @@ function PackingTipsCard({ packing, destination }) {
         <div className="space-y-4">
           {/* Essential Items */}
           <div>
-            <h3 className="text-sm font-bold text-red-700 mb-2 flex items-center gap-1">
+            <h3 className="text-sm font-bold text-clay-500 mb-2 flex items-center gap-1">
               <Heart className="w-4 h-4" />
               Essentiels (À ne pas oublier !)
             </h3>
@@ -2374,8 +2374,8 @@ function PackingTipsCard({ packing, destination }) {
                 if (!text) return null;
                 return (
                   <div key={idx} className="flex items-center gap-2 text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    <span className="text-gray-700">{text}</span>
+                    <CheckCircle2 className="w-4 h-4 text-clay-500 flex-shrink-0" />
+                    <span className="text-text-secondary">{text}</span>
                   </div>
                 );
               })}
@@ -2384,15 +2384,15 @@ function PackingTipsCard({ packing, destination }) {
 
           {/* Clothing */}
           <div>
-            <h3 className="text-sm font-bold text-purple-700 mb-2">Vêtements</h3>
+            <h3 className="text-sm font-bold text-ember-700 mb-2">Vêtements</h3>
             <div className="bg-white rounded-lg p-3 space-y-1.5">
               {packing.clothing.map((item, idx) => {
                 const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
                 if (!text) return null;
                 return (
                   <div key={idx} className="flex items-center gap-2 text-sm">
-                    <Circle className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                    <span className="text-gray-700">{text}</span>
+                    <Circle className="w-4 h-4 text-ember-300 flex-shrink-0" />
+                    <span className="text-text-secondary">{text}</span>
                   </div>
                 );
               })}
@@ -2402,15 +2402,15 @@ function PackingTipsCard({ packing, destination }) {
           {/* Optional Items */}
           {packing.optional.length > 0 && (
             <div>
-              <h3 className="text-sm font-bold text-gray-600 mb-2">Optionnel (confort)</h3>
+              <h3 className="text-sm font-bold text-text-secondary mb-2">Optionnel (confort)</h3>
               <div className="bg-white rounded-lg p-3 space-y-1.5">
                 {packing.optional.map((item, idx) => {
                   const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
                   if (!text) return null;
                   return (
                     <div key={idx} className="flex items-center gap-2 text-sm">
-                      <Plus className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-gray-600">{text}</span>
+                      <Plus className="w-4 h-4 text-text-light flex-shrink-0" />
+                      <span className="text-text-secondary">{text}</span>
                     </div>
                   );
                 })}

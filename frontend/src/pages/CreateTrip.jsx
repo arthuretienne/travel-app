@@ -12,6 +12,7 @@ import {
 import { SearchLoadingScreen } from '../components/SkeletonLoaders';
 import { SearchUsageWidget } from '../components/SearchUsageWidget';
 import DestinationAutocomplete from '../components/DestinationAutocomplete';
+import { Button } from '../components/ui';
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '../i18n/format';
 
@@ -52,9 +53,9 @@ const BUDGET_CONFIG = {
   max: 5000,
   step: 50,
   presets: [
-    { id: 'Budget', value: 500, color: 'text-green-600' },
-    { id: 'Comfort', value: 1500, color: 'text-blue-600' },
-    { id: 'Premium', value: 3000, color: 'text-amber-600' },
+    { id: 'Budget', value: 500, color: 'text-text-main' },
+    { id: 'Comfort', value: 1500, color: 'text-text-main' },
+    { id: 'Premium', value: 3000, color: 'text-text-main' },
   ],
 };
 
@@ -359,7 +360,7 @@ function CreateTrip() {
       // clicking the submit button and seeing nothing happen. Scroll the
       // first invalid field into view so the failure is obvious.
       requestAnimationFrame(() => {
-        const firstError = document.querySelector('[data-error="true"], .text-red-500');
+        const firstError = document.querySelector('[data-error="true"], .text-clay-500');
         if (firstError) {
           firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -505,7 +506,7 @@ function CreateTrip() {
     return (
       <div className="min-h-screen bg-surface-subtle flex items-center justify-center">
         <div className="text-center max-w-xs">
-          <div className="w-12 h-12 border-4 border-gray-200 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-sand-200 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-text-secondary mb-1">{t('createTrip.profileLoading')}</p>
           <p className="text-xs text-text-secondary/60">{t('createTrip.profileLoadingSub')}</p>
         </div>
@@ -525,7 +526,7 @@ function CreateTrip() {
 
       {/* Cold start banner */}
       {profileLoadTimeout && (
-        <div className="max-w-2xl mx-auto mb-4 flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
+        <div className="max-w-2xl mx-auto mb-4 flex items-center gap-3 px-4 py-3 bg-gold-100 border border-gold-100 rounded-xl text-sm text-[#7a5c1a]">
           <Loader2 size={15} className="animate-spin flex-shrink-0" />
           <span>{t('createTrip.coldStart')}</span>
         </div>
@@ -598,7 +599,7 @@ function CreateTrip() {
                 className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-all ${
                   formData.tripType === option.value
                     ? 'bg-primary-light border-primary text-primary ring-2 ring-primary/20'
-                    : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50 hover:bg-gray-50'
+                    : 'bg-white border-sand-200 text-text-secondary hover:border-primary/50 hover:bg-sand-50'
                 }`}
               >
                 <option.icon size={15} />
@@ -613,7 +614,7 @@ function CreateTrip() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-40"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-sand-200 text-text-main hover:bg-sand-50 hover:border-primary transition-colors disabled:opacity-40"
                 onClick={() => handleChange('travelers', Math.max(1, formData.travelers - 1))}
                 disabled={formData.travelers <= 1}
               >
@@ -622,7 +623,7 @@ function CreateTrip() {
               <span className="w-8 text-center font-semibold text-text-main">{formData.travelers}</span>
               <button
                 type="button"
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-40"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-sand-200 text-text-main hover:bg-sand-50 hover:border-primary transition-colors disabled:opacity-40"
                 onClick={() => handleChange('travelers', Math.min(20, formData.travelers + 1))}
                 disabled={formData.travelers >= 20}
               >
@@ -640,7 +641,7 @@ function CreateTrip() {
                 onChange={(e) => handleChange('isGroupTrip', e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-primary transition-colors"></div>
+              <div className="w-11 h-6 bg-sand-200 rounded-full peer-checked:bg-primary transition-colors"></div>
               <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5 shadow-sm"></div>
             </div>
             <span className="text-sm font-medium text-text-main">
@@ -653,15 +654,15 @@ function CreateTrip() {
             <div className="mt-2 space-y-4 pl-1 animate-slide-down">
               <div>
                 <label className="block text-sm font-medium text-text-main mb-1">
-                  {t('createTrip.tripNameLabel')} <span className="text-red-500">*</span>
+                  {t('createTrip.tripNameLabel')} <span className="text-clay-500">*</span>
                 </label>
-                {errors.tripName && <p className="text-red-500 text-xs mb-1">{errors.tripName}</p>}
+                {errors.tripName && <p className="text-clay-500 text-xs mb-1">{errors.tripName}</p>}
                 <input
                   type="text"
                   value={formData.tripName}
                   onChange={(e) => handleChange('tripName', e.target.value)}
                   placeholder={t('createTrip.tripNamePlaceholder')}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
+                  className="w-full px-4 py-3 border border-sand-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
                 />
               </div>
 
@@ -670,14 +671,14 @@ function CreateTrip() {
                   {t('createTrip.inviteFriendsLabel')} <span className="text-text-secondary font-normal">{t('createTrip.optional')}</span>
                 </label>
                 <p className="text-xs text-text-secondary mb-2">{t('createTrip.inviteHint')}</p>
-                {errors.inviteEmail && <p className="text-red-500 text-xs mb-1">{errors.inviteEmail}</p>}
+                {errors.inviteEmail && <p className="text-clay-500 text-xs mb-1">{errors.inviteEmail}</p>}
                 <input
                   type="email"
                   value={currentEmail}
                   onChange={(e) => setCurrentEmail(e.target.value)}
                   onKeyDown={addInviteEmail}
                   placeholder={t('createTrip.emailPlaceholder')}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
+                  className="w-full px-4 py-3 border border-sand-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm"
                 />
                 {formData.inviteEmails.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -711,9 +712,9 @@ function CreateTrip() {
             )}
           </div>
           {errors.mustHaves && (
-            <p className="text-red-500 text-xs -mt-1">{errors.mustHaves}</p>
+            <p className="text-clay-500 text-xs -mt-1">{errors.mustHaves}</p>
           )}
-          <div className={`flex flex-wrap gap-2 ${errors.mustHaves ? 'ring-1 ring-red-200 rounded-xl p-3 bg-red-50/30' : ''}`}>
+          <div className={`flex flex-wrap gap-2 ${errors.mustHaves ? 'ring-1 ring-clay-100 rounded-xl p-3 bg-clay-100/40' : ''}`}>
             {ACTIVITY_OPTIONS.map(option => (
               <button
                 key={option.value}
@@ -725,7 +726,7 @@ function CreateTrip() {
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-sm transition-all ${
                   formData.mustHaves.includes(option.value)
                     ? 'bg-primary-light border-primary text-primary font-medium ring-2 ring-primary/20'
-                    : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50 hover:bg-gray-50'
+                    : 'bg-white border-sand-200 text-text-secondary hover:border-primary/50 hover:bg-sand-50'
                 }`}
               >
                 <option.icon size={14} />
@@ -741,10 +742,10 @@ function CreateTrip() {
             <p className="text-base font-semibold text-text-main flex items-center gap-2">
               <DollarSign size={18} className="text-primary" />
               {t('createTrip.budgetPerPerson')}
-              <span className="text-red-500 text-sm">*</span>
+              <span className="text-clay-500 text-sm">*</span>
             </p>
             {errors.budget && (
-              <p className="text-red-500 text-xs">{errors.budget}</p>
+              <p className="text-clay-500 text-xs">{errors.budget}</p>
             )}
           </div>
 
@@ -758,7 +759,7 @@ function CreateTrip() {
                 className={`p-3 rounded-xl border transition-all text-center ${
                   formData.budget === preset.value
                     ? 'bg-primary-light border-primary ring-2 ring-primary/20'
-                    : 'bg-white border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                    : 'bg-white border-sand-200 hover:border-primary/50 hover:bg-sand-50'
                 }`}
               >
                 <div className={`font-semibold text-sm ${preset.color}`}>{t('createTrip.preset' + preset.id)}</div>
@@ -769,7 +770,7 @@ function CreateTrip() {
           </div>
 
           {/* Slider */}
-          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+          <div className="bg-sand-50 p-4 rounded-xl border border-sand-200">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-text-secondary">{t('createTrip.refine')}</span>
               <div className="text-right">
@@ -789,7 +790,7 @@ function CreateTrip() {
               step={BUDGET_CONFIG.step}
               value={formData.budget}
               onChange={(e) => handleChange('budget', parseInt(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+              className="w-full h-2 bg-sand-200 rounded-lg appearance-none cursor-pointer accent-primary"
             />
             <div className="flex justify-between text-xs text-text-secondary mt-1.5">
               <span>€{BUDGET_CONFIG.min}</span>
@@ -813,7 +814,7 @@ function CreateTrip() {
               className={`flex-1 p-3 rounded-xl border-2 text-sm transition-all ${
                 formData.dateMode === 'flexible'
                   ? 'bg-primary-light border-primary text-primary font-medium'
-                  : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
+                  : 'bg-white border-sand-200 text-text-secondary hover:border-primary/50'
               }`}
             >
               <div className="font-semibold">{t('createTrip.flexible')}</div>
@@ -825,7 +826,7 @@ function CreateTrip() {
               className={`flex-1 p-3 rounded-xl border-2 text-sm transition-all ${
                 formData.dateMode === 'fixed'
                   ? 'bg-primary-light border-primary text-primary font-medium'
-                  : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50'
+                  : 'bg-white border-sand-200 text-text-secondary hover:border-primary/50'
               }`}
             >
               <div className="font-semibold">{t('createTrip.fixed')}</div>
@@ -839,13 +840,13 @@ function CreateTrip() {
               <div>
                 <label className="flex items-center gap-1.5 text-sm font-medium text-text-main mb-2">
                   <Clock size={15} className="text-primary" />
-                  {t('createTrip.durationLabel')} <span className="text-red-500">*</span>
+                  {t('createTrip.durationLabel')} <span className="text-clay-500">*</span>
                 </label>
-                {errors.duration && <p className="text-red-500 text-xs mb-1">{errors.duration}</p>}
+                {errors.duration && <p className="text-clay-500 text-xs mb-1">{errors.duration}</p>}
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-40"
+                    className="w-10 h-10 flex items-center justify-center rounded-xl border border-sand-200 text-text-main hover:bg-sand-50 hover:border-primary transition-colors disabled:opacity-40"
                     onClick={() => handleChange('duration', Math.max(1, formData.duration - 1))}
                     disabled={formData.duration <= 1}
                   >
@@ -857,11 +858,11 @@ function CreateTrip() {
                     max="30"
                     value={formData.duration}
                     onChange={(e) => handleChange('duration', parseInt(e.target.value) || 1)}
-                    className="w-16 p-2 text-center text-base font-medium border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-16 p-2 text-center text-base font-medium border border-sand-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   />
                   <button
                     type="button"
-                    className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 text-text-main hover:bg-gray-50 hover:border-primary transition-colors disabled:opacity-40"
+                    className="w-10 h-10 flex items-center justify-center rounded-xl border border-sand-200 text-text-main hover:bg-sand-50 hover:border-primary transition-colors disabled:opacity-40"
                     onClick={() => handleChange('duration', Math.min(30, formData.duration + 1))}
                     disabled={formData.duration >= 30}
                   >
@@ -879,7 +880,7 @@ function CreateTrip() {
                   type="date"
                   value={formData.startDate}
                   onChange={(e) => handleChange('startDate', e.target.value)}
-                  className="w-full md:w-56 p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full md:w-56 p-3 border border-sand-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   min={new Date().toISOString().split('T')[0]}
                 />
                 <p className="text-xs text-text-secondary mt-1.5">
@@ -896,34 +897,34 @@ function CreateTrip() {
                 <div>
                   <label className="flex items-center gap-1.5 text-sm font-medium text-text-main mb-2">
                     <Calendar size={15} className="text-primary" />
-                    {t('createTrip.departDate')} <span className="text-red-500">*</span>
+                    {t('createTrip.departDate')} <span className="text-clay-500">*</span>
                   </label>
-                  {errors.startDate && <p className="text-red-500 text-xs mb-1">{errors.startDate}</p>}
+                  {errors.startDate && <p className="text-clay-500 text-xs mb-1">{errors.startDate}</p>}
                   <input
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => handleChange('startDate', e.target.value)}
-                    className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full p-3 border border-sand-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     min={new Date().toISOString().split('T')[0]}
                   />
                 </div>
                 <div>
                   <label className="flex items-center gap-1.5 text-sm font-medium text-text-main mb-2">
                     <Calendar size={15} className="text-primary" />
-                    {t('createTrip.returnDate')} <span className="text-red-500">*</span>
+                    {t('createTrip.returnDate')} <span className="text-clay-500">*</span>
                   </label>
-                  {errors.endDate && <p className="text-red-500 text-xs mb-1">{errors.endDate}</p>}
+                  {errors.endDate && <p className="text-clay-500 text-xs mb-1">{errors.endDate}</p>}
                   <input
                     type="date"
                     value={formData.endDate}
                     onChange={(e) => handleChange('endDate', e.target.value)}
-                    className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full p-3 border border-sand-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     min={formData.startDate || new Date().toISOString().split('T')[0]}
                   />
                 </div>
               </div>
               {formData.startDate && formData.endDate && (
-                <div className="flex items-center gap-2 text-sm text-text-secondary bg-gray-50 p-3 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-text-secondary bg-sand-50 p-3 rounded-lg">
                   <Clock size={14} />
                   <span>{t('createTrip.durationIs')} <strong className="text-text-main">{t('createTrip.daysWord', { count: formData.duration })}</strong></span>
                 </div>
@@ -941,7 +942,7 @@ function CreateTrip() {
           <p className="text-sm text-text-secondary">
             {t('createTrip.destBlank')}
           </p>
-          {errors.destination && <p className="text-red-500 text-xs mb-1">{errors.destination}</p>}
+          {errors.destination && <p className="text-clay-500 text-xs mb-1">{errors.destination}</p>}
           {formData.destination && (
             <div className="flex items-center gap-2 px-3 py-2 bg-primary-light border border-primary/30 rounded-xl text-sm text-primary font-medium">
               <MapPin size={14} className="flex-shrink-0" />
@@ -1025,14 +1026,14 @@ function CreateTrip() {
                   type="text"
                   placeholder={t('createTrip.excludePlaceholder')}
                   onKeyDown={addToAvoidList}
-                  className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full p-3 border border-sand-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
                 {formData.avoidList.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {formData.avoidList.map((item, index) => (
-                      <span key={index} className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 border border-red-100 text-red-600 rounded-full text-xs font-medium">
+                      <span key={index} className="inline-flex items-center gap-1.5 px-3 py-1 bg-clay-100 border border-clay-100 text-clay-500 rounded-full text-xs font-medium">
                         {item}
-                        <button type="button" onClick={() => removeFromAvoidList(item)} className="hover:text-red-800">
+                        <button type="button" onClick={() => removeFromAvoidList(item)} className="hover:text-clay-500">
                           <X size={12} />
                         </button>
                       </span>
@@ -1056,7 +1057,7 @@ function CreateTrip() {
                       className={`px-4 py-2 rounded-full border text-sm transition-all ${
                         formData.maxFlightDuration === option.value
                           ? 'bg-primary-light border-primary text-primary font-medium'
-                          : 'bg-white border-gray-200 text-text-secondary hover:border-primary/50 hover:bg-gray-50'
+                          : 'bg-white border-sand-200 text-text-secondary hover:border-primary/50 hover:bg-sand-50'
                       }`}
                     >
                       {t('createTrip.' + option.id)}
@@ -1072,7 +1073,7 @@ function CreateTrip() {
         {(errors.submit || Object.keys(errors).filter(k => k !== 'submit' && errors[k]).length > 0) && (
           <div
             data-error="true"
-            className="mx-6 md:mx-10 mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm"
+            className="mx-6 md:mx-10 mb-4 p-4 bg-clay-100 border border-clay-100 rounded-xl text-clay-500 text-sm"
             role="alert"
             aria-live="polite"
           >
@@ -1103,62 +1104,51 @@ function CreateTrip() {
                 <SearchUsageWidget compact />
               </div>
               {usageData.needsUpgrade && (
-                <div className="mt-3 flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
-                  <p className="text-sm text-amber-800 font-medium">
+                <div className="mt-3 flex items-center justify-between gap-3 px-4 py-3 bg-gold-100 border border-gold-100 rounded-xl">
+                  <p className="text-sm text-[#7a5c1a] font-medium">
                     {t('createTrip.limitReached')}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/pricing')}
-                    className="flex-shrink-0 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-hover transition-colors"
-                  >
+                  <Button type="button" size="sm" className="flex-shrink-0" onClick={() => navigate('/pricing')}>
                     {t('createTrip.seeOffers')}
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
           )}
 
           <div className="flex items-center justify-between gap-3">
-            <button
+            <Button
               type="button"
-              onClick={() => currentStep > 1 ? goPreviousStep() : navigate('/dashboard')}
+              variant="outline"
+              size="lg"
               disabled={loading}
-              className="rounded-xl border border-sand-200 bg-white px-5 py-3 text-sm font-medium text-text-secondary transition-colors hover:bg-sand-50"
+              onClick={() => currentStep > 1 ? goPreviousStep() : navigate('/dashboard')}
             >
               {currentStep > 1 ? t('createTrip.back') : t('createTrip.cancel')}
-            </button>
+            </Button>
             {currentStep < 4 ? (
-              <button
+              <Button
                 type="button"
-                onClick={goNextStep}
+                size="lg"
                 disabled={loading}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-3 text-sm font-semibold text-white shadow-2 transition-all hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={goNextStep}
+                iconRight={<ChevronRight size={17} />}
               >
                 {t('createTrip.continue')}
-                <ChevronRight size={17} />
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 type="submit"
+                size="lg"
                 disabled={loading || (usageData?.needsUpgrade && !formData.isGroupTrip)}
-                className={`flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-semibold transition-all ${
-                  usageData?.needsUpgrade && !formData.isGroupTrip
-                    ? 'cursor-not-allowed bg-gray-300 text-gray-500 shadow-none'
-                    : 'bg-primary text-white shadow-2 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70'
-                }`}
+                icon={loading ? <Loader2 size={18} className="animate-spin" /> : null}
               >
-                {loading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    {formData.isGroupTrip ? t('createTrip.creatingTrip') : t('createTrip.searching')}
-                  </>
-                ) : usageData?.needsUpgrade && !formData.isGroupTrip ? (
-                  t('createTrip.goPremium')
-                ) : (
-                  formData.isGroupTrip ? t('createTrip.createGroupTrip') : t('createTrip.findMyTrip')
-                )}
-              </button>
+                {loading
+                  ? (formData.isGroupTrip ? t('createTrip.creatingTrip') : t('createTrip.searching'))
+                  : usageData?.needsUpgrade && !formData.isGroupTrip
+                    ? t('createTrip.goPremium')
+                    : formData.isGroupTrip ? t('createTrip.createGroupTrip') : t('createTrip.findMyTrip')}
+              </Button>
             )}
           </div>
         </div>

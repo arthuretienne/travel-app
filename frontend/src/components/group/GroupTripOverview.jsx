@@ -150,7 +150,7 @@ function ConsensusDial({ members, statuses }) {
       <div className="absolute inset-0 grid place-items-center">
         <div className="rounded-full border border-sand-300 bg-white/88 px-5 py-4 text-center shadow-1">
           <div className="font-display text-4xl leading-none text-text-main">
-            {completed}<span className="text-text-light">/{total}</span>
+            {completed}<span className="text-text-secondary">/{total}</span>
           </div>
           <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">prêts</div>
         </div>
@@ -383,7 +383,7 @@ function LiveFeedCard({ members }) {
                 <strong className="font-semibold text-text-main">{getMemberName(event.member).split(' ')[0]}</strong>
                 <span className="text-text-secondary"> {event.text}</span>
               </div>
-              <div className="mt-0.5 text-xs text-text-light">{event.when}</div>
+              <div className="mt-0.5 text-xs text-text-secondary">{event.when}</div>
             </div>
           </div>
         ))}

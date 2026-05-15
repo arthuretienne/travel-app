@@ -8,6 +8,7 @@ import {
   Calendar,
   ChevronRight,
   Globe,
+  Loader2,
   Map,
   Plane,
   Plus,
@@ -135,14 +136,13 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-surface-subtle">
-      <div className="border-b border-sand-200 bg-surface-subtle">
-        <div className="mx-auto flex max-w-6xl flex-col gap-5 px-5 py-8 md:flex-row md:items-end md:justify-between md:px-8">
+      <div className="mx-auto max-w-6xl px-5 pt-8 md:px-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-ember-700">{t('dashboard.eyebrow')}</p>
-            <h1 className="mt-2 font-display text-4xl font-medium leading-tight text-text-main md:text-[40px]">
+            <h1 className="font-display text-4xl font-medium leading-tight text-text-main">
               {t('dashboard.welcome', { name: user?.firstName || t('dashboard.voyagerFallback') })}
             </h1>
-            <p className="mt-2 text-text-secondary">
+            <p className="mt-1 text-sm text-text-secondary">
               {t('dashboard.tripsInSpace', { count: totalTrips })}
             </p>
           </div>
@@ -394,7 +394,7 @@ function SoloTripCard({ trip, formatDate, fmtCurrency, onClick }) {
           <p className="font-display text-2xl font-medium text-text-main">
             {trip.tripData?.pricing?.total ? fmtCurrency(trip.tripData.pricing.total) : '-'}
           </p>
-          <span className="flex items-center gap-1 text-sm font-medium text-ember-700 opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="flex items-center gap-1 text-sm font-medium text-ember-700 transition-transform group-hover:translate-x-0.5">
             {t('dashboard.view')} <ChevronRight size={15} />
           </span>
         </div>
@@ -445,7 +445,7 @@ function GroupTripCard({ trip, formatDate, onClick }) {
           <p className="text-sm text-text-secondary">
             {destination ? t('dashboard.coordinate') : t('dashboard.proposals', { count: trip.proposedTrips?.length || 0 })}
           </p>
-          <span className="flex items-center gap-1 text-sm font-medium text-ember-700 opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="flex items-center gap-1 text-sm font-medium text-ember-700 transition-transform group-hover:translate-x-0.5">
             {t('dashboard.view')} <ChevronRight size={15} />
           </span>
         </div>
@@ -455,17 +455,12 @@ function GroupTripCard({ trip, formatDate, onClick }) {
 }
 
 function LoadingGrid() {
+  const { t } = useTranslation();
   return (
-    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-      {[0, 1, 2].map((item) => (
-        <div key={item} className="overflow-hidden rounded-[18px] border border-sand-200 bg-white shadow-1">
-          <div className="h-40 animate-pulse bg-sand-100" />
-          <div className="space-y-3 p-5">
-            <div className="h-4 w-2/3 animate-pulse rounded bg-sand-100" />
-            <div className="h-4 w-1/2 animate-pulse rounded bg-sand-100" />
-          </div>
-        </div>
-      ))}
+    <div className="rounded-[20px] border border-sand-200 bg-white p-12 text-center shadow-1">
+      <Loader2 className="mx-auto mb-5 h-9 w-9 animate-spin text-ember-600" />
+      <h3 className="font-display text-2xl font-medium text-text-main">{t('common.loadingTitle')}</h3>
+      <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-text-secondary">{t('common.loadingSub')}</p>
     </div>
   );
 }
