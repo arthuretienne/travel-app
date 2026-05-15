@@ -601,7 +601,7 @@ export async function generateDestinationRecommendationWithData(tripData, userId
     });
 
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022', // Fast model for quick recommendations
+      model: 'claude-haiku-4-5-20251001', // Fast model for quick recommendations
       max_tokens: 1500, // Enough for tagline + matchReason + seasonReason + 5-6 activities + budgetTips
       temperature: 0.7,
       messages: [promptMessage]
