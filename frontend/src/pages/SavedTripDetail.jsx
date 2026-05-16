@@ -669,14 +669,18 @@ export default function SavedTripDetail() {
                   const photo = gallery[0];
                   return (
                     <div key={idx} className="overflow-hidden rounded-[12px] border border-sand-200 transition-colors hover:border-ember-200">
-                      {photo && (
+                      {photo ? (
                         <img
                           src={photo}
                           alt={safeText(hotel.name)}
                           className="h-52 w-full object-cover"
                           loading="lazy"
-                          onError={(e) => { e.target.style.display = 'none'; }}
+                          onError={(e) => { e.currentTarget.parentElement?.classList.add('sk-noimg'); e.currentTarget.remove(); }}
                         />
+                      ) : (
+                        <div className="flex h-28 w-full items-center justify-center bg-sand-100 text-sand-400">
+                          <Hotel size={28} />
+                        </div>
                       )}
                       {gallery.length > 1 && (
                         <div className="flex gap-1.5 bg-white px-4 pt-3">
@@ -733,18 +737,28 @@ export default function SavedTripDetail() {
                             <span className="block text-xs text-text-secondary">{t('savedTrip.perNightShort')}</span>
                           </div>
                         </div>
-                        {hotel.bookingUrl && (
-                          <Button
-                            variant="ink"
-                            size="md"
-                            className="mt-3"
-                            icon={<Hotel size={15} />}
-                            iconRight={<ExternalLink size={14} />}
-                            onClick={() => window.open(wrapAffiliate(hotel.bookingUrl, 'booking'), '_blank', 'noopener,noreferrer')}
-                          >
-                            {t('savedTrip.bookHotel')}
-                          </Button>
-                        )}
+                        <Button
+                          variant="ink"
+                          size="md"
+                          className="mt-3"
+                          icon={<Hotel size={15} />}
+                          iconRight={<ExternalLink size={14} />}
+                          onClick={() => window.open(
+                            hotel.bookingUrl
+                              ? wrapAffiliate(hotel.bookingUrl, 'booking')
+                              : generateHotelLink({
+                                  city: safeText(trip.city),
+                                  country: safeText(trip.country),
+                                  startDate: trip.startDate,
+                                  endDate: trip.endDate,
+                                  adults: 1,
+                                }),
+                            '_blank',
+                            'noopener,noreferrer'
+                          )}
+                        >
+                          {t('savedTrip.bookHotel')}
+                        </Button>
                       </div>
                     </div>
                   );
