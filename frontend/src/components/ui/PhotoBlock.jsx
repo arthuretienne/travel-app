@@ -13,8 +13,14 @@ export default function PhotoBlock({
 }) {
   const image = src || getDestinationImage({ city, country, tripData }) || createDestinationPlaceholder(city || country || 'Destination');
 
+  // Only default to `relative` when the caller hasn't supplied its own
+  // positioning. Hardcoding `relative` made Tailwind's source order win over
+  // a caller's `absolute` (hero screens), leaving PhotoBlock in flow and
+  // pushing sibling overlay content out of the clipped section.
+  const hasPosition = /(?:^|\s)(?:absolute|fixed|relative|sticky)(?:\s|$)/.test(className);
+
   return (
-    <div className={['relative overflow-hidden bg-sand-300', className].join(' ')}>
+    <div className={[hasPosition ? '' : 'relative', 'overflow-hidden bg-sand-300', className].join(' ')}>
       <img
         src={image}
         alt={alt || [city, country].filter(Boolean).join(', ') || 'Destination'}

@@ -123,7 +123,41 @@ function CreateTrip() {
     { eyebrow: t('createTrip.step4Eyebrow'), title: t('createTrip.step4Title'), sub: t('createTrip.step4Sub') },
   ];
 
-  const goNextStep = () => setCurrentStep(step => Math.min(4, step + 1));
+  // Validate only the fields that live on the current step so the user gets
+  // feedback in context, instead of sailing to step 4 and being bounced for
+  // a step-1 field with no way back to it.
+  const validateStep = (step) => {
+    const stepErrors = {};
+    if (step === 1) {
+      if (!formData.mustHaves || formData.mustHaves.length === 0) {
+        stepErrors.mustHaves = t('createTrip.errActivities');
+      }
+    }
+    if (step === 2 && formData.isGroupTrip) {
+      if (!formData.tripName || formData.tripName.trim().length === 0) {
+        stepErrors.tripName = t('createTrip.errTripName');
+      }
+    }
+    if (step === 3) {
+      if (!formData.budget || formData.budget < BUDGET_CONFIG.min) {
+        stepErrors.budget = t('createTrip.errBudget');
+      }
+    }
+    return stepErrors;
+  };
+
+  const goNextStep = () => {
+    const stepErrors = validateStep(currentStep);
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(prev => ({ ...prev, ...stepErrors }));
+      requestAnimationFrame(() => {
+        const firstError = document.querySelector('[data-error="true"], .text-clay-500');
+        if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      return;
+    }
+    setCurrentStep(step => Math.min(4, step + 1));
+  };
   const goPreviousStep = () => setCurrentStep(step => Math.max(1, step - 1));
 
   // Load user preferences on mount

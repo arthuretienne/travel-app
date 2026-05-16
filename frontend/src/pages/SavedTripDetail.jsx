@@ -442,7 +442,7 @@ export default function SavedTripDetail() {
           alt={`${safeText(trip.city)}, ${safeText(trip.country)}`}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-sand-900 via-sand-900/70 to-sand-900/10" />
-        <div className="relative mx-auto flex h-full max-w-6xl flex-col justify-end px-4 pb-10 text-white sm:px-6 lg:px-8">
+        <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col justify-end px-4 pb-10 text-white sm:px-6 lg:px-8">
           <button
             onClick={() => navigate('/dashboard')}
             className="absolute left-4 top-6 flex items-center gap-2 rounded-full bg-white/14 px-3 py-2 text-sm font-medium text-white backdrop-blur transition-colors hover:bg-white/22 sm:left-6 lg:left-8"
@@ -652,14 +652,14 @@ export default function SavedTripDetail() {
                           <div className="flex-1">
                             <p className="font-semibold text-text-main">{safeText(hotel.name)}</p>
                             <div className="mt-1 flex items-center gap-2">
-                              {hotel.stars && (
+                              {typeof hotel.stars === 'number' && hotel.stars > 0 && (
                                 <span className="text-xs text-gold-500">
-                                  {'★'.repeat(typeof hotel.stars === 'number' ? hotel.stars : 0)}
+                                  {'★'.repeat(hotel.stars)}
                                 </span>
                               )}
-                              {hotel.rating?.value && (
+                              {hotel.rating?.value ? (
                                 <Badge tone="moss" dot>{safeText(hotel.rating.value)}/10</Badge>
-                              )}
+                              ) : null}
                               {hotel.location && (
                                 <span className="flex items-center gap-1 text-xs text-text-secondary">
                                   <MapPin size={10} />
