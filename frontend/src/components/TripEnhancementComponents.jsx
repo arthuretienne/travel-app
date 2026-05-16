@@ -27,24 +27,24 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
   const goToNextDay = () => setSelectedDay(prev => Math.min((itinerary?.length || 1) - 1, prev + 1));
 
   return (
-    <div className="bg-white rounded-2xl shadow-card border border-stone-200 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-card border border-sand-200 overflow-hidden">
       {/* Header - Clean Teal Design */}
-      <div className="bg-gradient-to-r from-primary to-teal-600 p-6 text-white">
+      <div className="bg-ember-700 p-5 md:p-6 text-white">
         <h2 className="text-2xl font-bold mb-2">Your Personalized Travel Plan</h2>
-        <p className="text-teal-100">
+        <p className="text-white/80">
           Everything planned for you, {userName} - flights, transfers, activities, and rest time
         </p>
       </div>
 
       {/* Day Navigation Tabs */}
       {itinerary && itinerary.length > 0 && (
-        <div className="bg-surface-subtle border-b border-stone-200 px-4 py-3">
+        <div className="bg-surface-subtle border-b border-sand-200 px-4 py-3">
           <div className="flex items-center gap-2">
             {/* Previous button */}
             <button
               onClick={goToPrevDay}
               disabled={selectedDay === 0}
-              className="p-2 rounded-lg hover:bg-stone-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded-lg hover:bg-sand-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft size={20} className="text-text-secondary" />
             </button>
@@ -64,7 +64,7 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
                       className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                         isActive
                           ? 'bg-primary text-white shadow-md'
-                          : 'bg-white text-text-secondary border border-stone-200 hover:border-primary/30'
+                          : 'bg-white text-text-secondary border border-sand-200 hover:border-primary/30'
                       }`}
                     >
                       {isFirstDay ? '🛬 Day 1' : isLastDay ? `🛫 Day ${idx + 1}` : `Day ${idx + 1}`}
@@ -78,7 +78,7 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
             <button
               onClick={goToNextDay}
               disabled={selectedDay === itinerary.length - 1}
-              className="p-2 rounded-lg hover:bg-stone-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded-lg hover:bg-sand-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight size={20} className="text-text-secondary" />
             </button>
@@ -86,7 +86,7 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
         </div>
       )}
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 md:p-6 space-y-5">
         {/* Day-by-Day Itinerary with Timing & Transfers - Show only selected day */}
         {itinerary && itinerary.length > 0 && (
           <div className="space-y-4">
@@ -99,7 +99,7 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
               const isLastDay = idx === itinerary.length - 1;
 
               return (
-                <div key={idx} className="bg-white rounded-xl shadow-card border border-stone-200 overflow-hidden animate-fade-in">
+                <div key={idx} className="bg-white rounded-xl shadow-card border border-sand-200 overflow-hidden animate-fade-in">
                   {/* Day Header */}
                   <div className="bg-primary-light p-4 border-b border-primary/10">
                     <div className="flex items-center justify-between">
@@ -124,7 +124,7 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
                   </div>
 
                   {/* Timeline Schedule */}
-                  <div className="p-5">
+                  <div className="p-4 md:p-5">
                     <div className="space-y-4">
                       {/* Flight arrival on first day */}
                       {isFirstDay && flightDetails?.outbound && (
@@ -185,7 +185,7 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
                               {item.cost === 0 && (
                                 <span className="text-sm font-semibold text-primary">FREE</span>
                               )}
-                              <span className="text-xs bg-stone-100 text-text-secondary px-2 py-1 rounded">{item.type}</span>
+                              <span className="text-xs bg-sand-100 text-text-secondary px-2 py-1 rounded">{item.type}</span>
                             </div>
                           </div>
                         </div>
@@ -193,22 +193,22 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
 
                       {/* Flight departure on last day */}
                       {isLastDay && flightDetails?.return && (
-                        <div className="flex gap-4 border-l-4 border-amber-500 pl-4">
+                        <div className="flex gap-4 border-l-4 border-gold-500 pl-4">
                           <div className="flex-shrink-0 w-20">
-                            <div className="text-sm font-bold text-amber-600">
+                            <div className="text-sm font-bold text-gold-500">
                               {flightDetails.return.departureTime || '6:00 PM'}
                             </div>
                             <div className="text-xs text-text-light">Departure</div>
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <Plane className="w-5 h-5 text-amber-600" />
+                              <Plane className="w-5 h-5 text-gold-500" />
                               <h4 className="font-bold text-text-main">Flight back to {flightDetails.return.destination}</h4>
                             </div>
                             <p className="text-sm text-text-secondary mb-2">
                               {flightDetails.return.carrier} • {flightDetails.return.duration || '2h 30min'}
                             </p>
-                            <div className="bg-amber-50 rounded-lg p-3 text-sm">
+                            <div className="bg-gold-100 rounded-lg p-3 text-sm">
                               <p className="text-text-secondary">
                                 <strong className="text-text-main">Tip:</strong> Leave hotel 3 hours before departure. Allow 1h for airport transfer and 2h for check-in/security.
                               </p>
@@ -219,7 +219,7 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
                     </div>
 
                     {/* Day summary */}
-                    <div className="mt-4 pt-4 border-t border-stone-200 flex items-center justify-between text-sm">
+                    <div className="mt-4 pt-4 border-t border-sand-200 flex items-center justify-between text-sm">
                       <div className="flex items-center gap-4 text-text-secondary">
                         <span className="flex items-center gap-1">
                           <TrendingUp className="w-4 h-4" />
@@ -250,7 +250,7 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
 
         {/* Mock data placeholder if no itinerary */}
         {(!itinerary || itinerary.length === 0) && (
-          <div className="bg-white rounded-xl shadow-card border border-stone-200 p-8 text-center">
+          <div className="bg-white rounded-xl shadow-card border border-sand-200 p-5 md:p-8 text-center">
             <Sparkles className="w-12 h-12 text-primary mx-auto mb-4" />
             <h3 className="text-lg font-bold text-text-main mb-2">Generating Your Custom Plan...</h3>
             <p className="text-text-secondary">
@@ -278,14 +278,14 @@ export function PersonalizedItineraryCard({ itinerary, userName, activeDay, setA
   }
 
   return (
-    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-card border border-green-100 overflow-hidden">
-      <div className="p-6">
+    <div className="bg-moss-100 to-emerald-50 rounded-2xl shadow-card border border-moss-100 overflow-hidden">
+      <div className="p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Navigation className="w-6 h-6 text-green-600" />
+          <h2 className="text-xl font-bold text-sand-900 flex items-center gap-2">
+            <Navigation className="w-6 h-6 text-moss-500" />
             Your Personalized Itinerary
           </h2>
-          <span className="text-sm text-gray-600">{destination?.city}</span>
+          <span className="text-sm text-sand-600">{destination?.city}</span>
         </div>
 
         {/* Day Selector */}
@@ -296,8 +296,8 @@ export function PersonalizedItineraryCard({ itinerary, userName, activeDay, setA
               onClick={() => setActiveDay(idx)}
               className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${
                 activeDay === idx
-                  ? 'bg-green-600 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-green-100'
+                  ? 'bg-moss-500 text-white shadow-lg'
+                  : 'bg-white text-sand-700 hover:bg-moss-100'
               }`}
             >
               Day {day.day}
@@ -323,12 +323,12 @@ function DayContent({ day: currentDay, userName }) {
       {/* Day Header */}
       <div className="bg-white rounded-xl p-4 shadow-sm">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-bold text-gray-900">{currentDay.theme}</h3>
-          <span className="text-sm text-gray-600">
+          <h3 className="text-lg font-bold text-sand-900">{currentDay.theme}</h3>
+          <span className="text-sm text-sand-600">
             {new Date(currentDay.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           </span>
         </div>
-        <div className="flex items-center gap-4 text-sm text-gray-600">
+        <div className="flex items-center gap-4 text-sm text-sand-600">
           <span className="flex items-center gap-1">
             <TrendingUp className="w-4 h-4" />
             {currentDay.walkingDistance}
@@ -355,20 +355,20 @@ function DayContent({ day: currentDay, userName }) {
       {/* Schedule */}
       <div className="space-y-3">
         {currentDay.schedule?.map((item, idx) => (
-          <div key={idx} className="bg-white rounded-xl p-4 hover:shadow-md transition-shadow border border-gray-100">
+          <div key={idx} className="bg-white rounded-xl p-4 hover:shadow-md transition-shadow border border-sand-100">
             <div className="flex items-start gap-4">
               {/* Time */}
               <div className="flex-shrink-0 w-20">
                 <div className="text-sm font-bold text-primary">{item.time}</div>
-                <div className="text-xs text-gray-500">{item.duration}</div>
+                <div className="text-xs text-sand-500">{item.duration}</div>
               </div>
 
               {/* Activity Icon */}
               <div className="flex-shrink-0 mt-1">
                 {item.type === 'Food' && <Utensils className="w-5 h-5 text-orange-500" />}
                 {item.type === 'Culture' && <MapPin className="w-5 h-5 text-purple-500" />}
-                {item.type === 'Nature' && <Sun className="w-5 h-5 text-green-500" />}
-                {item.type === 'Transport' && <Navigation className="w-5 h-5 text-blue-500" />}
+                {item.type === 'Nature' && <Sun className="w-5 h-5 text-moss-500" />}
+                {item.type === 'Transport' && <Navigation className="w-5 h-5 text-ember-500" />}
                 {!['Food', 'Culture', 'Nature', 'Transport'].includes(item.type) && (
                   <Sparkles className="w-5 h-5 text-pink-500" />
                 )}
@@ -376,15 +376,15 @@ function DayContent({ day: currentDay, userName }) {
 
               {/* Details */}
               <div className="flex-1">
-                <h4 className="font-semibold text-gray-900 mb-1">{item.activity}</h4>
+                <h4 className="font-semibold text-sand-900 mb-1">{item.activity}</h4>
                 {item.location && (
-                  <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                  <p className="text-sm text-sand-600 mb-1 flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
                     {item.location}
                   </p>
                 )}
                 {item.transport && (
-                  <p className="text-xs text-blue-600 mb-2 flex items-center gap-1">
+                  <p className="text-xs text-ember-600 mb-2 flex items-center gap-1">
                     <Navigation className="w-3 h-3" />
                     {item.transport}
                   </p>
@@ -400,10 +400,10 @@ function DayContent({ day: currentDay, userName }) {
                   </p>
                 )}
                 <div className="flex items-center gap-2 mt-2">
-                  <span className={`text-xs font-semibold ${item.cost === 0 ? 'text-green-600' : 'text-gray-700'}`}>
+                  <span className={`text-xs font-semibold ${item.cost === 0 ? 'text-moss-500' : 'text-sand-700'}`}>
                     {item.cost === 0 ? 'FREE' : `€${item.cost}`}
                   </span>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                  <span className="text-xs bg-sand-100 text-sand-600 px-2 py-0.5 rounded">
                     {item.type}
                   </span>
                 </div>
@@ -421,8 +421,8 @@ export function LocalEventsCard({ events, destination }) {
   const { upcoming, regular } = events;
 
   return (
-    <div className="bg-white rounded-2xl shadow-card border border-stone-200 overflow-hidden">
-      <div className="p-6">
+    <div className="bg-white rounded-2xl shadow-card border border-sand-200 overflow-hidden">
+      <div className="p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
             <div className="w-8 h-8 bg-primary-light rounded-lg flex items-center justify-center">

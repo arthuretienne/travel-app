@@ -401,16 +401,16 @@ function Account() {
           {accountNotif.type === 'success' ? '✓' : '✕'} {accountNotif.text}
         </div>
       )}
-      <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-card border border-sand-100 overflow-hidden">
-        <div className="p-8 border-b border-sand-100">
-          <h1 className="text-3xl font-bold text-text-main mb-2">Mon Compte</h1>
-          <p className="text-text-secondary">Gérez vos informations et préférences de voyage</p>
+      <div className="max-w-5xl mx-auto bg-white rounded-2xl md:rounded-3xl shadow-card border border-sand-100 overflow-hidden">
+        <div className="px-5 py-6 md:p-8 border-b border-sand-100">
+          <h1 className="text-2xl md:text-3xl font-bold text-text-main mb-1 md:mb-2">Mon Compte</h1>
+          <p className="text-sm md:text-base text-text-secondary">Gérez vos informations et préférences de voyage</p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-sand-100 bg-sand-50/50">
+        {/* Tabs — horizontally scrollable on mobile so the 4 labels never squish */}
+        <div className="flex overflow-x-auto sk-noscroll border-b border-sand-100 bg-sand-50/50">
           <button
-            className={`flex-1 py-4 px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'profile'
+            className={`flex-1 min-w-fit whitespace-nowrap py-3.5 px-4 sm:px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'profile'
                 ? 'text-primary bg-white'
                 : 'text-text-secondary hover:bg-sand-50 hover:text-text-main'
               }`}
@@ -421,7 +421,7 @@ function Account() {
             {activeTab === 'profile' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>}
           </button>
           <button
-            className={`flex-1 py-4 px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'preferences'
+            className={`flex-1 min-w-fit whitespace-nowrap py-3.5 px-4 sm:px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'preferences'
                 ? 'text-primary bg-white'
                 : 'text-text-secondary hover:bg-sand-50 hover:text-text-main'
               }`}
@@ -432,7 +432,7 @@ function Account() {
             {activeTab === 'preferences' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>}
           </button>
           <button
-            className={`flex-1 py-4 px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'availability'
+            className={`flex-1 min-w-fit whitespace-nowrap py-3.5 px-4 sm:px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'availability'
                 ? 'text-primary bg-white'
                 : 'text-text-secondary hover:bg-sand-50 hover:text-text-main'
               }`}
@@ -443,7 +443,7 @@ function Account() {
             {activeTab === 'availability' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>}
           </button>
           <button
-            className={`flex-1 py-4 px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'subscription'
+            className={`flex-1 min-w-fit whitespace-nowrap py-3.5 px-4 sm:px-6 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'subscription'
                 ? 'text-primary bg-white'
                 : 'text-text-secondary hover:bg-sand-50 hover:text-text-main'
               }`}
@@ -456,11 +456,11 @@ function Account() {
         </div>
 
         {/* Tab Content */}
-        <div className="p-8">
+        <div className="p-4 sm:p-6 md:p-8">
           {/* Profile Tab */}
           {activeTab === 'profile' && (
             <div className="max-w-2xl mx-auto">
-              <div className="flex flex-col md:flex-row items-center gap-6 p-8 bg-sand-50 rounded-2xl border border-sand-100 mb-6">
+              <div className="flex flex-col md:flex-row items-center gap-5 md:gap-6 p-5 md:p-8 bg-sand-50 rounded-2xl border border-sand-100 mb-6">
                 <div className="relative">
                   <img
                     src={user?.imageUrl || '/default-avatar.png'}
@@ -790,7 +790,7 @@ function Account() {
                   <Calendar size={20} className="text-primary" />
                   Calendrier Google
                 </h3>
-                <div className="p-8 bg-sand-50 rounded-2xl border border-sand-200 border-dashed text-center">
+                <div className="p-5 md:p-8 bg-sand-50 rounded-2xl border border-sand-200 border-dashed text-center">
                   {calendarStatus?.connected ? (
                     <div className="flex flex-col items-center gap-4">
                       <div className="px-4 py-2 bg-moss-100 text-moss-500 rounded-full text-sm font-medium flex items-center gap-2">

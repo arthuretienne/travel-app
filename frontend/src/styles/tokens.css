@@ -117,3 +117,13 @@
     transform: scale(1.5);
   }
 }
+
+/* Horizontal scroll without a visible scrollbar (mobile tab strips,
+   day-by-day day pills). */
+.sk-noscroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.sk-noscroll::-webkit-scrollbar {
+  display: none;
+}
