@@ -2,6 +2,20 @@
 // PDF export for trip itineraries using @react-pdf/renderer
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
+// AI / Booking data often carries keyword objects like {word,count,value}.
+// react-pdf throws (React error #31) if such an object is rendered as a Text
+// child, which silently broke the whole PDF export. Coerce every dynamic
+// value to a safe string before it reaches a <Text>.
+const safeText = (value) => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'object') {
+    return value.word || value.value || value.name || value.text || value.label || '';
+  }
+  return String(value);
+};
+
 // Register a clean sans-serif font
 Font.register({
   family: 'Inter',
@@ -330,8 +344,8 @@ function PageFooter({ city }) {
 
 // Cover page
 function CoverPage({ trip, itinerary, userName }) {
-  const city = trip.city || 'Destination';
-  const country = trip.country || '';
+  const city = safeText(trip.city) || 'Destination';
+  const country = safeText(trip.country) || '';
   const numDays = itinerary?.length || 0;
   const totalBudget = itinerary?.reduce((sum, d) => sum + (d.totalCost || 0), 0) || 0;
   const totalActivities = itinerary?.reduce((sum, d) => sum + (d.schedule?.length || 0), 0) || 0;
@@ -389,31 +403,31 @@ function TravelDetailsPage({ trip, city }) {
             {flightDetails.outbound?.carrier && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Airline</Text>
-                <Text style={styles.infoValue}>{flightDetails.outbound.carrier}</Text>
+                <Text style={styles.infoValue}>{safeText(flightDetails.outbound.carrier)}</Text>
               </View>
             )}
             {flightDetails.outbound?.origin && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Route</Text>
-                <Text style={styles.infoValue}>{flightDetails.outbound.origin} → {flightDetails.outbound.destination}</Text>
+                <Text style={styles.infoValue}>{safeText(flightDetails.outbound.origin)} → {safeText(flightDetails.outbound.destination)}</Text>
               </View>
             )}
             {flightDetails.outbound?.departureTime && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Departure</Text>
-                <Text style={styles.infoValue}>{flightDetails.outbound.departureTime}</Text>
+                <Text style={styles.infoValue}>{safeText(flightDetails.outbound.departureTime)}</Text>
               </View>
             )}
             {flightDetails.outbound?.arrivalTime && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Arrival</Text>
-                <Text style={styles.infoValue}>{flightDetails.outbound.arrivalTime}</Text>
+                <Text style={styles.infoValue}>{safeText(flightDetails.outbound.arrivalTime)}</Text>
               </View>
             )}
             {flightDetails.outbound?.duration && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Duration</Text>
-                <Text style={styles.infoValue}>{flightDetails.outbound.duration}</Text>
+                <Text style={styles.infoValue}>{safeText(flightDetails.outbound.duration)}</Text>
               </View>
             )}
           </View>
@@ -426,25 +440,25 @@ function TravelDetailsPage({ trip, city }) {
               {flightDetails.return.carrier && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Airline</Text>
-                  <Text style={styles.infoValue}>{flightDetails.return.carrier}</Text>
+                  <Text style={styles.infoValue}>{safeText(flightDetails.return.carrier)}</Text>
                 </View>
               )}
               {flightDetails.return.origin && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Route</Text>
-                  <Text style={styles.infoValue}>{flightDetails.return.origin} → {flightDetails.return.destination}</Text>
+                  <Text style={styles.infoValue}>{safeText(flightDetails.return.origin)} → {safeText(flightDetails.return.destination)}</Text>
                 </View>
               )}
               {flightDetails.return.departureTime && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Departure</Text>
-                  <Text style={styles.infoValue}>{flightDetails.return.departureTime}</Text>
+                  <Text style={styles.infoValue}>{safeText(flightDetails.return.departureTime)}</Text>
                 </View>
               )}
               {flightDetails.return.duration && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Duration</Text>
-                  <Text style={styles.infoValue}>{flightDetails.return.duration}</Text>
+                  <Text style={styles.infoValue}>{safeText(flightDetails.return.duration)}</Text>
                 </View>
               )}
             </View>
@@ -459,24 +473,24 @@ function TravelDetailsPage({ trip, city }) {
           {hotels.slice(0, 3).map((hotel, idx) => (
             <View key={idx} style={styles.infoCard}>
               <View style={styles.infoCardHeader}>
-                <Text style={styles.infoCardTitle}>{hotel.name || `Hotel Option ${idx + 1}`}</Text>
+                <Text style={styles.infoCardTitle}>{safeText(hotel.name) || `Hotel Option ${idx + 1}`}</Text>
               </View>
               {hotel.neighborhood && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Area</Text>
-                  <Text style={styles.infoValue}>{hotel.neighborhood}</Text>
+                  <Text style={styles.infoValue}>{safeText(hotel.neighborhood)}</Text>
                 </View>
               )}
               {hotel.price && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Price</Text>
-                  <Text style={styles.infoValue}>{hotel.price}</Text>
+                  <Text style={styles.infoValue}>{safeText(hotel.price)}</Text>
                 </View>
               )}
               {hotel.rating && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Rating</Text>
-                  <Text style={styles.infoValue}>{hotel.rating}/10</Text>
+                  <Text style={styles.infoValue}>{safeText(hotel.rating)}/10</Text>
                 </View>
               )}
             </View>
@@ -492,19 +506,19 @@ function TravelDetailsPage({ trip, city }) {
             {pricing.flight && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Flights</Text>
-                <Text style={styles.infoValue}>{pricing.flight}</Text>
+                <Text style={styles.infoValue}>{safeText(pricing.flight)}</Text>
               </View>
             )}
             {pricing.hotel && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Hotel</Text>
-                <Text style={styles.infoValue}>{pricing.hotel}</Text>
+                <Text style={styles.infoValue}>{safeText(pricing.hotel)}</Text>
               </View>
             )}
             {pricing.total && (
               <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
                 <Text style={[styles.infoLabel, { fontWeight: 700, color: DARK }]}>TOTAL</Text>
-                <Text style={[styles.infoValue, { fontWeight: 700, color: TEAL }]}>{pricing.total}</Text>
+                <Text style={[styles.infoValue, { fontWeight: 700, color: TEAL }]}>{safeText(pricing.total)}</Text>
               </View>
             )}
           </View>
@@ -528,16 +542,16 @@ function DayPage({ day, dayIndex, totalDays, flightDetails, city }) {
         <View>
           <Text style={styles.dayTitle}>
             {isFirstDay ? 'Day 1 — Arrival' : isLastDay ? `Day ${day.day} — Departure` : `Day ${day.day}`}
-            {day.theme ? ` — ${day.theme}` : ''}
+            {day.theme ? ` — ${safeText(day.theme)}` : ''}
           </Text>
-          <Text style={styles.dayDate}>{formatDayDate(day.date)}</Text>
+          <Text style={styles.dayDate}>{safeText(formatDayDate(day.date))}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           {day.totalCost !== undefined && (
-            <Text style={{ fontSize: 10, fontWeight: 700, color: TEAL }}>~{day.totalCost} budget</Text>
+            <Text style={{ fontSize: 10, fontWeight: 700, color: TEAL }}>~{safeText(day.totalCost)} budget</Text>
           )}
           {day.walkingDistance && (
-            <Text style={{ fontSize: 8, color: GRAY }}>{day.walkingDistance} walking</Text>
+            <Text style={{ fontSize: 8, color: GRAY }}>{safeText(day.walkingDistance)} walking</Text>
           )}
         </View>
       </View>
@@ -546,12 +560,12 @@ function DayPage({ day, dayIndex, totalDays, flightDetails, city }) {
       {isFirstDay && flightDetails?.outbound && (
         <View style={[styles.activity, { backgroundColor: TEAL_LIGHT, borderRadius: 6, marginBottom: 6 }]}>
           <View style={styles.activityTime}>
-            <Text style={styles.activityTimeText}>{flightDetails.outbound.arrivalTime || 'TBD'}</Text>
+            <Text style={styles.activityTimeText}>{safeText(flightDetails.outbound.arrivalTime) || 'TBD'}</Text>
             <Text style={styles.activityDuration}>Arrival</Text>
           </View>
           <View style={styles.activityContent}>
-            <Text style={styles.activityName}>Land at {flightDetails.outbound.destination}</Text>
-            <Text style={styles.activityLocation}>{flightDetails.outbound.carrier} from {flightDetails.outbound.origin}</Text>
+            <Text style={styles.activityName}>Land at {safeText(flightDetails.outbound.destination)}</Text>
+            <Text style={styles.activityLocation}>{safeText(flightDetails.outbound.carrier)} from {flightDetails.outbound.origin}</Text>
           </View>
         </View>
       )}
@@ -560,25 +574,25 @@ function DayPage({ day, dayIndex, totalDays, flightDetails, city }) {
       {day.schedule?.map((item, idx) => (
         <View key={idx} style={styles.activity} wrap={false}>
           <View style={styles.activityTime}>
-            <Text style={styles.activityTimeText}>{item.time}</Text>
-            <Text style={styles.activityDuration}>{item.duration}</Text>
+            <Text style={styles.activityTimeText}>{safeText(item.time)}</Text>
+            <Text style={styles.activityDuration}>{safeText(item.duration)}</Text>
           </View>
           <View style={styles.activityContent}>
-            <Text style={styles.activityName}>{item.activity}</Text>
+            <Text style={styles.activityName}>{safeText(item.activity)}</Text>
             {item.location && (
-              <Text style={styles.activityLocation}>{item.location}</Text>
+              <Text style={styles.activityLocation}>{safeText(item.location)}</Text>
             )}
             {item.tips && (
-              <Text style={styles.activityTips}>{item.tips}</Text>
+              <Text style={styles.activityTips}>{safeText(item.tips)}</Text>
             )}
             {item.transport && (
-              <Text style={styles.activityTransport}>{item.transport}</Text>
+              <Text style={styles.activityTransport}>{safeText(item.transport)}</Text>
             )}
             <View style={styles.activityMeta}>
               <Text style={styles.activityCost}>
-                {item.cost === 0 ? 'FREE' : `${item.cost}`}
+                {item.cost === 0 ? 'FREE' : safeText(item.cost)}
               </Text>
-              {item.type && <Text style={styles.activityType}>{item.type}</Text>}
+              {item.type && <Text style={styles.activityType}>{safeText(item.type)}</Text>}
             </View>
           </View>
         </View>
@@ -588,12 +602,12 @@ function DayPage({ day, dayIndex, totalDays, flightDetails, city }) {
       {isLastDay && flightDetails?.return && (
         <View style={[styles.activity, { backgroundColor: '#fef3c7', borderRadius: 6, marginTop: 6 }]}>
           <View style={styles.activityTime}>
-            <Text style={[styles.activityTimeText, { color: '#d97706' }]}>{flightDetails.return.departureTime || 'TBD'}</Text>
+            <Text style={[styles.activityTimeText, { color: '#d97706' }]}>{safeText(flightDetails.return.departureTime) || 'TBD'}</Text>
             <Text style={styles.activityDuration}>Departure</Text>
           </View>
           <View style={styles.activityContent}>
-            <Text style={styles.activityName}>Flight back to {flightDetails.return.destination}</Text>
-            <Text style={styles.activityLocation}>{flightDetails.return.carrier} — {flightDetails.return.duration}</Text>
+            <Text style={styles.activityName}>Flight back to {safeText(flightDetails.return.destination)}</Text>
+            <Text style={styles.activityLocation}>{safeText(flightDetails.return.carrier)} — {safeText(flightDetails.return.duration)}</Text>
           </View>
         </View>
       )}
@@ -650,7 +664,7 @@ function PackingPage({ packing, city }) {
 
 // Main PDF Document
 export default function ItineraryPDF({ trip, itinerary, packing, userName }) {
-  const city = trip.city || 'Trip';
+  const city = safeText(trip.city) || 'Trip';
   const flightDetails = trip.tripData?.flightDetails || trip.finalDestination?.flightDetails;
 
   return (
