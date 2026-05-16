@@ -5,6 +5,29 @@ import * as cache from '../utils/cache.js';
 
 const BASE_URL = 'https://booking-com15.p.rapidapi.com';
 const BOOKING_API_KEY = process.env.BOOKING_API_KEY;
+
+// Booking.com search results return tiny thumbnails (square60 / square200).
+// The bstatic CDN serves the SAME image at any size by swapping the size
+// segment — upgrade to a large variant so hotel photos aren't pixelated.
+function hiResPhoto(url) {
+  if (typeof url !== 'string' || !url.includes('bstatic.com')) return url;
+  return url.replace(/\/(square\d+|max\d+(?:x\d+)?|source)\//, '/max1024x768/');
+}
+
+// Travelpayouts affiliate deeplink wrapper (commission tracking). Env-driven:
+// without TP_MARKER the raw URL is returned unchanged so links keep working.
+const TP_MARKER = process.env.TP_MARKER || '';
+const TP_CAMPAIGN = process.env.TP_CAMPAIGN || '';
+const TP_P_BOOKING = process.env.TP_P_BOOKING || '';
+function affiliateUrl(targetUrl) {
+  if (!targetUrl || !TP_MARKER) return targetUrl;
+  const params = new URLSearchParams();
+  params.set('marker', TP_MARKER);
+  if (TP_P_BOOKING) params.set('p', TP_P_BOOKING);
+  if (TP_CAMPAIGN) params.set('campaign_id', TP_CAMPAIGN);
+  params.set('u', targetUrl);
+  return `https://tp.media/r?${params.toString()}`;
+}
 if (!BOOKING_API_KEY) {
   console.error('[BookingService] BOOKING_API_KEY not set in environment variables');
 }
@@ -1271,8 +1294,8 @@ export async function searchHotels({
         pricePerNight: grossPrice ? Math.round(grossPrice / nights) : 0,
         totalNights: nights,
         location: destinationQuery,
-        photos: hotel.property?.photoUrls || [],
-        mainPhoto: hotel.property?.photoUrls?.[0] || null,
+        photos: (hotel.property?.photoUrls || []).map(hiResPhoto),
+        mainPhoto: hotel.property?.photoUrls?.[0] ? hiResPhoto(hotel.property.photoUrls[0]) : null,
         amenities: hotel.property?.amenities || [],
         checkInTime: hotel.property?.checkin?.fromTime,
         checkOutTime: hotel.property?.checkout?.untilTime,
@@ -1285,8 +1308,8 @@ export async function searchHotels({
         blockId: hotel.property?.blockIds?.[0],
         // Context score (how well hotel matches trip context like "romantic", "spa", etc.)
         contextScore: hotel.contextScore || 0,
-        // Generate Booking.com URL with correct parameters
-        bookingUrl: `https://www.booking.com/hotel/${hotel.hotel_id}.html?checkin=${arrivalDate}&checkout=${departureDate}&group_adults=${adults}${children ? `&group_children=${children}` : ''}&no_rooms=${rooms}`
+        // Generate Booking.com deep link (affiliate-wrapped for commission)
+        bookingUrl: affiliateUrl(`https://www.booking.com/hotel/${hotel.hotel_id}.html?checkin=${arrivalDate}&checkout=${departureDate}&group_adults=${adults}${children ? `&group_children=${children}` : ''}&no_rooms=${rooms}`)
       };
     });
 

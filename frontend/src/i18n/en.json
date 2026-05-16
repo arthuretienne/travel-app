@@ -244,7 +244,9 @@
     "errDelete": "Couldn't delete the trip. Please try again.",
     "errAlertData": "Missing data to create a price alert.",
     "errAlert": "Couldn't create the price alert.",
-    "voyagerFallback": "Traveler"
+    "voyagerFallback": "Traveler",
+    "bookFlight": "Book the flight",
+    "bookHotel": "Book the hotel"
   },
   "createTrip": {
     "profileLoading": "Loading your preferences…",

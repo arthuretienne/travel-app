@@ -244,7 +244,9 @@
     "errDelete": "Impossible de supprimer le voyage. Veuillez réessayer.",
     "errAlertData": "Données manquantes pour créer une alerte prix.",
     "errAlert": "Impossible de créer l'alerte prix.",
-    "voyagerFallback": "Voyageur"
+    "voyagerFallback": "Voyageur",
+    "bookFlight": "Réserver le vol",
+    "bookHotel": "Réserver l’hôtel"
   },
   "createTrip": {
     "profileLoading": "Chargement de vos préférences…",

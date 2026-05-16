@@ -23,9 +23,17 @@ import {
   CheckCircle2,
   Bell,
   Download,
+  ExternalLink,
 } from 'lucide-react';
 import { CompleteTripPlanCard, PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
-import { generateFlightLink, generateHotelLink, generateActivitiesLink } from '../utils/bookingLinks';
+import { generateFlightLink, generateHotelLink, generateActivitiesLink, wrapAffiliate } from '../utils/bookingLinks';
+
+// Upgrade Booking.com CDN thumbnails to a large variant so already-saved
+// trips (whose stored photoUrls are tiny) aren't pixelated.
+const hiResPhoto = (url) =>
+  typeof url === 'string' && url.includes('bstatic.com')
+    ? url.replace(/\/(square\d+|max\d+(?:x\d+)?|source)\//, '/max1024x768/')
+    : url;
 import { Badge, Button, PhotoBlock, EmptyState } from '../components/ui';
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '../i18n/format';
@@ -587,12 +595,32 @@ export default function SavedTripDetail() {
               })}
             </div>
 
-            <div className="mt-5 border-t border-sand-200 pt-4">
+            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-sand-200 pt-4">
+              <Button
+                variant="ink"
+                size="md"
+                icon={<Plane size={16} />}
+                iconRight={<ExternalLink size={14} />}
+                onClick={() => window.open(
+                  (flightDetails.bookingUrl ? wrapAffiliate(flightDetails.bookingUrl, 'skyscanner') : generateFlightLink({
+                    destinationCity: safeText(trip.city),
+                    destinationIata: destination.iataCode,
+                    destinationCountry: safeText(trip.country),
+                    startDate: trip.startDate,
+                    endDate: trip.endDate,
+                    adults: 1,
+                  })),
+                  '_blank',
+                  'noopener,noreferrer'
+                )}
+              >
+                {t('savedTrip.bookFlight')}
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => window.open(
-                  flightDetails.bookingUrl || generateFlightLink({
+                  generateFlightLink({
                     destinationCity: safeText(trip.city),
                     destinationIata: destination.iataCode,
                     destinationCountry: safeText(trip.country),
@@ -635,17 +663,34 @@ export default function SavedTripDetail() {
             {hotelOptions?.hotels?.length > 0 && (
               <div className="space-y-3">
                 {hotelOptions.hotels.slice(0, 3).map((hotel, idx) => {
-                  const photo = hotel.mainPhoto || hotel.photos?.[0];
+                  const gallery = [...new Set([hotel.mainPhoto, ...(hotel.photos || [])].filter(Boolean))]
+                    .map(hiResPhoto)
+                    .slice(0, 5);
+                  const photo = gallery[0];
                   return (
                     <div key={idx} className="overflow-hidden rounded-[12px] border border-sand-200 transition-colors hover:border-ember-200">
                       {photo && (
                         <img
                           src={photo}
                           alt={safeText(hotel.name)}
-                          className="h-36 w-full object-cover"
+                          className="h-52 w-full object-cover"
                           loading="lazy"
                           onError={(e) => { e.target.style.display = 'none'; }}
                         />
+                      )}
+                      {gallery.length > 1 && (
+                        <div className="flex gap-1.5 bg-white px-4 pt-3">
+                          {gallery.slice(1).map((g, gi) => (
+                            <img
+                              key={gi}
+                              src={g}
+                              alt={`${safeText(hotel.name)} ${gi + 2}`}
+                              className="h-14 w-20 shrink-0 rounded-[8px] object-cover"
+                              loading="lazy"
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          ))}
+                        </div>
                       )}
                       <div className="bg-white p-4">
                         <div className="flex items-start justify-between gap-3">
@@ -690,13 +735,14 @@ export default function SavedTripDetail() {
                         </div>
                         {hotel.bookingUrl && (
                           <Button
-                            variant="outline"
-                            size="sm"
+                            variant="ink"
+                            size="md"
                             className="mt-3"
-                            icon={<Hotel size={14} />}
-                            onClick={() => window.open(hotel.bookingUrl, '_blank', 'noopener,noreferrer')}
+                            icon={<Hotel size={15} />}
+                            iconRight={<ExternalLink size={14} />}
+                            onClick={() => window.open(wrapAffiliate(hotel.bookingUrl, 'booking'), '_blank', 'noopener,noreferrer')}
                           >
-                            {t('savedTrip.hotelDetails')}
+                            {t('savedTrip.bookHotel')}
                           </Button>
                         )}
                       </div>

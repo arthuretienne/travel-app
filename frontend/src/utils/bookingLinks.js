@@ -7,6 +7,39 @@ import { AIRPORTS, getPrimaryAirport } from '../data/airports';
 const DEFAULT_ORIGIN = 'CDG';
 
 /**
+ * Wrap an outbound booking URL in a Travelpayouts affiliate deeplink so the
+ * redirect is commission-tracked. Fully env-driven: with no marker set the
+ * raw URL is returned unchanged (links keep working, just no commission),
+ * so it "just works" the moment VITE_TP_MARKER is configured on Vercel.
+ *
+ *   VITE_TP_MARKER         – your Travelpayouts marker (required to earn)
+ *   VITE_TP_CAMPAIGN       – optional campaign_id
+ *   VITE_TP_P_SKYSCANNER   – program id for flights (Skyscanner/Aviasales)
+ *   VITE_TP_P_BOOKING      – program id for Booking.com hotels
+ *   VITE_TP_P_GYG          – program id for GetYourGuide
+ *   VITE_TP_P_VIATOR       – program id for Viator
+ */
+const TP_MARKER = import.meta.env.VITE_TP_MARKER || '';
+const TP_CAMPAIGN = import.meta.env.VITE_TP_CAMPAIGN || '';
+const TP_P = {
+  skyscanner: import.meta.env.VITE_TP_P_SKYSCANNER || '',
+  booking: import.meta.env.VITE_TP_P_BOOKING || '',
+  gyg: import.meta.env.VITE_TP_P_GYG || '',
+  viator: import.meta.env.VITE_TP_P_VIATOR || '',
+};
+
+export function wrapAffiliate(targetUrl, provider) {
+  if (!targetUrl || !TP_MARKER) return targetUrl;
+  const params = new URLSearchParams();
+  params.set('marker', TP_MARKER);
+  const p = TP_P[provider];
+  if (p) params.set('p', p);
+  if (TP_CAMPAIGN) params.set('campaign_id', TP_CAMPAIGN);
+  params.set('u', targetUrl);
+  return `https://tp.media/r?${params.toString()}`;
+}
+
+/**
  * Format date as YYMMDD for Skyscanner
  */
 function formatDateSky(dateStr) {
@@ -104,7 +137,7 @@ export function generateFlightLink({
     url = `https://www.skyscanner.fr/transport/vols/${origin}/${searchTerm}/`;
   }
 
-  return url;
+  return wrapAffiliate(url, 'skyscanner');
 }
 
 /**
@@ -143,7 +176,7 @@ export function generateHotelLink({
   params.set('selected_currency', 'EUR');
   params.set('lang', 'fr');
 
-  return `${baseUrl}?${params.toString()}`;
+  return wrapAffiliate(`${baseUrl}?${params.toString()}`, 'booking');
 }
 
 /**
@@ -165,7 +198,7 @@ export function generateActivitiesLink({
     url += `&date_from=${start}&date_to=${end}`;
   }
 
-  return url;
+  return wrapAffiliate(url, 'gyg');
 }
 
 /**
@@ -187,7 +220,7 @@ export function generateViatorLink({
     url += `&startDate=${start}&endDate=${end}`;
   }
 
-  return url;
+  return wrapAffiliate(url, 'viator');
 }
 
 /**
