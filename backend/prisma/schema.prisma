@@ -523,6 +523,10 @@ model Subscription {
   plan   String @default("FREE") // "FREE", "EXPLORER", "WANDERER"
   status String @default("active") // "active", "canceled", "past_due", "trialing"
 
+  // Trip Pass — one-time 7-day unlimited access, independent of `plan`.
+  // When set and in the future, the user has TRIP_PASS-level entitlements.
+  tripPassExpiresAt DateTime?
+
   // Usage tracking
   searchesThisMonth Int @default(0)
   groupTripsCreated Int @default(0)

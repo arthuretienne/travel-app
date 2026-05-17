@@ -7,6 +7,8 @@ import {
   createBillingPortalSession,
   constructWebhookEvent,
   getSubscription as getStripeSubscription,
+  getEffectivePlan,
+  isTripPassActive,
   PLANS,
 } from '../services/stripeService.js';
 
@@ -22,8 +24,12 @@ router.get('/plans', (req, res) => {
       id: key,
       name: plan.name,
       price: plan.price,
+      priceMonthly: plan.priceMonthly,
+      priceAnnual: plan.priceAnnual,
       currency: plan.currency,
       interval: plan.interval,
+      mode: plan.mode || 'subscription',
+      durationDays: plan.durationDays || null,
       features: plan.features,
     }));
 
@@ -55,13 +61,19 @@ router.get('/usage', authenticateUser, async (req, res) => {
       });
     }
 
-    const planDetails = PLANS[subscription.plan] || PLANS.FREE;
+    const effectivePlan = getEffectivePlan(subscription);
+    const planDetails = PLANS[effectivePlan] || PLANS.FREE;
     const limit = planDetails.features.maxSearchesPerMonth;
     const used = subscription.searchesThisMonth || 0;
     const remaining = limit === -1 ? -1 : Math.max(0, limit - used);
 
     res.json({
       plan: subscription.plan,
+      effectivePlan,
+      tripPass: {
+        active: isTripPassActive(subscription),
+        expiresAt: subscription.tripPassExpiresAt || null,
+      },
       searches: {
         used,
         limit,
@@ -110,11 +122,17 @@ router.get('/subscription', authenticateUser, async (req, res) => {
       });
     }
 
-    const planDetails = PLANS[subscription.plan] || PLANS.FREE;
+    const effectivePlan = getEffectivePlan(subscription);
+    const planDetails = PLANS[effectivePlan] || PLANS.FREE;
 
     res.json({
       subscription,
       planDetails,
+      effectivePlan,
+      tripPass: {
+        active: isTripPassActive(subscription),
+        expiresAt: subscription.tripPassExpiresAt || null,
+      },
     });
   } catch (error) {
     console.error('❌ Error getting subscription:', error);
@@ -128,16 +146,19 @@ router.get('/subscription', authenticateUser, async (req, res) => {
  */
 router.post('/checkout', authenticateUser, async (req, res) => {
   try {
-    const { planName } = req.body;
+    const { planName, billing = 'monthly' } = req.body;
 
     if (!planName || !PLANS[planName.toUpperCase()]) {
       return res.status(400).json({ error: 'Invalid plan name' });
     }
 
     const plan = PLANS[planName.toUpperCase()];
+    const billingCycle = billing === 'annual' ? 'annual' : 'monthly';
+    const priceId =
+      (billingCycle === 'annual' ? plan.priceIdAnnual : plan.priceIdMonthly) || plan.priceId;
 
-    if (!plan.priceId) {
-      return res.status(400).json({ error: 'Cannot create checkout for free plan' });
+    if (!priceId) {
+      return res.status(400).json({ error: 'Cannot create checkout for this plan' });
     }
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -146,6 +167,7 @@ router.post('/checkout', authenticateUser, async (req, res) => {
       userId: req.user.id,
       userEmail: req.user.email,
       planName: planName.toUpperCase(),
+      billing: billingCycle,
       successUrl: `${frontendUrl}/account?session_id={CHECKOUT_SESSION_ID}&success=true`,
       cancelUrl: `${frontendUrl}/pricing?canceled=true`,
     });
@@ -262,6 +284,31 @@ async function handleCheckoutCompleted(session) {
     const planName = session.metadata.planName;
 
     console.log(`✅ Checkout completed for user ${userId} - Plan: ${planName}`);
+
+    // Trip Pass: one-time payment, no Stripe subscription. Grant a 7-day
+    // unlimited window without touching the user's base plan.
+    if (planName === 'TRIP_PASS' || session.mode === 'payment') {
+      const durationDays = PLANS.TRIP_PASS?.durationDays || 7;
+      const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+
+      await prisma.subscription.upsert({
+        where: { userId },
+        update: {
+          stripeCustomerId: session.customer || undefined,
+          tripPassExpiresAt: expiresAt,
+        },
+        create: {
+          userId,
+          plan: 'FREE',
+          status: 'active',
+          stripeCustomerId: session.customer || null,
+          tripPassExpiresAt: expiresAt,
+        },
+      });
+
+      console.log(`✅ Trip Pass granted to user ${userId} until ${expiresAt.toISOString()}`);
+      return;
+    }
 
     // Get subscription from Stripe
     const stripeSubscription = await getStripeSubscription(session.subscription);

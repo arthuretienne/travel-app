@@ -1,6 +1,6 @@
 // backend/src/middleware/checkSubscription.js
 import prisma from '../db/prisma.js';
-import { getPlanDetails, isWithinLimit } from '../services/stripeService.js';
+import { getPlanDetails, getEffectivePlan, isTripPassActive, isWithinLimit } from '../services/stripeService.js';
 
 /**
  * Check if we need to reset monthly usage (first of the month)
@@ -65,8 +65,12 @@ export async function checkSubscription(req, res, next) {
       console.log(`✅ Created default FREE subscription for user ${userId}`);
     }
 
+    // An active Trip Pass grants access on its own, independent of the
+    // subscription status (it's a one-time purchase, not a renewal).
+    const tripPassActive = isTripPassActive(subscription);
+
     // Check if subscription is active
-    if (subscription.status !== 'active' && subscription.status !== 'trialing') {
+    if (!tripPassActive && subscription.status !== 'active' && subscription.status !== 'trialing') {
       return res.status(403).json({
         error: 'Subscription inactive',
         message: 'Your subscription is not active. Please update your payment method.',
@@ -76,7 +80,7 @@ export async function checkSubscription(req, res, next) {
     }
 
     // Check if Stripe subscription has expired
-    if (subscription.stripeCurrentPeriodEnd && new Date() > subscription.stripeCurrentPeriodEnd) {
+    if (!tripPassActive && subscription.stripeCurrentPeriodEnd && new Date() > subscription.stripeCurrentPeriodEnd) {
       await prisma.subscription.update({
         where: { id: subscription.id },
         data: { status: 'past_due' },
@@ -119,7 +123,7 @@ export function requireFeature(featureName) {
         await checkSubscription(req, res, () => {});
       }
 
-      const plan = getPlanDetails(req.subscription.plan);
+      const plan = getPlanDetails(getEffectivePlan(req.subscription));
       const hasAccess = plan.features[featureName];
 
       if (!hasAccess) {
@@ -179,7 +183,7 @@ export function checkLimit(limitType, usageField) {
         });
       }
 
-      const plan = getPlanDetails(req.subscription.plan);
+      const plan = getPlanDetails(getEffectivePlan(req.subscription));
       const limit = plan.features[limitType];
       const currentUsage = req.subscription[usageField] || 0;
 

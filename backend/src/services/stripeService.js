@@ -8,14 +8,23 @@ const stripe = process.env.STRIPE_SECRET_KEY
     })
   : null;
 
-// Subscription plans configuration
+// Subscription plans configuration.
+// DB stores the plan KEY (FREE / EXPLORER / WANDERER) — kept stable to avoid a
+// migration. `name` is the customer-facing label (EXPLORER ships as "Starter").
+// Monthly/annual Stripe price IDs are resolved per billing cycle; legacy
+// `priceId`/`price`/`interval` are kept so older callers keep working.
 export const PLANS = {
   FREE: {
     name: 'Free',
     priceId: null, // No Stripe price for free plan
+    priceIdMonthly: null,
+    priceIdAnnual: null,
     price: 0,
+    priceMonthly: 0,
+    priceAnnual: 0,
     currency: 'eur',
     interval: null,
+    mode: 'subscription',
     features: {
       maxSearchesPerMonth: 10,
       maxGroupTrips: 2,
@@ -28,11 +37,16 @@ export const PLANS = {
     },
   },
   EXPLORER: {
-    name: 'Explorer',
-    priceId: process.env.STRIPE_PRICE_ID_EXPLORER, // Will be set from Stripe dashboard
-    price: 9.99,
+    name: 'Starter',
+    priceId: process.env.STRIPE_PRICE_ID_EXPLORER, // legacy alias = monthly
+    priceIdMonthly: process.env.STRIPE_PRICE_ID_EXPLORER,
+    priceIdAnnual: process.env.STRIPE_PRICE_ID_EXPLORER_ANNUAL,
+    price: 3.99,
+    priceMonthly: 3.99,
+    priceAnnual: 29,
     currency: 'eur',
     interval: 'month',
+    mode: 'subscription',
     features: {
       maxSearchesPerMonth: 50,
       maxGroupTrips: 5,
@@ -46,14 +60,43 @@ export const PLANS = {
   },
   WANDERER: {
     name: 'Wanderer',
-    priceId: process.env.STRIPE_PRICE_ID_WANDERER, // Will be set from Stripe dashboard
-    price: 19.99,
+    priceId: process.env.STRIPE_PRICE_ID_WANDERER, // legacy alias = monthly
+    priceIdMonthly: process.env.STRIPE_PRICE_ID_WANDERER,
+    priceIdAnnual: process.env.STRIPE_PRICE_ID_WANDERER_ANNUAL,
+    price: 6.99,
+    priceMonthly: 6.99,
+    priceAnnual: 49,
     currency: 'eur',
     interval: 'month',
+    mode: 'subscription',
     features: {
       maxSearchesPerMonth: -1, // Unlimited
       maxGroupTrips: -1, // Unlimited
       maxMembersPerTrip: -1, // Unlimited
+      aiRecommendations: true,
+      flightSearch: true,
+      hotelSearch: true,
+      collaborativeVoting: true,
+      prioritySupport: true,
+    },
+  },
+  // One-time 7-day unlimited pass — not a recurring subscription.
+  TRIP_PASS: {
+    name: 'Trip Pass',
+    priceId: process.env.STRIPE_PRICE_ID_TRIP_PASS,
+    priceIdMonthly: process.env.STRIPE_PRICE_ID_TRIP_PASS,
+    priceIdAnnual: process.env.STRIPE_PRICE_ID_TRIP_PASS,
+    price: 5.99,
+    priceMonthly: 5.99,
+    priceAnnual: 5.99,
+    currency: 'eur',
+    interval: null,
+    mode: 'payment',
+    durationDays: 7,
+    features: {
+      maxSearchesPerMonth: -1,
+      maxGroupTrips: -1,
+      maxMembersPerTrip: -1,
       aiRecommendations: true,
       flightSearch: true,
       hotelSearch: true,
@@ -66,7 +109,7 @@ export const PLANS = {
 /**
  * Create a Stripe checkout session for subscription
  */
-export async function createCheckoutSession({ userId, userEmail, planName, successUrl, cancelUrl }) {
+export async function createCheckoutSession({ userId, userEmail, planName, billing = 'monthly', successUrl, cancelUrl }) {
   try {
     if (!stripe) {
       throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
@@ -74,20 +117,29 @@ export async function createCheckoutSession({ userId, userEmail, planName, succe
 
     const plan = PLANS[planName.toUpperCase()];
 
-    if (!plan || !plan.priceId) {
+    if (!plan) {
       throw new Error(`Invalid plan: ${planName}`);
     }
 
-    console.log(`💳 Creating Stripe checkout session for user ${userId} - Plan: ${planName}`);
+    const isAnnual = billing === 'annual';
+    const priceId = (isAnnual ? plan.priceIdAnnual : plan.priceIdMonthly) || plan.priceId;
+
+    if (!priceId) {
+      throw new Error(`No Stripe price configured for plan ${planName} (${billing})`);
+    }
+
+    const mode = plan.mode || 'subscription';
+
+    console.log(`💳 Creating Stripe checkout (${mode}) for user ${userId} - Plan: ${planName} / ${billing}`);
 
     const session = await stripe.checkout.sessions.create({
       customer_email: userEmail,
       client_reference_id: userId,
-      mode: 'subscription',
+      mode,
       payment_method_types: ['card'],
       line_items: [
         {
-          price: plan.priceId,
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -96,13 +148,19 @@ export async function createCheckoutSession({ userId, userEmail, planName, succe
       metadata: {
         userId,
         planName,
+        billing,
       },
-      subscription_data: {
-        metadata: {
-          userId,
-          planName,
-        },
-      },
+      ...(mode === 'subscription'
+        ? {
+            subscription_data: {
+              metadata: {
+                userId,
+                planName,
+                billing,
+              },
+            },
+          }
+        : {}),
     });
 
     console.log(`✅ Checkout session created: ${session.id}`);
@@ -279,6 +337,24 @@ export function getPlanDetails(planName) {
 }
 
 /**
+ * Resolve the plan KEY a user effectively has right now.
+ * An active Trip Pass (tripPassExpiresAt in the future) grants TRIP_PASS-level
+ * entitlements without overwriting the user's base `plan` — so they revert
+ * cleanly to their original plan once it lapses.
+ */
+export function isTripPassActive(subscription) {
+  return Boolean(
+    subscription?.tripPassExpiresAt &&
+    new Date(subscription.tripPassExpiresAt) > new Date()
+  );
+}
+
+export function getEffectivePlan(subscription) {
+  if (isTripPassActive(subscription)) return 'TRIP_PASS';
+  return subscription?.plan || 'FREE';
+}
+
+/**
  * Check if user has feature access based on plan
  */
 export function hasFeatureAccess(userPlan, feature) {
@@ -312,6 +388,8 @@ export default {
   getCustomerByEmail,
   createCustomer,
   getPlanDetails,
+  getEffectivePlan,
+  isTripPassActive,
   hasFeatureAccess,
   isWithinLimit,
 };
