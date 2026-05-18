@@ -253,21 +253,32 @@ function Landing() {
             <LanguageSwitcher />
             <SignedOut>
               <SignInButton mode="modal">
-                <Button variant="ghost" size="md">{c.signin}</Button>
+                <Button variant="ghost" size="md" className="whitespace-nowrap">{c.signin}</Button>
               </SignInButton>
               <SignInButton mode="modal">
-                <Button variant="primary" size="md" iconRight={<ArrowRight size={16} />}>
+                <Button
+                  variant="primary"
+                  size="md"
+                  className="whitespace-nowrap"
+                  iconRight={<ArrowRight size={16} />}
+                >
                   Créer mon voyage
                 </Button>
               </SignInButton>
             </SignedOut>
             <SignedIn>
-              <Button variant="ghost" size="md" onClick={() => navigate('/dashboard')}>
+              <Button
+                variant="ghost"
+                size="md"
+                className="whitespace-nowrap"
+                onClick={() => navigate('/dashboard')}
+              >
                 {c.dashboard}
               </Button>
               <Button
                 variant="primary"
                 size="md"
+                className="whitespace-nowrap"
                 onClick={() => navigate('/create-trip')}
                 iconRight={<ArrowRight size={16} />}
               >

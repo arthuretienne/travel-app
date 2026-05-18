@@ -462,13 +462,13 @@ export default function MegaMenu({ actions, mobileCta, mobileFooter }) {
   return (
     <div className="relative" onMouseLeave={handleLeaveNav}>
       <nav className="fixed left-0 right-0 top-0 z-50 border-b border-sand-200 bg-surface-subtle/90 backdrop-blur-lg">
-        <div className="mx-auto flex h-16 max-w-6xl items-center px-5 md:px-8">
-          <Link to="/" aria-label="Skusku — accueil">
+        <div className="mx-auto flex h-16 w-full max-w-[1320px] items-center px-5 md:px-8">
+          <Link to="/" aria-label="Skusku — accueil" className="shrink-0">
             <Logo size={30} />
           </Link>
 
           {/* Desktop entries */}
-          <div className="ml-9 hidden items-center gap-1 lg:flex">
+          <div className="ml-7 hidden shrink-0 items-center gap-0.5 xl:flex">
             {MEGA_MENU.map((entry) => {
               const isOpen = open === entry.id;
               const isHover = hoverId === entry.id;
@@ -478,7 +478,7 @@ export default function MegaMenu({ actions, mobileCta, mobileFooter }) {
                     key={entry.id}
                     to={entry.href}
                     onMouseEnter={() => handleEnter(entry)}
-                    className="inline-flex h-9 items-center rounded-[10px] px-3 text-sm font-medium text-text-secondary transition-colors hover:bg-sand-100 hover:text-text-main"
+                    className="inline-flex h-9 items-center whitespace-nowrap rounded-[10px] px-3 text-sm font-medium text-text-secondary transition-colors hover:bg-sand-100 hover:text-text-main"
                   >
                     {entry.label}
                   </Link>
@@ -493,7 +493,7 @@ export default function MegaMenu({ actions, mobileCta, mobileFooter }) {
                   aria-expanded={isOpen}
                   aria-haspopup="true"
                   className={[
-                    'inline-flex h-9 items-center gap-1 rounded-[10px] px-3 text-sm font-medium transition-colors',
+                    'inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-[10px] px-3 text-sm font-medium transition-colors',
                     isOpen
                       ? 'bg-sand-100 text-text-main'
                       : isHover
@@ -517,7 +517,7 @@ export default function MegaMenu({ actions, mobileCta, mobileFooter }) {
           <div className="flex-1" />
 
           {/* Right-side actions (desktop) */}
-          <div className="hidden items-center gap-2 lg:flex">{actions}</div>
+          <div className="hidden shrink-0 items-center gap-2 xl:flex">{actions}</div>
 
           {/* Mobile hamburger */}
           <button
@@ -527,7 +527,7 @@ export default function MegaMenu({ actions, mobileCta, mobileFooter }) {
               setDrawer((v) => !v);
               setExpanded(null);
             }}
-            className="ml-auto grid h-10 w-10 place-items-center rounded-[10px] border border-sand-200 bg-white text-text-main lg:hidden"
+            className="ml-auto grid h-10 w-10 place-items-center rounded-[10px] border border-sand-200 bg-white text-text-main xl:hidden"
           >
             {drawer ? <X size={18} /> : <Menu size={18} />}
           </button>
@@ -561,7 +561,7 @@ export default function MegaMenu({ actions, mobileCta, mobileFooter }) {
 
       {/* Mobile drawer */}
       {drawer && (
-        <div className="fixed inset-0 top-16 z-40 flex flex-col bg-white lg:hidden">
+        <div className="fixed inset-0 top-16 z-40 flex flex-col bg-white xl:hidden">
           <div className="flex-1 overflow-y-auto px-4 pb-28 pt-3">
             <div className="mb-3.5 flex items-center gap-2 rounded-full border border-sand-200 bg-sand-50 px-3.5 py-2.5">
               <Search size={16} className="text-text-light" />
