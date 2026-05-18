@@ -14,7 +14,7 @@ import {
   Star,
   Users,
 } from 'lucide-react';
-import { Avatar, Badge, Button, Logo, PhotoBlock } from '../components/ui';
+import { Avatar, Badge, Button, PhotoBlock } from '../components/ui';
 import SEO from '../components/SEO';
 import Footer from '../components/Layout/Footer';
 import MegaMenu from '../components/Navigation/MegaMenu';
