@@ -15,6 +15,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Avatar, Badge, Button, Logo, PhotoBlock } from '../components/ui';
+import MegaMenu from '../components/Navigation/MegaMenu';
 import { getDestinationImage } from '../utils/destinationImages';
 import { searchAirports, getPrimaryAirport } from '../data/airports';
 
@@ -202,29 +203,85 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-surface-subtle font-sans text-text-main">
-      <nav className="fixed left-0 right-0 top-0 z-50 border-b border-sand-200 bg-surface-subtle/90 backdrop-blur-lg">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 md:px-8">
-          <Logo size={30} />
-          <div className="flex items-center gap-2">
+      <MegaMenu
+        actions={
+          <>
             <LanguageSwitcher />
             <SignedOut>
-              <Link
-                to="/pricing"
-                className="hidden rounded-[10px] px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-sand-100 hover:text-text-main sm:block"
-              >
-                {c.pricing}
-              </Link>
               <SignInButton mode="modal">
-                <Button variant="ghost" size="sm">{c.signin}</Button>
+                <Button variant="ghost" size="md">{c.signin}</Button>
+              </SignInButton>
+              <SignInButton mode="modal">
+                <Button variant="primary" size="md" iconRight={<ArrowRight size={16} />}>
+                  Créer mon voyage
+                </Button>
               </SignInButton>
             </SignedOut>
             <SignedIn>
-              <Button variant="ink" size="sm" onClick={() => navigate('/dashboard')}>{c.dashboard}</Button>
+              <Button variant="ghost" size="md" onClick={() => navigate('/dashboard')}>
+                {c.dashboard}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => navigate('/create-trip')}
+                iconRight={<ArrowRight size={16} />}
+              >
+                Créer mon voyage
+              </Button>
               <UserButton afterSignOutUrl="/" />
             </SignedIn>
-          </div>
-        </div>
-      </nav>
+          </>
+        }
+        mobileFooter={
+          <>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="flex w-full items-center justify-between py-3 text-sm text-text-secondary">
+                  {c.signin} <ArrowRight size={14} />
+                </button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-3 py-3"
+              >
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-ember-100 text-xs font-semibold text-ember-800">
+                  AR
+                </span>
+                <span className="flex-1">
+                  <span className="block text-sm font-medium text-text-main">{c.dashboard}</span>
+                  <span className="block text-xs text-text-light">Mon espace</span>
+                </span>
+                <ArrowRight size={14} className="text-text-light" />
+              </Link>
+            </SignedIn>
+          </>
+        }
+        mobileCta={
+          <>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button variant="primary" size="lg" full iconRight={<ArrowRight size={16} />}>
+                  Créer mon voyage
+                </Button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <Button
+                variant="primary"
+                size="lg"
+                full
+                onClick={() => navigate('/create-trip')}
+                iconRight={<ArrowRight size={16} />}
+              >
+                Créer mon voyage
+              </Button>
+            </SignedIn>
+          </>
+        }
+      />
 
       <main>
         <section className="px-5 pb-14 pt-28 md:px-8 md:pb-20">
