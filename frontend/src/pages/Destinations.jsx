@@ -21,7 +21,7 @@ function groupByContinent(destinations) {
 function Destinations() {
   const navigate = useNavigate();
   const grouped = groupByContinent(DESTINATIONS);
-  const continentOrder = ['Europe', 'Asia', 'North America', 'Africa'];
+  const continentOrder = ['Europe', 'Asia', 'North America', 'South America', 'Africa'];
 
   return (
     <div className="min-h-screen bg-white font-sans text-text-main" data-prerender-ready="true">

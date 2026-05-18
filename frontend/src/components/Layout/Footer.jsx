@@ -4,12 +4,13 @@ import { Link } from 'react-router-dom';
 import { Logo } from '../ui';
 import { DESTINATIONS } from '../../data/destinations';
 
-const CONTINENT_ORDER = ['Europe', 'Asia', 'North America', 'Africa'];
+const CONTINENT_ORDER = ['Europe', 'Asia', 'North America', 'South America', 'Africa'];
 const CONTINENT_FR = {
   Europe: 'Europe',
   Asia: 'Asie',
-  'North America': 'Amériques',
-  Africa: 'Afrique & Moyen-Orient',
+  'North America': 'Amérique du Nord',
+  'South America': 'Amérique du Sud',
+  Africa: 'Afrique & océan Indien',
 };
 
 function firstSlugForContinent(continent) {
