@@ -28,7 +28,7 @@ function DestinationLanding() {
 
   if (!dest) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface-subtle">
+      <div className="flex min-h-screen items-center justify-center bg-surface-subtle" data-prerender-ready="true">
         <div className="text-center">
           <h1 className="mb-2 text-2xl font-semibold text-text-main">{t('destDetail.notFoundTitle')}</h1>
           <p className="mb-6 text-text-secondary">{t('destDetail.notFoundDesc')}</p>
@@ -83,7 +83,7 @@ function DestinationLanding() {
   });
 
   return (
-    <div className="min-h-screen bg-surface-subtle font-sans text-text-main">
+    <div className="min-h-screen bg-surface-subtle font-sans text-text-main" data-prerender-ready="true">
       <SEO
         title={`${dest.city}, ${dest.country} — Flights & Hotels from €${dest.avgFlightPrice} | Skusku`}
         description={dest.descriptionEn}

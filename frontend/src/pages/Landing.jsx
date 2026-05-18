@@ -201,7 +201,7 @@ function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-surface-subtle font-sans text-text-main">
+    <div className="min-h-screen bg-surface-subtle font-sans text-text-main" data-prerender-ready="true">
       <nav className="fixed left-0 right-0 top-0 z-50 border-b border-sand-200 bg-surface-subtle/90 backdrop-blur-lg">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 md:px-8">
           <Logo size={30} />

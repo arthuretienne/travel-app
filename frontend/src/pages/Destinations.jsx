@@ -23,7 +23,7 @@ function Destinations() {
   const continentOrder = ['Europe', 'Asia', 'North America', 'Africa'];
 
   return (
-    <div className="min-h-screen bg-white font-sans text-text-main">
+    <div className="min-h-screen bg-white font-sans text-text-main" data-prerender-ready="true">
       <SEO
         title="All Destinations — Cheap Flights & Hotels | Skusku"
         description="Explore 20+ destinations with AI-powered travel planning. Find the best flights, hotels, and itineraries for Lisbon, Barcelona, Rome, Bali, Tokyo, and more."
