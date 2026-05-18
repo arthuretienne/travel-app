@@ -1,15 +1,31 @@
 User-agent: *
 Allow: /
+Allow: /destinations
 Allow: /destination/
+Allow: /pricing
 Disallow: /dashboard
 Disallow: /create-trip
 Disallow: /results
 Disallow: /account
 Disallow: /onboarding
-Disallow: /pricing
 Disallow: /trips/
 Disallow: /saved-trips/
 Disallow: /price-alerts
+Disallow: /trip-proposal
 Disallow: /accept-invitation/
+
+# AI / answer-engine crawlers — explicitly welcomed (already covered by the
+# * group above; stated for clarity and GEO intent).
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
 
 Sitemap: https://skusku.life/sitemap.xml

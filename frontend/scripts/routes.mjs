@@ -3,7 +3,7 @@
 // Keep in sync with the public <Route> entries in src/App.jsx.
 // RULE: only list routes that render a real public page (no 404, no auth gate).
 
-import { DESTINATIONS } from '../src/data/destinations.js';
+import { DESTINATIONS, DESTINATIONS_LAST_UPDATED } from '../src/data/destinations.js';
 
 export const SITE_URL = 'https://skusku.life';
 
@@ -11,6 +11,7 @@ export const SITE_URL = 'https://skusku.life';
 const STATIC_ROUTES = [
   { path: '/', changefreq: 'weekly', priority: 1.0, lastmod: null },
   { path: '/destinations', changefreq: 'weekly', priority: 0.8, lastmod: null },
+  { path: '/pricing', changefreq: 'monthly', priority: 0.8, lastmod: null },
 ];
 
 function destinationRoutes() {
@@ -18,7 +19,7 @@ function destinationRoutes() {
     path: `/destination/${d.slug}`,
     changefreq: 'monthly',
     priority: 0.7,
-    lastmod: d.lastUpdated || null,
+    lastmod: d.lastUpdated || DESTINATIONS_LAST_UPDATED,
   }));
 }
 

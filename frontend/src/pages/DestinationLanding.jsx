@@ -14,7 +14,15 @@ import {
   Sun,
 } from 'lucide-react';
 import SEO from '../components/SEO';
-import { DESTINATIONS, getDestinationBySlug, getMonthName } from '../data/destinations';
+import Footer from '../components/Layout/Footer';
+import {
+  DESTINATIONS,
+  DESTINATIONS_LAST_UPDATED,
+  getDestinationBySlug,
+  getMonthName,
+  getFaqFr,
+  getDirectAnswerFr,
+} from '../data/destinations';
 import { getDestinationImage } from '../utils/destinationImages';
 import { generateFlightLink, generateHotelLink } from '../utils/bookingLinks';
 import { Badge, Button, Logo, PhotoBlock } from '../components/ui';
@@ -47,30 +55,58 @@ function DestinationLanding() {
   const related = DESTINATIONS
     .filter((item) => item.slug !== dest.slug && item.continent === dest.continent)
     .slice(0, 4);
+  const faqItems = getFaqFr(dest);
+  const directAnswer = getDirectAnswerFr(dest);
+  const lastUpdated = dest.lastUpdated || DESTINATIONS_LAST_UPDATED;
+  const lastUpdatedLabel = new Date(lastUpdated).toLocaleDateString('fr-FR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 
-  const schema = {
+  const touristDestinationSchema = {
     '@context': 'https://schema.org',
     '@type': 'TouristDestination',
-    name: dest.city,
-    description: dest.descriptionEn,
+    name: dest.cityFr || dest.city,
+    description: dest.descriptionFr || dest.descriptionEn,
+    url: `https://skusku.life/destination/${dest.slug}`,
+    inLanguage: 'fr',
+    image: imageUrl,
+    dateModified: lastUpdated,
     containedInPlace: {
       '@type': 'Country',
-      name: dest.country,
+      name: dest.countryFr || dest.country,
     },
+    includesAttraction: dest.highlights.map((h) => ({
+      '@type': 'TouristAttraction',
+      name: h,
+    })),
     touristType: dest.activities.map((activity) => {
       const map = {
-        culture: 'Cultural tourist',
-        plage: 'Beach tourist',
-        gastro: 'Food tourist',
-        nature: 'Nature tourist',
-        histoire: 'History tourist',
-        sport: 'Sports tourist',
-        shopping: 'Shoppers',
-        montagne: 'Mountain tourist',
+        culture: 'Tourisme culturel',
+        plage: 'Tourisme balnéaire',
+        gastro: 'Tourisme gastronomique',
+        nature: 'Tourisme nature',
+        histoire: 'Tourisme historique',
+        sport: 'Tourisme sportif',
+        shopping: 'Shopping',
+        montagne: 'Tourisme de montagne',
       };
       return map[activity] || activity;
     }),
   };
+
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqItems.map((f) => ({
+      '@type': 'Question',
+      name: f.qFr,
+      acceptedAnswer: { '@type': 'Answer', text: f.aFr },
+    })),
+  };
+
+  const schema = [touristDestinationSchema, faqSchema];
 
   const goToCreateTrip = () => navigate('/create-trip', {
     state: {
@@ -85,11 +121,16 @@ function DestinationLanding() {
   return (
     <div className="min-h-screen bg-surface-subtle font-sans text-text-main" data-prerender-ready="true">
       <SEO
-        title={`${dest.city}, ${dest.country} — Flights & Hotels from €${dest.avgFlightPrice} | Skusku`}
-        description={dest.descriptionEn}
+        title={`${cityName}, ${countryName} — vols & hôtels dès €${dest.avgFlightPrice} | Skusku`}
+        description={(dest.descriptionFr || dest.descriptionEn).slice(0, 158)}
         canonical={`https://skusku.life/destination/${dest.slug}`}
         ogImage={imageUrl}
         schema={schema}
+        breadcrumbs={[
+          { name: 'Accueil', path: '/' },
+          { name: 'Destinations', path: '/destinations' },
+          { name: cityName, path: `/destination/${dest.slug}` },
+        ]}
       />
 
       <nav className="fixed left-0 right-0 top-0 z-50 border-b border-sand-200 bg-white/90 backdrop-blur-lg">
@@ -146,6 +187,20 @@ function DestinationLanding() {
           <QuickFact icon={<Hotel size={18} />} label={t('destDetail.avgHotel')} value={`€${dest.avgHotelPrice}`} />
           <QuickFact icon={<Sun size={18} />} label={t('destDetail.summerLabel')} value={`${dest.avgTemp.summer}°C`} />
           <QuickFact icon={<Globe size={18} />} label={t('destDetail.language')} value={dest.language} />
+        </div>
+      </section>
+
+      <section className="border-b border-sand-200 bg-ember-50/40">
+        <div className="mx-auto max-w-6xl px-5 py-8 md:px-8">
+          <p className="text-xs font-semibold uppercase tracking-widest text-ember-700">
+            {cityName} en bref
+          </p>
+          <p className="mt-3 max-w-3xl text-lg leading-8 text-text-main">
+            {directAnswer}
+          </p>
+          <p className="mt-4 text-sm text-text-secondary">
+            Mis à jour le {lastUpdatedLabel}
+          </p>
         </div>
       </section>
 
@@ -278,6 +333,31 @@ function DestinationLanding() {
         </aside>
       </section>
 
+      <section className="border-t border-sand-200 px-5 py-14 md:px-8">
+        <div className="mx-auto max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-widest text-ember-700">
+            Questions fréquentes
+          </p>
+          <h2 className="mt-2 font-display text-3xl font-medium">
+            {cityName} : ce qu'il faut savoir
+          </h2>
+          <div className="mt-7 divide-y divide-sand-200 border-y border-sand-200">
+            {faqItems.map((f) => (
+              <details key={f.qFr} className="group py-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-text-main">
+                  {f.qFr}
+                  <ChevronRight
+                    size={18}
+                    className="shrink-0 text-ember-700 transition-transform group-open:rotate-90"
+                  />
+                </summary>
+                <p className="mt-3 text-sm leading-7 text-text-secondary">{f.aFr}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {related.length > 0 && (
         <section className="bg-sand-100 px-5 py-14 md:px-8">
           <div className="mx-auto max-w-6xl">
@@ -328,19 +408,7 @@ function DestinationLanding() {
         </div>
       </section>
 
-      <footer className="border-t border-sand-200 px-5 py-8 md:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <Link to="/" aria-label="Skusku home"><Logo size={26} /></Link>
-          <div className="flex flex-wrap gap-4 text-sm text-text-secondary">
-            {DESTINATIONS.slice(0, 8).map((item) => (
-              <Link key={item.slug} to={`/destination/${item.slug}`} className="transition-colors hover:text-ember-700">
-                {item.city}
-              </Link>
-            ))}
-          </div>
-          <p className="text-sm text-text-secondary">© 2026 Skusku.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

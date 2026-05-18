@@ -433,3 +433,93 @@ export function getMonthName(monthNum, lang = 'en') {
   const date = new Date(2025, monthNum - 1);
   return date.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'long' });
 }
+
+// Last content review date for destination pages (drives <dateModified> and
+// sitemap <lastmod>). Bump when destination data is meaningfully revised.
+export const DESTINATIONS_LAST_UPDATED = '2026-05-18';
+
+function monthRangeFr(months) {
+  if (!months?.length) return '';
+  const names = months.map((m) => getMonthName(m, 'fr'));
+  if (names.length === 1) return `en ${names[0]}`;
+  return `de ${names[0]} à ${names[names.length - 1]}`;
+}
+
+const TRIP_DURATION = { Europe: '3 à 5 jours', default: '7 à 10 jours' };
+
+function tripDurationFr(dest) {
+  return dest.continent === 'Europe' ? TRIP_DURATION.Europe : TRIP_DURATION.default;
+}
+
+// Qualitative budget order-of-magnitude — derived from the existing avg
+// prices, never a fabricated precise figure (5 nights + return flight).
+export function getBudgetFr(dest) {
+  const low = dest.avgFlightPrice + dest.avgHotelPrice * 5;
+  const tier =
+    low < 600 ? 'abordable' : low < 1100 ? 'intermédiaire' : 'plus élevé';
+  return {
+    tier,
+    estimate: low,
+    label: `à partir d'environ €${low} pour ~5 jours (vol aller-retour indicatif + hôtel), budget ${tier}`,
+  };
+}
+
+// 2–3 self-contained, citable sentences (GEO "direct answer" block).
+export function getDirectAnswerFr(dest) {
+  const city = dest.cityFr || dest.city;
+  const when = monthRangeFr(dest.bestMonths);
+  const dur = tripDurationFr(dest);
+  const budget = getBudgetFr(dest);
+  return (
+    `${city} (${dest.countryFr || dest.country}) se visite idéalement ${when}, ` +
+    `quand le climat et les prix sont les plus favorables. ` +
+    `Comptez ${dur} sur place pour en profiter sans courir. ` +
+    `Budget ${budget.tier} : ${budget.label}.`
+  );
+}
+
+// 3–4 neighbouring destinations on the same continent for internal meshing.
+export function getInternalLinks(dest) {
+  return DESTINATIONS.filter(
+    (d) => d.slug !== dest.slug && d.continent === dest.continent
+  )
+    .slice(0, 4)
+    .map((d) => ({ slug: d.slug, city: d.cityFr || d.city, country: d.countryFr || d.country }));
+}
+
+// Real, per-destination FAQ built from the page's own factual attributes
+// (best period, budget, duration, language, access). Each answer
+// interpolates this destination's actual data, so pages are differentiated
+// and accurate — no invented figures. A destination may override or extend
+// via its own `faq: [{ qFr, aFr }]` array.
+export function getFaqFr(dest) {
+  if (dest.faq?.length) return dest.faq;
+  const city = dest.cityFr || dest.city;
+  const country = dest.countryFr || dest.country;
+  const when = monthRangeFr(dest.bestMonths);
+  const dur = tripDurationFr(dest);
+  const budget = getBudgetFr(dest);
+  const longHaul = dest.continent !== 'Europe';
+  return [
+    {
+      qFr: `Quelle est la meilleure période pour visiter ${city} ?`,
+      aFr: `La meilleure période pour ${city} se situe ${when} : températures agréables (autour de ${dest.avgTemp.summer}°C en haute saison, ${dest.avgTemp.winter}°C en hiver) et tarifs plus doux qu'en pleine saison touristique.`,
+    },
+    {
+      qFr: `Quel budget prévoir pour un voyage à ${city} ?`,
+      aFr: `Pour environ 5 jours, prévoyez ${budget.label}. Le vol aller-retour démarre autour de €${dest.avgFlightPrice} et la nuit d'hôtel autour de €${dest.avgHotelPrice}. Ce sont des ordres de grandeur, pas des tarifs en temps réel.`,
+    },
+    {
+      qFr: `Combien de jours rester à ${city} ?`,
+      aFr: `${dur} suffisent pour voir l'essentiel de ${city} (${dest.highlights.slice(0, 3).join(', ')}) sans se presser. Allongez le séjour si vous voulez explorer les environs.`,
+    },
+    {
+      qFr: `Comment se rendre à ${city} depuis la France ?`,
+      aFr: `${city} est desservie par l'aéroport ${dest.iata}. ${longHaul ? "Comptez un vol long-courrier, souvent avec une escale selon la compagnie." : "De nombreuses liaisons directes court-courrier existent au départ des principales villes françaises."}`,
+    },
+    {
+      qFr: `Quelle langue et quelle monnaie à ${city} ?`,
+      aFr: `À ${city}, on parle ${dest.language} et la monnaie est ${dest.currency}. ${country} reste une destination accessible pour un voyageur francophone bien préparé.`,
+    },
+  ];
+}

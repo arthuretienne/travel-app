@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { SignedIn, SignedOut, SignInButton } from '@clerk/clerk-react';
 import { Plane, ArrowRight, MapPin, Sparkles } from 'lucide-react';
 import SEO from '../components/SEO';
+import Footer from '../components/Layout/Footer';
 import { DESTINATIONS } from '../data/destinations';
 import { getDestinationImage } from '../utils/destinationImages';
 
@@ -25,9 +26,26 @@ function Destinations() {
   return (
     <div className="min-h-screen bg-white font-sans text-text-main" data-prerender-ready="true">
       <SEO
-        title="All Destinations — Cheap Flights & Hotels | Skusku"
-        description="Explore 20+ destinations with AI-powered travel planning. Find the best flights, hotels, and itineraries for Lisbon, Barcelona, Rome, Bali, Tokyo, and more."
+        title={`Toutes les destinations — vols & hôtels pas chers | Skusku`}
+        description={`Explorez ${DESTINATIONS.length} destinations avec un planificateur de voyage par IA : meilleurs vols, hôtels et idées d'itinéraires pour Lisbonne, Barcelone, Rome, Bali, Tokyo et plus.`}
         canonical="https://skusku.life/destinations"
+        breadcrumbs={[
+          { name: 'Accueil', path: '/' },
+          { name: 'Destinations', path: '/destinations' },
+        ]}
+        schema={{
+          '@context': 'https://schema.org',
+          '@type': 'CollectionPage',
+          name: 'Toutes les destinations',
+          url: 'https://skusku.life/destinations',
+          inLanguage: 'fr',
+          about: 'Destinations de voyage avec estimations de prix vols et hôtels',
+          hasPart: DESTINATIONS.map((d) => ({
+            '@type': 'TouristDestination',
+            name: d.cityFr || d.city,
+            url: `https://skusku.life/destination/${d.slug}`,
+          })),
+        }}
       />
 
       {/* Nav */}
@@ -163,20 +181,7 @@ function Destinations() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 px-6 border-t border-sand-100">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
-              <Plane size={12} className="text-white" />
-            </div>
-            <span className="font-semibold text-text-main">Skusku</span>
-          </Link>
-          <p className="text-sm text-text-secondary">
-            © 2025 Skusku. AI-powered travel planning.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

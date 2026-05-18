@@ -24,25 +24,10 @@
     <meta name="twitter:title" content="Skusku — Planificateur de voyage IA" />
     <meta name="twitter:description" content="Planifiez votre voyage parfait en quelques minutes. Destinations, vols et hôtels personnalisés." />
 
-    <!-- Structured Data -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "Skusku",
-      "url": "https://skusku.life",
-      "description": "Planificateur de voyage IA qui trouve des destinations, vols et hôtels personnalisés.",
-      "applicationCategory": "TravelApplication",
-      "operatingSystem": "Web",
-      "inLanguage": ["fr", "en"],
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "EUR",
-        "description": "Gratuit — 10 recherches par mois"
-      }
-    }
-    </script>
+    <!-- Structured data is injected per-route by src/components/SEO.jsx
+         (frozen into static HTML by scripts/prerender.mjs). Keeping it out
+         of this shell avoids a stale WebApplication block leaking onto
+         every prerendered page. -->
 
     <title>Skusku — Planificateur de voyage IA | Vols & Hôtels pas chers</title>
     <!-- Fonts: DM Sans (body) + Fraunces (display) + JetBrains Mono (data) -->

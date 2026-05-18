@@ -231,6 +231,17 @@ Run `npx prisma db push` in the Render shell, or add it to the build command abo
 
 ## Recent Improvements
 
+### 2026-05-18 — SEO + GEO v1 (prerender foundation)
+- ✅ **Phase 0 — Prerender**: `frontend/scripts/prerender.mjs` (Puppeteer) snapshots every public route to `dist/<route>/index.html` so crawlers/AI bots get content + meta + JSON-LD without JS. Single route source `scripts/routes.mjs`. French forced via `?lang=fr`. Build: `vite build && prerender && generate-sitemap`. `vercel.json` → `cleanUrls:true` (filesystem-before-rewrites means prerendered files win over the SPA fallback). New dep: `puppeteer` (devDep); removed dead `vite-plugin-prerender`.
+- ✅ **Phase 1 — SEO.jsx hardened**: accepts a schema array → multiple `<script type="application/ld+json" data-seo-ld>`; `noindex` prop; auto `BreadcrumbList` from `breadcrumbs` prop. Hardcoded WebApplication JSON-LD removed from `index.html` (was leaking onto every prerendered page) → injected per-route instead.
+- ✅ **Phase 2 — Per-page schema**: Landing = Organization+WebSite+WebApplication; Destinations = CollectionPage+Breadcrumb; DestinationLanding = TouristDestination(FR, dateModified, attractions)+Breadcrumb+FAQPage; Pricing = Product/Offer+FAQPage+Breadcrumb.
+- ✅ **Phase 3 — Sitemap/robots/llms**: `scripts/generate-sitemap.mjs` (dist/sitemap.xml from route source, lastmod). Deleted static `public/sitemap.xml`. `robots.txt`: removed `Disallow /pricing`, explicit Allow for GPTBot/ClaudeBot/PerplexityBot/Google-Extended. New `public/llms.txt`.
+- ✅ **Phase 4 (structure)**: `destinations.js` derived helpers `getFaqFr/getDirectAnswerFr/getBudgetFr/getInternalLinks` + `DESTINATIONS_LAST_UPDATED` (FAQ built from each fiche's real data — not fabricated). `/pricing` made **public** (out of ProtectedRoute, resilient signed-out). DestinationLanding now renders direct-answer block, FAQ accordion (`<details>`), visible update date.
+- ✅ **Phase 5 — Footer**: shared `components/Layout/Footer.jsx` (dense internal mesh: destinations, continents, Skusku, legal) mounted on Landing/Destinations/DestinationLanding/Pricing. Legal/about/contact placeholder routes via `pages/StaticPage.jsx` (noindex while empty, **copy must be provided by owner**, not in sitemap yet).
+- ✅ **Phase 6 — GEO**: direct-answer + FAQPage + visible date + llms.txt + QuickFacts data band.
+- ✅ **Phase 7 — Verified**: raw-HTML (no-JS) checks pass on /, /destinations, /destination/*, /pricing (title, FR description, content, JSON-LD). Build green; lint unchanged (13 pre-existing errors, 0 in touched files).
+- ⚠️ **Remaining (deliberate)**: destinations 20→100 is content production — infra is additive (add to `DESTINATIONS`; FAQ/budget/sitemap/prerender auto-follow), do NOT mass-generate thin entries. MegaMenu nav deferred (needs visual/design iteration; Footer already delivers the Phase 5 internal-link SEO value). Legal pages need real copy from owner. `VITE_CLERK_PUBLISHABLE_KEY` must be set on Vercel for the build/prerender (else App renders a config-error shell).
+
 ### 2025-02-01 — Phase 2 Features
 - ✅ **PDF export**: @react-pdf/renderer with cover page, travel details, day-by-day itinerary, packing list. Lazy-loaded (1.5MB only on demand)
 - ✅ **Expense splitting**: Tricount-style for group trips. Add/delete expenses, auto-split, balance calculation, optimal settlement plan. New "Expenses" tab in TripDetail

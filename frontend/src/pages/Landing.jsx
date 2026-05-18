@@ -15,8 +15,46 @@ import {
   Users,
 } from 'lucide-react';
 import { Avatar, Badge, Button, Logo, PhotoBlock } from '../components/ui';
+import SEO from '../components/SEO';
+import Footer from '../components/Layout/Footer';
 import { getDestinationImage } from '../utils/destinationImages';
 import { searchAirports, getPrimaryAirport } from '../data/airports';
+
+const LANDING_SCHEMA = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Skusku',
+    url: 'https://skusku.life',
+    logo: 'https://skusku.life/favicon.svg',
+    description:
+      "Skusku est un planificateur de voyage par IA qui compose des destinations, vols et hôtels personnalisés selon votre style, votre budget et vos dates.",
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Skusku',
+    url: 'https://skusku.life',
+    inLanguage: 'fr',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'Skusku',
+    url: 'https://skusku.life',
+    description:
+      'Planificateur de voyage IA qui trouve des destinations, vols et hôtels personnalisés.',
+    applicationCategory: 'TravelApplication',
+    operatingSystem: 'Web',
+    inLanguage: 'fr',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'EUR',
+      description: 'Gratuit — 10 recherches par mois',
+    },
+  },
+];
 
 const POPULAR_DESTINATIONS = [
   { city: 'Lisbon', country: 'Portugal', iata: 'LIS' },
@@ -202,6 +240,12 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-surface-subtle font-sans text-text-main" data-prerender-ready="true">
+      <SEO
+        title="Skusku — Planificateur de voyage IA | Vols & Hôtels pas chers"
+        description="Décrivez vos envies, l'IA compose destination, vol et hôtel personnalisés selon votre budget et vos dates. Gratuit, sans carte bancaire."
+        canonical="https://skusku.life/"
+        schema={LANDING_SCHEMA}
+      />
       <nav className="fixed left-0 right-0 top-0 z-50 border-b border-sand-200 bg-surface-subtle/90 backdrop-blur-lg">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 md:px-8">
           <Logo size={30} />
@@ -364,7 +408,7 @@ function Landing() {
           </div>
         </section>
 
-        <section ref={howItWorksRef} className="border-y border-sand-200 bg-white px-5 py-20 md:px-8">
+        <section id="comment-ca-marche" ref={howItWorksRef} className="border-y border-sand-200 bg-white px-5 py-20 md:px-8">
           <div className="mx-auto max-w-6xl">
             <p className="text-xs font-semibold uppercase tracking-widest text-ember-700">{c.how}</p>
             <h2 className="mt-3 font-display text-4xl font-medium leading-tight md:text-5xl">
@@ -481,18 +525,7 @@ function Landing() {
         </section>
       </main>
 
-      <footer className="border-t border-sand-200 px-5 py-8 md:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <Logo size={26} />
-          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-secondary">
-            {POPULAR_DESTINATIONS.map((d) => (
-              <Link key={d.city} to={`/destination/${d.city.toLowerCase()}`} className="hover:text-ember-700">
-                {d.city}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

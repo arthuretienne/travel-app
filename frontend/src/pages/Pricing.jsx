@@ -8,6 +8,8 @@ import {
   Check, ArrowRight, ChevronDown, Search, Sparkles,
   Calendar, Target, Ban, Loader2,
 } from 'lucide-react';
+import SEO from '../components/SEO';
+import Footer from '../components/Layout/Footer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -812,7 +814,49 @@ export default function Pricing() {
   };
 
   return (
-    <div style={{ width: '100%', background: 'var(--sand-50)', color: 'var(--sand-900)', fontFamily: 'var(--font-sans)' }}>
+    <div
+      data-prerender-ready="true"
+      style={{ width: '100%', background: 'var(--sand-50)', color: 'var(--sand-900)', fontFamily: 'var(--font-sans)' }}
+    >
+      <SEO
+        title="Tarifs Skusku — gratuit, Starter & Wanderer | Planificateur de voyage IA"
+        description="Offre gratuite à vie (sans carte bancaire), formules Starter et Wanderer, et Trip Pass 7 jours. Comparez les fonctionnalités du planificateur de voyage par IA Skusku."
+        canonical="https://skusku.life/pricing"
+        breadcrumbs={[
+          { name: 'Accueil', path: '/' },
+          { name: 'Tarifs', path: '/pricing' },
+        ]}
+        schema={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: 'Skusku — Planificateur de voyage IA',
+            description:
+              'Planificateur de voyage par IA : destinations, vols et hôtels personnalisés.',
+            brand: { '@type': 'Brand', name: 'Skusku' },
+            offers: PLANS.flatMap((p) => {
+              const cycles = p.id === 'free' ? ['monthly'] : ['monthly', 'annual'];
+              return cycles.map((cycle) => ({
+                '@type': 'Offer',
+                name: `${p.name} (${cycle === 'annual' ? 'annuel' : 'mensuel'})`,
+                price: String(p.price[cycle]),
+                priceCurrency: 'EUR',
+                url: 'https://skusku.life/pricing',
+                availability: 'https://schema.org/InStock',
+              }));
+            }),
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: FAQ.map((f) => ({
+              '@type': 'Question',
+              name: f.q,
+              acceptedAnswer: { '@type': 'Answer', text: f.a },
+            })),
+          },
+        ]}
+      />
       {checkoutError && (
         <div style={{
           position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 60,
@@ -911,6 +955,8 @@ export default function Pricing() {
       <section style={{ padding: mobile ? '64px 20px 56px' : '96px 32px 80px', maxWidth: 1152, margin: '0 auto' }}>
         <FinalCTA mobile={mobile} onStart={() => navigate('/create-trip')} />
       </section>
+
+      <Footer />
     </div>
   );
 }

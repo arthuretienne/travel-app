@@ -1,0 +1,29 @@
+# Skusku
+
+> Skusku est un planificateur de voyage par IA (en français). À partir de vos envies, votre budget et vos dates, il compose une destination, un vol et un hôtel personnalisés, avec liens de réservation directs. Gratuit, sans carte bancaire (10 recherches/mois).
+
+Skusku s'adresse aux voyageurs francophones cherchant des voyages abordables mais stylés au départ de France. Le produit réduit la charge mentale de la planification : une proposition complète plutôt que trente onglets.
+
+## Pages principales
+
+- [Accueil](https://skusku.life/): présentation du produit, comment ça marche, démarrer une recherche.
+- [Toutes les destinations](https://skusku.life/destinations): index des destinations couvertes, par continent, avec ordres de grandeur de prix vol et hôtel.
+- [Tarifs](https://skusku.life/pricing): offre gratuite (10 recherches/mois) et formules payantes.
+
+## Destinations (exemples)
+
+- [Lisbonne](https://skusku.life/destination/lisbon)
+- [Barcelone](https://skusku.life/destination/barcelona)
+- [Rome](https://skusku.life/destination/rome)
+- [Porto](https://skusku.life/destination/porto)
+- [Marrakech](https://skusku.life/destination/marrakech)
+- [Bali](https://skusku.life/destination/bali)
+- [Tokyo](https://skusku.life/destination/tokyo)
+
+La liste complète et à jour est dans le [sitemap](https://skusku.life/sitemap.xml).
+
+## Notes
+
+- Langue du contenu : français.
+- Les prix affichés sont des ordres de grandeur (vol aller-retour indicatif, nuit d'hôtel moyenne), pas des tarifs réservables en temps réel.
+- Chaque fiche destination indique la meilleure période, un budget indicatif et des conseils pratiques.

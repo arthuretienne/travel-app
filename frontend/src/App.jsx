@@ -20,6 +20,7 @@ const PriceAlerts = lazy(() => import('./pages/PriceAlerts'));
 const Destinations = lazy(() => import('./pages/Destinations'));
 const DestinationLanding = lazy(() => import('./pages/DestinationLanding'));
 const TripProposal = lazy(() => import('./pages/TripProposal'));
+const StaticPage = lazy(() => import('./pages/StaticPage'));
 
 // Layout
 import AppLayout from './components/Layout/AppLayout';
@@ -54,6 +55,35 @@ function AppContent() {
         <Route path="/" element={<Landing />} />
         <Route path="/destinations" element={<Destinations />} />
         <Route path="/destination/:slug" element={<DestinationLanding />} />
+        <Route path="/pricing" element={<Pricing />} />
+
+        {/* Public "serious business" pages — copy provided by site owner.
+            noindex while empty (see StaticPage); not in scripts/routes.mjs
+            so they stay out of the sitemap until filled. */}
+        <Route
+          path="/a-propos"
+          element={<StaticPage title="À propos" slug="a-propos" intro="Skusku, le planificateur de voyage par IA qui compose vol, hôtel et itinéraire selon vos envies." />}
+        />
+        <Route
+          path="/contact"
+          element={<StaticPage title="Contact" slug="contact" intro="Une question, un partenariat, un souci ? Écrivez-nous." />}
+        />
+        <Route
+          path="/mentions-legales"
+          element={<StaticPage title="Mentions légales" slug="mentions-legales" intro="Informations légales relatives à l'éditeur du site Skusku." />}
+        />
+        <Route
+          path="/confidentialite"
+          element={<StaticPage title="Politique de confidentialité" slug="confidentialite" intro="Comment Skusku traite et protège vos données personnelles." />}
+        />
+        <Route
+          path="/cgu"
+          element={<StaticPage title="Conditions générales d'utilisation" slug="cgu" intro="Les conditions d'utilisation du service Skusku." />}
+        />
+        <Route
+          path="/cookies"
+          element={<StaticPage title="Gestion des cookies" slug="cookies" intro="Les cookies utilisés par Skusku et comment les gérer." />}
+        />
 
         {/* Onboarding Route - Semi-Protected */}
         <Route
@@ -108,14 +138,6 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Account />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/pricing"
-          element={
-            <ProtectedRoute>
-              <Pricing />
             </ProtectedRoute>
           }
         />
