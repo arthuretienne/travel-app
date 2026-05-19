@@ -535,19 +535,27 @@ export default function MegaMenu({ actions, mobileCta, mobileFooter }) {
       </nav>
 
       {/* Desktop panel */}
-      <div
-        className="pointer-events-none fixed inset-x-0 top-16 z-40"
-        onMouseEnter={() => clearTimeout(closeTimer.current)}
-      >
+      <div className="pointer-events-none fixed inset-x-0 top-16 z-40">
         {activeEntry && (
           <button
             type="button"
             aria-label="Fermer le menu"
             onClick={() => setOpen(null)}
-            className="fixed inset-x-0 bottom-0 top-16 -z-10 cursor-default bg-sand-900/[0.18]"
+            className="pointer-events-auto fixed inset-x-0 bottom-0 top-16 -z-10 cursor-default bg-sand-900/[0.18]"
           />
         )}
         <div
+          onMouseEnter={() => clearTimeout(closeTimer.current)}
+          onMouseLeave={handleLeaveNav}
+          onClick={(e) => {
+            // Navigation handled by the inner <Link>; just dismiss the panel
+            // once a link is activated so it doesn't stay open over the page.
+            if (e.target.closest('a')) {
+              clearTimeout(closeTimer.current);
+              setOpen(null);
+              setHoverId(null);
+            }
+          }}
           className={[
             'mx-auto max-w-6xl origin-top rounded-b-[18px] border-b border-sand-200 bg-white transition-all duration-200',
             activeEntry
