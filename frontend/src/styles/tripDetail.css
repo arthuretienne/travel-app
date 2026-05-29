@@ -1,0 +1,132 @@
+/* SavedTripDetail — editorial layout helpers.
+   Ported from the Skusku design handoff (Trip Detail - Rome).
+   Page-scoped via the .sk-trip-detail root class to avoid leaks. */
+
+.sk-trip-detail {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-bg);
+}
+
+/* Cinematic hero scrim — top + bottom for legible text on bright photos. */
+.sk-trip-detail .sk-hero-scrim::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(26, 22, 18, .48) 0%, rgba(26, 22, 18, 0) 30%),
+    linear-gradient(180deg, transparent 24%, rgba(26, 22, 18, .55) 62%, rgba(26, 22, 18, .86) 100%);
+  pointer-events: none;
+}
+
+/* Bottom-only scrim for cards with overlay text */
+.sk-trip-detail .sk-photo-scrim::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 30%, rgba(26, 22, 18, .62) 92%, rgba(26, 22, 18, .78));
+  pointer-events: none;
+}
+
+/* Day strip card — hover lift + active halo */
+.sk-trip-detail .sk-day-card {
+  cursor: pointer;
+  transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
+}
+.sk-trip-detail .sk-day-card:hover { transform: translateY(-3px); }
+.sk-trip-detail .sk-day-card.is-active {
+  box-shadow: 0 0 0 2px var(--ember-600), 0 8px 24px rgba(132, 58, 35, .18);
+}
+
+/* Magazine drop-cap for the day intro paragraph. */
+.sk-trip-detail .sk-drop-cap::first-letter {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ember-700);
+  font-size: 3.6em;
+  line-height: 0.85;
+  float: left;
+  margin-right: 8px;
+  margin-top: 4px;
+}
+
+/* Vertical timeline rail for the program steps */
+.sk-trip-detail .sk-rail {
+  position: relative;
+}
+.sk-trip-detail .sk-rail::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: linear-gradient(180deg, var(--ember-200), var(--sand-200));
+  border-radius: 999px;
+}
+.sk-trip-detail .sk-rail-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid var(--ember-600);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  color: var(--ember-700);
+}
+
+/* Subtle pulse for the "price drop" badge */
+@keyframes sk-pulse-soft {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 155, 60, .55); }
+  50%      { box-shadow: 0 0 0 6px rgba(200, 155, 60, 0); }
+}
+.sk-trip-detail .sk-pulse { animation: sk-pulse-soft 1800ms ease-in-out infinite; }
+
+/* Entrance for stacked sections */
+@keyframes sk-rise {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+.sk-trip-detail .sk-rise { animation: sk-rise 320ms var(--ease-out) both; }
+
+/* Compact tab pill used in the sticky summary bar */
+.sk-trip-detail .sk-tab-pill {
+  border: 0;
+  background: transparent;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-mute);
+  cursor: pointer;
+  transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+}
+.sk-trip-detail .sk-tab-pill:hover { background: var(--sand-100); color: var(--color-ink); }
+.sk-trip-detail .sk-tab-pill.is-active { background: var(--sand-900); color: #fff; }
+
+/* Itinerary format toggle */
+.sk-trip-detail .sk-toggle-pill {
+  border: 0;
+  background: transparent;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-mute);
+  cursor: pointer;
+  transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+}
+.sk-trip-detail .sk-toggle-pill:hover { color: var(--color-ink); }
+.sk-trip-detail .sk-toggle-pill.is-active { background: var(--color-ink); color: #fff; }
+
+/* Faux map gradient — never blue, keeps the warm palette */
+.sk-trip-detail .sk-faux-map {
+  background:
+    radial-gradient(circle at 30% 40%, var(--sand-200) 0%, transparent 60%),
+    radial-gradient(circle at 70% 60%, var(--ember-100) 0%, transparent 60%),
+    linear-gradient(135deg, var(--sand-100), var(--sand-50));
+}
