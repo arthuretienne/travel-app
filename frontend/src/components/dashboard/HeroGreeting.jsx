@@ -94,20 +94,20 @@ export default function HeroGreeting({ firstName, context, onPrimary, onSecondar
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-ember-500" />
         {formatDateHeader(now)}
       </div>
-      <h1 className="font-display text-4xl md:text-5xl font-medium leading-tight text-text-secondary max-w-3xl">
+      <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-medium leading-tight text-text-secondary max-w-3xl">
         {headline}
       </h1>
       <p className="mt-3 text-sm text-text-secondary max-w-2xl">{sub}</p>
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Button onClick={onPrimary} icon={primaryIcon}>
+      <div className="mt-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+        <Button onClick={onPrimary} icon={primaryIcon} className="w-full sm:w-auto">
           {primaryLabel}
         </Button>
         {secondaryLabel && (
-          <Button variant="outline" onClick={onSecondary}>
+          <Button variant="outline" onClick={onSecondary} className="w-full sm:w-auto">
             {secondaryLabel}
           </Button>
         )}
-        <Button variant="ghost" onClick={onCompose} iconRight={<Plus size={14} />}>
+        <Button variant="ghost" onClick={onCompose} iconRight={<Plus size={14} />} className="w-full sm:w-auto">
           Planifier un nouveau trip
         </Button>
       </div>

@@ -133,7 +133,7 @@ export default function NextTripSpotlight({ trip, daysUntil, helpers, onOpen, on
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[22px] border border-sand-200 bg-white shadow-2 grid lg:grid-cols-[1fr_1fr]">
+      <div className="overflow-hidden rounded-[18px] sm:rounded-[22px] border border-sand-200 bg-white shadow-2 grid lg:grid-cols-[1fr_1fr]">
         <div className="relative">
           <PhotoBlock city={city} country={country} tripData={trip.tripData} className="h-64 lg:h-full min-h-[280px]" alt={`${city}, ${country}`}>
             <div className="absolute right-4 top-4 grid place-items-center min-w-[80px] rounded-[14px] bg-white/95 px-3 py-2 text-text-main text-center">
@@ -170,19 +170,21 @@ export default function NextTripSpotlight({ trip, daysUntil, helpers, onOpen, on
             ))}
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Button onClick={onPrimary} icon={primaryIcon}>
+          <div className="mt-6 flex flex-col sm:flex-row sm:flex-wrap gap-2">
+            <Button onClick={onPrimary} icon={primaryIcon} className="w-full sm:w-auto">
               {primaryLabel}
             </Button>
-            <Button variant="outline" onClick={onOpen} iconRight={<ChevronRight size={14} />}>
+            <Button variant="outline" onClick={onOpen} iconRight={<ChevronRight size={14} />} className="w-full sm:w-auto">
               Voir le trip
             </Button>
-            <Button variant="ghost" size="sm" onClick={onPdf} icon={<FileText size={14} />}>
-              PDF
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onShare} icon={<Share2 size={14} />}>
-              Partager
-            </Button>
+            <div className="flex gap-2 sm:contents">
+              <Button variant="ghost" size="sm" onClick={onPdf} icon={<FileText size={14} />} className="flex-1 sm:flex-initial">
+                PDF
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onShare} icon={<Share2 size={14} />} className="flex-1 sm:flex-initial">
+                Partager
+              </Button>
+            </div>
           </div>
         </div>
       </div>

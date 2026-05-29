@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Bell, Calendar, ChevronDown, ChevronRight, Copy, FileText, Map, Search, Share2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Bell, Calendar, ChevronDown, ChevronRight, Copy, FileText, Map, MoreHorizontal, Search, Share2, X } from 'lucide-react';
 import { AvatarStack, Badge, Button, EmptyState, PhotoBlock } from '../ui';
 
 const TEMPORAL = ['upcoming', 'ongoing', 'past'];
@@ -22,7 +22,7 @@ const normalizeGroupDest = (trip) => {
   };
 };
 
-function TripCard({ trip, onClick, onAlert, onPdf, onShare, onDuplicate, formatDate, fmtCurrency }) {
+function TripCard({ trip, onClick, onAlert, onPdf, onShare, onDuplicate, formatDate, fmtCurrency, onOpenSheet }) {
   const isGroup = trip._kind === 'group';
   const dest = isGroup ? normalizeGroupDest(trip) : { city: trip.city, country: trip.country };
   const start = isGroup ? trip.finalStartDate : trip.startDate;
@@ -96,7 +96,8 @@ function TripCard({ trip, onClick, onAlert, onPdf, onShare, onDuplicate, formatD
         </div>
       </button>
 
-      <div className="pointer-events-none absolute right-3 top-3 flex gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+      {/* Desktop hover tray */}
+      <div className="pointer-events-none absolute right-3 top-3 hidden gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 sm:flex">
         <TrayBtn title="Alerte prix" onClick={(e) => { e.stopPropagation(); onAlert?.(trip); }}>
           <Bell size={14} />
         </TrayBtn>
@@ -110,7 +111,66 @@ function TripCard({ trip, onClick, onAlert, onPdf, onShare, onDuplicate, formatD
           <Copy size={14} />
         </TrayBtn>
       </div>
+
+      {/* Mobile 3-dots — always visible */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onOpenSheet?.(trip); }}
+        className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/95 text-text-secondary shadow-2 transition-all hover:bg-white hover:text-ember-700 sm:hidden"
+        aria-label="Actions"
+      >
+        <MoreHorizontal size={16} />
+      </button>
     </div>
+  );
+}
+
+function MobileActionSheet({ trip, onClose, onAlert, onPdf, onShare, onDuplicate }) {
+  useEffect(() => {
+    if (!trip) return;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [trip]);
+
+  if (!trip) return null;
+
+  const dest = trip._kind === 'group' ? (trip.finalDestination?.city || trip.name) : trip.city;
+  const fire = (handler) => () => { onClose(); handler?.(trip); };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:hidden">
+      <div className="absolute inset-0 bg-sand-900/40" onClick={onClose} aria-hidden="true" />
+      <div className="relative w-full rounded-t-[22px] bg-white p-2 shadow-3 animate-fadeIn">
+        <div className="flex items-center justify-between px-3 pb-2 pt-3">
+          <div>
+            <p className="text-[11px] font-mono uppercase tracking-widest text-text-secondary">Actions</p>
+            <p className="font-display text-lg font-medium text-text-main">{dest}</p>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full text-text-secondary hover:bg-sand-100" aria-label="Fermer">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="space-y-1 pb-3">
+          <SheetItem icon={<Bell size={18} />} label="Définir une alerte prix" onClick={fire(onAlert)} />
+          <SheetItem icon={<FileText size={18} />} label="Exporter en PDF" onClick={fire(onPdf)} />
+          <SheetItem icon={<Share2 size={18} />} label="Partager" onClick={fire(onShare)} />
+          <SheetItem icon={<Copy size={18} />} label="Dupliquer la recherche" onClick={fire(onDuplicate)} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SheetItem({ icon, label, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-3 rounded-[12px] px-3 py-3 text-left text-sm font-medium text-text-main transition-all hover:bg-sand-50"
+    >
+      <span className="grid h-9 w-9 place-items-center rounded-full bg-sand-100 text-ember-700">{icon}</span>
+      {label}
+    </button>
   );
 }
 
@@ -149,6 +209,7 @@ export default function TripsSection({
   const [sortBy, setSortBy] = useState('date-asc');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [sheetTrip, setSheetTrip] = useState(null);
 
   const totalTrips = (savedTrips?.length || 0) + (collaborativeTrips?.length || 0);
   const showSearch = totalTrips > 6;
@@ -244,7 +305,7 @@ export default function TripsSection({
   };
 
   return (
-    <section className="mb-10 rounded-[22px] bg-surface-muted p-6">
+    <section className="mb-10 rounded-[22px] bg-surface-muted p-4 sm:p-6">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-display text-2xl font-medium text-text-main">
@@ -256,8 +317,8 @@ export default function TripsSection({
         </div>
       </div>
 
-      <div className="mb-5 flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-full bg-white p-1 shadow-1">
+      <div className="mb-5 -mx-4 sm:mx-0 flex items-center gap-3 overflow-x-auto px-4 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+        <div className="inline-flex shrink-0 rounded-full bg-white p-1 shadow-1">
           {TEMPORAL.map((key) => {
             const label = key === 'upcoming' ? 'À venir' : key === 'ongoing' ? 'En cours' : 'Passés';
             const count = counts[key];
@@ -282,7 +343,7 @@ export default function TripsSection({
           })}
         </div>
 
-        <div className="inline-flex rounded-full bg-white p-1 shadow-1">
+        <div className="inline-flex shrink-0 rounded-full bg-white p-1 shadow-1">
           {TYPE.map((key) => {
             const label = key === 'all' ? 'Tous' : key === 'solo' ? 'Solo' : 'Groupe';
             return (
@@ -301,7 +362,7 @@ export default function TripsSection({
           })}
         </div>
 
-        <div className="relative">
+        <div className="relative shrink-0">
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
@@ -317,7 +378,7 @@ export default function TripsSection({
         </div>
 
         {showSearch && (
-          <div className="relative ml-auto flex items-center">
+          <div className="relative ml-auto hidden items-center sm:flex">
             <Search size={14} className="absolute left-3 text-text-secondary" />
             <input
               type="text"
@@ -329,6 +390,21 @@ export default function TripsSection({
           </div>
         )}
       </div>
+
+      {showSearch && (
+        <div className="mb-5 -mt-2 sm:hidden">
+          <div className="relative flex items-center">
+            <Search size={14} className="absolute left-3 text-text-secondary" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Chercher par destination…"
+              className="h-10 w-full rounded-full border border-sand-200 bg-white pl-9 pr-3 text-sm text-text-main shadow-1 focus:outline-none focus:ring-2 focus:ring-ember-200"
+            />
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -371,11 +447,20 @@ export default function TripsSection({
                 onPdf={onPdf}
                 onShare={onShare}
                 onDuplicate={onDuplicate}
+                onOpenSheet={setSheetTrip}
                 formatDate={formatDate}
                 fmtCurrency={fmtCurrency}
               />
             ))}
           </div>
+          <MobileActionSheet
+            trip={sheetTrip}
+            onClose={() => setSheetTrip(null)}
+            onAlert={onAlert}
+            onPdf={onPdf}
+            onShare={onShare}
+            onDuplicate={onDuplicate}
+          />
           {hasMore && (
             <div className="mt-6 flex justify-center">
               <Button variant="outline" onClick={() => setPage(page + 1)} iconRight={<ChevronDown size={14} />}>

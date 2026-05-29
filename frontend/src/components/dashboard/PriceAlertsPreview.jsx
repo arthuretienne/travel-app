@@ -28,7 +28,7 @@ function AlertRow({ alert }) {
   return (
     <Link
       to={`/price-alerts`}
-      className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-4 rounded-[14px] border border-sand-200 bg-white px-4 py-3 shadow-1 transition-all hover:border-ember-200 hover:shadow-2"
+      className="grid grid-cols-[auto_1fr_auto_auto] sm:grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-3 sm:gap-4 rounded-[14px] border border-sand-200 bg-white px-3 sm:px-4 py-3 shadow-1 transition-all hover:border-ember-200 hover:shadow-2"
     >
       <div className={['grid h-8 w-8 place-items-center rounded-full', triggered ? 'bg-moss-100 text-[#3d5a24]' : 'bg-ember-50 text-ember-700'].join(' ')}>
         <Bell size={14} />
@@ -36,25 +36,25 @@ function AlertRow({ alert }) {
       <div className="min-w-0">
         <div className="text-sm font-semibold text-text-main truncate">{alert.destination}</div>
         <div className="text-xs font-mono text-text-secondary truncate">
-          {alert.origin} → {alert.destination?.slice(0, 3).toUpperCase()} · {monthShort(alert.departureDate)}
+          {alert.origin} → {alert.destination?.slice(0, 3).toUpperCase()} · {monthShort(alert.departureDate)} · ≤ {alert.targetPrice}€
         </div>
       </div>
       <div className="hidden sm:block">
         <div className="text-[10px] font-mono uppercase tracking-widest text-text-light">Seuil</div>
         <div className="text-sm font-mono text-text-secondary">≤ {alert.targetPrice}€</div>
       </div>
-      <div>
+      <div className="text-right sm:text-left">
         <div className="text-[10px] font-mono uppercase tracking-widest text-text-light">Actuel</div>
         <div className={['text-sm font-mono font-semibold', triggered ? 'text-moss-500' : 'text-text-main'].join(' ')}>
           {alert.currentPrice ? `${Math.round(alert.currentPrice)}€` : '—'}
         </div>
       </div>
-      <div className={['inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-mono font-semibold', trendClass].join(' ')}>
+      <div className={['hidden sm:inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-mono font-semibold', trendClass].join(' ')}>
         {trend.kind === 'down' && <TrendingDown size={11} />}
         {trend.kind === 'up' && <TrendingUp size={11} />}
         {trend.label}
       </div>
-      <ChevronRight size={16} className="text-text-secondary" />
+      <ChevronRight size={16} className="hidden sm:block text-text-secondary" />
     </Link>
   );
 }
@@ -75,7 +75,7 @@ export default function PriceAlertsPreview({ alerts, onCreate }) {
 
   if (sorted.length === 0) {
     return (
-      <section className="mb-10 rounded-[22px] bg-surface-muted p-6">
+      <section className="mb-10 rounded-[18px] sm:rounded-[22px] bg-surface-muted p-4 sm:p-6">
         <div className="mb-5">
           <h2 className="font-display text-2xl font-medium text-text-main">
             Alertes <em className="font-display italic text-ember-700 not-italic">de prix</em>
@@ -92,7 +92,7 @@ export default function PriceAlertsPreview({ alerts, onCreate }) {
   }
 
   return (
-    <section className="mb-10 rounded-[22px] bg-surface-muted p-6">
+    <section className="mb-10 rounded-[18px] sm:rounded-[22px] bg-surface-muted p-4 sm:p-6">
       <div className="mb-5 flex items-end justify-between">
         <div>
           <h2 className="font-display text-2xl font-medium text-text-main">
