@@ -3,7 +3,8 @@
 // Desktop (≥768px) and mobile layouts mirror the design's vp branch.
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth, useClerk } from '@clerk/clerk-react';
+import { track } from '../lib/analytics';
 import {
   Check, ArrowRight, ChevronDown, Search, Sparkles,
   Calendar, Target, Ban, Loader2,
@@ -754,7 +755,8 @@ function FinalCTA({ mobile, onStart }) {
 
 export default function Pricing() {
   const navigate = useNavigate();
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
+  const { openSignIn } = useClerk();
   const mobile = useIsMobile();
 
   const [billing, setBilling] = useState('annual');
@@ -764,6 +766,8 @@ export default function Pricing() {
   const [checkoutError, setCheckoutError] = useState(null);
 
   useEffect(() => {
+    // Page is public: only fetch the current subscription when signed in.
+    if (!isSignedIn) return;
     let cancelled = false;
     (async () => {
       try {
@@ -781,12 +785,13 @@ export default function Pricing() {
       }
     })();
     return () => { cancelled = true; };
-  }, [getToken]);
+  }, [getToken, isSignedIn]);
 
   const startCheckout = async (planName, cycle) => {
     try {
       setCheckoutLoading(planName);
       setCheckoutError(null);
+      track('checkout_started', { plan: planName, billing: cycle });
       const token = await getToken();
       const response = await fetch(`${API_URL}/api/billing/checkout`, {
         method: 'POST',
@@ -804,6 +809,11 @@ export default function Pricing() {
   };
 
   const handleSelectPlan = (plan) => {
+    // Anonymous visitor: send them through sign-up first, returning to pricing.
+    if (!isSignedIn) {
+      openSignIn({ afterSignInUrl: '/pricing', afterSignUpUrl: '/onboarding' });
+      return;
+    }
     if (plan.id === 'free') {
       navigate('/create-trip');
       return;

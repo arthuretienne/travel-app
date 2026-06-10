@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { Loader2 } from 'lucide-react';
+import { track } from '../lib/analytics';
 
 function Results() {
   const { searchId } = useParams();
@@ -49,7 +50,7 @@ function Results() {
     let timeoutId = null;
 
     if (location.state?.streamingMode && location.state?.searchPayload) {
-      const { searchPayload, token } = location.state;
+      const { searchPayload } = location.state;
 
       setIsStreaming(true);
       setLoading(false);
@@ -68,6 +69,10 @@ function Results() {
 
       const startStreaming = async () => {
         try {
+          // Fetch a FRESH token at request time. Clerk tokens expire in ~60s, so
+          // a token captured on the previous page (CreateTrip) is often stale by
+          // the time the user lands here.
+          const token = await getToken();
           const response = await fetch(`${API_URL}/api/travel/recommendations/stream`, {
             method: 'POST',
             headers: {
@@ -79,7 +84,19 @@ function Results() {
           });
 
           if (!response.ok) {
-            throw new Error('Streaming request failed');
+            // Surface an actionable message per status instead of a generic one.
+            if (timeoutId) clearTimeout(timeoutId);
+            setIsStreaming(false);
+            if (response.status === 401) {
+              setError('Votre session a expiré. Reconnectez-vous puis relancez la recherche.');
+            } else if (response.status === 403) {
+              setError('Vous avez atteint votre limite de recherches ce mois-ci. Passez à un forfait supérieur pour continuer.');
+            } else if (response.status === 429) {
+              setError('Trop de recherches en peu de temps. Patientez quelques minutes puis réessayez.');
+            } else {
+              setError('La recherche a échoué. Réessayez dans un instant.');
+            }
+            return;
           }
 
           const reader = response.body.getReader();
@@ -222,6 +239,15 @@ function Results() {
     }
   }, [recommendations, isStreaming]);
 
+  // Funnel: fire results_viewed once, when the first recommendation lands.
+  const [resultsTracked, setResultsTracked] = useState(false);
+  useEffect(() => {
+    if (recommendations.length > 0 && !resultsTracked) {
+      track('results_viewed', { count: recommendations.length });
+      setResultsTracked(true);
+    }
+  }, [recommendations, resultsTracked]);
+
   const fetchRecommendations = async () => {
     try {
       setLoading(true);
@@ -294,6 +320,7 @@ function Results() {
       // Capture save signal
       const city = trip.destination?.city || trip.cities?.[0]?.name;
       captureSignal(city, 'saved');
+      track('trip_saved', { city });
 
       if (!silent) {
         if (data.alreadyExists) {

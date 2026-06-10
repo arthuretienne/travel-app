@@ -5,6 +5,20 @@ import { authenticateUser, optionalAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Some upstream sources store the city with the country already appended
+// (e.g. "Lisbon, Portugal"). Strip a trailing ", <country>" before persisting
+// so the country isn't duplicated when city + country are displayed together.
+const stripCountrySuffix = (city, country) => {
+  const c = typeof city === 'string' ? city.trim() : '';
+  const co = typeof country === 'string' ? country.trim() : '';
+  if (!c || !co) return c;
+  const suffix = `, ${co}`;
+  if (c.toLowerCase().endsWith(suffix.toLowerCase())) {
+    return c.slice(0, c.length - suffix.length).trim();
+  }
+  return c;
+};
+
 /**
  * POST /api/searches
  * Sauvegarde une recherche avec ses recommandations
@@ -57,8 +71,7 @@ router.post('/', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Save search error:', error);
     res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: 'Internal server error'
     });
   }
 });
@@ -101,8 +114,7 @@ router.get('/history', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Get search history error:', error);
     res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: 'Internal server error'
     });
   }
 });
@@ -145,8 +157,7 @@ router.get('/:id', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Get search error:', error);
     res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: 'Internal server error'
     });
   }
 });
@@ -167,6 +178,7 @@ router.post('/trips/save', authenticateUser, async (req, res) => {
       });
     }
 
+    const cleanCity = stripCountrySuffix(city, country);
     const parsedStartDate = new Date(startDate);
     const parsedEndDate = new Date(endDate);
 
@@ -174,7 +186,7 @@ router.post('/trips/save', authenticateUser, async (req, res) => {
     const existingTrip = await prisma.savedTrip.findFirst({
       where: {
         userId: req.user.id,
-        city,
+        city: cleanCity,
         country,
         startDate: parsedStartDate,
         endDate: parsedEndDate,
@@ -190,7 +202,7 @@ router.post('/trips/save', authenticateUser, async (req, res) => {
     const savedTrip = await prisma.savedTrip.create({
       data: {
         userId: req.user.id,
-        city,
+        city: cleanCity,
         country,
         startDate: parsedStartDate,
         endDate: parsedEndDate,
@@ -205,8 +217,7 @@ router.post('/trips/save', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Save trip error:', error);
     res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: 'Internal server error'
     });
   }
 });
@@ -235,8 +246,7 @@ router.get('/trips/saved', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Get saved trips error:', error);
     res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: 'Internal server error'
     });
   }
 });
@@ -284,8 +294,7 @@ router.put('/trips/:id', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Update trip error:', error);
     res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: 'Internal server error'
     });
   }
 });
@@ -327,8 +336,7 @@ router.delete('/trips/:id', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Delete trip error:', error);
     res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
+      error: 'Internal server error'
     });
   }
 });

@@ -1,19 +1,44 @@
 import {
   ArrowRight,
-  Bell,
   Calendar,
   Check,
   Clock,
+  ExternalLink,
   Hotel,
   MessageCircle,
   Plane,
-  Send,
   Share2,
   Sparkles,
+  Star,
   Users,
+  Utensils,
 } from 'lucide-react';
 import { Avatar, Badge, Button, Card, PhotoBlock } from '../ui';
-import { getDestinationImage } from '../../utils/destinationImages';
+
+function relativeTime(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "à l'instant";
+  if (min < 60) return `il y a ${min} min`;
+  const hours = Math.floor(min / 60);
+  if (hours < 24) return `il y a ${hours} h`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'hier';
+  if (days < 7) return `il y a ${days} j`;
+  return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
+function messageAuthorName(msg) {
+  const first = msg.author?.firstName || '';
+  const last = msg.author?.lastName || '';
+  return `${first} ${last}`.trim() || msg.guestName || msg.author?.email || 'Invité';
+}
+
+function truncate(text, max) {
+  if (!text) return '';
+  return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
+}
 
 function getDestinationInfo(finalDestination) {
   if (!finalDestination) return { city: null, country: null };
@@ -65,37 +90,53 @@ function getMemberStatus(member, isConfirmed) {
   return 'pending';
 }
 
+function getActivities(fd) {
+  if (!fd) return [];
+  const raw =
+    fd.activities ||
+    fd.highlights ||
+    fd.destination?.highlights ||
+    fd.destination?.activities ||
+    fd.searchContext?.activities ||
+    [];
+  return (Array.isArray(raw) ? raw : [])
+    .map((a) => (typeof a === 'string' ? a : a?.name || a?.title || a?.label))
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
 const STATUS_META = {
   decided: { label: 'Prêt', tone: 'moss', icon: Check },
   voted: { label: 'En cours', tone: 'ember', icon: ArrowRight },
   pending: { label: 'À relancer', tone: 'gold', icon: Clock },
 };
 
-function MemberRow({ member, status, currentUserId }) {
-  const name = getMemberName(member);
-  const firstName = name.split(' ')[0];
-  const meta = STATUS_META[status] || STATUS_META.pending;
-  const StatusIcon = meta.icon;
-  const isCurrentUser = member.user?.id === currentUserId;
+const CHIP_TONES = {
+  ember: 'bg-ember-50 text-ember-700',
+  sand: 'bg-sand-100 text-sand-800',
+  moss: 'bg-moss-100 text-[#3d5a24]',
+  gold: 'bg-gold-100 text-[#7a5c1a]',
+  clay: 'bg-clay-100 text-[#7a3a25]',
+};
 
+function IconChip({ icon, tone = 'ember' }) {
   return (
-    <div className="flex items-center gap-3">
-      <Avatar name={name} src={getMemberAvatar(member)} size={34} ring={status === 'pending'} ringColor="var(--gold-500)" />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-text-main">
-          {firstName}
-          {isCurrentUser && <span className="ml-1.5 font-normal text-text-secondary">· vous</span>}
-        </div>
-        <div className="text-xs text-text-secondary">{member.role === 'creator' ? 'Créateur' : 'Membre'}</div>
-      </div>
-      <Badge tone={meta.tone} className="gap-1.5">
-        <StatusIcon size={12} />
-        {meta.label}
-      </Badge>
-    </div>
+    <span className={['grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[14px]', CHIP_TONES[tone] || CHIP_TONES.ember].join(' ')}>
+      {icon}
+    </span>
   );
 }
 
+function ReadyPill({ status }) {
+  const meta = STATUS_META[status] || STATUS_META.pending;
+  return (
+    <Badge tone={meta.tone} dot>
+      {meta.label}
+    </Badge>
+  );
+}
+
+/* Avatars on a ring, readiness arc, X/Y prêts in the center. */
 function ConsensusDial({ members, statuses }) {
   const total = Math.max(1, members.length);
   const completed = statuses.filter((status) => status === 'decided').length;
@@ -137,6 +178,11 @@ function ConsensusDial({ members, statuses }) {
               ring={status === 'pending'}
               ringColor="var(--gold-500)"
             />
+            {status === 'decided' && (
+              <span className="absolute -bottom-0.5 -right-0.5 grid h-[15px] w-[15px] place-items-center rounded-full bg-moss-500 shadow-[0_0_0_2px_white]">
+                <Check size={9} className="text-white" />
+              </span>
+            )}
             {status === 'pending' && (
               <span
                 className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-gold-500 shadow-[0_0_0_2px_white]"
@@ -148,9 +194,10 @@ function ConsensusDial({ members, statuses }) {
       })}
 
       <div className="absolute inset-0 grid place-items-center">
-        <div className="rounded-full border border-sand-300 bg-white/88 px-5 py-4 text-center shadow-1">
+        <div className="rounded-full border border-sand-300 bg-white/90 px-5 py-4 text-center shadow-1">
           <div className="font-display text-4xl leading-none text-text-main">
-            {completed}<span className="text-text-secondary">/{total}</span>
+            {completed}
+            <span className="text-text-secondary">/{total}</span>
           </div>
           <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">prêts</div>
         </div>
@@ -159,193 +206,242 @@ function ConsensusDial({ members, statuses }) {
   );
 }
 
-function ConsensusCard({ trip, currentUserId, isConfirmed }) {
+function GroupStateCard({ trip, currentUserId, isConfirmed }) {
   const members = trip.members || [];
   const statuses = members.map((member) => getMemberStatus(member, isConfirmed));
-  const pendingMember = members.find((member, index) => statuses[index] === 'pending');
-  const completed = statuses.filter((status) => status === 'decided').length;
 
   return (
-    <Card raised className="relative rounded-[20px] p-6 md:p-7">
-      <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-ember-100/50 blur-3xl" />
-      <div className="relative">
-        <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-ember-700">État du groupe</div>
-        <h2 className="mt-2 font-display text-3xl leading-tight text-text-main">
-          Vous y êtes <span className="italic text-moss-500">presque</span>.
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-text-secondary">
-          {completed} sur {Math.max(1, members.length)} ont finalisé leurs réservations.
-          {pendingMember ? ` ${getMemberName(pendingMember).split(' ')[0]} attend un rappel clair.` : ' Le groupe est aligné.'}
-        </p>
-      </div>
-
-      <div className="relative mt-6 grid gap-6 lg:grid-cols-[200px_1fr] lg:items-center">
+    <Card className="p-[22px]">
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">État du groupe</span>
+      <div className="mt-4 flex justify-center">
         <ConsensusDial members={members} statuses={statuses} />
-        <div className="space-y-3">
-          {members.map((member, index) => (
-            <MemberRow key={member.id || index} member={member} status={statuses[index]} currentUserId={currentUserId} />
-          ))}
+      </div>
+      <div className="mt-5 flex flex-col">
+        {members.map((member, index) => {
+          const name = getMemberName(member);
+          const isCurrentUser = member.user?.id === currentUserId;
+          return (
+            <div
+              key={member.id || index}
+              className={['flex items-center gap-3 py-2', index ? 'border-t border-sand-200' : ''].join(' ')}
+            >
+              <Avatar name={name} src={getMemberAvatar(member)} size={30} />
+              <div className="min-w-0 flex-1 truncate">
+                <span className="text-sm font-medium text-text-main">{name.split(' ')[0]}</span>
+                {member.role === 'creator' && <span className="ml-1.5 text-[11px] text-text-secondary">Créateur</span>}
+                {isCurrentUser && <span className="ml-1.5 text-[11px] text-text-secondary">· vous</span>}
+              </div>
+              <ReadyPill status={statuses[index]} />
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function RecapCard({ icon, tone = 'ember', title, sub, price, unit, children }) {
+  return (
+    <Card className="p-[18px]">
+      <div className="flex items-start justify-between gap-2.5">
+        <div className="flex gap-3">
+          <IconChip icon={icon} tone={tone} />
+          <div>
+            <h3 className="text-[15.5px] font-semibold text-text-main">{title}</h3>
+            {sub && <div className="mt-0.5 text-[12.5px] text-text-secondary">{sub}</div>}
+          </div>
+        </div>
+        {price != null && (
+          <div className="shrink-0 text-right">
+            <div className="font-display text-[21px] font-medium text-text-main">{price}</div>
+            {unit && <div className="font-mono text-[10px] text-text-secondary">{unit}</div>}
+          </div>
+        )}
+      </div>
+      {children}
+    </Card>
+  );
+}
+
+function FlightLeg({ label, leg }) {
+  if (!leg) return null;
+  const dep = leg.departureAirport || leg.from || '';
+  const arr = leg.arrivalAirport || leg.to || '';
+  return (
+    <div className="rounded-[12px] bg-sand-50 px-3.5 py-3">
+      <div className="mb-1.5 flex justify-between whitespace-nowrap text-[11px] text-text-secondary">
+        <span>
+          {label}
+          {leg.date ? ` · ${leg.date}` : ''}
+        </span>
+        <span>{leg.duration || ''}</span>
+      </div>
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2.5 font-mono text-[12.5px] text-text-main">
+        <span>{leg.departureTime || '—'}</span>
+        <span className="flex items-center justify-center gap-1.5 text-text-secondary">
+          {dep}
+          <span className="h-px min-w-[16px] flex-1 bg-sand-200" />
+          <Plane size={12} className="text-ember-600" />
+          <span className="h-px min-w-[16px] flex-1 bg-sand-200" />
+          {arr}
+        </span>
+        <span>{leg.arrivalTime || '—'}</span>
+      </div>
+    </div>
+  );
+}
+
+function FlightRecapCard({ flight, pricing }) {
+  const airline = flight?.outbound?.airline || flight?.airline || 'Vol aller-retour';
+  return (
+    <RecapCard
+      icon={<Plane size={19} className="text-ember-700" />}
+      tone="ember"
+      title="Vol aller-retour"
+      sub={airline}
+      price={Number(pricing?.flight || pricing?.flights) ? formatCurrency(pricing.flight || pricing.flights) : null}
+      unit="/ pers."
+    >
+      {flight && (flight.outbound || flight.return) ? (
+        <div className="mt-4 flex flex-col gap-2.5">
+          <FlightLeg label="Aller" leg={flight.outbound} />
+          <FlightLeg label="Retour" leg={flight.return} />
+        </div>
+      ) : (
+        <p className="mt-3 text-[13px] leading-5 text-text-secondary">Les meilleurs horaires restent visibles dans le détail.</p>
+      )}
+    </RecapCard>
+  );
+}
+
+function HotelRecapCard({ hotel, pricing, nights }) {
+  if (!hotel) {
+    return (
+      <RecapCard
+        icon={<Hotel size={19} className="text-[#7a3a25]" />}
+        tone="clay"
+        title="Hébergement à choisir"
+        sub="Choix commun avant réservation."
+        price={Number(pricing?.hotel || pricing?.accommodation) ? formatCurrency(pricing.hotel || pricing.accommodation) : null}
+        unit="total"
+      />
+    );
+  }
+
+  const stars = Math.round(hotel.stars || 0);
+  const tags = [hotel.rating?.word, hotel.boardType, ...(hotel.amenities || [])].filter(Boolean).slice(0, 3);
+  const total = pricing?.hotel || pricing?.accommodation || hotel.totalPrice;
+  const url = hotel.bookingUrl || hotel.url || hotel.deepLink;
+  const bookingBtn = (
+    <Button size="sm" variant="outline" iconRight={<ExternalLink size={12} />}>
+      Sur Booking
+    </Button>
+  );
+
+  return (
+    <Card className="p-0">
+      <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr]">
+        <PhotoBlock src={hotel.mainPhoto} alt={hotel.name} overlay={false} className="h-40 sm:h-full sm:min-h-[150px]" />
+        <div className="p-[18px]">
+          <div className="flex items-start justify-between gap-2.5">
+            <div className="min-w-0">
+              <h3 className="text-[15.5px] font-semibold leading-[1.25] text-text-main">{hotel.name}</h3>
+              {hotel.location && <div className="mt-0.5 truncate text-[12.5px] text-text-secondary">{hotel.location}</div>}
+            </div>
+            {stars > 0 && (
+              <div className="inline-flex shrink-0 gap-0.5 text-gold-500">
+                {Array.from({ length: stars }).map((_, i) => (
+                  <Star key={i} size={12} fill="currentColor" />
+                ))}
+              </div>
+            )}
+          </div>
+          {tags.length > 0 && (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <Badge key={tag} tone="neutral">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+          <div className="mt-3.5 flex items-baseline justify-between gap-2">
+            <div>
+              <span className="font-display text-[21px] font-medium text-text-main">{formatCurrency(total)}</span>
+              {nights ? <span className="ml-1.5 font-mono text-[11px] text-text-secondary">{nights} nuits</span> : null}
+            </div>
+            {url ? (
+              <a href={url} target="_blank" rel="noreferrer">
+                {bookingBtn}
+              </a>
+            ) : (
+              bookingBtn
+            )}
+          </div>
         </div>
       </div>
     </Card>
   );
 }
 
-function NextDecisionCard({ pendingMember, destinationImage, onRemind, sendingReminder }) {
-  const name = pendingMember ? getMemberName(pendingMember).split(' ')[0] : 'le groupe';
-  const templates = pendingMember
-    ? [
-        `Hey ${name}, on est presque tous calés. Tu veux qu'on bloque le voyage ?`,
-        'Le prix bouge un peu cette semaine. On valide ensemble ?',
-      ]
-    : [
-        'Tout le monde est calé. On peut passer à la réservation finale.',
-        'Dernier contrôle du budget, puis on verrouille.',
-      ];
-
+function ActivitiesRecapCard({ activities, pricing }) {
+  const chips = activities.length ? activities : ['À définir ensemble'];
   return (
-    <div className="relative overflow-hidden rounded-[20px] bg-sand-900 p-6 text-white shadow-3 md:p-7">
-      <div className="absolute inset-0 bg-cover bg-center opacity-20" style={{ backgroundImage: `url(${destinationImage})` }} />
-      <div className="absolute inset-0 bg-gradient-to-br from-sand-900/75 to-sand-900" />
-
-      <div className="relative flex min-h-[320px] flex-col">
-        <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-white/45">Prochaine décision</div>
-        <h2 className="mt-2 font-display text-3xl leading-tight">
-          {pendingMember ? (
-            <>Relancer {name} <span className="italic text-ember-200">gentiment</span>.</>
-          ) : (
-            <>Finaliser <span className="italic text-ember-200">ensemble</span>.</>
-          )}
-        </h2>
-        <p className="mt-3 max-w-md text-sm leading-6 text-white/70">
-          {pendingMember
-            ? "Un message court suffit. L'objectif est de réduire la friction, pas de mettre la pression."
-            : 'Le groupe est prêt. Gardez une seule action claire pour la suite.'}
-        </p>
-
-        <div className="mt-5 space-y-2">
-          {templates.map((template) => (
-            <button
-              key={template}
-              type="button"
-              className="w-full rounded-[12px] border border-white/10 bg-white/[0.06] px-4 py-3 text-left text-[13px] leading-5 text-white transition-colors hover:bg-white/[0.1]"
-            >
-              {template}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-auto flex items-center gap-3 pt-6">
-          {pendingMember && <Avatar name={getMemberName(pendingMember)} src={getMemberAvatar(pendingMember)} size={30} />}
-          <span className="text-[13px] text-white/65">
-            {pendingMember ? `${name} n'a pas encore tout réservé` : 'Tout le monde est synchronisé'}
-          </span>
-          <div className="flex-1" />
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onRemind}
-            disabled={sendingReminder || !pendingMember}
-            iconRight={<Send size={14} />}
+    <RecapCard
+      icon={<Sparkles size={19} className="text-[#7a5c1a]" />}
+      tone="gold"
+      title="Activités"
+      sub="Gardez les décisions sociales au même endroit."
+      price={Number(pricing?.activities) > 0 ? formatCurrency(pricing.activities) : null}
+      unit="optionnel"
+    >
+      <div className="mt-3.5 flex flex-wrap gap-2">
+        {chips.map((activity) => (
+          <span
+            key={activity}
+            className="inline-flex items-center gap-1.5 rounded-full bg-sand-100 px-3 py-1.5 text-[13px] text-sand-700"
           >
-            Envoyer
-          </Button>
-        </div>
+            <Sparkles size={13} className="text-gold-500" />
+            {activity}
+          </span>
+        ))}
       </div>
-    </div>
+    </RecapCard>
   );
 }
 
-function RecapCard({ icon, eyebrow, title, sub, right, rightSub }) {
+function BudgetCard({ pricing, perPerson }) {
+  const rows = [
+    { label: 'Vol', value: Number(pricing?.flight || pricing?.flights || 0), color: 'bg-ember-600', icon: <Plane size={14} /> },
+    { label: 'Hôtel', value: Number(pricing?.hotel || pricing?.accommodation || 0), color: 'bg-clay-500', icon: <Hotel size={14} /> },
+    { label: 'Activités', value: Number(pricing?.activities || 0), color: 'bg-moss-500', icon: <Sparkles size={14} /> },
+    { label: 'Repas', value: Number(pricing?.food || 0), color: 'bg-gold-500', icon: <Utensils size={14} /> },
+  ].filter((row) => row.value > 0);
+  const max = Math.max(...rows.map((row) => row.value), 1);
+  const displayRows = rows.length
+    ? rows
+    : [{ label: 'Budget prévisionnel', value: perPerson || 0, color: 'bg-ember-600', icon: <Plane size={14} /> }];
+
   return (
     <Card className="p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="grid h-10 w-10 place-items-center rounded-[12px] bg-ember-50 text-ember-700">{icon}</div>
-        <div className="text-right">
-          <div className="font-display text-2xl leading-none text-text-main">{right}</div>
-          {rightSub && <div className="mt-1 text-xs text-text-secondary">{rightSub}</div>}
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary">Budget par personne</span>
+        <div className="font-display text-[32px] font-medium leading-none text-text-main">
+          {perPerson ? formatCurrency(perPerson) : 'À confirmer'}
         </div>
       </div>
-      <div className="mt-4 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary">{eyebrow}</div>
-      <div className="mt-1 font-medium text-text-main">{title}</div>
-      <div className="mt-1 text-sm leading-5 text-text-secondary">{sub}</div>
-    </Card>
-  );
-}
-
-function ItineraryStrip({ city, startDate }) {
-  const baseDate = startDate ? new Date(startDate) : null;
-  const days = [
-    { title: `Arrivée à ${city}`, items: ['Installation', 'Premier quartier', 'Dîner simple'], color: 'bg-clay-500' },
-    { title: 'Journée signature', items: ['Activité choisie', 'Pause locale', 'Soirée libre'], color: 'bg-ember-600' },
-    { title: 'Derniers choix', items: ['Matinée lente', 'Derniers achats', 'Retour'], color: 'bg-moss-500' },
-  ];
-
-  return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {days.map((day, index) => {
-        const date = baseDate ? new Date(baseDate) : null;
-        if (date) date.setDate(baseDate.getDate() + index);
-        const dateLabel = date ? date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : `Jour ${index + 1}`;
-
-        return (
-          <Card key={day.title} className="relative p-5">
-            <div className={`absolute bottom-5 left-0 top-5 w-1 rounded-r ${day.color}`} />
-            <div className="pl-3">
-              <div className="flex items-baseline gap-3">
-                <div className="font-display text-2xl text-text-main">Jour {index + 1}</div>
-                <div className="text-xs text-text-secondary">{dateLabel}</div>
-              </div>
-              <div className="mt-1 font-medium text-text-main">{day.title}</div>
-              <ul className="mt-3 space-y-2">
-                {day.items.map((item) => (
-                  <li key={item} className="flex gap-2 text-sm text-text-secondary">
-                    <span className="mt-2 h-1 w-1 rounded-full bg-text-light" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </Card>
-        );
-      })}
-    </div>
-  );
-}
-
-function BudgetCard({ pricing, membersCount }) {
-  const total = Number(pricing?.total || pricing?.realisticTotal || 0);
-  const perPerson = total && membersCount ? total / membersCount : Number(pricing?.perPerson || 0);
-  const rows = [
-    { label: 'Vol', value: pricing?.flight || pricing?.flights || 0, color: 'bg-ember-600' },
-    { label: 'Hôtel', value: pricing?.hotel || pricing?.accommodation || 0, color: 'bg-clay-500' },
-    { label: 'Activités', value: pricing?.activities || 0, color: 'bg-moss-500' },
-    { label: 'Marge repas', value: pricing?.food || 0, color: 'bg-gold-500' },
-  ].filter((row) => Number(row.value) > 0);
-  const max = Math.max(...rows.map((row) => Number(row.value)), 1);
-
-  return (
-    <Card className="p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">Budget</div>
-          <div className="mt-2 font-display text-4xl leading-none text-text-main">
-            {perPerson ? formatCurrency(perPerson) : 'À confirmer'}
-          </div>
-          <div className="mt-1 text-sm text-text-secondary">par personne</div>
-        </div>
-        <Badge tone="moss" dot>Suivi clair</Badge>
-      </div>
-
-      <div className="mt-6 space-y-4">
-        {(rows.length ? rows : [{ label: 'Budget prévisionnel', value: perPerson || 0, color: 'bg-ember-600' }]).map((row) => (
+      <div className="mt-4 flex flex-col gap-3.5">
+        {displayRows.map((row) => (
           <div key={row.label}>
-            <div className="mb-1 flex justify-between text-sm">
-              <span className="text-text-secondary">{row.label}</span>
-              <span className="font-mono text-text-main">{Number(row.value) ? formatCurrency(row.value) : 'À compléter'}</span>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="inline-flex items-center gap-2 text-[13.5px] text-text-secondary">
+                <span className="text-text-light">{row.icon}</span>
+                {row.label}
+              </span>
+              <span className="font-mono text-[12.5px] text-text-main">{row.value ? formatCurrency(row.value) : 'À compléter'}</span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-sand-100">
-              <div className={`h-full rounded-full ${row.color}`} style={{ width: `${Math.max(18, (Number(row.value) / max) * 100)}%` }} />
+              <div className={['h-full rounded-full', row.color].join(' ')} style={{ width: `${Math.max(14, (row.value / max) * 100)}%` }} />
             </div>
           </div>
         ))}
@@ -354,195 +450,147 @@ function BudgetCard({ pricing, membersCount }) {
   );
 }
 
-function LiveFeedCard({ members }) {
-  const firstMembers = (members || []).slice(0, 3);
-  const events = firstMembers.length
-    ? firstMembers.map((member, index) => ({
-        member,
-        text: index === 0 ? 'a confirmé ses disponibilités' : index === 1 ? 'a ajouté une préférence hôtel' : 'a consulté le budget',
-        when: index === 0 ? "aujourd'hui" : index === 1 ? 'hier' : 'cette semaine',
-      }))
-    : [];
+function LiveFeedCard({ messages }) {
+  const recent = (messages || []).slice(-5).reverse();
 
   return (
-    <Card className="p-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">Activité</div>
-          <h3 className="mt-2 font-display text-2xl text-text-main">Ce qui avance</h3>
-        </div>
-        <MessageCircle size={18} className="text-text-secondary" />
-      </div>
+    <Card className="p-5">
+      <span className="mb-3.5 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">
+        <span className="h-1.5 w-1.5 rounded-full bg-moss-500" style={{ animation: 'sk-pulse 1.8s var(--ease-out) infinite' }} />
+        Ce qui avance
+      </span>
 
-      <div className="mt-5 space-y-4">
-        {events.map((event) => (
-          <div key={`${getMemberName(event.member)}-${event.text}`} className="flex gap-3">
-            <Avatar name={getMemberName(event.member)} src={getMemberAvatar(event.member)} size={32} />
-            <div>
-              <div className="text-sm leading-5">
-                <strong className="font-semibold text-text-main">{getMemberName(event.member).split(' ')[0]}</strong>
-                <span className="text-text-secondary"> {event.text}</span>
+      {recent.length === 0 ? (
+        <p className="text-sm leading-6 text-text-secondary">Les prochaines actions du groupe apparaîtront ici.</p>
+      ) : (
+        <div className="flex flex-col">
+          {recent.map((msg, index) => {
+            const isSystem = msg.type && msg.type !== 'message';
+            const name = messageAuthorName(msg);
+            const last = index === recent.length - 1;
+            return (
+              <div key={msg.id || index} className={['flex gap-3', last ? '' : 'pb-3.5'].join(' ')}>
+                <div className="flex flex-col items-center">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ember-50 text-ember-700">
+                    {isSystem ? <Sparkles size={14} /> : <MessageCircle size={14} />}
+                  </span>
+                  {!last && <span className="mt-1 w-px flex-1 bg-sand-200" />}
+                </div>
+                <div className="min-w-0 pt-0.5">
+                  <div className="text-[13.5px] leading-5 text-text-secondary">
+                    {isSystem ? (
+                      truncate(msg.content, 100)
+                    ) : (
+                      <>
+                        <strong className="font-semibold text-text-main">{name.split(' ')[0]}</strong>{' '}
+                        {truncate(msg.content, 90)}
+                      </>
+                    )}
+                  </div>
+                  <div className="mt-0.5 text-[11.5px] text-text-light">{relativeTime(msg.createdAt)}</div>
+                </div>
               </div>
-              <div className="mt-0.5 text-xs text-text-secondary">{event.when}</div>
-            </div>
-          </div>
-        ))}
-        {events.length === 0 && <p className="text-sm leading-6 text-text-secondary">Les prochaines actions du groupe apparaîtront ici.</p>}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </Card>
   );
 }
 
-export default function GroupTripOverview({
-  trip,
-  currentUserId,
-  userRole,
-  onInvite,
-  onRemind,
-  sendingReminder = false,
-}) {
+export default function GroupTripOverview({ trip, currentUserId, onInvite, onBook }) {
   const { city, country } = getDestinationInfo(trip.finalDestination);
   const isConfirmed = Boolean(trip.finalDestination);
   const members = trip.members || [];
   const statuses = members.map((member) => getMemberStatus(member, isConfirmed));
-  const pendingMember = members.find((member, index) => statuses[index] === 'pending');
+  const readyCount = statuses.filter((status) => status === 'decided').length;
+  const total = Math.max(1, members.length);
   const destinationName = city || trip.name;
   const dateRange = formatDateRange(trip.finalStartDate, trip.finalEndDate);
   const duration = getDuration(trip.finalStartDate, trip.finalEndDate);
   const pricing = trip.finalDestination?.pricing || {};
-  const total = pricing.total || pricing.realisticTotal || pricing.perPerson * Math.max(1, members.length);
-  const perPerson = total && members.length ? total / members.length : pricing.perPerson;
-  const destinationImage = getDestinationImage({ city, country, tripData: trip.finalDestination });
+  const grandTotal = pricing.total || pricing.realisticTotal || (pricing.perPerson || 0) * total;
+  const perPerson = grandTotal && members.length ? grandTotal / total : pricing.perPerson;
   const flight = trip.finalDestination?.flightDetails;
   const hotel = trip.finalDestination?.hotelOptions?.hotels?.[0];
+  const activities = getActivities(trip.finalDestination);
 
   return (
-    <div className="space-y-8">
-      <div className="overflow-hidden rounded-[28px] border border-sand-200 bg-white shadow-2">
-        <PhotoBlock
-          city={city}
-          country={country}
-          tripData={trip.finalDestination}
-          className="h-[280px] md:h-[360px]"
-          imgClassName="transition-transform duration-500 hover:scale-[1.02]"
-        >
-          <div className="absolute inset-0 flex items-end">
-            <div className="w-full p-6 md:p-10">
-              <div className="mb-4 flex flex-wrap gap-2">
-                <Badge tone={isConfirmed ? 'moss' : 'gold'} dot>
-                  {isConfirmed ? `${statuses.filter((status) => status === 'decided').length} sur ${Math.max(1, members.length)} prêts` : 'Décision en cours'}
-                </Badge>
-                <Badge tone="neutral">Voyage de groupe</Badge>
-              </div>
-              <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <h1 className="max-w-3xl font-display text-5xl leading-[0.95] text-white md:text-7xl">
-                    {destinationName}
-                    {isConfirmed && <span className="italic text-ember-200"> ensemble</span>}
-                  </h1>
-                  <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/80">
-                    <span className="inline-flex items-center gap-2"><Calendar size={16} />{dateRange}</span>
-                    <span className="inline-flex items-center gap-2"><Users size={16} />{members.length || 1} voyageurs</span>
-                    {duration && <span className="inline-flex items-center gap-2"><Clock size={16} />{duration} jours</span>}
-                    {perPerson && <span className="font-mono">{formatCurrency(perPerson, ' / pers.')}</span>}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="md" onClick={onInvite} icon={<Share2 size={16} />}>
-                    Partager
-                  </Button>
-                  <Button variant="primary" size="md" iconRight={<ArrowRight size={16} />}>
-                    Réserver ensemble
-                  </Button>
-                </div>
-              </div>
-            </div>
+    <div className="sk-stagger flex flex-col gap-6">
+      {/* Hero */}
+      <PhotoBlock
+        city={city}
+        country={country}
+        tripData={trip.finalDestination}
+        className="relative h-[300px] rounded-[22px] md:h-[340px]"
+        imgClassName="transition-transform duration-500 hover:scale-[1.02]"
+      >
+        <div className="absolute inset-x-5 top-5 z-[2] flex flex-wrap gap-2 md:inset-x-6">
+          <Badge tone="moss" dot>
+            {readyCount} sur {total} prêts
+          </Badge>
+          <Badge tone="ink">
+            <span className="inline-flex items-center gap-1.5">
+              <Users size={12} />
+              Voyage de groupe
+            </span>
+          </Badge>
+        </div>
+        <div className="absolute inset-x-5 bottom-5 z-[2] text-white md:inset-x-6 md:bottom-6">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/85">Destination confirmée</span>
+          <h1 className="mt-2 font-display text-[40px] font-medium leading-[1.02] tracking-[-0.015em] md:text-[52px]">
+            <span className="italic text-ember-200">{destinationName}</span>
+            {country ? <>, {country}</> : null}
+          </h1>
+          <div className="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/90">
+            <span className="inline-flex items-center gap-1.5">
+              <Calendar size={14} />
+              {dateRange}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Users size={14} />
+              {members.length || 1} voyageurs
+            </span>
+            {duration && (
+              <span className="inline-flex items-center gap-1.5">
+                <Clock size={14} />
+                {duration} jours
+              </span>
+            )}
+            {perPerson && <span className="font-mono">{formatCurrency(perPerson, ' / pers.')}</span>}
           </div>
-        </PhotoBlock>
+        </div>
+      </PhotoBlock>
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2.5">
+        <Button variant="outline" onClick={onInvite} icon={<Share2 size={16} />}>
+          Partager
+        </Button>
+        <Button onClick={onBook} icon={<ExternalLink size={16} />}>
+          Réserver ensemble
+        </Button>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <ConsensusCard trip={trip} currentUserId={currentUserId} isConfirmed={isConfirmed} />
-        <NextDecisionCard
-          pendingMember={pendingMember}
-          destinationImage={destinationImage}
-          onRemind={onRemind}
-          sendingReminder={sendingReminder}
-        />
-      </div>
-
-      <section>
-        <div className="mb-4 flex items-end justify-between gap-4">
+      {/* Récap + group state */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="flex flex-col gap-4">
           <div>
-            <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-ember-700">Récap du voyage</div>
-            <h2 className="mt-1 font-display text-3xl text-text-main">{isConfirmed ? `${destinationName}, ${dateRange}` : trip.name}</h2>
+            <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">Récapitulatif</span>
+            <h2 className="mt-1.5 font-display text-[26px] font-medium tracking-[-0.015em] text-text-main">Votre voyage</h2>
           </div>
-          {userRole === 'creator' && (
-            <Button variant="ghost" size="sm" onClick={onInvite} icon={<Users size={15} />}>
-              Inviter
-            </Button>
-          )}
+
+          <FlightRecapCard flight={flight} pricing={pricing} />
+          <HotelRecapCard hotel={hotel} pricing={pricing} nights={duration} />
+          <ActivitiesRecapCard activities={activities} pricing={pricing} />
+          <BudgetCard pricing={pricing} perPerson={perPerson} />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <RecapCard
-            icon={<Plane size={20} />}
-            eyebrow="Vol"
-            title={flight?.outbound?.departureAirport && city ? `${flight.outbound.departureAirport} → ${city}` : 'Vol à confirmer'}
-            sub={flight?.outbound?.duration ? `Durée ${flight.outbound.duration}${flight.outbound.stops ? `, ${flight.outbound.stops} escale` : ', direct'}` : 'Les meilleurs horaires restent visibles dans le détail.'}
-            right={formatCurrency(pricing.flight || pricing.flights)}
-            rightSub="par pers."
-          />
-          <RecapCard
-            icon={<Hotel size={20} />}
-            eyebrow="Hôtel"
-            title={hotel?.name || 'Hébergement à choisir'}
-            sub={hotel?.pricePerNight ? `${formatCurrency(hotel.pricePerNight)} par nuit` : 'Choix commun avant réservation.'}
-            right={formatCurrency(pricing.hotel || pricing.accommodation)}
-            rightSub="total"
-          />
-          <RecapCard
-            icon={<Sparkles size={20} />}
-            eyebrow="Activités"
-            title="Moments à valider"
-            sub="Gardez les décisions sociales au même endroit."
-            right={formatCurrency(pricing.activities || 0)}
-            rightSub="optionnel"
-          />
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-4 flex items-end justify-between gap-4">
-          <div>
-            <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-ember-700">Itinéraire</div>
-            <h2 className="mt-1 font-display text-3xl text-text-main">Un rythme lisible pour tout le monde</h2>
-          </div>
-          <Badge tone="neutral">Aperçu</Badge>
-        </div>
-        <ItineraryStrip city={destinationName} startDate={trip.finalStartDate} />
-      </section>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <BudgetCard pricing={pricing} membersCount={Math.max(1, members.length)} />
-        <LiveFeedCard members={members} />
+        <aside className="flex flex-col gap-4">
+          <GroupStateCard trip={trip} currentUserId={currentUserId} isConfirmed={isConfirmed} />
+          <LiveFeedCard messages={trip.messages} />
+        </aside>
       </div>
-
-      {!isConfirmed && (
-        <Card className="p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-ember-700">Décision</div>
-              <h2 className="mt-1 font-display text-2xl text-text-main">Le voyage n'est pas encore confirmé</h2>
-              <p className="mt-1 text-sm text-text-secondary">Les propositions et le vote restent disponibles juste en dessous.</p>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-text-secondary">
-              <Bell size={16} className="text-gold-500" />
-              Gardez une seule prochaine action.
-            </div>
-          </div>
-        </Card>
-      )}
     </div>
   );
 }

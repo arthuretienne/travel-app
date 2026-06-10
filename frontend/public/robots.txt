@@ -1,15 +1,24 @@
 User-agent: *
 Allow: /
 Allow: /destination/
+Allow: /destinations
+Allow: /pricing
 Disallow: /dashboard
 Disallow: /create-trip
 Disallow: /results
 Disallow: /account
 Disallow: /onboarding
-Disallow: /pricing
 Disallow: /trips/
 Disallow: /saved-trips/
 Disallow: /price-alerts
 Disallow: /accept-invitation/
+
+# AI / generative-engine crawlers — allow indexing of public marketing content.
+User-agent: GPTBot
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: PerplexityBot
+Allow: /
 
 Sitemap: https://skusku.life/sitemap.xml

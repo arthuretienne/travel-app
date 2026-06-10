@@ -4,19 +4,20 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import {
-  Plus, Trash2, ArrowRight, Loader2,
+  Plus, Trash2, ArrowRight, Loader2, Scale,
   Utensils, Plane, Home, ShoppingBag, Ticket, HelpCircle,
 } from 'lucide-react';
+import { Avatar, Button, Card } from './ui';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const CATEGORIES = [
-  { id: 'food', label: 'Repas & Boissons', icon: Utensils, color: 'text-orange-600 bg-orange-50' },
-  { id: 'transport', label: 'Transport', icon: Plane, color: 'text-blue-600 bg-blue-50' },
-  { id: 'accommodation', label: 'Hébergement', icon: Home, color: 'text-purple-600 bg-purple-50' },
-  { id: 'activity', label: 'Activité', icon: Ticket, color: 'text-green-600 bg-green-50' },
-  { id: 'shopping', label: 'Shopping', icon: ShoppingBag, color: 'text-pink-600 bg-pink-50' },
-  { id: 'other', label: 'Autre', icon: HelpCircle, color: 'text-stone-600 bg-stone-50' },
+  { id: 'food', label: 'Repas & Boissons', icon: Utensils },
+  { id: 'transport', label: 'Transport', icon: Plane },
+  { id: 'accommodation', label: 'Hébergement', icon: Home },
+  { id: 'activity', label: 'Activité', icon: Ticket },
+  { id: 'shopping', label: 'Shopping', icon: ShoppingBag },
+  { id: 'other', label: 'Autre', icon: HelpCircle },
 ];
 
 function getCategoryInfo(id) {
@@ -125,195 +126,202 @@ export default function TripExpenses({ tripId, currentUserId }) {
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const perPerson = members.length > 0 ? totalExpenses / members.length : 0;
 
+  const memberName = (m) => `${m?.firstName || ''} ${m?.lastName || ''}`.trim() || 'Invité';
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      </div>
+      <Card className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-ember-500" />
+      </Card>
     );
   }
 
+  const inputClass =
+    'h-11 w-full rounded-[11px] border border-sand-200 bg-white px-3.5 text-sm text-text-main outline-none focus:border-primary focus:ring-2 focus:ring-primary/20';
+
   return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-stone-100">
-          <p className="text-xs text-text-secondary mb-1">Total dépenses</p>
-          <p className="text-2xl font-bold text-text-main">€{totalExpenses.toFixed(2)}</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-stone-100">
-          <p className="text-xs text-text-secondary mb-1">Par personne</p>
-          <p className="text-2xl font-bold text-primary">€{perPerson.toFixed(2)}</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-stone-100 col-span-2 md:col-span-1">
-          <p className="text-xs text-text-secondary mb-1">Membres</p>
-          <p className="text-2xl font-bold text-text-main">{members.length}</p>
-        </div>
+    <div className="sk-stagger flex flex-col gap-5">
+      {/* Summary stats */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card className="p-5">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Total des dépenses</span>
+          <div className="mt-2 font-display text-[34px] font-medium leading-none text-text-main">€{Math.round(totalExpenses)}</div>
+          <div className="mt-1.5 text-[13px] text-text-muted">{expenses.length} dépenses · {members.length} participants</div>
+        </Card>
+        <Card className="p-5">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Par personne</span>
+          <div className="mt-2 font-display text-[34px] font-medium leading-none text-text-main">€{Math.round(perPerson)}</div>
+          <div className="mt-1.5 text-[13px] text-text-muted">part moyenne</div>
+        </Card>
+        <Card className="p-5">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Remboursements</span>
+          <div className="mt-2 font-display text-[34px] font-medium leading-none text-text-main">{settlements.length}</div>
+          <div className="mt-1.5 text-[13px] text-text-muted">transferts pour solder</div>
+        </Card>
       </div>
 
-      {/* Settlements (who owes whom) */}
-      {settlements.length > 0 && (
-        <div className="bg-white rounded-xl border border-stone-100 p-5">
-          <h3 className="font-semibold text-text-main mb-3">Remboursements</h3>
-          <div className="space-y-3">
-            {settlements.map((s, idx) => (
-              <div key={idx} className="flex items-center gap-3 p-3 bg-surface-subtle rounded-lg">
-                <span className="font-medium text-text-main text-sm">{s.from?.firstName || 'Inconnu'}</span>
-                <ArrowRight size={16} className="text-text-light flex-shrink-0" />
-                <span className="font-medium text-text-main text-sm">{s.to?.firstName || 'Inconnu'}</span>
-                <span className="ml-auto font-bold text-primary">€{s.amount.toFixed(2)}</span>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* Expenses list */}
+        <Card className="p-0">
+          <div className="flex items-center justify-between gap-3 px-6 pt-5">
+            <div>
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">Tricount du groupe</span>
+              <h2 className="mt-1 font-display text-[22px] font-medium tracking-[-0.01em] text-text-main">Dépenses</h2>
+            </div>
+            <Button size="sm" icon={<Plus size={15} />} onClick={() => setShowForm(v => !v)}>Ajouter</Button>
+          </div>
+
+          {showForm && (
+            <form onSubmit={handleAddExpense} className="sk-pop mx-6 mt-4 flex flex-col gap-2.5 rounded-[14px] bg-sand-50 p-4">
+              <input
+                type="text"
+                placeholder="Intitulé (ex : Restaurant)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className={inputClass}
+                autoFocus
+              />
+              <input
+                type="number"
+                placeholder="Montant €"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                min="0.01"
+                step="0.01"
+                className={inputClass}
+              />
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.map(cat => {
+                  const Icon = cat.icon;
+                  const active = category === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setCategory(cat.id)}
+                      className={[
+                        'inline-flex items-center gap-1.5 rounded-[10px] border px-3 py-1.5 text-xs font-medium transition-colors',
+                        active
+                          ? 'border-ember-600 bg-ember-50 text-ember-700'
+                          : 'border-sand-200 bg-white text-text-secondary hover:border-sand-300',
+                      ].join(' ')}
+                    >
+                      <Icon size={14} />
+                      {cat.label}
+                    </button>
+                  );
+                })}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+              <p className="text-[12.5px] text-text-muted">Divisé équitablement entre les {members.length} membres</p>
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" type="button" onClick={() => setShowForm(false)}>Annuler</Button>
+                <Button size="sm" type="submit" disabled={submitting || !description.trim() || !amount}>
+                  {submitting ? <Loader2 size={15} className="animate-spin" /> : 'Enregistrer'}
+                </Button>
+              </div>
+            </form>
+          )}
 
-      {/* Balances per member */}
-      {Object.keys(balances).length > 0 && (
-        <div className="bg-white rounded-xl border border-stone-100 p-5">
-          <h3 className="font-semibold text-text-main mb-3">Soldes</h3>
-          <div className="space-y-2">
-            {members.map(m => {
-              const balance = balances[m.id] || 0;
-              return (
-                <div key={m.id} className="flex items-center justify-between py-2 border-b border-stone-50 last:border-0">
-                  <div className="flex items-center gap-2">
-                    {m.imageUrl ? (
-                      <img src={m.imageUrl} alt="" className="w-7 h-7 rounded-full" />
-                    ) : (
-                      <div className="w-7 h-7 rounded-full bg-primary-light text-primary flex items-center justify-center text-xs font-bold">
-                        {(m.firstName || '?')[0]}
-                      </div>
-                    )}
-                    <span className="text-sm font-medium text-text-main">{m.firstName} {m.lastName?.[0] || ''}</span>
-                  </div>
-                  <span className={`text-sm font-bold ${balance > 0 ? 'text-green-600' : balance < 0 ? 'text-red-500' : 'text-text-light'}`}>
-                    {balance > 0 ? '+' : ''}{balance.toFixed(2)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Add Expense Button / Form */}
-      {!showForm ? (
-        <button
-          onClick={() => setShowForm(true)}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors"
-        >
-          <Plus size={18} />
-          Ajouter une dépense
-        </button>
-      ) : (
-        <form onSubmit={handleAddExpense} className="bg-white rounded-xl border border-stone-100 p-5 space-y-4">
-          <h3 className="font-semibold text-text-main">Nouvelle dépense</h3>
-
-          <input
-            type="text"
-            placeholder="Description (ex : Dîner au restaurant)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-4 py-2.5 border border-stone-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-            autoFocus
-          />
-
-          <input
-            type="number"
-            placeholder="Montant"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            min="0.01"
-            step="0.01"
-            className="w-full px-4 py-2.5 border border-stone-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-          />
-
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map(cat => {
-              const Icon = cat.icon;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setCategory(cat.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-                    category === cat.id
-                      ? 'border-primary bg-primary-light text-primary'
-                      : 'border-stone-200 text-text-secondary hover:border-stone-300'
-                  }`}
-                >
-                  <Icon size={14} />
-                  {cat.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <p className="text-xs text-text-light">Divisé équitablement entre les {members.length} membres</p>
-
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={submitting || !description.trim() || !amount}
-              className="flex-1 py-2.5 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50"
-            >
-              {submitting ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Ajouter'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="px-4 py-2.5 bg-stone-100 text-stone-600 font-medium rounded-lg hover:bg-stone-200 transition-colors"
-            >
-              Annuler
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Expense List */}
-      {expenses.length > 0 ? (
-        <div className="bg-white rounded-xl border border-stone-100 divide-y divide-stone-50">
-          {expenses.map(expense => {
-            const cat = getCategoryInfo(expense.category);
-            const Icon = cat.icon;
-            const canDelete = expense.paidById === currentUserId;
-
-            return (
-              <div key={expense.id} className="flex items-center gap-3 p-4">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${cat.color}`}>
-                  <Icon size={18} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-text-main text-sm truncate">{expense.description}</p>
-                  <p className="text-xs text-text-secondary">
-                    Payé par {expense.paidBy?.firstName || 'Inconnu'} — {new Date(expense.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}
-                  </p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="font-bold text-text-main text-sm">€{expense.amount.toFixed(2)}</p>
-                </div>
-                {canDelete && (
-                  <button
-                    onClick={() => handleDelete(expense.id)}
-                    className="p-1.5 text-stone-400 hover:text-red-500 transition-colors flex-shrink-0"
+          <div className="px-6 pb-5 pt-2">
+            {expenses.length === 0 ? (
+              <div className="py-10 text-center">
+                <span className="mx-auto grid h-14 w-14 place-items-center rounded-[18px] bg-sand-100 text-sand-500">
+                  <Utensils size={24} />
+                </span>
+                <p className="mt-4 font-display text-[18px] font-medium text-text-main">Aucune dépense pour l'instant</p>
+                <p className="mx-auto mt-1.5 max-w-xs text-sm text-text-secondary">
+                  Ajoutez des dépenses pour les partager équitablement avec votre groupe.
+                </p>
+              </div>
+            ) : (
+              expenses.map((expense, i) => {
+                const cat = getCategoryInfo(expense.category);
+                const Icon = cat.icon;
+                const canDelete = expense.paidById === currentUserId;
+                return (
+                  <div
+                    key={expense.id}
+                    className={['flex items-center gap-3.5 py-3.5', i ? 'border-t border-sand-200' : ''].join(' ')}
                   >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-stone-100 p-8 text-center">
-          <div className="w-12 h-12 bg-primary-light rounded-full flex items-center justify-center mx-auto mb-3">
-            <Utensils size={24} className="text-primary" />
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sand-100 text-sand-600">
+                      <Icon size={18} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[14.5px] font-semibold text-text-main">{expense.description}</div>
+                      <div className="text-[12.5px] text-text-muted">
+                        Payé par {expense.paidBy?.firstName || 'Inconnu'} · {new Date(expense.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}
+                      </div>
+                    </div>
+                    <span className="font-mono text-sm font-medium text-text-main">€{expense.amount.toFixed(2)}</span>
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDelete(expense.id)}
+                        aria-label="Supprimer"
+                        className="grid place-items-center p-1 text-text-muted transition-colors hover:text-clay-500"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
-          <p className="font-medium text-text-main mb-1">Aucune dépense pour l'instant</p>
-          <p className="text-sm text-text-secondary">Ajoutez des dépenses pour les partager avec votre groupe</p>
-        </div>
-      )}
+        </Card>
+
+        {/* Balances + reimbursement plan */}
+        <aside className="flex flex-col gap-4">
+          <Card className="p-5">
+            <span className="mb-3.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">Soldes</span>
+            {members.length === 0 ? (
+              <p className="text-sm text-text-muted">Aucun participant.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {members.map(m => {
+                  const v = balances[m.id] || 0;
+                  const rounded = Math.round(v);
+                  return (
+                    <div key={m.id} className="flex items-center gap-3">
+                      <Avatar name={memberName(m)} src={m.imageUrl} size={30} />
+                      <span className="flex-1 text-sm font-medium text-text-main">{m.firstName || 'Invité'}</span>
+                      <span
+                        className={[
+                          'whitespace-nowrap font-mono text-[13.5px] font-semibold',
+                          rounded === 0 ? 'text-text-muted' : rounded > 0 ? 'text-moss-500' : 'text-clay-500',
+                        ].join(' ')}
+                      >
+                        {rounded > 0 ? '+' : ''}{rounded} €
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
+          <Card className="border-0 bg-sand-900 p-5 text-white">
+            <span className="mb-3.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">
+              <Scale size={15} className="text-gold-500" /> Plan de remboursement
+            </span>
+            {settlements.length === 0 ? (
+              <div className="text-[13.5px] text-white/70">Tout est équilibré 🎉</div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {settlements.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2.5 text-[13.5px]">
+                    <Avatar name={s.from?.firstName || 'Invité'} src={s.from?.imageUrl} size={26} />
+                    <span className="font-medium">{s.from?.firstName || 'Invité'}</span>
+                    <ArrowRight size={15} className="text-ember-300" />
+                    <Avatar name={s.to?.firstName || 'Invité'} src={s.to?.imageUrl} size={26} />
+                    <span className="font-medium">{s.to?.firstName || 'Invité'}</span>
+                    <span className="ml-auto font-mono font-semibold text-ember-200">€{s.amount.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </aside>
+      </div>
     </div>
   );
 }

@@ -6,10 +6,39 @@ import prisma from '../db/prisma.js';
  * Clerk authentication middleware
  * Vérifie le token Bearer et attache l'utilisateur à req.user
  */
+// DEV-ONLY impersonation bypass.
+// When running locally (NODE_ENV=development or DEV_MODE=true), a request may
+// authenticate as a seeded user by sending `Authorization: Bearer dev:<userId>`.
+// This NEVER activates in production (NODE_ENV=production + DEV_MODE unset).
+const DEV_AUTH_ENABLED =
+  process.env.NODE_ENV === 'development' || process.env.DEV_MODE === 'true';
+
+async function tryDevImpersonation(authHeader) {
+  if (!DEV_AUTH_ENABLED) return null;
+  if (!authHeader || !authHeader.startsWith('Bearer dev:')) return null;
+  const userId = authHeader.slice('Bearer dev:'.length).trim();
+  if (!userId) return null;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { preferences: true },
+  });
+  if (user) {
+    console.log(`🧪 DEV impersonation as ${user.firstName || user.email} (${user.id})`);
+  }
+  return user; // null if not found → caller falls through to normal error
+}
+
 export async function authenticateUser(req, res, next) {
   try {
     // Extract Bearer token from Authorization header
     const authHeader = req.headers.authorization;
+
+    // DEV-only: impersonate a seeded user via `Bearer dev:<userId>`
+    const devUser = await tryDevImpersonation(authHeader);
+    if (devUser) {
+      req.user = devUser;
+      return next();
+    }
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
@@ -88,12 +117,11 @@ export async function authenticateUser(req, res, next) {
     req.user = user;
     next();
   } catch (error) {
+    // Log full detail server-side; never leak internals to the client.
     console.error('❌ Authentication error:', error.message);
-    console.error('Error details:', error);
     return res.status(401).json({
       error: 'Unauthorized',
       message: 'Authentication failed',
-      details: error.message
     });
   }
 }
@@ -105,6 +133,13 @@ export async function authenticateUser(req, res, next) {
 export async function optionalAuth(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
+
+    // DEV-only impersonation (see tryDevImpersonation above)
+    const devUser = await tryDevImpersonation(authHeader);
+    if (devUser) {
+      req.user = devUser;
+      return next();
+    }
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return next();

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { SignedIn, SignedOut, SignInButton, UserButton, useAuth } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, SignInButton, UserButton, useAuth, useUser } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowRight,
@@ -60,6 +60,8 @@ const COPY = {
     finalCta: 'Trouver mon prochain voyage',
     signin: 'Se connecter',
     dashboard: 'Tableau de bord',
+    createTrip: 'Créer mon voyage',
+    mySpace: 'Mon espace',
     pricing: 'Tarifs',
     popular: 'Propositions recentes',
     powered: "Propulsé par l'IA",
@@ -95,6 +97,8 @@ const COPY = {
     finalCta: 'Find my next trip',
     signin: 'Sign in',
     dashboard: 'Dashboard',
+    createTrip: 'Create my trip',
+    mySpace: 'My space',
     pricing: 'Pricing',
     popular: 'Recent proposals',
     powered: 'AI powered',
@@ -133,8 +137,12 @@ function Landing() {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const { isSignedIn } = useAuth();
+  const { user } = useUser();
   const lang = i18n.language?.startsWith('fr') ? 'fr' : 'en';
   const c = COPY[lang];
+  const initials = ((user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')).toUpperCase()
+    || user?.primaryEmailAddress?.emailAddress?.[0]?.toUpperCase()
+    || '·';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -218,7 +226,7 @@ function Landing() {
                   className="whitespace-nowrap"
                   iconRight={<ArrowRight size={16} />}
                 >
-                  Créer mon voyage
+                  {c.createTrip}
                 </Button>
               </SignInButton>
             </SignedOut>
@@ -238,7 +246,7 @@ function Landing() {
                 onClick={() => navigate('/create-trip')}
                 iconRight={<ArrowRight size={16} />}
               >
-                Créer mon voyage
+                {c.createTrip}
               </Button>
               <UserButton afterSignOutUrl="/" />
             </SignedIn>
@@ -259,11 +267,11 @@ function Landing() {
                 className="flex items-center gap-3 py-3"
               >
                 <span className="grid h-8 w-8 place-items-center rounded-full bg-ember-100 text-xs font-semibold text-ember-800">
-                  AR
+                  {initials}
                 </span>
                 <span className="flex-1">
                   <span className="block text-sm font-medium text-text-main">{c.dashboard}</span>
-                  <span className="block text-xs text-text-light">Mon espace</span>
+                  <span className="block text-xs text-text-light">{c.mySpace}</span>
                 </span>
                 <ArrowRight size={14} className="text-text-light" />
               </Link>
@@ -275,7 +283,7 @@ function Landing() {
             <SignedOut>
               <SignInButton mode="modal">
                 <Button variant="primary" size="lg" full iconRight={<ArrowRight size={16} />}>
-                  Créer mon voyage
+                  {c.createTrip}
                 </Button>
               </SignInButton>
             </SignedOut>
@@ -287,7 +295,7 @@ function Landing() {
                 onClick={() => navigate('/create-trip')}
                 iconRight={<ArrowRight size={16} />}
               >
-                Créer mon voyage
+                {c.createTrip}
               </Button>
             </SignedIn>
           </>

@@ -14,8 +14,6 @@ export const apiLimiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  // Validate proxy configuration for Railway/Vercel
-  validate: { trustProxy: false }, // Disable validation since we handle proxy in server.js
   skip: (req) => {
     // Skip rate limiting for health checks
     return req.path === '/api/health';
@@ -36,7 +34,6 @@ export const strictLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { trustProxy: false },
 });
 
 /**
@@ -54,7 +51,6 @@ export const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful requests
-  validate: { trustProxy: false },
 });
 
 /**
@@ -70,7 +66,6 @@ export const emailLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { trustProxy: false },
 });
 
 /**
@@ -88,7 +83,6 @@ export const userStrictLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { trustProxy: false },
   keyGenerator: (req) => {
     // Use authenticated user ID if available, fall back to IP
     return req.user?.id || req.ip;
@@ -108,7 +102,6 @@ export const userSearchLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { trustProxy: false },
   keyGenerator: (req) => {
     return req.user?.id || req.ip;
   },

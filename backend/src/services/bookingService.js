@@ -6,6 +6,30 @@ import * as cache from '../utils/cache.js';
 const BASE_URL = 'https://booking-com15.p.rapidapi.com';
 const BOOKING_API_KEY = process.env.BOOKING_API_KEY;
 
+/**
+ * axios.get with a single retry on transient failures (HTTP 429 / 5xx /
+ * network), with a short backoff. RapidAPI throttles aggressively during the
+ * parallel discovery fan-out; without a retry, one 429 silently drops an entire
+ * destination. 4xx errors other than 429 are NOT retried (they won't succeed).
+ */
+async function bookingGet(url, config = {}, { retries = 1, backoffMs = 1500 } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await axios.get(url, config);
+    } catch (err) {
+      const status = err.response?.status;
+      const transient = !status || status === 429 || status >= 500;
+      lastErr = err;
+      if (!transient || attempt === retries) throw err;
+      const wait = backoffMs * (attempt + 1);
+      console.warn(`⚠️  Booking ${status || err.code || 'network'} — retry ${attempt + 1}/${retries} in ${wait}ms`);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+  throw lastErr;
+}
+
 // Booking.com search results return tiny thumbnails (square60 / square200).
 // The bstatic CDN serves the SAME image at any size by swapping the size
 // segment — upgrade to a large variant so hotel photos aren't pixelated.
@@ -420,7 +444,7 @@ export async function getDestinationId(destinationName) {
   console.log(`🔍 Searching destination "${resolvedName}"...`);
 
   try {
-    const response = await axios.get(`${BASE_URL}/api/v1/flights/searchDestination`, {
+    const response = await bookingGet(`${BASE_URL}/api/v1/flights/searchDestination`, {
       params: {
         query: resolvedName
       },
@@ -592,7 +616,7 @@ async function searchRoundTripDirect({
     currency_code: currency
   };
 
-  const response = await axios.get(`${BASE_URL}/api/v1/flights/searchFlights`, {
+  const response = await bookingGet(`${BASE_URL}/api/v1/flights/searchFlights`, {
     params,
     headers: {
       'x-rapidapi-key': BOOKING_API_KEY,
@@ -647,7 +671,7 @@ async function searchOneWayDirect({
     currency_code: currency
   };
 
-  const response = await axios.get(`${BASE_URL}/api/v1/flights/searchFlights`, {
+  const response = await bookingGet(`${BASE_URL}/api/v1/flights/searchFlights`, {
     params,
     headers: {
       'x-rapidapi-key': BOOKING_API_KEY,
@@ -767,6 +791,8 @@ function parseFlightOffers(flightOffers, currency, fromId, toId, departDate, ret
       outbound: outbound ? {
         departureAirport: outbound.departureAirport?.code,
         arrivalAirport: outbound.arrivalAirport?.code,
+        departureCity: outbound.departureAirport?.cityName,
+        arrivalCity: outbound.arrivalAirport?.cityName,
         departureTime: outbound.departureTime,
         arrivalTime: outbound.arrivalTime,
         // totalTime is in seconds, convert to minutes
@@ -791,6 +817,8 @@ function parseFlightOffers(flightOffers, currency, fromId, toId, departDate, ret
       return: returnSeg ? {
         departureAirport: returnSeg.departureAirport?.code,
         arrivalAirport: returnSeg.arrivalAirport?.code,
+        departureCity: returnSeg.departureAirport?.cityName,
+        arrivalCity: returnSeg.arrivalAirport?.cityName,
         departureTime: returnSeg.departureTime,
         arrivalTime: returnSeg.arrivalTime,
         duration: Math.round((returnSeg.totalTime || 0) / 60),
@@ -1119,7 +1147,7 @@ export async function searchHotels({
 
   try {
     // Step 1: Get destination ID for hotels
-    const destResponse = await axios.get(`${BASE_URL}/api/v1/hotels/searchDestination`, {
+    const destResponse = await bookingGet(`${BASE_URL}/api/v1/hotels/searchDestination`, {
       params: {
         query: destinationQuery
       },
@@ -1177,7 +1205,7 @@ export async function searchHotels({
       searchParams.price_max = maxPrice;
     }
 
-    const hotelsResponse = await axios.get(`${BASE_URL}/api/v1/hotels/searchHotels`, {
+    const hotelsResponse = await bookingGet(`${BASE_URL}/api/v1/hotels/searchHotels`, {
       params: searchParams,
       headers: {
         'x-rapidapi-key': BOOKING_API_KEY,

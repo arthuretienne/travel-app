@@ -118,6 +118,31 @@
   }
 }
 
+/* Active-step bloom on the JourneyRibbon. */
+@keyframes sk-halo {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(164, 77, 48, .28), var(--shadow-2);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(164, 77, 48, 0), var(--shadow-2);
+  }
+}
+.sk-halo {
+  animation: sk-halo 2.4s var(--ease-out) infinite;
+}
+
+/* Loading skeleton shimmer (planning "Skusku compose…" state). */
+@keyframes sk-skel {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+.sk-skel {
+  background: linear-gradient(90deg, var(--sand-100) 25%, var(--sand-200) 37%, var(--sand-100) 63%);
+  background-size: 200px 100%;
+  border-radius: 8px;
+  animation: sk-skel 1.4s ease-in-out infinite;
+}
+
 /* Horizontal scroll without a visible scrollbar (mobile tab strips,
    day-by-day day pills). */
 .sk-noscroll {

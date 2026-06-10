@@ -99,7 +99,6 @@ export async function checkSubscription(req, res, next) {
     console.error('❌ Subscription check error:', error);
     return res.status(500).json({
       error: 'Failed to verify subscription',
-      message: error.message,
     });
   }
 }
@@ -121,6 +120,10 @@ export function requireFeature(featureName) {
     try {
       if (!req.subscription) {
         await checkSubscription(req, res, () => {});
+        // checkSubscription may have already answered (403 inactive / 500). If
+        // so, stop here — writing again would throw "headers already sent".
+        if (res.headersSent) return;
+        if (!req.subscription) return res.status(500).json({ error: 'Failed to verify feature access' });
       }
 
       const plan = getPlanDetails(getEffectivePlan(req.subscription));
@@ -141,7 +144,6 @@ export function requireFeature(featureName) {
       console.error('❌ Feature check error:', error);
       return res.status(500).json({
         error: 'Failed to verify feature access',
-        message: error.message,
       });
     }
   };
@@ -172,6 +174,8 @@ export function checkLimit(limitType, usageField) {
 
       if (!req.subscription) {
         await checkSubscription(req, res, () => {});
+        if (res.headersSent) return;
+        if (!req.subscription) return res.status(500).json({ error: 'Failed to verify usage limits' });
       }
 
       // Check for monthly reset before checking limits
@@ -208,7 +212,6 @@ export function checkLimit(limitType, usageField) {
       console.error('❌ Limit check error:', error);
       return res.status(500).json({
         error: 'Failed to verify usage limits',
-        message: error.message,
       });
     }
   };
