@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth, useClerk } from '@clerk/clerk-react';
+import { track } from '../lib/analytics';
 import {
   User, Settings, Calendar, CheckCircle, XCircle,
   LogOut, Save, Globe, Briefcase, Heart, MapPin,
@@ -206,6 +207,14 @@ function Account() {
     const params = new URLSearchParams(window.location.search);
     const calendarSuccess = params.get('calendar_success');
     const calendarError = params.get('calendar_error');
+
+    // Stripe checkout success redirect (?session_id=...&success=true). Fire the
+    // conversion event once, then clean the URL so a refresh doesn't re-fire.
+    if (params.get('success') === 'true' && params.get('session_id')) {
+      track('checkout_completed', { sessionId: params.get('session_id') });
+      fetchSubscription();
+      window.history.replaceState({}, '', '/account');
+    }
 
     if (calendarSuccess === 'true') {
       showAccountNotif('success', 'Calendrier Google connecté avec succès !');

@@ -1,35 +1,40 @@
 // frontend/src/i18n/index.js
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
 
 import fr from './fr.json';
 import en from './en.json';
 
+// LAUNCH DECISION (2026-06): FR-only. The core pages (Results, TripDetail,
+// Pricing) are hardcoded French, so auto-detecting EN gave English visitors a
+// broken half-translated experience after the first search. We force French
+// and hide the Landing switcher; EN resources stay bundled so re-enabling is
+// just restoring the LanguageDetector setup below once the core pages use t().
+//
+// To re-enable EN:
+//   import LanguageDetector from 'i18next-browser-languagedetector';
+//   i18n.use(LanguageDetector)..., remove `lng: 'fr'`, and restore:
+//   detection: {
+//     order: ['querystring', 'localStorage', 'navigator', 'htmlTag'],
+//     lookupQuerystring: 'lang',
+//     caches: ['localStorage'],
+//   },
 i18n
-  .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources: {
       fr: { translation: fr },
       en: { translation: en },
     },
-    fallbackLng: 'fr', // Default to French
+    lng: 'fr',
+    fallbackLng: 'fr',
     // Strip region tags so `en-GB`, `en-US`, `fr-CA`, etc. all resolve to the
-    // base language. Without this, navigator.language === 'en-GB' was being
-    // cached verbatim and missed the `en` resource bundle.
+    // base language.
     load: 'languageOnly',
     nonExplicitSupportedLngs: true,
     supportedLngs: ['fr', 'en'],
     interpolation: {
       escapeValue: false, // React already escapes
-    },
-    detection: {
-      // localStorage first so an explicit user choice (LanguageSwitcher)
-      // always wins over the browser locale on the next visit.
-      order: ['querystring', 'localStorage', 'navigator', 'htmlTag'],
-      lookupQuerystring: 'lang',
-      caches: ['localStorage'],
     },
   });
 

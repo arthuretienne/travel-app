@@ -1,7 +1,8 @@
 // frontend/src/pages/Onboarding.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
+import { track } from '../lib/analytics';
 import { Zap, Target, Check, Calendar, MapPin, Globe, Clock, Shield, Users, Heart, Activity, Sun, Moon, Coffee, Briefcase, Plane, Loader2, Sparkles } from 'lucide-react';
 import AirportAutocomplete from '../components/AirportAutocomplete';
 
@@ -117,6 +118,17 @@ function Onboarding() {
   const navigate = useNavigate();
   const { user } = useUser();
   const { getToken } = useAuth();
+
+  // Fire the `signup` conversion event exactly once per account. /onboarding is
+  // the post-signup landing (signUpFallbackRedirectUrl), but it's also reachable
+  // for re-editing prefs — so guard with a per-user localStorage flag.
+  useEffect(() => {
+    if (!user?.id) return;
+    const key = `sk_signup_tracked_${user.id}`;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, '1');
+    track('signup', {});
+  }, [user?.id]);
 
   // Choose onboarding type first
   const [onboardingType, setOnboardingType] = useState(null); // 'short' or 'long'

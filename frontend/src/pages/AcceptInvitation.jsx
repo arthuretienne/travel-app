@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth, useUser, SignedIn, SignedOut } from '@clerk/clerk-react';
 import { Loader2, CheckCircle, XCircle, Plane, Users } from 'lucide-react';
+import { track } from '../lib/analytics';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -90,6 +91,7 @@ export default function AcceptInvitation() {
       }
 
       setAccepted(true);
+      track('invitation_accepted', { tripId: data.data.trip.id, guest: !isSignedIn });
 
       // Redirect to trip after 2 seconds
       setTimeout(() => {

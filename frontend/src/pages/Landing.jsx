@@ -214,7 +214,9 @@ function Landing() {
       <MegaMenu
         actions={
           <>
-            <LanguageSwitcher />
+            {/* LanguageSwitcher hidden for the FR-only launch (core pages are
+                not translated yet). Re-add alongside the i18n detector once
+                Results/TripDetail/Pricing are localised. */}
             <SignedOut>
               <SignInButton mode="modal">
                 <Button variant="ghost" size="md" className="whitespace-nowrap">{c.signin}</Button>
