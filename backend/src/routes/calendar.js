@@ -57,7 +57,7 @@ router.get('/oauth/authorize', authenticateUser, async (req, res) => {
     const state = signState(req.user.id);
     const authUrlWithState = `${authUrl}&state=${encodeURIComponent(state)}`;
 
-    console.log('📅 Starting Google Calendar OAuth for:', req.user.email);
+    console.log('📅 Starting Google Calendar OAuth for:', req.user.id);
     res.json({
       success: true,
       authUrl: authUrlWithState,
@@ -190,7 +190,7 @@ router.post('/disconnect', authenticateUser, async (req, res) => {
       },
     });
 
-    console.log('✅ Calendar disconnected for user:', req.user.email);
+    console.log('✅ Calendar disconnected for user:', req.user.id);
 
     res.json({
       success: true,
@@ -274,7 +274,7 @@ router.get('/suggestions', authenticateUser, async (req, res) => {
       tripDuration
     );
 
-    console.log(`✅ Generated ${suggestions.length} calendar-based suggestions for:`, req.user.email);
+    console.log(`✅ Generated ${suggestions.length} calendar-based suggestions for:`, req.user.id);
 
     res.json({
       success: true,

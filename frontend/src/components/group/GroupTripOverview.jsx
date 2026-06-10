@@ -509,8 +509,13 @@ export default function GroupTripOverview({ trip, currentUserId, onInvite, onBoo
   const dateRange = formatDateRange(trip.finalStartDate, trip.finalEndDate);
   const duration = getDuration(trip.finalStartDate, trip.finalEndDate);
   const pricing = trip.finalDestination?.pricing || {};
-  const grandTotal = pricing.total || pricing.realisticTotal || (pricing.perPerson || 0) * total;
-  const perPerson = grandTotal && members.length ? grandTotal / total : pricing.perPerson;
+  // pricing.total is a GROUP total computed for the number of travellers the
+  // search was run with (searchContext.travelers), which may differ from the
+  // current member count. Divide by that to get a correct per-person figure;
+  // fall back to member count, then to a pre-computed perPerson.
+  const pricedTravelers = Number(trip.finalDestination?.searchContext?.travelers) || total;
+  const grandTotal = pricing.total || pricing.realisticTotal || (pricing.perPerson || 0) * pricedTravelers;
+  const perPerson = grandTotal ? grandTotal / pricedTravelers : pricing.perPerson;
   const flight = trip.finalDestination?.flightDetails;
   const hotel = trip.finalDestination?.hotelOptions?.hotels?.[0];
   const activities = getActivities(trip.finalDestination);

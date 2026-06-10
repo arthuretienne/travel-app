@@ -51,14 +51,16 @@ app.use(helmet({
 }));
 
 // Middleware
+const isProd = process.env.NODE_ENV === 'production';
 app.use(cors({
   origin: [
-    'http://localhost:5173',
-    'http://localhost:5174',
+    ...(isProd ? [] : ['http://localhost:5173', 'http://localhost:5174']),
     'https://travel-app-ten-rho.vercel.app', // Legacy Vercel frontend
     'https://skusku.life',                    // Production domain
     'https://www.skusku.life',                // Production domain with www
-    /\.vercel\.app$/,                         // Allow all Vercel preview deployments
+    // Open Vercel preview deployments only outside production. In prod we don't
+    // want any third-party *.vercel.app deployment making credentialed requests.
+    ...(isProd ? [] : [/\.vercel\.app$/]),
     /\.skusku\.life$/                         // Allow subdomains
   ],
   credentials: true
@@ -121,8 +123,10 @@ app.use('/api/trips', expensesRoutes);
 // Proactive opportunities (Sprint 4)
 app.use('/api/opportunities', opportunitiesRoutes);
 
-// DEV-ONLY persona impersonation routes (local testing). Never mounted in prod.
-if (process.env.NODE_ENV === 'development' || process.env.DEV_MODE === 'true') {
+// DEV-ONLY persona impersonation routes (local testing). Never mounted in prod
+// — the production guard holds even if DEV_MODE is accidentally set on Render.
+if (process.env.NODE_ENV !== 'production' &&
+    (process.env.NODE_ENV === 'development' || process.env.DEV_MODE === 'true')) {
   const { default: devRoutes } = await import('./src/routes/dev.js');
   app.use('/api/dev', devRoutes);
   console.log('🧪 DEV routes mounted at /api/dev (impersonation enabled)');

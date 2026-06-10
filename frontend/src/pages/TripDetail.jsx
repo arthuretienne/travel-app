@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
+import { track } from '../lib/analytics';
 import {
   ArrowLeft,
   Users,
@@ -249,6 +250,7 @@ export default function TripDetail() {
       }
 
       // Success - reset and close modal
+      track('invitation_sent', { tripId: trip.id, count: emailsToSend.length });
       setInviteEmails([]);
       setCurrentEmail('');
       setShowInviteModal(false);
@@ -649,7 +651,7 @@ export default function TripDetail() {
         {activeTab === 'expenses' && (
           <TripExpenses
             tripId={trip.id}
-            currentUserId={trip.members?.find(m => m.user?.email === user?.primaryEmailAddress?.emailAddress)?.user?.id}
+            currentUserId={currentUserId}
           />
         )}
 
@@ -2125,7 +2127,11 @@ function TripEnhancementsSection({ trip, userName }) {
 
   // Stream itinerary using SSE
   useEffect(() => {
-    let eventSource = null;
+    // Abort the in-flight stream when the component unmounts or trip.id changes
+    // (e.g. switching tabs). Without this, every remount spawned a second
+    // concurrent reader writing into the same state — and could re-trigger
+    // server-side Claude generation when the itinerary wasn't cached yet.
+    const controller = new AbortController();
 
     const streamItinerary = async () => {
       try {
@@ -2137,6 +2143,7 @@ function TripEnhancementsSection({ trip, userName }) {
             'Authorization': `Bearer ${token}`,
             'Accept': 'text/event-stream',
           },
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -2203,6 +2210,8 @@ function TripEnhancementsSection({ trip, userName }) {
           }
         }
       } catch (err) {
+        // A deliberate abort is not an error worth surfacing to the user.
+        if (err.name === 'AbortError') return;
         console.error('Error streaming itinerary:', err);
         setError(err.message);
         setLoadingItinerary(false);
@@ -2212,9 +2221,7 @@ function TripEnhancementsSection({ trip, userName }) {
     streamItinerary();
 
     return () => {
-      if (eventSource) {
-        eventSource.close();
-      }
+      controller.abort();
     };
   }, [trip.id, getToken]);
 

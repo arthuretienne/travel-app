@@ -102,7 +102,7 @@ router.post('/sync', express.raw({ type: 'application/json' }), async (req, res)
         },
       });
 
-      console.log('✅ User synced from webhook:', user.email);
+      console.log('✅ User synced from webhook:', user.id);
       return res.json({ message: 'User created', user });
     }
 
@@ -120,7 +120,7 @@ router.post('/sync', express.raw({ type: 'application/json' }), async (req, res)
         },
       });
 
-      console.log('✅ User updated from webhook:', user.email);
+      console.log('✅ User updated from webhook:', user.id);
       return res.json({ message: 'User updated', user });
     }
 
@@ -165,7 +165,7 @@ router.get('/me', authenticateUser, async (req, res) => {
       },
     });
 
-    console.log('✅ User fetched:', user.email);
+    console.log('✅ User fetched:', user.id);
     res.json({ user });
   } catch (error) {
     console.error('Get user error:', error);
@@ -186,56 +186,10 @@ router.get('/preferences', authenticateUser, async (req, res) => {
       where: { userId: req.user.id },
     });
 
-    console.log('✅ User preferences fetched:', req.user.email);
+    console.log('✅ User preferences fetched:', req.user.id);
     res.json({ preferences });
   } catch (error) {
     console.error('Get preferences error:', error);
-    res.status(500).json({
-      error: 'Internal server error'
-    });
-  }
-});
-
-/**
- * GET /api/users/preferences/debug
- * Debug endpoint to see raw preferences data
- * Protected route
- */
-router.get('/preferences/debug', authenticateUser, async (req, res) => {
-  try {
-    const preferences = await prisma.userPreferences.findUnique({
-      where: { userId: req.user.id },
-    });
-
-    const summary = {
-      hasPreferences: !!preferences,
-      onboardingCompleted: preferences?.onboardingCompleted || false,
-      onboardingType: preferences?.onboardingType || 'none',
-      fieldsPopulated: preferences ? {
-        style: {
-          whyTravel: !!preferences.whyTravel,
-          mainGoal: !!preferences.mainGoal,
-          globalStyle: !!preferences.globalStyle,
-        },
-        activities: {
-          topActivities: preferences.topActivities?.length || 0,
-        },
-        comfort: {
-          idealRhythm: !!preferences.idealRhythm,
-          accommodationPref: !!preferences.accommodationPref,
-        },
-        availability: {
-          tripsPerYear: !!preferences.tripsPerYear,
-          preferredAirports: preferences.preferredAirports?.length || 0,
-        }
-      } : null,
-      rawData: preferences
-    };
-
-    console.log('🔍 Debug preferences for:', req.user.email, summary);
-    res.json({ success: true, ...summary });
-  } catch (error) {
-    console.error('Debug preferences error:', error);
     res.status(500).json({
       error: 'Internal server error'
     });
@@ -327,7 +281,7 @@ router.put('/preferences', authenticateUser, async (req, res) => {
       },
     });
 
-    console.log('✅ User preferences updated:', req.user.email);
+    console.log('✅ User preferences updated:', req.user.id);
     res.json({ preferences });
   } catch (error) {
     console.error('Update preferences error:', error);

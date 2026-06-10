@@ -13,7 +13,8 @@ const TEST_DOMAIN = '@skusku-test.dev';
 // Hard guard: refuse to serve if dev mode is somehow off.
 router.use((req, res, next) => {
   const enabled =
-    process.env.NODE_ENV === 'development' || process.env.DEV_MODE === 'true';
+    process.env.NODE_ENV !== 'production' &&
+    (process.env.NODE_ENV === 'development' || process.env.DEV_MODE === 'true');
   if (!enabled) return res.status(404).json({ error: 'Not found' });
   next();
 });

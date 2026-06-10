@@ -7,6 +7,23 @@ import { sendPriceDropEmail } from './emailService.js';
 import { sendPriceDropPush } from './pushService.js';
 
 /**
+ * Read priceHistory from a `Json` column. Historically it was double-encoded
+ * (a JSON string inside a JSON field), so tolerate both shapes during the
+ * transition: a native array (new writes) or a JSON string (legacy rows).
+ */
+function parsePriceHistory(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw || '[]');
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/**
  * Create a new price alert for a user
  */
 export async function createPriceAlert({
@@ -44,7 +61,7 @@ export async function createPriceAlert({
       targetPrice: finalTargetPrice,
       currentPrice: initialPrice,
       lowestPrice: initialPrice,
-      priceHistory: JSON.stringify([{ date: new Date().toISOString(), price: initialPrice }]),
+      priceHistory: [{ date: new Date().toISOString(), price: initialPrice }],
       alertType,
       frequency,
       isActive: true,
@@ -71,7 +88,7 @@ export async function getUserAlerts(userId) {
 
   return alerts.map(alert => ({
     ...alert,
-    priceHistory: JSON.parse(alert.priceHistory || '[]'),
+    priceHistory: parsePriceHistory(alert.priceHistory),
   }));
 }
 
@@ -90,7 +107,7 @@ export async function getAlertById(alertId, userId) {
 
   return {
     ...alert,
-    priceHistory: JSON.parse(alert.priceHistory || '[]'),
+    priceHistory: parsePriceHistory(alert.priceHistory),
   };
 }
 
@@ -184,7 +201,7 @@ export async function checkAlertPrice(alert) {
       console.warn(`⚠️ Invalid price for alert ${alert.id}:`, currentPrice);
       return null;
     }
-    const priceHistory = JSON.parse(alert.priceHistory || '[]');
+    const priceHistory = parsePriceHistory(alert.priceHistory);
 
     // Add to price history (keep last 30 entries)
     priceHistory.push({ date: new Date().toISOString(), price: currentPrice });
@@ -206,7 +223,7 @@ export async function checkAlertPrice(alert) {
       data: {
         currentPrice,
         lowestPrice: newLowestPrice,
-        priceHistory: JSON.stringify(priceHistory),
+        priceHistory,
         lastCheckedAt: new Date(),
         status: priceDropped ? 'triggered' : 'active',
       },

@@ -164,8 +164,10 @@ export function checkLimit(limitType, usageField) {
     }
 
     try {
-      // DEV MODE: Bypass all usage limits during development
-      const DEV_MODE = process.env.DEV_MODE === 'true' || process.env.NODE_ENV === 'development';
+      // DEV MODE: Bypass all usage limits during development. Never in prod —
+      // a stray DEV_MODE=true on Render must not silently disable the paywall.
+      const DEV_MODE = process.env.NODE_ENV !== 'production' &&
+        (process.env.DEV_MODE === 'true' || process.env.NODE_ENV === 'development');
 
       if (DEV_MODE) {
         console.log('🚀 DEV MODE: Bypassing usage limits for testing');
@@ -230,8 +232,9 @@ export function incrementUsage(usageField) {
       return next();
     }
 
-    // DEV MODE: Skip incrementing usage during development
-    const DEV_MODE = process.env.DEV_MODE === 'true' || process.env.NODE_ENV === 'development';
+    // DEV MODE: Skip incrementing usage during development (never in prod).
+    const DEV_MODE = process.env.NODE_ENV !== 'production' &&
+      (process.env.DEV_MODE === 'true' || process.env.NODE_ENV === 'development');
 
     if (DEV_MODE) {
       console.log('🚀 DEV MODE: Skipping usage increment for testing');

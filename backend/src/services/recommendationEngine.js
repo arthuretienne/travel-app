@@ -184,17 +184,35 @@ export async function getRecommendations(userProfile, searchParams) {
     ],
   };
 
-  const scored = candidates
+  const filtered = candidates
     .filter(dest => passesHardConstraints(dest, params))
     .map(dest => {
       const { score, reasons } = computeContextualScore(dest, { ...params });
       return {
         ...dest,
-        contextualScore: score,
-        vectorSimilarity: dest.similarity,
-        // 60% similarité vectorielle + 40% score contextuel
-        finalScore: (dest.similarity * 60) + (score * 0.4),
+        contextualScore: score,        // 0..~100
+        vectorSimilarity: dest.similarity, // raw cosine, ~[0.7,0.9]
         matchReasons: reasons,
+      };
+    });
+
+  // Min-max normalise the cosine similarity ACROSS the candidate set before
+  // weighting. Raw cosine clusters in a narrow band (~0.7-0.9) so a flat
+  // `similarity * 60` barely discriminates and the contextual score silently
+  // dominates the ranking. Normalising spreads it back to [0,1] so the stated
+  // 60/40 split (vector / context) actually holds. Both terms are scaled to a
+  // 0..100 range so finalScore stays interpretable.
+  const sims = filtered.map(d => d.vectorSimilarity ?? 0);
+  const minSim = sims.length ? Math.min(...sims) : 0;
+  const maxSim = sims.length ? Math.max(...sims) : 0;
+  const simRange = maxSim - minSim;
+
+  const scored = filtered
+    .map(dest => {
+      const normSim = simRange > 0 ? (dest.vectorSimilarity - minSim) / simRange : 0.5;
+      return {
+        ...dest,
+        finalScore: (normSim * 60) + ((dest.contextualScore / 100) * 40),
       };
     })
     .sort((a, b) => b.finalScore - a.finalScore);

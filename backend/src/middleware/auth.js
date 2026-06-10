@@ -10,8 +10,12 @@ import prisma from '../db/prisma.js';
 // When running locally (NODE_ENV=development or DEV_MODE=true), a request may
 // authenticate as a seeded user by sending `Authorization: Bearer dev:<userId>`.
 // This NEVER activates in production (NODE_ENV=production + DEV_MODE unset).
+// Belt-and-suspenders: NEVER enable the impersonation bypass in production,
+// even if DEV_MODE is somehow set there. A stray DEV_MODE=true on Render would
+// otherwise turn `Bearer dev:<userId>` into a full account-takeover primitive.
 const DEV_AUTH_ENABLED =
-  process.env.NODE_ENV === 'development' || process.env.DEV_MODE === 'true';
+  process.env.NODE_ENV !== 'production' &&
+  (process.env.NODE_ENV === 'development' || process.env.DEV_MODE === 'true');
 
 async function tryDevImpersonation(authHeader) {
   if (!DEV_AUTH_ENABLED) return null;
@@ -94,7 +98,7 @@ export async function authenticateUser(req, res, next) {
             preferences: true,
           },
         });
-        console.log('✅ User migrated to new Clerk ID:', user.email);
+        console.log('✅ User migrated to new Clerk ID:', user.id);
       } else {
         // Create new user
         user = await prisma.user.create({
@@ -109,7 +113,7 @@ export async function authenticateUser(req, res, next) {
             preferences: true,
           },
         });
-        console.log('✅ New user created:', user.email);
+        console.log('✅ New user created:', user.id);
       }
     }
 

@@ -29,9 +29,11 @@ export async function sendWeeklyDigestToAll() {
   // Get all users who have completed onboarding (have preferences)
   const users = await prisma.user.findMany({
     where: {
+      // `is` on a to-one relation implies non-null AND applies the scalar
+      // filter. Mixing `isNot: null` with a scalar field at the same level is
+      // an invalid Prisma filter and throws on every cron run.
       preferences: {
-        isNot: null,
-        digestOptOut: false,
+        is: { digestOptOut: false },
       },
     },
     select: {

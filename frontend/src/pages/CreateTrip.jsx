@@ -504,8 +504,10 @@ function CreateTrip() {
         const useStreaming = !formData.destination;
 
         if (useStreaming) {
+          // Don't pass the Clerk token through navigation state — it expires in
+          // ~60s and Results fetches a fresh one at request time (getToken()).
           navigate('/results', {
-            state: { streamingMode: true, searchPayload: payload, token },
+            state: { streamingMode: true, searchPayload: payload },
           });
           return;
         } else {
