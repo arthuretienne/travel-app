@@ -4,7 +4,6 @@
 
 import * as bookingService from './bookingService.js';
 import { generateDestinationShortlist } from './claudeService.js';
-import * as airScraper from './airScraperService.js'; // Keep for fallback
 import * as hotelService from './hotelService.js'; // Old hotel service (not used)
 
 const FLIGHT_DURATION_TOLERANCE_MINUTES = 30;

@@ -14,7 +14,7 @@ console.log('📁 Loading .env from:', envPath);
 const envResult = dotenv.config({ path: envPath });
 
 if (envResult.error) {
-  console.warn('⚠️  No .env file found (this is normal in production - using environment variables from Railway)');
+  console.warn('⚠️  No .env file found (this is normal in production - using environment variables from Render)');
 } else {
   console.log('✅ .env file loaded successfully');
 }

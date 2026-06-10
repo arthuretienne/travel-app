@@ -1,5 +1,6 @@
 // backend/src/routes/calendar.js
 import express from 'express';
+import crypto from 'crypto';
 import prisma from '../db/prisma.js';
 import { authenticateUser } from '../middleware/auth.js';
 import {
@@ -11,6 +12,38 @@ import {
 
 const router = express.Router();
 
+// --- OAuth state signing (CSRF protection) ---------------------------------
+// The `state` round-trips through Google. It MUST be tamper-proof, otherwise an
+// attacker can forge a state for someone else's userId and bind their own Google
+// account to the victim. We sign { userId, nonce, exp } with HMAC and verify
+// signature + freshness on the callback before touching the DB.
+const STATE_SECRET = process.env.OAUTH_STATE_SECRET || process.env.CLERK_SECRET_KEY || '';
+const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+function signState(userId) {
+  const payload = { userId, nonce: crypto.randomBytes(8).toString('hex'), exp: Date.now() + STATE_TTL_MS };
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', STATE_SECRET).update(body).digest('base64url');
+  return `${body}.${sig}`;
+}
+
+function verifyState(state) {
+  if (!state || typeof state !== 'string' || !STATE_SECRET) return null;
+  const [body, sig] = state.split('.');
+  if (!body || !sig) return null;
+  const expected = crypto.createHmac('sha256', STATE_SECRET).update(body).digest('base64url');
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    if (!payload.userId || !payload.exp || Date.now() > payload.exp) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * GET /api/calendar/oauth/authorize
  * Start OAuth flow - redirect user to Google consent screen
@@ -20,10 +53,9 @@ router.get('/oauth/authorize', authenticateUser, async (req, res) => {
   try {
     const authUrl = getAuthUrl();
 
-    // Store user ID in session/state to retrieve later
-    // For now, we'll use a simple approach with URL state parameter
-    const state = Buffer.from(JSON.stringify({ userId: req.user.id })).toString('base64');
-    const authUrlWithState = `${authUrl}&state=${state}`;
+    // Signed, time-limited state — verified on the callback (CSRF protection).
+    const state = signState(req.user.id);
+    const authUrlWithState = `${authUrl}&state=${encodeURIComponent(state)}`;
 
     console.log('📅 Starting Google Calendar OAuth for:', req.user.email);
     res.json({
@@ -36,7 +68,6 @@ router.get('/oauth/authorize', authenticateUser, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to generate authorization URL',
-      message: error.message,
     });
   }
 });
@@ -63,8 +94,12 @@ router.get('/oauth/callback', async (req, res) => {
       });
     }
 
-    // Decode state to get user ID
-    const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+    // Verify the signed state BEFORE trusting any userId in it.
+    const stateData = verifyState(state);
+    if (!stateData) {
+      console.warn('[Calendar] Invalid/expired OAuth state on callback');
+      return res.redirect(`${process.env.FRONTEND_URL}/account?calendar_error=invalid_state`);
+    }
     const userId = stateData.userId;
 
     // Exchange code for tokens
@@ -133,7 +168,6 @@ router.get('/status', authenticateUser, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to check calendar status',
-      message: error.message,
     });
   }
 });
@@ -167,7 +201,6 @@ router.post('/disconnect', authenticateUser, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to disconnect calendar',
-      message: error.message,
     });
   }
 });
@@ -253,7 +286,6 @@ router.get('/suggestions', authenticateUser, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to generate calendar suggestions',
-      message: error.message,
     });
   }
 });
@@ -291,7 +323,6 @@ router.get('/holidays', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch holidays',
-      message: error.message,
     });
   }
 });
@@ -385,7 +416,6 @@ router.get('/smart-dates', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to generate smart date suggestions',
-      message: error.message,
     });
   }
 });
@@ -425,7 +455,6 @@ router.post('/analyze-period', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to analyze period',
-      message: error.message,
     });
   }
 });

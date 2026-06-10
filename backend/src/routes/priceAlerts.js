@@ -261,10 +261,13 @@ router.post('/:id/check', authenticateUser, async (req, res) => {
     const result = await checkAlertPrice(alert);
 
     if (!result) {
-      return res.status(500).json({
+      // Not a server error: the upstream flight search returned nothing for
+      // now. Report it as a soft, retryable outcome so the UI can surface a
+      // helpful message instead of swallowing an HTTP 500.
+      return res.json({
         success: false,
-        error: 'Could not check price',
-        message: 'No flights found or destination lookup failed',
+        checked: false,
+        message: 'Prix indisponible pour le moment (aucun vol trouvé pour cette recherche). Réessayez plus tard.',
       });
     }
 

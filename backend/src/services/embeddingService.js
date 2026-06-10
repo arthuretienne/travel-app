@@ -1,4 +1,11 @@
 // backend/src/services/embeddingService.js
+import crypto from 'crypto';
+import * as cache from '../utils/cache.js';
+
+// Cache DNA embeddings by a hash of their source text. The same profile (no new
+// behavioural signals) produces the same text → same vector, so we avoid a
+// Voyage AI round-trip (~300-500ms + cost) on every repeated search.
+const DNA_CACHE_TTL_MIN = 24 * 60; // 24h
 
 /**
  * Génère un embedding pour un texte donné
@@ -73,18 +80,29 @@ export function buildUserDNAText(profile) {
     parts.push(`Destinations consultées : ${profile.clickedDestinations.slice(-8).join(', ')}`);
   }
 
-  if (profile.rejectedDestinations?.length > 0) {
-    parts.push(`Ne veut pas : ${profile.rejectedDestinations.slice(-5).join(', ')}`);
-  }
+  // NOTE: rejectedDestinations are intentionally NOT added here. Embeddings do
+  // not encode negation — "ne veut pas Bali" pulls the vector TOWARD Bali-like
+  // places. Rejections are enforced as a hard filter in recommendationEngine
+  // (excludedDestinations), which is the correct mechanism.
 
   return parts.join('. ') || 'voyage découverte';
 }
 
 /**
- * Génère le vecteur DNA d'un utilisateur
+ * Génère le vecteur DNA d'un utilisateur (avec cache par hash du texte).
  */
 export async function generateUserDNA(profile) {
   const dnaText = buildUserDNAText(profile);
+  const key = `dna:${crypto.createHash('sha256').update(dnaText).digest('hex')}`;
+
+  const cached = await cache.get(key);
+  if (Array.isArray(cached) && cached.length > 0) {
+    console.log('[DNA] Cache HIT for embedding text');
+    return cached;
+  }
+
   console.log('[DNA] Embedding text:', dnaText.substring(0, 120) + '...');
-  return generateEmbedding(dnaText);
+  const embedding = await generateEmbedding(dnaText);
+  cache.set(key, embedding, DNA_CACHE_TTL_MIN);
+  return embedding;
 }

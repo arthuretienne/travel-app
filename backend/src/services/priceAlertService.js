@@ -147,13 +147,14 @@ export async function checkAlertPrice(alert) {
   try {
     console.log(`🔍 Checking price for alert: ${alert.destination}`);
 
-    // Get destination IDs
-    const [fromId, toId] = await Promise.all([
+    // Resolve destinations. getDestinationId returns an OBJECT { id, name, ... };
+    // searchFlights wants the `.id` string, not the whole object.
+    const [fromDest, toDest] = await Promise.all([
       getFlightDestinationId(alert.origin),
       getFlightDestinationId(alert.destination),
     ]);
 
-    if (!fromId || !toId) {
+    if (!fromDest?.id || !toDest?.id) {
       console.warn(`⚠️ Could not resolve destination IDs for alert ${alert.id}`);
       return null;
     }
@@ -164,8 +165,8 @@ export async function checkAlertPrice(alert) {
 
     // Search for current price
     const flights = await searchFlights({
-      fromId,
-      toId,
+      fromId: fromDest.id,
+      toId: toDest.id,
       departDate,
       returnDate,
       adults: 1,
@@ -176,8 +177,13 @@ export async function checkAlertPrice(alert) {
       return null;
     }
 
-    // Get cheapest price
-    const currentPrice = flights.flights[0].totalPrice;
+    // Cheapest price. parseFlightOffers exposes price.amount (there is no
+    // `totalPrice` field) — reading the wrong key gave NaN on every check.
+    const currentPrice = flights.flights[0].price?.amount;
+    if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+      console.warn(`⚠️ Invalid price for alert ${alert.id}:`, currentPrice);
+      return null;
+    }
     const priceHistory = JSON.parse(alert.priceHistory || '[]');
 
     // Add to price history (keep last 30 entries)
@@ -231,11 +237,20 @@ export async function checkAlertPrice(alert) {
 export async function checkAllAlerts() {
   console.log('🔔 Starting price alert check...');
 
-  // Get all active alerts that need checking
+  // Retire alerts whose departure date has passed — they can never trigger
+  // again and would otherwise be re-queried forever.
+  const expired = await prisma.priceAlert.updateMany({
+    where: { isActive: true, departureDate: { lt: new Date() } },
+    data: { isActive: false, status: 'expired' },
+  });
+  if (expired.count > 0) console.log(`⏰ Expired ${expired.count} past-date alert(s)`);
+
+  // Check every still-active alert. We deliberately do NOT filter on
+  // status:'active' — a 'triggered' alert should keep being watched (the price
+  // may drop further); notification spam is bounded by shouldSendNotification.
   const alerts = await prisma.priceAlert.findMany({
     where: {
       isActive: true,
-      status: 'active',
       // Don't check alerts for past dates
       departureDate: {
         gte: new Date(),

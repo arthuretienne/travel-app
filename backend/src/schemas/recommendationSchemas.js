@@ -69,8 +69,10 @@ export const recommendationsBodySchema = z.object({
   chatbotPreferences: chatbotPreferencesSchema.optional(),
 }).passthrough();
 
-// /signal — small behavioural event, much tighter bounds
+// /signal — small behavioural event, much tighter bounds.
+// Values MUST match the columnMap in recommendationEngine.captureSignal
+// (clicked/saved/booked/rejected) — these feed the Supabase user DNA.
 export const signalBodySchema = z.object({
   destinationCity: shortString,
-  signalType: z.enum(['click', 'save', 'reject', 'view', 'book']),
+  signalType: z.enum(['clicked', 'saved', 'booked', 'rejected']),
 });

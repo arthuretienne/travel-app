@@ -2,6 +2,11 @@
 node_modules/
 */node_modules/
 
+# Local agent tooling / scratch (never commit)
+.claude/worktrees/
+.claude/skills/
+voting-images-fixed.jpeg
+
 # Environment variables
 .env
 .env.local

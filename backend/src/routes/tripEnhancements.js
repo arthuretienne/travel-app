@@ -3,6 +3,7 @@ import express from 'express';
 import { authenticateUser } from '../middleware/auth.js';
 import { getWeatherForecast, getPackingRecommendations } from '../services/weatherService.js';
 import { generatePersonalizedItinerary, generatePackingFromItinerary, generateItineraryStreaming } from '../services/itineraryService.js';
+import { getDestinationPhotoGallery } from '../services/pexelsService.js';
 import { getLocalEvents, getAllCityEvents } from '../data/localEvents.js';
 import { generateSmartPacking, generateSmartEvents } from '../services/claudeService.js';
 import { broadcastTripUpdate } from '../services/socketService.js';
@@ -80,6 +81,14 @@ async function getTripData(id, userId) {
     endDate = new Date(Date.now() + 37 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   }
 
+  // Expected itinerary length from the trip's own dates. Used to detect a
+  // stale cached itinerary (e.g. a 7-day trip holding a 5-day itinerary).
+  let expectedDays = null;
+  if (startDate && endDate) {
+    const d = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
+    if (Number.isFinite(d) && d > 0) expectedDays = d;
+  }
+
   return {
     trip,
     isSavedTrip,
@@ -88,10 +97,35 @@ async function getTripData(id, userId) {
     country,
     startDate,
     endDate,
+    expectedDays,
     suggestedActivities: suggestedActivities || [],
     flightDetails,
     hotelDetails
   };
+}
+
+/**
+ * Attach a destination photo to each itinerary day that lacks one.
+ * Fetches a Pexels gallery once and assigns photos round-robin so days
+ * read as a varied photo essay. Mutates + returns the itinerary; never throws.
+ */
+async function enrichDaysWithPhotos(itinerary, city, country) {
+  if (!Array.isArray(itinerary) || itinerary.length === 0) return itinerary;
+  if (itinerary.every((d) => d?.photo)) return itinerary;
+  try {
+    const count = Math.min(Math.max(itinerary.length, 3), 15);
+    const gallery = await getDestinationPhotoGallery(city, country, count);
+    if (gallery && gallery.length > 0) {
+      itinerary.forEach((day, i) => {
+        if (day && !day.photo) {
+          day.photo = gallery[i % gallery.length]?.url || gallery[0]?.url;
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('⚠️ Failed to attach day photos:', err.message);
+  }
+  return itinerary;
 }
 
 /**
@@ -199,17 +233,24 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Trip not found or access denied' });
     }
 
-    const { trip, isSavedTrip, members, city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails } = tripData;
+    const { trip, isSavedTrip, members, city, country, startDate, endDate, expectedDays, suggestedActivities, flightDetails, hotelDetails } = tripData;
 
     // Check if itinerary already exists in tripData
     const existingTripData = typeof trip.tripData === 'string' ? JSON.parse(trip.tripData) : (trip.tripData || {});
 
-    if (existingTripData.cachedItinerary) {
+    // Only reuse the cache when its length matches the trip duration (±1 day,
+    // since the parser legitimately salvages a day at the boundary). A larger
+    // mismatch means the cache is stale (e.g. dates changed) → regenerate.
+    const cachedLen = existingTripData.cachedItinerary?.length || 0;
+    const cacheMatchesDuration = !expectedDays || Math.abs(cachedLen - expectedDays) <= 1;
+
+    if (existingTripData.cachedItinerary && cacheMatchesDuration) {
       console.log(`✅ Using cached itinerary for trip ${id}`);
+      const cached = await enrichDaysWithPhotos(existingTripData.cachedItinerary, city, country);
       return res.json({
         success: true,
         data: {
-          itinerary: existingTripData.cachedItinerary,
+          itinerary: cached,
           packing: existingTripData.cachedPacking,
           city,
           country,
@@ -251,6 +292,9 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
       userName,
       isSavedTrip ? [] : members
     );
+
+    // Attach a destination photo per day (photo-essay feel)
+    await enrichDaysWithPhotos(itinerary, city, country);
 
     // Get weather and generate packing list based on itinerary activities
     let packing = null;
@@ -333,16 +377,22 @@ router.get('/:id/itinerary/stream', authenticateUser, async (req, res) => {
       return;
     }
 
-    const { trip, isSavedTrip, members, city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails } = tripData;
+    const { trip, isSavedTrip, members, city, country, startDate, endDate, expectedDays, suggestedActivities, flightDetails, hotelDetails } = tripData;
 
     // Check if itinerary already exists in cache
     const existingTripData = typeof trip.tripData === 'string' ? JSON.parse(trip.tripData) : (trip.tripData || {});
     const cachedItinerary = existingTripData.cachedItinerary || trip.finalDestination?.cachedItinerary;
 
-    if (cachedItinerary && cachedItinerary.length > 0) {
+    // Reuse the cache only when its length matches the trip duration (±1 day).
+    // A larger mismatch means it's stale (dates changed) → regenerate.
+    const cacheMatchesDuration = !expectedDays || Math.abs((cachedItinerary?.length || 0) - expectedDays) <= 1;
+
+    if (cachedItinerary && cachedItinerary.length > 0 && cacheMatchesDuration) {
       console.log(`✅ [STREAM] Using cached itinerary for trip ${id}`);
       // Send cached days one by one (simulated streaming for cached data)
       sendEvent('status', { stage: 'cached', message: 'Loading saved itinerary...' });
+
+      await enrichDaysWithPhotos(cachedItinerary, city, country);
 
       for (let i = 0; i < cachedItinerary.length; i++) {
         sendEvent('day', {
@@ -408,6 +458,14 @@ router.get('/:id/itinerary/stream', authenticateUser, async (req, res) => {
 
     const userName = req.user.firstName || 'there';
 
+    // Pre-fetch a destination photo gallery so each streamed day carries a photo
+    let dayGallery = [];
+    try {
+      dayGallery = await getDestinationPhotoGallery(city, country, 12);
+    } catch (galleryError) {
+      console.warn('⚠️ [STREAM] Failed to prefetch day photos:', galleryError.message);
+    }
+
     // Generate itinerary with streaming callback
     const itinerary = await generateItineraryStreaming(
       destination,
@@ -415,6 +473,11 @@ router.get('/:id/itinerary/stream', authenticateUser, async (req, res) => {
       userName,
       isSavedTrip ? [] : members,
       (dayData, dayNumber, totalDays) => {
+        // Attach a photo (mutates dayData → persists into cached itinerary)
+        if (dayData && !dayData.photo && dayGallery.length > 0) {
+          const pick = dayGallery[(dayNumber - 1) % dayGallery.length] || dayGallery[0];
+          dayData.photo = pick?.url;
+        }
         // Stream each day as it's generated
         sendEvent('day', {
           day: dayData,
@@ -691,7 +754,6 @@ router.get('/:id/enhancements', authenticateUser, async (req, res) => {
     console.error('Error generating trip enhancements:', error);
     res.status(500).json({
       error: 'Failed to generate trip enhancements',
-      message: error.message,
     });
   }
 });

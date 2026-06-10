@@ -149,8 +149,7 @@ router.get('/intelligent', authenticateUser, async (req, res) => {
     console.error('❌ Error generating intelligent dates:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to generate intelligent dates',
-      message: error.message
+      error: 'Failed to generate intelligent dates'
     });
   }
 });

@@ -67,6 +67,7 @@ function PriceAlerts() {
 
   const checkPrice = async (alertId) => {
     setCheckingId(alertId);
+    setError(null);
     try {
       const token = await getToken();
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -76,12 +77,17 @@ function PriceAlerts() {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 
-      if (response.ok) {
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok && data.success !== false) {
         // Refresh alerts to get updated prices
         await fetchAlerts();
+      } else {
+        setError(data.message || data.error || 'Impossible de vérifier le prix pour le moment. Réessayez plus tard.');
       }
     } catch (err) {
       console.error('Error checking price:', err);
+      setError('Impossible de vérifier le prix pour le moment. Réessayez plus tard.');
     } finally {
       setCheckingId(null);
     }

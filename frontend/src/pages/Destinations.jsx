@@ -173,7 +173,7 @@ function Destinations() {
             <span className="font-semibold text-text-main">Skusku</span>
           </Link>
           <p className="text-sm text-text-secondary">
-            © 2025 Skusku. AI-powered travel planning.
+            © {new Date().getFullYear()} Skusku. AI-powered travel planning.
           </p>
         </div>
       </footer>

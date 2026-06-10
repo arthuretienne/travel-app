@@ -35,8 +35,11 @@ const PORT = process.env.PORT || 3001;
 // Initialize WebSocket server for real-time chat
 initializeSocketServer(httpServer);
 
-// Trust proxy - Required for Railway/Vercel deployments to properly handle X-Forwarded-For headers
-app.set('trust proxy', true);
+// Trust proxy - Render sits behind a single reverse proxy. Trusting exactly one
+// hop lets express read the real client IP from X-Forwarded-For WITHOUT letting a
+// client spoof it by injecting their own XFF (which `true` would have allowed,
+// neutralising every IP-based rate limiter).
+app.set('trust proxy', 1);
 
 // Security headers. We disable contentSecurityPolicy (this is a JSON API, not
 // a page server) and crossOriginResourcePolicy (CORS is configured separately
@@ -60,13 +63,19 @@ app.use(cors({
   ],
   credentials: true
 }));
-app.use(express.json());
+// Body parsing. The Stripe webhook AND the Clerk webhook must receive the raw,
+// unparsed body so their signatures can be verified byte-for-byte. We therefore
+// skip the global JSON parser for those two paths — each route mounts its own
+// `express.raw()` and parses after verifying the signature. Everything else
+// gets parsed JSON as before.
+const RAW_BODY_PATHS = new Set(['/api/billing/webhook', '/api/users/sync']);
+app.use((req, res, next) => {
+  if (RAW_BODY_PATHS.has(req.path)) return next();
+  return express.json()(req, res, next);
+});
 
 // Rate limiting
 app.use('/api/', apiLimiter); // Apply general rate limit to all API routes
-
-// Stripe webhook needs raw body - must be before express.json() middleware
-// So we need to handle it specially in the billing routes
 
 // Constant-time comparison for the cron shared-secret header. Falls back to
 // `false` on length mismatch (timingSafeEqual throws if buffers differ in
@@ -111,6 +120,13 @@ app.use('/api/trips', expensesRoutes);
 
 // Proactive opportunities (Sprint 4)
 app.use('/api/opportunities', opportunitiesRoutes);
+
+// DEV-ONLY persona impersonation routes (local testing). Never mounted in prod.
+if (process.env.NODE_ENV === 'development' || process.env.DEV_MODE === 'true') {
+  const { default: devRoutes } = await import('./src/routes/dev.js');
+  app.use('/api/dev', devRoutes);
+  console.log('🧪 DEV routes mounted at /api/dev (impersonation enabled)');
+}
 
 // Cron endpoint for automated price checks (called by Render Cron Job)
 app.post('/api/cron/check-prices', async (req, res) => {

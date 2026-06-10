@@ -12,8 +12,9 @@ function getSupabase() {
 
 /**
  * Score contextuel (météo, budget, affluence, type de voyage)
+ * Exporté pour les tests unitaires (fonction pure, aucun effet de bord).
  */
-function computeContextualScore(destination, params) {
+export function computeContextualScore(destination, params) {
   const { departureMonth, budget, tripType, numNights, numTravelers } = params;
   let score = 0;
   const reasons = [];
@@ -74,8 +75,9 @@ function computeContextualScore(destination, params) {
 
 /**
  * Filtre les contraintes non-négociables
+ * Exporté pour les tests unitaires (fonction pure, aucun effet de bord).
  */
-function passesHardConstraints(destination, params) {
+export function passesHardConstraints(destination, params) {
   const { budget, numTravelers, numNights, minSafety = 6, excludedDestinations = [] } = params;
 
   // Budget : seuil adapté au nombre de voyageurs
@@ -97,8 +99,9 @@ function passesHardConstraints(destination, params) {
 
 /**
  * Diversité géographique : au plus 2 destinations par pays dans le top 5
+ * Exporté pour les tests unitaires (fonction pure, aucun effet de bord).
  */
-function applyCountryDiversity(scored) {
+export function applyCountryDiversity(scored) {
   const countryCounts = {};
   const result = [];
 

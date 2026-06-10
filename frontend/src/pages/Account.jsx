@@ -1,53 +1,61 @@
 // frontend/src/pages/Account.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser, useAuth } from '@clerk/clerk-react';
+import { useUser, useAuth, useClerk } from '@clerk/clerk-react';
 import {
   User, Settings, Calendar, CheckCircle, XCircle,
   LogOut, Save, Globe, Briefcase, Heart, MapPin,
   Clock, Plane, Shield, AlertCircle, CreditCard, Loader2, Bell
 } from 'lucide-react';
 
-// Import constants from Onboarding
+// These option sets MUST stay in sync with Onboarding.jsx — the onboarding
+// flow persists the exact value strings/codes below, and the Account form
+// pre-selects a chip only on an exact match. Any drift makes a saved
+// preference render as "not selected" (empty).
 const TRAVEL_REASONS = [
   'Découvrir de nouvelles cultures',
   'Me détendre et me ressourcer',
   'Vivre des aventures',
   'Apprendre et enrichir mes connaissances',
-  'Rencontrer de nouvelles personnes'
+  'Rencontrer des gens',
+  'Pratiquer mes passions',
 ];
 
 const MAIN_GOALS = [
-  'Découverte et dépaysement',
-  'Repos et ressourcement',
-  'Aventure et sensations',
-  'Culture et patrimoine',
-  'Gastronomie et plaisirs',
-  'Shopping et découvertes urbaines',
-  'Nature et grands espaces'
+  'Repos et relaxation',
+  'Aventure et adrénaline',
+  'Culture et histoire',
+  'Gastronomie',
+  'Nature et paysages',
+  'Vie nocturne et fête',
 ];
 
 const GLOBAL_STYLES = [
-  'Routard / Backpacker',
-  'Voyage organisé / Tout compris',
-  'Nomade digital / Longue durée',
-  'Luxe et confort',
-  'Éco-responsable',
-  'Hors des sentiers battus'
+  { value: 'backpacker', label: 'Backpacker / Baroudeur' },
+  { value: 'balanced', label: 'Équilibré' },
+  { value: 'comfort', label: 'Confort et détente' },
+  { value: 'luxury', label: 'Luxe et exclusivité' },
 ];
 
 const ACTIVITIES = [
-  'Randonnée', 'Plage', 'Musées', 'Gastronomie', 'Vie nocturne',
-  'Shopping', 'Sports nautiques', 'Ski', 'Yoga/Wellness', 'Photographie',
-  'Architecture', 'Festivals', 'Wildlife', 'Plongée', 'Vélo',
-  'Escalade', 'Surf', 'Food tours', 'Marchés locaux', 'Concerts'
+  'Histoire et patrimoine',
+  'Musées et galeries',
+  'Gastronomie locale',
+  'Sports et aventure',
+  'Plage et mer',
+  'Randonnée et nature',
+  'Vie nocturne',
+  'Shopping',
+  'Spa et bien-être',
+  'Échanges culturels',
+  'Photographie',
+  'Sports nautiques',
 ];
 
 const IDEAL_RHYTHMS = [
-  { value: 'intense', label: 'Intense (beaucoup d\'activités)' },
-  { value: 'balanced', label: 'Équilibré' },
-  { value: 'relaxed', label: 'Relaxé (temps libre)' },
-  { value: 'spontaneous', label: 'Spontané (improviser)' }
+  { value: 'slow', label: 'Tranquille - Je prends mon temps' },
+  { value: 'balanced', label: 'Équilibré - Mix activités/repos' },
+  { value: 'intense', label: 'Intense - Je veux tout voir !' },
 ];
 
 const AIRPORTS = [
@@ -65,6 +73,8 @@ function Account() {
   const navigate = useNavigate();
   const { user } = useUser();
   const { getToken } = useAuth();
+  const { signOut } = useClerk();
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -379,6 +389,31 @@ function Account() {
     }
   };
 
+  // RGPD right-to-erasure. Double confirmation, then DELETE /api/users/me,
+  // then sign out and return to the landing page.
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      'Supprimer définitivement votre compte ?\n\nToutes vos données (recherches, voyages sauvegardés, alertes) seront effacées. Cette action est irréversible.'
+    );
+    if (!confirmed) return;
+    try {
+      setDeletingAccount(true);
+      const token = await getToken();
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${API_URL}/api/users/me`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('delete failed');
+      await signOut();
+      navigate('/');
+    } catch (err) {
+      console.error('Error deleting account:', err);
+      showAccountNotif('error', 'Impossible de supprimer le compte. Veuillez réessayer.');
+      setDeletingAccount(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-4">
@@ -561,14 +596,14 @@ function Account() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {GLOBAL_STYLES.map(style => (
                     <button
-                      key={style}
-                      className={`p-4 rounded-xl border text-left transition-all ${formData.globalStyle === style
+                      key={style.value}
+                      className={`p-4 rounded-xl border text-left transition-all ${formData.globalStyle === style.value
                           ? 'bg-primary/5 border-primary text-primary font-medium shadow-sm'
                           : 'bg-white border-sand-200 text-text-secondary hover:border-sand-300 hover:bg-sand-50'
                         }`}
-                      onClick={() => handleChange('globalStyle', style)}
+                      onClick={() => handleChange('globalStyle', style.value)}
                     >
-                      {style}
+                      {style.label}
                     </button>
                   ))}
                 </div>
@@ -674,7 +709,7 @@ function Account() {
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
-                    { value: 'weekend', label: 'Plutôt weekend' },
+                    { value: 'weekend_only', label: 'Plutôt weekend' },
                     { value: 'weekday', label: 'Plutôt semaine' },
                     { value: 'flexible', label: 'Flexible' }
                   ].map(option => (
@@ -1002,6 +1037,23 @@ function Account() {
                   <p className="text-text-secondary">Chargement de votre abonnement...</p>
                 </div>
               )}
+
+              {/* Danger zone — RGPD account deletion */}
+              <div className="mt-8 rounded-[16px] border border-clay-200 bg-clay-50/40 p-5">
+                <h3 className="text-sm font-semibold text-clay-700">Zone sensible</h3>
+                <p className="mt-1 text-sm text-text-secondary">
+                  La suppression de votre compte efface définitivement toutes vos données.
+                  Les voyages de groupe que vous avez créés sont transférés à un autre membre.
+                </p>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deletingAccount}
+                  className="mt-4 inline-flex h-10 items-center gap-2 rounded-[10px] border-2 border-clay-500 px-4 text-sm font-medium text-clay-600 transition-colors hover:bg-clay-500 hover:text-white disabled:opacity-50"
+                >
+                  {deletingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Supprimer mon compte
+                </button>
+              </div>
             </div>
           )}
         </div>

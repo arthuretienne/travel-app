@@ -170,6 +170,12 @@
   "savedTrip": {
     "soloBadge_one": "Voyage solo · {{count}} jour",
     "soloBadge_other": "Voyage solo · {{count}} jours",
+    "coupleBadge_one": "Voyage à deux · {{count}} jour",
+    "coupleBadge_other": "Voyage à deux · {{count}} jours",
+    "friendsBadge_one": "Voyage entre amis · {{count}} jour",
+    "friendsBadge_other": "Voyage entre amis · {{count}} jours",
+    "familyBadge_one": "Voyage en famille · {{count}} jour",
+    "familyBadge_other": "Voyage en famille · {{count}} jours",
     "eyebrow": "Itinéraire personnalisé",
     "defaultIntro": "Vols, hôtel, activités et itinéraire prêts à ajuster.",
     "dateTBD": "Date à définir",

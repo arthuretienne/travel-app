@@ -50,6 +50,7 @@ import {
 import { generateFlightLink, generateHotelLink, generateActivitiesLink, wrapAffiliate } from '../utils/bookingLinks';
 import { Badge, Button, EmptyState } from '../components/ui';
 import PhotoBlock from '../components/ui/PhotoBlock';
+import { getDestinationImage } from '../utils/destinationImages';
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '../i18n/format';
 import '../styles/tripDetail.css';
@@ -70,6 +71,20 @@ const safeText = (value) => {
     return value.word || value.value || value.name || value.text || value.label || '';
   }
   return String(value);
+};
+
+// Some records store the city with the country already appended
+// (e.g. "Lisbon, Portugal"). Strip a trailing ", <country>" so the
+// country isn't rendered twice when we concatenate city + country.
+const stripCountrySuffix = (city, country) => {
+  const c = safeText(city).trim();
+  const co = safeText(country).trim();
+  if (!c || !co) return c;
+  const suffix = `, ${co}`;
+  if (c.toLowerCase().endsWith(suffix.toLowerCase())) {
+    return c.slice(0, c.length - suffix.length).trim();
+  }
+  return c;
 };
 
 const fmtClock = (iso, locale) => {
@@ -212,7 +227,12 @@ export default function SavedTripDetail() {
         const data = await response.json();
         const savedTrip = data.savedTrips?.find((t) => t.id === id);
         if (!savedTrip) throw new Error('Trip not found');
-        if (!cancelled) setTrip(savedTrip);
+        if (!cancelled) {
+          setTrip({
+            ...savedTrip,
+            city: stripCountrySuffix(savedTrip.city, savedTrip.country),
+          });
+        }
       } catch (err) {
         console.error('Error fetching trip:', err);
         if (!cancelled) setError(err.message);
@@ -417,12 +437,26 @@ export default function SavedTripDetail() {
   const slot = tripData.slot || {};
   const flightDetails = tripData.flightDetails || {};
   const hotelOptions = tripData.hotelOptions || {};
+  // Fallback when a day has no Pexels photo: the destination's hero image.
+  const fallbackDayPhoto = hiResPhoto(getDestinationImage({ city: trip?.city, country: trip?.country, tripData }));
   const duration = Math.max(
     1,
     trip?.startDate && trip?.endDate
       ? Math.ceil((new Date(trip.endDate) - new Date(trip.startDate)) / (1000 * 60 * 60 * 24))
       : slot.duration || 1
   );
+
+  const searchContext = tripData.searchContext || {};
+  const tripTypeRaw = safeText(searchContext.tripType).toLowerCase();
+  const tripTypeBadgeKey =
+    tripTypeRaw === 'couple' ? 'savedTrip.coupleBadge'
+    : tripTypeRaw === 'friends' ? 'savedTrip.friendsBadge'
+    : tripTypeRaw === 'family' ? 'savedTrip.familyBadge'
+    : 'savedTrip.soloBadge';
+  // Origin city for flight legs — backend stores departure as IATA codes
+  // only (ORY/BVA), so fall back to the slot's origin rather than the
+  // destination city, which would mislabel the departure airport.
+  const originLabel = safeText(flightDetails.outbound?.departureCity) || safeText(slot.origin) || '';
 
   const reasons = useMemo(
     () => trip ? buildReasons({ tripData, destination, pricing, duration, t }) : [],
@@ -557,7 +591,7 @@ export default function SavedTripDetail() {
                 </span>
                 <span className="opacity-85">{dateRangeLabel}</span>
                 <span className="opacity-85">·</span>
-                <span className="opacity-85">{t('savedTrip.soloBadge', { count: duration })}</span>
+                <span className="opacity-85">{t(tripTypeBadgeKey, { count: duration })}</span>
               </div>
 
               <h1
@@ -669,8 +703,8 @@ export default function SavedTripDetail() {
           title={t('savedTrip.flightTitle')}
         >
           {[
-            { leg: flightDetails.outbound, label: t('savedTrip.legOut'), date: slot.startDate || trip.startDate, fromFb: trip.city, toFb: destination.city || trip.city },
-            { leg: flightDetails.return,   label: t('savedTrip.legReturn'), date: slot.endDate || trip.endDate, fromFb: destination.city || trip.city, toFb: trip.city },
+            { leg: flightDetails.outbound, label: t('savedTrip.legOut'), date: slot.startDate || trip.startDate, fromFb: originLabel, toFb: destination.city || trip.city },
+            { leg: flightDetails.return,   label: t('savedTrip.legReturn'), date: slot.endDate || trip.endDate, fromFb: destination.city || trip.city, toFb: originLabel },
           ].filter((f) => f.leg).map((f, i) => (
             <FlightTicket
               key={i}
@@ -757,10 +791,10 @@ export default function SavedTripDetail() {
           <div className="grid items-end gap-6 lg:grid-cols-[1fr_auto]">
             <div>
               <Eyebrow>
-                {t('savedTrip.itineraryEyebrow', { days: itinerary?.length || duration })}
+                {t('savedTrip.itineraryEyebrow', { days: duration })}
               </Eyebrow>
               <h2 className="mt-2 font-display font-medium leading-none tracking-[-0.02em]" style={{ fontSize: 'clamp(36px, 5vw, 56px)' }}>
-                {t('savedTrip.itineraryTitlePre', { count: itinerary?.length || duration })}{' '}
+                {t('savedTrip.itineraryTitlePre', { count: duration })}{' '}
                 <span className="italic text-ember-700">{safeText(trip.city)}</span>
               </h2>
             </div>
@@ -780,6 +814,7 @@ export default function SavedTripDetail() {
                 setSelectedDay={setSelectedDay}
                 t={t}
                 fmtCurrency={fmtCurrency}
+                fallbackPhoto={fallbackDayPhoto}
               />
               <div className="mt-8">
                 <MagazineDay
@@ -789,6 +824,7 @@ export default function SavedTripDetail() {
                   t={t}
                   fmtCurrency={fmtCurrency}
                   city={safeText(trip.city)}
+                  fallbackPhoto={fallbackDayPhoto}
                 />
               </div>
             </>
@@ -1125,7 +1161,7 @@ function HotelCard({ hotel, gallery, duration, pricing, trip, t, fmtCurrency }) 
   );
 }
 
-function DayStrip({ days, selectedDay, setSelectedDay, t, fmtCurrency }) {
+function DayStrip({ days, selectedDay, setSelectedDay, t, fmtCurrency, fallbackPhoto }) {
   return (
     <div className="-mx-5 mt-8 flex gap-3 overflow-x-auto px-5 pb-2 sm:-mx-0 sm:px-0 lg:grid lg:grid-cols-7 lg:gap-3">
       {days.map((d, idx) => {
@@ -1141,8 +1177,8 @@ function DayStrip({ days, selectedDay, setSelectedDay, t, fmtCurrency }) {
             style={{ minWidth: 200 }}
           >
             <div className="sk-photo-scrim relative h-[110px] bg-sand-200">
-              {d.photo ? (
-                <img src={d.photo} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+              {(d.photo || fallbackPhoto) ? (
+                <img src={d.photo || fallbackPhoto} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
               ) : null}
               <span
                 className="absolute left-3 top-2.5 font-display text-[22px] font-medium leading-none text-white"
@@ -1171,7 +1207,7 @@ function DayStrip({ days, selectedDay, setSelectedDay, t, fmtCurrency }) {
   );
 }
 
-function MagazineDay({ day, index, total, t, fmtCurrency, city }) {
+function MagazineDay({ day, index, total, t, fmtCurrency, city, fallbackPhoto }) {
   if (!day) return null;
   const dayNum = day.day || index + 1;
   const dayDate = day.date ? new Date(day.date) : null;
@@ -1184,8 +1220,8 @@ function MagazineDay({ day, index, total, t, fmtCurrency, city }) {
       {/* Left — photo + intro */}
       <div>
         <div className="sk-photo-scrim relative h-[460px] overflow-hidden rounded-[22px] bg-sand-200 lg:h-[540px]">
-          {day.photo ? (
-            <img src={day.photo} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+          {(day.photo || fallbackPhoto) ? (
+            <img src={day.photo || fallbackPhoto} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
           ) : null}
           <div className="absolute left-7 top-6 inline-flex items-center gap-2.5">
             <span className="rounded-full bg-ember-700/70 px-3 py-1 font-display text-[16px] font-medium italic text-white backdrop-blur">

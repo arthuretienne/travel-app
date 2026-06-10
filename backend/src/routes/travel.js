@@ -175,7 +175,15 @@ router.post('/recommendations',
   async (req, res) => {
   try {
     const userProfile = req.body;
-    console.log('📝 Received user profile:', JSON.stringify(userProfile, null, 2));
+    // Avoid logging the full profile (contains free-text PII). Log only the
+    // coarse search shape needed for debugging.
+    console.log('📝 Recommendation request:', {
+      hasDestination: !!userProfile.basic?.destination,
+      budget: userProfile.basic?.budget,
+      travelers: userProfile.basic?.travelers,
+      tripType: userProfile.basic?.tripType,
+      duration: userProfile.availability?.duration,
+    });
 
     // Fetch user's onboarding preferences from database
     console.log('🔍 Fetching user onboarding preferences...');
@@ -870,7 +878,8 @@ router.post('/recommendations',
         await prisma.algorithmResult.create({
           data: {
             userId: req.user?.id,
-            claudeDestinations: topDestinations.map(d => d.name),
+            // Vector engine yields `.city`; legacy discover path yields `.name`.
+            claudeDestinations: topDestinations.map(d => d.city || d.name).filter(Boolean),
             finalDestinations: results.map(r => r.destination.city),
             userProfile: {
               activities: userProfile.basic?.activities,
@@ -1031,7 +1040,14 @@ router.post('/recommendations/stream',
       }
 
       const originCity = (userPreferences?.preferredAirports?.[0]) || userProfile.availability?.originCity || 'Paris';
-      const budget = userProfile.basic.budget;
+      // Budget arrives per-person from the frontend; multiply by group size so
+      // the discovery/optimisation pipeline sees the real total (matches the
+      // non-streaming JSON endpoint — they used to diverge, undercosting groups).
+      const budgetPerPerson = userProfile.basic.budget;
+      const travelersCount = userProfile.basic.travelers || 1;
+      const budget = budgetPerPerson * travelersCount;
+      userProfile.basic.budget = budget;
+      userProfile.basic.budgetPerPerson = budgetPerPerson;
       const duration = userProfile.availability?.duration || 7;
 
       // Only handle WITHOUT_DESTINATION scenario for streaming
@@ -1042,17 +1058,44 @@ router.post('/recommendations/stream',
         return;
       }
 
-      // Step 1: Discover destinations
+      // Step 1: Discover destinations.
+      // Primary path = deterministic vector engine (ANN + contextual scoring),
+      // matching the architecture decision that the LLM must NOT pick the
+      // destination. discoverDestinations (Claude shortlist) stays as a fallback
+      // and also owns the budget_warning/alternatives flow.
       sendEvent('status', { stage: 'discovering', message: 'Finding perfect destinations...' });
 
-      const discoveryResult = await destinationService.discoverDestinations({
-        userProfile,
-        budget,
-        origin: originCity,
-        duration,
-        departureDate: userProfile.availability?.startDate,
-        userId: req.user.id
-      });
+      let discoveryResult;
+      try {
+        const vectorDestinations = await getRecommendations(
+          { ...userProfile, userId: req.user.id },
+          {
+            budget,
+            numTravelers: userProfile.basic?.travelers || 1,
+            numNights: duration,
+            tripType: userProfile.basic?.tripType,
+            departureMonth: userProfile.availability?.startDate
+              ? new Date(userProfile.availability.startDate).getMonth() + 1
+              : new Date().getMonth() + 1,
+          }
+        );
+        if (Array.isArray(vectorDestinations) && vectorDestinations.length > 0) {
+          // Downstream expects `.name`; the engine yields `.city`.
+          discoveryResult = vectorDestinations.map(d => ({ ...d, name: d.city || d.name }));
+        } else {
+          throw new Error('vector engine returned no candidates');
+        }
+      } catch (err) {
+        console.warn('[stream] Vector engine failed/empty, falling back to discoverDestinations:', err.message);
+        discoveryResult = await destinationService.discoverDestinations({
+          userProfile,
+          budget,
+          origin: originCity,
+          duration,
+          departureDate: userProfile.availability?.startDate,
+          userId: req.user.id
+        });
+      }
 
       // Handle budget exceeded case (returns object with alternatives)
       let topDestinations;

@@ -24,6 +24,10 @@ const TripProposal = lazy(() => import('./pages/TripProposal'));
 // Layout
 import AppLayout from './components/Layout/AppLayout';
 
+// DEV-ONLY persona impersonation
+import { DEV_AUTH_ACTIVE, isDevImpersonating } from './lib/devAuth';
+const DevPersonaBar = lazy(() => import('./components/DevPersonaBar'));
+
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!PUBLISHABLE_KEY) {
@@ -32,6 +36,10 @@ if (!PUBLISHABLE_KEY) {
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
+  // DEV-ONLY: when impersonating a seeded persona, skip Clerk gating entirely.
+  if (DEV_AUTH_ACTIVE && isDevImpersonating()) {
+    return <AppLayout>{children}</AppLayout>;
+  }
   return (
     <>
       <SignedIn>
@@ -54,6 +62,8 @@ function AppContent() {
         <Route path="/" element={<Landing />} />
         <Route path="/destinations" element={<Destinations />} />
         <Route path="/destination/:slug" element={<DestinationLanding />} />
+        {/* Pricing is public so prospects can evaluate before signing up. */}
+        <Route path="/pricing" element={<Pricing />} />
 
         {/* Onboarding Route - Semi-Protected */}
         <Route
@@ -112,14 +122,6 @@ function AppContent() {
           }
         />
         <Route
-          path="/pricing"
-          element={
-            <ProtectedRoute>
-              <Pricing />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/trips/:id"
           element={
             <ProtectedRoute>
@@ -160,6 +162,11 @@ function AppContent() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
+      {DEV_AUTH_ACTIVE && (
+        <Suspense fallback={null}>
+          <DevPersonaBar />
+        </Suspense>
+      )}
     </Router>
   );
 }

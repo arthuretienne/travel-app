@@ -121,6 +121,14 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Highlight @assistant mentions in the signature ember tone
+  const renderMentions = (text) =>
+    String(text).split(/(@assistant)/g).map((part, i) =>
+      part === '@assistant'
+        ? <span key={i} className="font-semibold text-ember-600">{part}</span>
+        : <span key={i}>{part}</span>
+    );
+
   // Format date header
   const formatDateHeader = (dateStr) => {
     const date = new Date(dateStr);
@@ -156,17 +164,17 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
   // Embedded mode - render inline without floating container
   if (embedded) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex h-full flex-col bg-white">
         {/* Active Users Bar */}
         {activeUsers.length > 0 && (
-          <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-3">
+          <div className="flex items-center gap-3 border-b border-sand-200 bg-sand-50 px-4 py-2">
             <div className="flex items-center gap-2">
               {isConnected ? (
-                <Wifi size={14} className="text-green-500" />
+                <Wifi size={14} className="text-moss-500" />
               ) : (
-                <WifiOff size={14} className="text-red-500" />
+                <WifiOff size={14} className="text-text-light" />
               )}
-              <Users size={14} className="text-gray-400" />
+              <Users size={14} className="text-text-light" />
             </div>
             <div className="flex -space-x-2">
               {activeUsers.slice(0, 8).map((u) => (
@@ -175,36 +183,36 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
                   src={u.imageUrl || `https://ui-avatars.com/api/?name=${u.firstName}`}
                   alt={u.firstName}
                   title={u.firstName}
-                  className="w-7 h-7 rounded-full border-2 border-white"
+                  className="h-7 w-7 rounded-full border-2 border-white"
                 />
               ))}
               {activeUsers.length > 8 && (
-                <span className="w-7 h-7 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">
+                <span className="grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-sand-200 text-xs font-medium text-text-secondary">
                   +{activeUsers.length - 8}
                 </span>
               )}
             </div>
-            <span className="text-xs text-gray-500">{activeUsers.length} en ligne</span>
+            <span className="text-xs text-text-muted">{activeUsers.length} en ligne</span>
           </div>
         )}
 
         {/* Messages - Embedded takes full height */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+        <div className="flex-1 space-y-4 overflow-y-auto bg-sand-50 p-4">
           {loadingHistory ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="flex h-full items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-ember-500" />
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+            <div className="flex h-full flex-col items-center justify-center text-text-light">
               <MessageCircle size={48} className="mb-3" />
-              <p className="text-base font-medium">Aucun message</p>
-              <p className="text-sm">Commencez la conversation avec votre groupe!</p>
+              <p className="text-base font-medium text-text-secondary">Aucun message</p>
+              <p className="text-sm">Commencez la conversation avec votre groupe !</p>
             </div>
           ) : (
             Object.entries(messageGroups).map(([dateKey, msgs]) => (
               <div key={dateKey}>
-                <div className="flex items-center justify-center mb-4">
-                  <span className="px-4 py-1.5 bg-white rounded-full text-xs font-medium text-gray-500 shadow-sm">
+                <div className="mb-4 flex items-center justify-center">
+                  <span className="rounded-full bg-white px-4 py-1.5 text-xs font-medium text-text-muted shadow-1">
                     {formatDateHeader(msgs[0].createdAt)}
                   </span>
                 </div>
@@ -214,8 +222,8 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
 
                   if (isSystem) {
                     return (
-                      <div key={msg.id} className="flex justify-center my-3">
-                        <span className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-sm">
+                      <div key={msg.id} className="my-3 flex justify-center">
+                        <span className="rounded-full bg-sand-100 px-4 py-1.5 text-sm text-text-secondary">
                           {msg.content}
                         </span>
                       </div>
@@ -225,31 +233,31 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
                   return (
                     <div
                       key={msg.id}
-                      className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-3`}
+                      className={`mb-3 flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`flex items-end gap-2 max-w-[70%] ${isOwn ? 'flex-row-reverse' : ''}`}>
+                      <div className={`flex max-w-[70%] items-end gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
                         {!isOwn && (
                           <img
                             src={msg.author?.imageUrl || `https://ui-avatars.com/api/?name=${msg.author?.firstName}`}
                             alt={msg.author?.firstName}
-                            className="w-8 h-8 rounded-full flex-shrink-0"
+                            className="h-8 w-8 flex-shrink-0 rounded-full"
                           />
                         )}
                         <div>
                           {!isOwn && (
-                            <p className="text-xs text-gray-500 mb-1 ml-1 font-medium">
+                            <p className="mb-1 ml-1 text-xs font-medium text-text-muted">
                               {msg.author?.firstName}
                             </p>
                           )}
                           <div
-                            className={`px-4 py-2.5 rounded-2xl ${isOwn
-                              ? 'bg-primary text-white rounded-br-md'
-                              : 'bg-white text-gray-800 rounded-bl-md shadow-sm'
+                            className={`px-4 py-2.5 text-sm ${isOwn
+                              ? 'rounded-[14px_4px_14px_14px] bg-sand-900 text-white'
+                              : 'rounded-[4px_14px_14px_14px] border border-sand-200 bg-white text-text-main'
                               }`}
                           >
-                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                            <p className="whitespace-pre-wrap break-words">{renderMentions(msg.content)}</p>
                           </div>
-                          <p className={`text-xs text-gray-400 mt-1 ${isOwn ? 'text-right mr-1' : 'ml-1'}`}>
+                          <p className={`mt-1 font-mono text-[11px] text-text-light ${isOwn ? 'mr-1 text-right' : 'ml-1'}`}>
                             {formatTime(msg.createdAt)}
                           </p>
                         </div>
@@ -263,14 +271,14 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
 
           {/* Typing Indicator */}
           {typingUsers.length > 0 && (
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <div className="flex items-center gap-2 text-sm text-text-muted">
               <div className="flex gap-1">
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-sand-400" style={{ animationDelay: '0ms' }} />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-sand-400" style={{ animationDelay: '150ms' }} />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-sand-400" style={{ animationDelay: '300ms' }} />
               </div>
               <span>
-                {typingUsers.map((u) => u.firstName).join(', ')} {typingUsers.length === 1 ? 'écrit' : 'écrivent'}...
+                {typingUsers.map((u) => u.firstName).join(', ')} {typingUsers.length === 1 ? 'écrit' : 'écrivent'}…
               </span>
             </div>
           )}
@@ -279,7 +287,7 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
         </div>
 
         {/* Input - Embedded */}
-        <form onSubmit={handleSend} className="p-4 bg-white border-t border-gray-100">
+        <form onSubmit={handleSend} className="border-t border-sand-200 bg-white p-4">
           <div className="flex items-center gap-3">
             <input
               ref={inputRef}
@@ -287,20 +295,20 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
               value={newMessage}
               onChange={handleInputChange}
               onBlur={stopTyping}
-              placeholder={isConnected ? 'Écrivez votre message... (Mentionnez @assistant pour l\'IA)' : 'Connexion en cours...'}
+              placeholder={isConnected ? 'Écrire au groupe… @assistant pour l\'IA' : 'Connexion en cours…'}
               disabled={!isConnected}
-              className="flex-1 px-4 py-3 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+              className="h-11 flex-1 rounded-xl border border-sand-200 bg-sand-50 px-4 text-sm text-text-main outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={!newMessage.trim() || !isConnected}
-              className="p-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Send size={20} />
+              <Send size={18} />
             </button>
           </div>
           {error && (
-            <p className="text-xs text-red-500 mt-2 text-center">{error}</p>
+            <p className="mt-2 text-center text-xs text-clay-500">{error}</p>
           )}
         </form>
       </div>
@@ -312,27 +320,27 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
     <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end">
       {/* Chat Window */}
       {isExpanded && (
-        <div className="mb-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-scale-in">
+        <div className="sk-pop mb-2 w-80 overflow-hidden rounded-[18px] border border-sand-200 bg-white shadow-3 sm:w-96">
           {/* Header */}
-          <div className="bg-primary text-white p-4 flex items-center justify-between">
+          <div className="flex items-center justify-between bg-primary p-4 text-white">
             <div className="flex items-center gap-3">
               <MessageCircle size={20} />
               <div>
-                <h3 className="font-semibold text-sm">{tripName || 'Chat du voyage'}</h3>
-                <p className="text-xs opacity-80">
+                <h3 className="text-sm font-semibold">{tripName || 'Chat du voyage'}</h3>
+                <p className="font-mono text-[11px] text-white/80">
                   {activeUsers.length} en ligne
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {isConnected ? (
-                <Wifi size={16} className="text-green-300" />
+                <Wifi size={16} className="text-white" />
               ) : (
-                <WifiOff size={16} className="text-red-300" />
+                <WifiOff size={16} className="text-white/50" />
               )}
               <button
                 onClick={() => setIsExpanded(false)}
-                className="p-1 hover:bg-white/20 rounded transition-colors"
+                className="rounded-lg p-1 transition-colors hover:bg-white/20"
               >
                 <ChevronDown size={18} />
               </button>
@@ -341,8 +349,8 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
 
           {/* Active Users */}
           {activeUsers.length > 0 && (
-            <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2 overflow-x-auto">
-              <Users size={14} className="text-gray-400 flex-shrink-0" />
+            <div className="flex items-center gap-2 overflow-x-auto border-b border-sand-200 bg-sand-50 px-4 py-2">
+              <Users size={14} className="flex-shrink-0 text-text-light" />
               <div className="flex -space-x-2">
                 {activeUsers.slice(0, 5).map((u) => (
                   <img
@@ -350,11 +358,11 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
                     src={u.imageUrl || `https://ui-avatars.com/api/?name=${u.firstName}`}
                     alt={u.firstName}
                     title={u.firstName}
-                    className="w-6 h-6 rounded-full border-2 border-white"
+                    className="h-6 w-6 rounded-full border-2 border-white"
                   />
                 ))}
                 {activeUsers.length > 5 && (
-                  <span className="w-6 h-6 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-sand-200 text-[11px] font-medium text-text-secondary">
                     +{activeUsers.length - 5}
                   </span>
                 )}
@@ -363,23 +371,23 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
           )}
 
           {/* Messages */}
-          <div className="h-72 overflow-y-auto p-4 space-y-4 bg-gray-50">
+          <div className="h-72 space-y-4 overflow-y-auto bg-sand-50 p-4">
             {loadingHistory ? (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <div className="flex h-full flex-col items-center justify-center text-text-light">
                 <MessageCircle size={32} className="mb-2" />
                 <p className="text-sm">Aucun message</p>
-                <p className="text-xs">Commencez la conversation!</p>
+                <p className="text-xs">Commencez la conversation !</p>
               </div>
             ) : (
               Object.entries(messageGroups).map(([dateKey, msgs]) => (
                 <div key={dateKey}>
                   {/* Date Header */}
-                  <div className="flex items-center justify-center mb-3">
-                    <span className="px-3 py-1 bg-white rounded-full text-xs text-gray-500 shadow-sm">
+                  <div className="mb-3 flex items-center justify-center">
+                    <span className="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-text-muted shadow-1">
                       {formatDateHeader(msgs[0].createdAt)}
                     </span>
                   </div>
@@ -391,8 +399,8 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
 
                     if (isSystem) {
                       return (
-                        <div key={msg.id} className="flex justify-center my-2">
-                          <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs">
+                        <div key={msg.id} className="my-2 flex justify-center">
+                          <span className="rounded-full bg-sand-100 px-3 py-1 text-[11px] text-text-secondary">
                             {msg.content}
                           </span>
                         </div>
@@ -404,29 +412,29 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
                         key={msg.id}
                         className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-2`}
                       >
-                        <div className={`flex items-end gap-2 max-w-[80%] ${isOwn ? 'flex-row-reverse' : ''}`}>
+                        <div className={`flex max-w-[80%] items-end gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
                           {!isOwn && (
                             <img
                               src={msg.author?.imageUrl || `https://ui-avatars.com/api/?name=${msg.author?.firstName}`}
                               alt={msg.author?.firstName}
-                              className="w-6 h-6 rounded-full flex-shrink-0"
+                              className="h-6 w-6 flex-shrink-0 rounded-full"
                             />
                           )}
                           <div>
                             {!isOwn && (
-                              <p className="text-xs text-gray-500 mb-1 ml-1">
+                              <p className="mb-1 ml-1 text-[11px] text-text-muted">
                                 {msg.author?.firstName}
                               </p>
                             )}
                             <div
-                              className={`px-3 py-2 rounded-2xl ${isOwn
-                                ? 'bg-primary text-white rounded-br-md'
-                                : 'bg-white text-gray-800 rounded-bl-md shadow-sm'
+                              className={`px-3 py-2 ${isOwn
+                                ? 'rounded-[14px_4px_14px_14px] bg-sand-900 text-white'
+                                : 'rounded-[4px_14px_14px_14px] border border-sand-200 bg-white text-text-main'
                                 }`}
                             >
-                              <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                              <p className="whitespace-pre-wrap break-words text-sm">{renderMentions(msg.content)}</p>
                             </div>
-                            <p className={`text-xs text-gray-400 mt-1 ${isOwn ? 'text-right mr-1' : 'ml-1'}`}>
+                            <p className={`mt-1 font-mono text-[11px] text-text-light ${isOwn ? 'mr-1 text-right' : 'ml-1'}`}>
                               {formatTime(msg.createdAt)}
                             </p>
                           </div>
@@ -440,11 +448,11 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
 
             {/* Typing Indicator */}
             {typingUsers.length > 0 && (
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
                 <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-sand-400" style={{ animationDelay: '0ms' }} />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-sand-400" style={{ animationDelay: '150ms' }} />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-sand-400" style={{ animationDelay: '300ms' }} />
                 </div>
                 <span>
                   {typingUsers.map((u) => u.firstName).join(', ')} {typingUsers.length === 1 ? 'écrit' : 'écrivent'}...
@@ -456,7 +464,7 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
           </div>
 
           {/* Input */}
-          <form onSubmit={handleSend} className="p-3 bg-white border-t border-gray-100">
+          <form onSubmit={handleSend} className="border-t border-sand-200 bg-white p-3">
             <div className="flex items-center gap-2">
               <input
                 ref={inputRef}
@@ -464,20 +472,20 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
                 value={newMessage}
                 onChange={handleInputChange}
                 onBlur={stopTyping}
-                placeholder={isConnected ? 'Votre message...' : 'Connexion...'}
+                placeholder={isConnected ? 'Écrire au groupe… @assistant pour l’IA' : 'Connexion…'}
                 disabled={!isConnected}
-                className="flex-1 px-4 py-2 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+                className="flex-1 rounded-full border border-sand-200 bg-sand-50 px-4 py-2 text-sm text-text-main placeholder:text-text-light focus:border-ember-400 focus:outline-none focus:ring-2 focus:ring-ember-100 disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={!newMessage.trim() || !isConnected}
-                className="p-2 bg-primary text-white rounded-full hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="grid h-10 w-10 place-items-center rounded-full bg-primary text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Send size={18} />
               </button>
             </div>
             {error && (
-              <p className="text-xs text-red-500 mt-1 text-center">{error}</p>
+              <p className="mt-1 text-center text-xs text-clay-500">{error}</p>
             )}
           </form>
         </div>
@@ -486,8 +494,8 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
       {/* Toggle Button */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`p-4 rounded-full shadow-lg transition-all ${isExpanded
-          ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+        className={`rounded-full p-4 shadow-2 transition-all ${isExpanded
+          ? 'bg-sand-100 text-text-secondary hover:bg-sand-200'
           : 'bg-primary text-white hover:bg-primary-hover'
           }`}
       >
@@ -497,7 +505,7 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
           <div className="relative">
             <MessageCircle size={24} />
             {isConnected && activeUsers.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+              <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-moss-500" />
             )}
           </div>
         )}

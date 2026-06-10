@@ -8,6 +8,7 @@ import {
   MapPin,
   Calendar,
   Clock,
+  Check,
   CheckCircle2,
   Circle,
   Plus,
@@ -23,8 +24,6 @@ import {
   Mail,
   Send,
   Trash2,
-  CheckSquare,
-  Square,
   Star,
   Hotel,
   ExternalLink,
@@ -45,16 +44,21 @@ import {
   Settings,
   ListChecks,
   LayoutDashboard,
-  Bot,
   Wallet,
+  Vote,
+  Trophy,
+  Search,
+  Pencil,
 } from 'lucide-react';
-import { PersonalizedItineraryCard, LocalEventsCard } from '../components/TripEnhancementComponents';
+import { PersonalizedItineraryCard } from '../components/TripEnhancementComponents';
 import { BookingChecklistCard } from '../components/StickyBookingProgress';
 import TripChat from '../components/TripChat';
 import FriendsManager from '../components/FriendsManager';
-import TripBookingDetails from '../components/TripBookingDetails';
 import TripExpenses from '../components/TripExpenses';
 import GroupTripOverview from '../components/group/GroupTripOverview';
+import JourneyRibbon from '../components/group/JourneyRibbon';
+import { Avatar, AvatarStack, Badge, Button, Card, PhotoBlock } from '../components/ui';
+import { STATIC_DESTINATION_PHOTOS } from '../utils/destinationImages';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -471,28 +475,19 @@ export default function TripDetail() {
         {/* ============ OVERVIEW TAB ============ */}
         {activeTab === 'overview' && (
           <>
-            <GroupTripOverview
-              trip={trip}
-              currentUserId={currentUserId}
-              userRole={userRole}
-              onInvite={() => setShowInviteModal(true)}
-              onRemind={sendReminders}
-              sendingReminder={sendingReminder}
-            />
+            {/* The spine that ties the three lifecycle states together */}
+            <JourneyRibbon state={isConfirmed ? 'confirmed' : isVoting ? 'voting' : 'planning'} />
 
             {/* Conditional Main Section based on trip status */}
             {isPlanning && <PlanningSection trip={trip} navigate={navigate} />}
             {isVoting && <VotingSection trip={trip} fetchTripDetails={fetchTripDetails} user={user} isCreator={userRole === 'creator'} />}
             {isConfirmed && (
               <>
-                {/* Show saved flight/hotel recommendations */}
-                <TripBookingDetails
-                  tripData={trip.finalDestination}
-                  city={getDestinationInfo(trip.finalDestination).city}
-                  country={getDestinationInfo(trip.finalDestination).country}
-                  startDate={trip.finalStartDate}
-                  endDate={trip.finalEndDate}
-                  adults={trip.members?.length || 1}
+                <GroupTripOverview
+                  trip={trip}
+                  currentUserId={currentUserId}
+                  onInvite={() => setShowInviteModal(true)}
+                  onBook={() => setActiveTab('checklist')}
                 />
                 <TripEnhancementsSection trip={trip} userName={user?.firstName || 'there'} />
               </>
@@ -502,155 +497,151 @@ export default function TripDetail() {
 
         {/* ============ PARTICIPANTS TAB ============ */}
         {activeTab === 'participants' && (
-          <div className="space-y-6">
-            {/* Members List */}
-            <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-text-main">
-                  Membres ({trip.members?.length || 0})
-                </h2>
+          <div className="flex flex-col gap-5">
+            {/* Members */}
+            <Card className="px-6 pb-4 pt-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 py-4">
+                <div>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+                    {trip.members?.length || 0} voyageur{(trip.members?.length || 0) > 1 ? 's' : ''}
+                  </span>
+                  <h2 className="mt-0.5 font-display text-[22px] font-medium text-text-main">Participants</h2>
+                </div>
                 <div className="flex items-center gap-2">
                   {reminderMessage && (
                     <span className={`text-sm ${reminderMessage.type === 'success' ? 'text-moss-500' : 'text-clay-500'}`}>
                       {reminderMessage.text}
                     </span>
                   )}
-                  {isConfirmed && (
-                    <button
-                      onClick={sendReminders}
-                      disabled={sendingReminder}
-                      className="flex items-center gap-2 px-4 py-2 bg-gold-100 text-[#7a5c1a] font-medium rounded-lg hover:brightness-95 transition-colors disabled:opacity-50"
-                    >
-                      {sendingReminder ? (
-                        <Loader2 size={18} className="animate-spin" />
-                      ) : (
-                        <Bell size={18} />
-                      )}
-                      {sendingReminder ? 'Envoi...' : 'Rappeler'}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setShowInviteModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors"
-                  >
-                    <UserPlus size={18} />
+                  <Button icon={<Plus size={16} />} onClick={() => setShowInviteModal(true)}>
                     Inviter
-                  </button>
+                  </Button>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                {trip.members?.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between p-4 bg-sand-50 hover:bg-sand-100 rounded-xl transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={member.user?.imageUrl || `https://ui-avatars.com/api/?name=${member.user?.firstName}+${member.user?.lastName}`}
-                        alt={member.user?.firstName}
-                        className="w-12 h-12 rounded-full"
-                      />
-                      <div>
-                        <p className="font-semibold text-text-main">
-                          {member.user?.firstName} {member.user?.lastName}
-                        </p>
-                        <p className="text-sm text-text-secondary">
+              <div>
+                {trip.members?.map((member, i) => {
+                  const name = `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim() || 'Membre';
+                  const isCreator = member.role === 'creator';
+                  return (
+                    <div
+                      key={member.id}
+                      className={['flex items-center gap-3.5 py-3.5', i ? 'border-t border-sand-200' : ''].join(' ')}
+                    >
+                      <Avatar name={name} src={member.user?.imageUrl} size={42} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[15px] font-semibold text-text-main">{name}</span>
+                          <Badge tone={isCreator ? 'ember' : 'neutral'}>{isCreator ? 'Créateur' : 'Membre'}</Badge>
+                          {member.user?.id === currentUserId && (
+                            <span className="text-[13px] text-text-muted">· vous</span>
+                          )}
+                        </div>
+                        <div className="mt-0.5 text-[13px] text-text-muted">
                           {member.user?.email || 'Email non disponible'}
-                        </p>
+                        </div>
+                        {isConfirmed && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            <Badge tone={member.hasBookedFlight ? 'moss' : 'neutral'}>
+                              <Plane size={12} /> {member.hasBookedFlight ? 'Vol réservé' : 'Vol à réserver'}
+                            </Badge>
+                            <Badge tone={member.hasBookedHotel ? 'moss' : 'neutral'}>
+                              <Hotel size={12} /> {member.hasBookedHotel ? 'Hôtel réservé' : 'Hôtel à réserver'}
+                            </Badge>
+                          </div>
+                        )}
                       </div>
+                      {isConfirmed && member.bookingConfirmed ? (
+                        <CheckCircle2 size={20} className="shrink-0 text-moss-500" />
+                      ) : isConfirmed ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          icon={<Bell size={14} />}
+                          onClick={sendReminders}
+                          disabled={sendingReminder}
+                        >
+                          Rappeler
+                        </Button>
+                      ) : null}
                     </div>
-                    <div className="flex items-center gap-2">
-                      {isConfirmed && (
-                        <>
-                          {member.hasBookedFlight && (
-                            <span className="px-2 py-1 bg-gold-100 text-[#7a5c1a] text-xs rounded flex items-center gap-1">
-                              <Plane size={12} /> Vol
-                            </span>
-                          )}
-                          {member.hasBookedHotel && (
-                            <span className="px-2 py-1 bg-moss-100 text-[#3d5a24] text-xs rounded flex items-center gap-1">
-                              <Hotel size={12} /> Hôtel
-                            </span>
-                          )}
-                          {member.bookingConfirmed && (
-                            <CheckCircle2 size={18} className="text-moss-500" />
-                          )}
-                        </>
-                      )}
-                      <span className="text-xs font-medium px-3 py-1 bg-sand-100 text-text-secondary rounded-full">
-                        {member.role === 'creator' ? 'Créateur' : 'Membre'}
-                      </span>
-                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Pending invites + friends */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <Card className="p-5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+                  Invitations en attente
+                </span>
+                {!trip.invitations || trip.invitations.length === 0 ? (
+                  <div className="mt-3 text-sm text-text-muted">Aucune invitation en attente.</div>
+                ) : (
+                  <div className="mt-3 flex flex-col gap-3">
+                    {trip.invitations.map((invitation) => (
+                      <div key={invitation.id} className="flex items-center gap-3">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sand-100 text-sand-500">
+                          <Mail size={16} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium text-text-main">{invitation.email}</div>
+                        </div>
+                        <Badge tone="gold" dot>En attente</Badge>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                )}
+              </Card>
 
-            {/* Pending Invitations */}
-            {trip.invitations && trip.invitations.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6">
-                <h3 className="text-lg font-bold text-text-main mb-4">
-                  Invitations en attente ({trip.invitations.length})
-                </h3>
-                <div className="space-y-2">
-                  {trip.invitations.map((invitation) => (
-                    <div key={invitation.id} className="flex items-center gap-3 p-3 bg-gold-100 rounded-lg">
-                      <Mail size={18} className="text-gold-500" />
-                      <span className="text-text-main">{invitation.email}</span>
-                      <span className="ml-auto text-xs font-medium text-gold-500 bg-gold-100 px-2 py-1 rounded">
-                        En attente
-                      </span>
-                    </div>
-                  ))}
+              <Card className="flex flex-col p-5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+                  Inviter depuis mes amis
+                </span>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-text-secondary">
+                  Ajoutez en un clic les amis avec qui vous voyagez souvent. Skusku garde votre cercle sous la main.
+                </p>
+                <div className="mt-4">
+                  <Button variant="outline" icon={<Users size={16} />} onClick={() => setShowFriendsManager(true)}>
+                    Gérer mes amis & inviter
+                  </Button>
                 </div>
-              </div>
-            )}
-
-            {/* Quick Add Friends */}
-            <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6">
-              <h3 className="text-lg font-bold text-text-main mb-4">Inviter depuis mes amis</h3>
-              <button
-                onClick={() => setShowFriendsManager(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-4 bg-primary-light text-primary font-medium rounded-xl hover:bg-primary/20 transition-colors"
-              >
-                <Users size={20} />
-                Gérer mes amis & Inviter
-              </button>
+              </Card>
             </div>
           </div>
         )}
 
         {/* ============ CHAT TAB ============ */}
         {activeTab === 'chat' && (
-          <div className="space-y-6">
-            {/* AI Assistant Info */}
-            <div className="bg-ember-50 rounded-2xl border border-ember-200 p-6">
+          <div className="flex flex-col gap-5">
+            {/* AI Assistant explainer — dark, calm, matching the design handoff */}
+            <Card className="border-0 bg-sand-900 p-5 text-white">
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-ember-600 rounded-xl text-white">
-                  <Bot size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-text-main mb-1">Assistant IA</h3>
-                  <p className="text-sm text-text-secondary">
-                    Mentionnez <span className="font-mono bg-ember-50 px-1 rounded">@assistant</span> dans le chat pour demander à l'IA de modifier l'itinéraire, suggérer des activités, ou répondre à vos questions sur le voyage.
+                <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-ember-600 text-white">
+                  <Sparkles size={22} strokeWidth={2.2} />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-display text-lg text-white">Discutez avec l'assistant</h3>
+                  <p className="mt-1 text-sm text-sand-300">
+                    Mentionnez{' '}
+                    <span className="font-mono text-ember-200">@assistant</span>{' '}
+                    dans le chat pour modifier l'itinéraire, suggérer des activités ou poser une question sur le voyage. Tout le groupe voit la réponse.
                   </p>
                 </div>
               </div>
-            </div>
+            </Card>
 
             {/* Full Chat Component - Inline instead of floating */}
-            <div className="bg-white rounded-2xl shadow-card border border-sand-200 overflow-hidden">
-              <div className="p-4 border-b border-sand-200 bg-sand-50">
-                <h3 className="font-bold text-text-main flex items-center gap-2">
-                  <MessageCircle size={20} className="text-primary" />
-                  Chat du groupe
-                </h3>
+            <Card className="overflow-hidden">
+              <div className="flex items-center gap-2 border-b border-sand-200 bg-sand-50 px-5 py-4">
+                <MessageCircle size={18} className="text-primary" />
+                <h3 className="font-semibold text-text-main">Chat du groupe</h3>
               </div>
               <div className="h-[500px]">
                 <TripChat tripId={id} tripName={trip.name} embedded={true} guestSession={guestSession} />
               </div>
-            </div>
+            </Card>
           </div>
         )}
 
@@ -681,65 +672,24 @@ export default function TripDetail() {
                   );
                 })()}
 
-                {/* Group Booking Status */}
-                <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-bold text-text-main">Suivi du groupe</h2>
-                    <button
-                      onClick={sendReminders}
-                      disabled={sendingReminder}
-                      className="flex items-center gap-2 px-4 py-2 bg-gold-100 text-[#7a5c1a] font-medium rounded-lg hover:brightness-95 transition-colors disabled:opacity-50"
-                    >
-                      {sendingReminder ? <Loader2 size={18} className="animate-spin" /> : <Bell size={18} />}
-                      {sendingReminder ? 'Envoi...' : 'Rappeler les retardataires'}
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {trip.members?.map((member) => (
-                      <div key={member.id} className="flex items-center justify-between p-4 bg-sand-50 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={member.user?.imageUrl || `https://ui-avatars.com/api/?name=${member.user?.firstName}`}
-                            alt={member.user?.firstName}
-                            className="w-10 h-10 rounded-full"
-                          />
-                          <span className="font-medium text-text-main">
-                            {member.user?.firstName} {member.user?.lastName}
-                            {member.user?.id === currentUserId && (
-                              <span className="ml-2 text-xs text-primary font-normal">(vous)</span>
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedFlight ? 'bg-moss-100 text-[#3d5a24]' : 'bg-sand-100 text-text-secondary'}`}>
-                            <Plane size={14} />
-                            {member.hasBookedFlight ? 'Vol réservé' : 'Vol en attente'}
-                          </div>
-                          <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${member.hasBookedHotel ? 'bg-moss-100 text-[#3d5a24]' : 'bg-sand-100 text-text-secondary'}`}>
-                            <Hotel size={14} />
-                            {member.hasBookedHotel ? 'Hôtel réservé' : 'Hôtel en attente'}
-                          </div>
-                          {member.bookingConfirmed && (
-                            <CheckCircle2 size={20} className="text-moss-500" />
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Booking Links */}
+                {/* Group tracking + optimized booking links */}
                 <BookingChecklistSection trip={trip} fetchTripDetails={fetchTripDetails} getToken={getToken} />
+
+                {/* Weather & packing prep */}
+                <TripPrepSection trip={trip} />
               </>
             ) : (
-              <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-8 text-center">
-                <ListChecks size={48} className="text-text-light mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-text-main mb-2">Checklist non disponible</h3>
-                <p className="text-text-secondary">
-                  La checklist de réservation sera disponible une fois la destination confirmée.
+              <Card className="px-8 py-14 text-center">
+                <span className="mx-auto grid h-16 w-16 place-items-center rounded-[18px] bg-sand-100 text-sand-500">
+                  <ListChecks size={30} />
+                </span>
+                <h3 className="mt-4 font-display text-[20px] font-medium tracking-[-0.01em] text-text-main">
+                  Disponible une fois la destination confirmée
+                </h3>
+                <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-text-secondary">
+                  Dès que le vote sera clôturé, vous retrouverez ici vos réservations à faire, le suivi du groupe et les liens optimisés.
                 </p>
-              </div>
+              </Card>
             )}
           </div>
         )}
@@ -903,11 +853,38 @@ export default function TripDetail() {
 }
 
 // Planning Section - When no destinations proposed yet
+const AMBIANCE_CHIPS = ['Soleil & gastronomie', 'Citytrip culturel', 'Bord de mer', 'Petit budget'];
+
+function IconChip({ children, tone = 'sand' }) {
+  const tones = {
+    sand: 'bg-sand-100 text-sand-600',
+    ember: 'bg-ember-50 text-ember-700',
+    moss: 'bg-moss-100 text-[#3d5a24]',
+  };
+  return (
+    <span className={['grid h-10 w-10 shrink-0 place-items-center rounded-xl', tones[tone] || tones.sand].join(' ')}>
+      {children}
+    </span>
+  );
+}
+
+function PrefRow({ Icon, label, value, last }) {
+  return (
+    <div className={['flex items-center gap-3.5 py-2.5', last ? '' : 'border-b border-sand-200'].join(' ')}>
+      <IconChip><Icon size={19} /></IconChip>
+      <div className="min-w-0">
+        <div className="text-[12.5px] text-text-muted">{label}</div>
+        <div className="mt-0.5 text-[15px] font-semibold text-text-main">{value}</div>
+      </div>
+    </div>
+  );
+}
+
 function PlanningSection({ trip, navigate }) {
   const { getToken } = useAuth();
   const [groupPrefs, setGroupPrefs] = useState(null);
   const [loadingPrefs, setLoadingPrefs] = useState(true);
-  const [proposalMode, setProposalMode] = useState(null); // 'ai' or 'custom'
+  const [proposalMode, setProposalMode] = useState('ai'); // 'ai' or 'custom'
   const [customDestination, setCustomDestination] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(null);
@@ -948,6 +925,7 @@ function PlanningSection({ trip, navigate }) {
       const availability = groupPrefs.availability || {};
       const duration = availability.recommendedDuration || 7;
 
+      const vibe = customDestination.trim();
       const payload = {
         basic: {
           budget: groupPrefs.budget.average,
@@ -956,6 +934,7 @@ function PlanningSection({ trip, navigate }) {
           maxFlightHours: groupPrefs.maxFlightHours,
           destinationPreference: 'any',
           travelers: groupPrefs.defaultTravelers,
+          ...(vibe ? { travelVibeDescription: vibe } : {}),
         },
         preferences: {
           climate: 'any',
@@ -1093,208 +1072,312 @@ function PlanningSection({ trip, navigate }) {
     }
   };
 
-  return (
-    <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6">
-      <h2 className="text-lg font-bold text-text-main mb-4">Proposer une destination</h2>
+  const memberCount = trip.members?.length || groupPrefs?.defaultTravelers || 0;
+  const avail = groupPrefs?.availability;
+  const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+  const prefRows = groupPrefs
+    ? [
+        { Icon: Wallet, label: 'Budget moyen', value: `€${groupPrefs.budget?.average ?? '—'} / pers.` },
+        { Icon: Users, label: 'Voyageurs', value: `${groupPrefs.defaultTravelers || memberCount}` },
+        { Icon: Plane, label: 'Vol maximum', value: `${groupPrefs.maxFlightHours || 12} h` },
+        { Icon: Heart, label: 'Activité phare', value: cap(groupPrefs.activities?.[0]) || 'Toutes' },
+      ]
+    : [];
+  const availRows = avail
+    ? [
+        { Icon: Clock, label: 'Durée suggérée', value: `${avail.recommendedDuration || 7} jours` },
+        ...(avail.minAvailableLeaveDays != null
+          ? [{ Icon: Calendar, label: 'Congés disponibles', value: `${avail.minAvailableLeaveDays} j` }]
+          : []),
+        ...(avail.preferredMonths?.length
+          ? [{ Icon: Sun, label: 'Mois préférés', value: avail.preferredMonths.map(cap).join(', ') }]
+          : []),
+      ]
+    : [];
 
-      {/* Group Preferences Summary */}
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Hero */}
+      <Card>
+        <PhotoBlock src={STATIC_DESTINATION_PHOTOS.Porto} className="h-[160px]">
+          <div className="absolute inset-x-0 bottom-0 z-[2] p-6 text-white">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">
+              Voyage de groupe · {memberCount} {memberCount > 1 ? 'personnes' : 'personne'}
+            </span>
+            <h2 className="mt-1.5 font-display text-[32px] font-medium leading-[1.05] tracking-[-0.015em]">
+              On part <span className="italic text-ember-200">où</span> cette fois‑ci&nbsp;?
+            </h2>
+          </div>
+        </PhotoBlock>
+        <p className="px-6 py-4 text-[14.5px] text-text-secondary">
+          Rien n'est encore proposé. Lancez une recherche pour transformer vos envies en propositions
+          concrètes, que le groupe pourra ensuite voter.
+        </p>
+      </Card>
+
+      {/* Group preferences + availability */}
       {loadingPrefs ? (
-        <div className="text-center py-8">
-          <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
-          <p className="text-sm text-text-secondary">Chargement des préférences du groupe...</p>
-        </div>
+        <Card className="px-5 py-6">
+          <div className="flex items-center gap-3 text-text-secondary">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm">Chargement des préférences du groupe…</span>
+          </div>
+        </Card>
       ) : groupPrefs ? (
-        <>
-          <div className="mb-4 p-4 bg-gold-100 rounded-xl border border-gold-100">
-            <h3 className="text-sm font-semibold text-text-main mb-3">Préférences du groupe :</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-              <div>
-                <p className="text-text-secondary">Budget</p>
-                <p className="font-semibold text-text-main">€{groupPrefs.budget.average}</p>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <Card className="px-5 py-4">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+              Préférences du groupe
+            </span>
+            <div className="mt-2">
+              {prefRows.map((r, i) => (
+                <PrefRow key={r.label} {...r} last={i === prefRows.length - 1} />
+              ))}
+            </div>
+          </Card>
+
+          <Card className="px-5 py-4">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+              Disponibilités
+            </span>
+            <div className="mt-2">
+              {availRows.map((r, i) => (
+                <PrefRow key={r.label} {...r} last={i === availRows.length - 1} />
+              ))}
+            </div>
+            {avail?.availabilityMessage && (
+              <div className="mt-2 flex items-center gap-2.5 rounded-xl bg-sand-50 px-3.5 py-3 text-[13px] text-text-muted">
+                <Users size={15} className="text-moss-500 shrink-0" />
+                <span>{avail.availabilityMessage}</span>
               </div>
-              <div>
-                <p className="text-text-secondary">Voyageurs</p>
-                <p className="font-semibold text-text-main">{groupPrefs.defaultTravelers}</p>
-              </div>
-              <div>
-                <p className="text-text-secondary">Vol max</p>
-                <p className="font-semibold text-text-main">{groupPrefs.maxFlightHours}h</p>
-              </div>
-              <div>
-                <p className="text-text-secondary">Activité principale</p>
-                <p className="font-semibold text-text-main capitalize">{groupPrefs.activities[0] || 'Toutes'}</p>
+            )}
+          </Card>
+        </div>
+      ) : null}
+
+      {/* Search error */}
+      {searchError && (
+        <div className="flex items-center gap-2 rounded-xl bg-clay-100 px-3.5 py-3 text-sm text-clay-500">
+          <AlertCircle size={16} className="shrink-0" />
+          <span className="flex-1">{searchError}</span>
+          <button onClick={() => setSearchError(null)} className="text-clay-500 hover:opacity-70">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Propose block */}
+      {searching ? (
+        <Card className="p-7">
+          <div className="flex items-center gap-3">
+            <span className="sk-pulse grid h-11 w-11 place-items-center rounded-[14px] bg-ember-50 text-ember-700">
+              <Sparkles size={22} />
+            </span>
+            <div>
+              <div className="text-base font-semibold text-text-main">Skusku compose vos propositions…</div>
+              <div className="mt-0.5 text-[13.5px] text-text-muted">
+                Vols directs, climat et budget du groupe analysés.
               </div>
             </div>
           </div>
-
-          {/* Availability Info */}
-          {groupPrefs.availability && (
-            <div className="mb-6 p-4 bg-moss-100 rounded-xl border border-moss-100">
-              <h3 className="text-sm font-semibold text-text-main mb-2 flex items-center gap-2">
-                <Calendar size={16} className="text-moss-500" />
-                Disponibilités du groupe
-              </h3>
-              <p className="text-xs text-text-secondary mb-3">{groupPrefs.availability.availabilityMessage}</p>
-
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                <div>
-                  <p className="text-text-secondary">Durée suggérée</p>
-                  <p className="font-semibold text-text-main">{groupPrefs.availability.recommendedDuration} j</p>
+          <div className="mt-5 grid gap-2.5">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="sk-skel h-14 w-14 rounded-xl" />
+                <div className="grid flex-1 gap-2">
+                  <div className="sk-skel h-3 w-[42%]" />
+                  <div className="sk-skel h-2.5 w-[78%]" />
                 </div>
-                {groupPrefs.availability.minAvailableLeaveDays !== null && (
-                  <div>
-                    <p className="text-text-secondary">Congés min.</p>
-                    <p className="font-semibold text-text-main">{groupPrefs.availability.minAvailableLeaveDays} j</p>
-                  </div>
-                )}
-                {groupPrefs.availability.preferredMonths.length > 0 && (
-                  <div>
-                    <p className="text-text-secondary">Mois préférés</p>
-                    <p className="font-semibold text-text-main capitalize">{groupPrefs.availability.preferredMonths.join(', ')}</p>
-                  </div>
-                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : (
+        <Card>
+          <div className="px-6 pt-5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+              Prochaine étape
+            </span>
+            <h2 className="mt-2 font-display text-[22px] font-medium text-text-main">Proposer une destination</h2>
+            <p className="mt-2 max-w-xl text-[14.5px] text-text-secondary">
+              Skusku part de vos envies et de vos disponibilités pour bâtir des propositions complètes —
+              destination, dates, vol et hôtel.
+            </p>
+            <div className="mt-4 inline-flex gap-1 rounded-full bg-sand-100 p-1">
+              {[
+                ['ai', 'Recherche IA', Sparkles],
+                ['custom', 'Idée personnalisée', Pencil],
+              ].map(([k, label, Ic]) => (
+                <button
+                  key={k}
+                  onClick={() => setProposalMode(k)}
+                  className={[
+                    'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13.5px] font-semibold transition-all',
+                    proposalMode === k ? 'bg-white text-text-main shadow-1' : 'text-text-muted',
+                  ].join(' ')}
+                >
+                  <Ic size={15} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="px-6 pb-6 pt-5">
+            {proposalMode === 'custom' ? (
+              <div>
+                <input
+                  value={customDestination}
+                  onChange={(e) => setCustomDestination(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCustomSearch()}
+                  placeholder="Une ville, un pays, une vibe… ex : « Porto en mars »"
+                  className="h-[50px] w-full rounded-[14px] border border-sand-200 bg-sand-50 px-[18px] text-[15px] text-text-main outline-none focus:border-primary"
+                />
+                <div className="mt-4">
+                  <Button size="lg" icon={<Search size={17} />} onClick={handleCustomSearch} disabled={!customDestination.trim()}>
+                    Proposer cette idée au groupe
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="mb-2.5 text-[13px] text-text-muted">Affinez l'ambiance recherchée (optionnel)</div>
+                <div className="mb-[18px] flex flex-wrap gap-2">
+                  {AMBIANCE_CHIPS.map((x) => {
+                    const on = customDestination === x;
+                    return (
+                      <button
+                        key={x}
+                        onClick={() => setCustomDestination(on ? '' : x)}
+                        className={[
+                          'rounded-full border px-3.5 py-[7px] text-[13px] font-medium transition-all',
+                          on
+                            ? 'border-ember-300 bg-ember-50 text-ember-700'
+                            : 'border-sand-200 bg-white text-text-secondary hover:border-sand-300',
+                        ].join(' ')}
+                      >
+                        {x}
+                      </button>
+                    );
+                  })}
+                </div>
+                <Button size="lg" icon={<Sparkles size={18} />} onClick={handleSmartSearch} disabled={!groupPrefs}>
+                  Lancer la recherche IA
+                </Button>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function FlightLeg({ label, leg }) {
+  if (!leg) return null;
+  const dep = leg.departureAirport || leg.from || '';
+  const arr = leg.arrivalAirport || leg.to || '';
+  return (
+    <div className="flex items-center gap-3 rounded-xl bg-sand-50 px-4 py-3">
+      <Plane size={16} className="shrink-0 text-ember-600" />
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">{label}</div>
+        <div className="font-mono text-[13px] text-text-main">
+          {dep} {leg.departureTime || ''} → {arr} {leg.arrivalTime || ''}
+        </div>
+      </div>
+      <div className="shrink-0 text-right text-xs text-text-muted">
+        {leg.duration && <div>{leg.duration}</div>}
+        <div>{leg.stops ? `${leg.stops} escale${leg.stops > 1 ? 's' : ''}` : 'Direct'}</div>
+      </div>
+    </div>
+  );
+}
+
+function ProposalDetailModal({ proposal, onClose }) {
+  if (!proposal) return null;
+  const td = proposal.tripData || {};
+  const city = proposal.city || td.destination?.city || '?';
+  const country = proposal.country || td.destination?.country || '';
+  const flight = td.flightDetails;
+  const hotel = td.hotelOptions?.hotels?.[0];
+  const price = Math.round(proposal.estimatedCostPerPerson || td.pricing?.total || 0);
+  const match = td.matchReason || td.destination?.matchReason;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-sand-900/45 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[20px] bg-white shadow-3 sm:rounded-[18px]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <PhotoBlock city={city} country={country} tripData={td} className="h-[180px]">
+          <button
+            onClick={onClose}
+            className="absolute right-3 top-3 z-[2] grid h-9 w-9 place-items-center rounded-full bg-white/90 text-text-main hover:bg-white"
+          >
+            <X size={18} />
+          </button>
+          <div className="absolute inset-x-0 bottom-0 z-[2] p-5 text-white">
+            <span className="text-2xl">{getCountryEmoji(country)}</span>
+            <h3 className="font-display text-[26px] font-medium leading-tight">{city}</h3>
+            {country && <div className="text-sm text-white/80">{country}</div>}
+          </div>
+        </PhotoBlock>
+
+        <div className="flex flex-col gap-4 p-5">
+          {match && (
+            <div className="flex items-start gap-2 rounded-xl bg-ember-50 px-3.5 py-3 text-[13.5px] text-ember-800">
+              <Sparkles size={15} className="mt-0.5 shrink-0 text-ember-600" />
+              <span>{match}</span>
+            </div>
+          )}
+
+          {flight && (flight.outbound || flight.return) && (
+            <div>
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">Vol</div>
+              <div className="flex flex-col gap-2">
+                <FlightLeg label="Aller" leg={flight.outbound} />
+                <FlightLeg label="Retour" leg={flight.return} />
               </div>
             </div>
           )}
-        </>
-      ) : null}
 
-      {/* Search Error */}
-      {searchError && (
-        <div className="mb-4 p-3 bg-clay-100 border border-clay-500/30 rounded-lg text-sm text-clay-500 flex items-center gap-2">
-          <AlertCircle size={16} />
-          {searchError}
-          <button onClick={() => setSearchError(null)} className="ml-auto text-clay-500 hover:opacity-70"><X size={14} /></button>
-        </div>
-      )}
-
-      {/* Proposal Mode Selection */}
-      {!proposalMode ? (
-        <div className="space-y-4">
-          <button
-            onClick={() => setProposalMode('ai')}
-            className="w-full p-6 border-2 border-sand-200 rounded-xl hover:border-primary hover:bg-primary-light transition-all text-left group"
-          >
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-primary rounded-xl text-white group-hover:scale-110 transition-transform">
-                <Sparkles size={24} />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-text-main mb-1">Recherche IA intelligente</h3>
-                <p className="text-sm text-text-secondary">
-                  Laissez l'IA trouver les meilleures destinations selon les préférences de tous
-                </p>
+          {hotel && (
+            <div>
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">Hébergement</div>
+              <div className="flex gap-3 rounded-xl border border-sand-200 p-3">
+                {hotel.mainPhoto && (
+                  <img src={hotel.mainPhoto} alt={hotel.name} className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-text-main">{hotel.name}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-text-muted">
+                    {hotel.stars ? (
+                      <span className="flex items-center gap-0.5 text-gold-500">
+                        {Array.from({ length: Math.round(hotel.stars) }).map((_, i) => (
+                          <Star key={i} size={11} fill="currentColor" />
+                        ))}
+                      </span>
+                    ) : null}
+                    {hotel.rating?.value && <span>· {hotel.rating.value} {hotel.rating.word}</span>}
+                  </div>
+                  {hotel.location && <div className="mt-0.5 truncate text-xs text-text-muted">{hotel.location}</div>}
+                </div>
               </div>
             </div>
-          </button>
+          )}
 
-          <button
-            onClick={() => setProposalMode('custom')}
-            className="w-full p-6 border-2 border-sand-200 rounded-xl hover:border-primary hover:bg-primary-light transition-all text-left group"
-          >
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-ember-600 rounded-xl text-white group-hover:scale-110 transition-transform">
-                <MapPin size={24} />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-text-main mb-1">Idée personnalisée</h3>
-                <p className="text-sm text-text-secondary">
-                  Vous avez un endroit en tête ? Dites-le nous et nous trouverons les meilleures options
-                </p>
-              </div>
+          {!!price && (
+            <div className="flex items-center justify-between rounded-xl bg-sand-900 px-4 py-3 text-white">
+              <span className="text-sm text-white/75">Estimation par personne</span>
+              <span className="font-mono text-lg font-semibold">€{price}</span>
             </div>
-          </button>
+          )}
         </div>
-      ) : proposalMode === 'ai' ? (
-        <div className="space-y-4">
-          <div className="p-4 bg-ember-50 rounded-xl border border-gold-100">
-            <p className="text-sm text-text-main">
-              <strong>L'IA cherchera des destinations correspondant à :</strong>
-            </p>
-            <ul className="mt-2 space-y-1 text-sm text-text-secondary">
-              <li>• Budget : €{groupPrefs?.budget.average || 1500} / pers.</li>
-              <li>• {groupPrefs?.defaultTravelers || trip.members.length} voyageurs</li>
-              <li>• Durée : {groupPrefs?.availability?.recommendedDuration || 7} j</li>
-              <li>• Activités : {groupPrefs?.activities.slice(0, 3).join(', ') || 'Culture, Nature'}</li>
-              <li>• Vol max : {groupPrefs?.maxFlightHours || 12}h</li>
-              {groupPrefs?.availability?.preferredMonths?.length > 0 && (
-                <li>• Mois préférés : {groupPrefs.availability.preferredMonths.join(', ')}</li>
-              )}
-            </ul>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => setProposalMode(null)}
-              className="px-6 py-3 border border-sand-300 text-text-secondary rounded-xl hover:bg-sand-50 transition-colors"
-            >
-              Retour
-            </button>
-            <button
-              onClick={handleSmartSearch}
-              disabled={searching}
-              className="flex-1 px-6 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {searching ? (
-                <>
-                  <Loader2 size={20} className="animate-spin" />
-                  Recherche...
-                </>
-              ) : (
-                <>
-                  <Sparkles size={20} />
-                  Trouver les meilleures destinations
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-text-main mb-2">
-              Où voulez-vous aller ?
-            </label>
-            <input
-              type="text"
-              value={customDestination}
-              onChange={(e) => setCustomDestination(e.target.value)}
-              placeholder="Ex : Paris, plage méditerranéenne, Japon..."
-              className="w-full px-4 py-3 border border-sand-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-              onKeyDown={(e) => e.key === 'Enter' && handleCustomSearch()}
-            />
-            <p className="mt-2 text-xs text-text-secondary">
-              Tapez un pays, une ville, une région ou une ambiance. L'IA trouvera les meilleures options !
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => setProposalMode(null)}
-              className="px-6 py-3 border border-sand-300 text-text-secondary rounded-xl hover:bg-sand-50 transition-colors"
-            >
-              Retour
-            </button>
-            <button
-              onClick={handleCustomSearch}
-              disabled={searching || !customDestination.trim()}
-              className="flex-1 px-6 py-3 bg-ember-600 text-white font-semibold rounded-xl shadow-lg hover:bg-ember-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {searching ? (
-                <>
-                  <Loader2 size={20} className="animate-spin" />
-                  Recherche...
-                </>
-              ) : (
-                <>
-                  <MapPin size={20} />
-                  Rechercher des destinations
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -1308,6 +1391,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState(null);
   const [votingProgress, setVotingProgress] = useState(null);
+  const [detailProposal, setDetailProposal] = useState(null);
 
   // Detect if user has already voted (from trip data)
   const userVotedDestId = (() => {
@@ -1408,167 +1492,234 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
       return set;
     }, new Set()).size;
 
-  return (
-    <div className="bg-white rounded-2xl border border-sand-200 p-6">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-2">
-        <h2 className="text-lg font-bold text-text-main">Vote pour la destination</h2>
-        {hasVoted && (
-          <span className="flex items-center gap-1.5 text-xs font-medium text-moss-500 bg-moss-100 px-3 py-1.5 rounded-full">
-            <CheckCircle2 size={14} />
-            Vous avez voté
-          </span>
-        )}
-      </div>
+  const winningId = getWinningDestinationId();
+  const scoreOf = (d) =>
+    (d.votes || []).reduce((s, v) => s + (v.rank === 1 ? 5 : v.rank === 2 ? 3 : v.rank === 3 ? 1 : 0), 0);
+  const sortedProposals = [...(trip.proposedTrips || [])].sort((a, b) => scoreOf(b) - scoreOf(a));
+  const progressPct = memberCount > 0 ? Math.min(100, Math.round((votedMembersCount / memberCount) * 100)) : 0;
+  const memberPeople = (trip.members || []).map((m) => ({
+    id: m.id,
+    name: `${m.user?.firstName || ''} ${m.user?.lastName || ''}`.trim() || 'Membre',
+    src: m.user?.imageUrl,
+  }));
+  const canFinalize = trip.proposedTrips?.some((p) => p.votes?.length > 0);
 
-      {/* Progress bar: votes cast */}
-      <div className="mb-6">
-        <div className="flex justify-between text-xs text-text-secondary mb-1.5">
-          <span>{votedMembersCount} membre{votedMembersCount !== 1 ? 's' : ''} ont voté</span>
-          <span>sur {memberCount}</span>
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Live progress */}
+      <Card className="px-5 py-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="sk-pulse h-2.5 w-2.5 rounded-full bg-ember-600" />
+            <div>
+              <div className="text-[15px] font-semibold text-text-main">Vote en cours</div>
+              <div className="text-[13px] text-text-muted">
+                {votedMembersCount} / {memberCount} membre{memberCount > 1 ? 's' : ''} ont voté
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {memberPeople.length > 0 && <AvatarStack people={memberPeople} size={32} max={5} />}
+            <span className="font-mono text-[15px] font-semibold text-ember-700">{progressPct}%</span>
+          </div>
         </div>
-        <div className="h-1.5 bg-sand-100 rounded-full overflow-hidden">
+        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-sand-100">
           <div
-            className="h-full bg-primary rounded-full transition-all duration-500"
-            style={{ width: `${Math.min(100, (votedMembersCount / memberCount) * 100)}%` }}
+            className="h-full rounded-full bg-ember-600 transition-all duration-500"
+            style={{ width: `${progressPct}%` }}
           />
         </div>
-      </div>
+        {hasVoted && (
+          <div className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-moss-500">
+            <CheckCircle2 size={14} /> Vous avez voté
+          </div>
+        )}
+      </Card>
 
       {voteError && (
-        <div className="mb-4 p-3 bg-clay-100 border border-clay-500/30 rounded-lg text-sm text-clay-500 flex items-center gap-2">
-          <AlertCircle size={16} />
+        <div className="flex items-center gap-2 rounded-xl bg-clay-100 px-3.5 py-3 text-sm text-clay-500">
+          <AlertCircle size={16} className="shrink-0" />
           {voteError}
         </div>
       )}
 
-      {/* Destination cards */}
-      <div className="space-y-4">
-        {trip.proposedTrips?.map((proposed) => {
+      {/* Proposal cards */}
+      <div className="flex flex-col gap-4">
+        {sortedProposals.map((proposed) => {
           const voteCount = proposed.votes?.length || 0;
           const votePercent = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
-          const isMyVote = (votedForId === proposed.id) || (userVotedDestId === proposed.id);
-          const city = proposed.city || proposed.tripData?.destination?.city || '?';
-          const country = proposed.country || proposed.tripData?.destination?.country || '';
+          const isMyVote = votedForId === proposed.id || userVotedDestId === proposed.id;
+          const isLeading = proposed.id === winningId && voteCount > 0;
+          const td = proposed.tripData || {};
+          const city = proposed.city || td.destination?.city || '?';
+          const country = proposed.country || td.destination?.country || '';
+          const price = Math.round(proposed.estimatedCostPerPerson || td.pricing?.total || 0);
+          const match = td.matchReason || td.destination?.matchReason;
+          const startDate = proposed.startDate || td.slot?.startDate;
+          const flight = td.flightDetails;
+          const hotel = td.hotelOptions?.hotels?.[0];
+          const hasDetails = !!(flight?.outbound || flight?.return || hotel || match);
 
           return (
-            <div
-              key={proposed.id}
-              className={`p-5 border-2 rounded-xl transition-all ${
-                isMyVote
-                  ? 'border-primary bg-primary-light'
-                  : 'border-sand-200 hover:border-sand-300'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-4 mb-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className="text-base font-bold text-text-main truncate">
-                      {city}{country ? `, ${country}` : ''}
-                    </h3>
-                    <span className="text-lg">{getCountryEmoji(country)}</span>
-                    {isMyVote && (
-                      <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                        Votre choix
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-text-secondary">
-                    Proposé par {proposed.proposer?.firstName || 'Inconnu'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleVote(proposed.id)}
-                  disabled={voting}
-                  className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 ${
-                    isMyVote
-                      ? 'bg-primary text-white'
-                      : hasVoted
-                        ? 'bg-sand-100 text-text-secondary hover:bg-sand-200'
-                        : 'bg-primary text-white hover:bg-primary-hover'
-                  }`}
-                >
-                  {voting && votedForId === proposed.id ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : isMyVote ? (
-                    '✓ Voté'
-                  ) : (
-                    hasVoted ? 'Changer' : 'Voter'
-                  )}
-                </button>
-              </div>
-
-              {/* Match reason */}
-              {(proposed.tripData?.matchReason || proposed.tripData?.destination?.matchReason) && (
-                <div className="mb-3 p-2.5 bg-white/60 rounded-lg text-xs text-text-secondary flex items-start gap-1.5">
-                  <Sparkles size={13} className="text-primary mt-0.5 flex-shrink-0" />
-                  <span>{proposed.tripData?.matchReason || proposed.tripData?.destination?.matchReason}</span>
-                </div>
-              )}
-
-              {/* Meta + Vote bar */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-secondary mb-3">
-                {(proposed.startDate || proposed.tripData?.slot?.startDate) && (
-                  <span className="flex items-center gap-1">
-                    <Calendar size={13} />
-                    {new Date(proposed.startDate || proposed.tripData.slot.startDate).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}
+            <Card key={proposed.id} className={isMyVote ? 'ring-2 ring-moss-500' : ''}>
+              <PhotoBlock city={city} country={country} tripData={td} className="h-[168px]">
+                <span className="absolute left-3 top-3 z-[2] text-2xl drop-shadow">{getCountryEmoji(country)}</span>
+                {isLeading && (
+                  <span className="absolute right-3 top-3 z-[2] inline-flex items-center gap-1.5 rounded-full bg-ember-600 px-2.5 py-1 text-xs font-semibold text-white shadow-2">
+                    <Trophy size={12} /> En tête
                   </span>
                 )}
-                {(proposed.estimatedCostPerPerson || proposed.tripData?.pricing?.total) && (
-                  <span>€{Math.round(proposed.estimatedCostPerPerson || proposed.tripData.pricing.total)}/pers</span>
-                )}
-              </div>
-
-              {/* Vote bar */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-1.5 bg-sand-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${isMyVote ? 'bg-primary' : 'bg-sand-400'}`}
-                    style={{ width: `${votePercent}%` }}
-                  />
+                <div className="absolute inset-x-0 bottom-0 z-[2] p-4 text-white">
+                  <h3 className="font-display text-[24px] font-medium leading-none">{city}</h3>
+                  <div className="mt-1 text-[13px] text-white/80">
+                    {country}
+                    {proposed.proposer?.firstName ? ` · proposé par ${proposed.proposer.firstName}` : ''}
+                  </div>
                 </div>
-                <span className={`text-xs font-semibold flex-shrink-0 ${isMyVote ? 'text-primary' : 'text-text-secondary'}`}>
-                  {voteCount} vote{voteCount !== 1 ? 's' : ''} · {votePercent}%
-                </span>
+              </PhotoBlock>
+
+              <div className="flex flex-col gap-3 p-4">
+                {/* Price + dates */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 text-[13px] text-text-secondary">
+                    {startDate && (
+                      <span className="flex items-center gap-1">
+                        <Calendar size={13} />
+                        {new Date(startDate).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                    {!!price && (
+                      <span className="font-mono font-semibold text-text-main">€{price}<span className="font-sans font-normal text-text-muted">/pers</span></span>
+                    )}
+                  </div>
+                  {isMyVote && <Badge tone="moss" dot>Votre choix</Badge>}
+                </div>
+
+                {/* Match reason */}
+                {match && (
+                  <div className="flex items-start gap-1.5 rounded-lg bg-ember-50 px-2.5 py-2 text-[12.5px] text-ember-800">
+                    <Sparkles size={13} className="mt-0.5 shrink-0 text-ember-600" />
+                    <span className="line-clamp-2">{match}</span>
+                  </div>
+                )}
+
+                {/* Flight / hotel quick-read */}
+                {hasDetails && (
+                  <button
+                    onClick={() => setDetailProposal(proposed)}
+                    className="flex items-center gap-3 rounded-xl border border-sand-200 px-3 py-2.5 text-left transition-colors hover:bg-sand-50"
+                  >
+                    <div className="flex flex-1 flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-text-secondary">
+                      {flight && (
+                        <span className="flex items-center gap-1.5">
+                          <Plane size={13} className="text-ember-600" />
+                          {flight.outbound?.stops ? `${flight.outbound.stops} escale` : 'Vol direct'}
+                        </span>
+                      )}
+                      {hotel && (
+                        <span className="flex items-center gap-1.5">
+                          <Hotel size={13} className="text-ember-600" />
+                          <span className="max-w-[140px] truncate">{hotel.name}</span>
+                        </span>
+                      )}
+                    </div>
+                    <span className="flex shrink-0 items-center gap-1 text-[12.5px] font-medium text-ember-700">
+                      Détails <ChevronRight size={14} />
+                    </span>
+                  </button>
+                )}
+
+                {/* Vote bar */}
+                <div className="flex items-center gap-3">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-sand-100">
+                    <div
+                      className={['h-full rounded-full transition-all duration-500', isLeading ? 'bg-ember-600' : 'bg-sand-400'].join(' ')}
+                      style={{ width: `${votePercent}%` }}
+                    />
+                  </div>
+                  <span className="shrink-0 font-mono text-xs font-semibold text-text-secondary">
+                    {voteCount} · {votePercent}%
+                  </span>
+                </div>
+
+                {/* Vote button */}
+                <Button
+                  variant={isMyVote ? 'secondary' : 'primary'}
+                  full
+                  onClick={() => handleVote(proposed.id)}
+                  disabled={voting}
+                  icon={
+                    voting && votedForId === proposed.id ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : isMyVote ? (
+                      <CheckCircle2 size={16} className="text-moss-500" />
+                    ) : (
+                      <Vote size={16} />
+                    )
+                  }
+                  className={isMyVote ? 'bg-moss-100 text-[#3d5a24] hover:bg-moss-100' : ''}
+                >
+                  {isMyVote ? 'Voté' : hasVoted ? 'Changer mon vote' : 'Voter'}
+                </Button>
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>
 
-      {/* Finalize Vote - Creator Only */}
+      {/* Finalize Vote — creator only */}
       {isCreator && trip.proposedTrips?.length > 0 && (
-        <div className="mt-6 p-4 bg-sand-50 border border-sand-200 rounded-xl">
+        <Card className="border-0 bg-sand-900 p-5 text-white">
           {finalizeError && (
-            <div className="mb-3 p-2.5 bg-clay-100 border border-clay-500/30 rounded-lg text-sm text-clay-500 flex items-center gap-2">
-              <AlertCircle size={14} />
+            <div className="mb-3 flex items-center gap-2 rounded-lg bg-clay-100 px-3 py-2.5 text-sm text-clay-500">
+              <AlertCircle size={14} className="shrink-0" />
               {finalizeError}
             </div>
           )}
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h4 className="font-semibold text-text-main mb-1">Clôturer le vote</h4>
-              <p className="text-sm text-text-secondary">
-                La destination avec le plus de votes sera confirmée et le voyage passera en phase de réservation.
-              </p>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-ember-600">
+                <Trophy size={22} className="text-white" />
+              </span>
+              <div>
+                <div className="text-[15.5px] font-semibold">Clôturer le vote</div>
+                <p className="mt-0.5 max-w-md text-[13.5px] text-white/70">
+                  La destination en tête sera confirmée et le voyage passera en phase de réservation.
+                </p>
+              </div>
             </div>
-            <button
+            <Button
+              variant="primary"
               onClick={handleFinalizeVote}
-              disabled={finalizing || !trip.proposedTrips?.some(p => p.votes?.length > 0)}
-              className="flex-shrink-0 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50 flex items-center gap-2"
+              disabled={finalizing || !canFinalize}
+              icon={finalizing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
             >
-              {finalizing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-              Confirmer
-            </button>
+              Confirmer la destination
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
+
+      <ProposalDetailModal proposal={detailProposal} onClose={() => setDetailProposal(null)} />
     </div>
   );
 }
 
 // Booking Checklist Section - When destination is confirmed
 // Editable settings tab (creator only for editing)
+// One settings row: label + hint on the left, control on the right
+function SettingsField({ label, hint, children, first }) {
+  return (
+    <div className={['flex flex-wrap items-center justify-between gap-5 py-[18px]', first ? '' : 'border-t border-sand-200'].join(' ')}>
+      <div className="min-w-[200px] flex-1">
+        <div className="text-[14.5px] font-semibold text-text-main">{label}</div>
+        {hint && <div className="mt-0.5 text-[13px] text-text-secondary">{hint}</div>}
+      </div>
+      <div className="shrink-0">{children}</div>
+    </div>
+  );
+}
+
 function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDelete }) {
   const isCreator = userRole === 'creator';
   const [name, setName] = useState(trip.name);
@@ -1608,34 +1759,36 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-bold text-text-main">Paramètres du voyage</h2>
-          {!isCreator && (
-            <span className="text-xs text-text-secondary bg-sand-100 px-3 py-1 rounded-full">Lecture seule</span>
-          )}
+    <div className="sk-stagger mx-auto flex max-w-[760px] flex-col gap-5">
+      <Card className="px-6 pb-6 pt-5">
+        <div>
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">
+            {isCreator ? 'Créateur' : 'Lecture seule'}
+          </span>
+          <h2 className="mt-1 font-display text-[22px] font-medium tracking-[-0.01em] text-text-main">Réglages du voyage</h2>
         </div>
 
-        <div className="space-y-5">
-          {/* Trip Name */}
-          <div>
-            <label className="block text-sm font-medium text-text-main mb-1.5">Nom du voyage</label>
+        {!isCreator && (
+          <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-sand-50 px-3.5 py-3 text-[13px] text-text-secondary">
+            <Users size={15} /> Seul le créateur du voyage peut modifier ces réglages.
+          </div>
+        )}
+
+        <div className="mt-2">
+          <SettingsField first label="Nom du voyage" hint="Visible par tous les participants">
             {isCreator ? (
               <input
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="w-full px-4 py-2.5 border border-sand-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-[42px] min-w-[220px] rounded-[11px] border border-sand-200 bg-white px-3.5 text-sm text-text-main outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             ) : (
-              <p className="px-4 py-2.5 bg-sand-50 rounded-xl font-medium text-text-main">{trip.name}</p>
+              <span className="text-[14.5px] font-medium text-text-main">{trip.name}</span>
             )}
-          </div>
+          </SettingsField>
 
-          {/* Max Members */}
-          <div>
-            <label className="block text-sm font-medium text-text-main mb-1.5">Nombre max de participants</label>
+          <SettingsField label="Nombre max de participants" hint="Au-delà, les invitations sont bloquées">
             {isCreator ? (
               <input
                 type="number"
@@ -1643,88 +1796,106 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
                 max={50}
                 value={maxMembers}
                 onChange={e => setMaxMembers(e.target.value)}
-                className="w-32 px-4 py-2.5 border border-sand-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-[42px] w-28 rounded-[11px] border border-sand-200 bg-white px-3.5 font-mono text-sm text-text-main outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             ) : (
-              <p className="px-4 py-2.5 bg-sand-50 rounded-xl font-medium text-text-main">{trip.maxMembers || 8} personnes</p>
+              <span className="font-mono text-[14.5px] font-medium text-text-main">{trip.maxMembers || 8}</span>
             )}
-          </div>
+          </SettingsField>
 
-          {/* Vote Deadline */}
-          <div>
-            <label className="block text-sm font-medium text-text-main mb-1.5">Date limite de vote</label>
+          <SettingsField label="Date limite de vote" hint="Le vote se clôture automatiquement à cette date">
             {isCreator ? (
               <input
                 type="date"
                 value={voteDeadline}
                 onChange={e => setVoteDeadline(e.target.value)}
-                className="w-48 px-4 py-2.5 border border-sand-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-[42px] rounded-[11px] border border-sand-200 bg-white px-3.5 text-sm text-text-main outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             ) : (
-              <p className="px-4 py-2.5 bg-sand-50 rounded-xl font-medium text-text-main">
+              <span className="text-[14.5px] font-medium text-text-main">
                 {trip.voteDeadline
                   ? new Date(trip.voteDeadline).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
                   : 'Non définie'}
-              </p>
+              </span>
             )}
-          </div>
+          </SettingsField>
 
-          {/* Require All Votes */}
-          <div className="flex items-center justify-between p-4 bg-sand-50 rounded-xl">
-            <div>
-              <p className="text-sm font-medium text-text-main">Tous les votes requis</p>
-              <p className="text-xs text-text-secondary mt-0.5">
-                {requireAllVotes
-                  ? 'Tous les membres doivent voter avant de finaliser'
-                  : 'Le vote peut être finalisé à tout moment'}
-              </p>
-            </div>
+          <SettingsField label="Tous les votes requis" hint="Attendre que 100 % des membres aient voté avant de clôturer">
             {isCreator ? (
               <button
                 onClick={() => setRequireAllVotes(!requireAllVotes)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${requireAllVotes ? 'bg-primary' : 'bg-sand-300'}`}
+                className={`relative h-6 w-11 rounded-full transition-colors ${requireAllVotes ? 'bg-primary' : 'bg-sand-300'}`}
               >
-                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${requireAllVotes ? 'left-6' : 'left-1'}`} />
+                <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all ${requireAllVotes ? 'left-6' : 'left-1'}`} />
               </button>
             ) : (
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${requireAllVotes ? 'bg-moss-100 text-[#3d5a24]' : 'bg-sand-200 text-text-secondary'}`}>
-                {requireAllVotes ? 'Oui' : 'Non'}
-              </span>
+              <Badge tone={requireAllVotes ? 'moss' : 'neutral'}>{requireAllVotes ? 'Oui' : 'Non'}</Badge>
             )}
-          </div>
+          </SettingsField>
         </div>
 
-        {/* Save button */}
         {isCreator && (
-          <div className="mt-6 flex items-center gap-3">
+          <div className="mt-5 flex items-center justify-end gap-3 border-t border-sand-200 pt-5">
             {saveError && <p className="text-sm text-clay-500">{saveError}</p>}
-            {saveSuccess && <p className="text-sm text-moss-500 flex items-center gap-1"><CheckCircle2 size={14} /> Sauvegardé</p>}
-            <button
+            {saveSuccess && (
+              <p className="flex items-center gap-1 text-sm text-moss-500"><CheckCircle2 size={14} /> Sauvegardé</p>
+            )}
+            <Button
+              icon={saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
               onClick={handleSave}
               disabled={saving}
-              className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-hover transition-colors disabled:opacity-50"
             >
-              {saving ? <Loader2 size={16} className="animate-spin" /> : null}
-              {saving ? 'Sauvegarde...' : 'Sauvegarder'}
-            </button>
+              {saving ? 'Sauvegarde…' : 'Sauvegarder'}
+            </Button>
           </div>
         )}
-      </div>
+      </Card>
 
-      {/* Danger Zone */}
+      {/* Danger zone */}
       {isCreator && (
-        <div className="bg-clay-100 rounded-2xl border border-clay-500/30 p-6">
-          <h3 className="text-lg font-bold text-clay-500 mb-2">Zone de danger</h3>
-          <p className="text-sm text-clay-500 mb-4">Ces actions sont irréversibles.</p>
-          <button
-            onClick={handleDelete}
-            className="flex items-center gap-2 px-4 py-2 bg-clay-500 text-white font-medium rounded-lg hover:brightness-95 transition-colors"
-          >
-            <Trash2 size={18} />
-            Supprimer ce voyage
-          </button>
-        </div>
+        <Card className="!border-clay-100 p-6">
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-clay-500">Zone de danger</span>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="text-[14.5px] font-semibold text-text-main">Supprimer le voyage</div>
+              <div className="mt-0.5 text-[13px] text-text-secondary">
+                Action irréversible. Tous les votes, dépenses et messages seront perdus.
+              </div>
+            </div>
+            <button
+              onClick={handleDelete}
+              className="inline-flex items-center gap-2 rounded-[10px] bg-clay-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:brightness-95"
+            >
+              <Trash2 size={15} /> Supprimer
+            </button>
+          </div>
+        </Card>
       )}
+    </div>
+  );
+}
+
+// One bookable item row (flight / hotel) with a mark-as-booked toggle
+function MyBookingRow({ icon, label, sub, done, saving, onToggle }) {
+  return (
+    <div className="flex items-center gap-3.5 py-3.5">
+      <IconChip tone={done ? 'moss' : 'ember'}>{icon}</IconChip>
+      <div className="min-w-0 flex-1">
+        <div className="text-[15px] font-semibold text-text-main">{label}</div>
+        {sub && <div className="text-[12.5px] text-text-muted">{sub}</div>}
+      </div>
+      <button
+        onClick={onToggle}
+        disabled={saving}
+        className={[
+          'inline-flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-[13.5px] font-semibold transition-colors disabled:opacity-50',
+          done
+            ? 'bg-moss-100 text-[#3d5a24]'
+            : 'border border-sand-200 bg-white text-text-main hover:bg-sand-50',
+        ].join(' ')}
+      >
+        {saving ? <Loader2 size={15} className="animate-spin" /> : done ? <><Check size={15} /> Réservé</> : 'Marquer réservé'}
+      </button>
     </div>
   );
 }
@@ -1756,46 +1927,35 @@ function MyBookingCard({ member, tripId, getToken, onUpdate }) {
   const allBooked = member.hasBookedFlight && member.hasBookedHotel;
 
   return (
-    <div className={`rounded-2xl border-2 p-5 ${allBooked ? 'bg-moss-100 border-moss-100' : 'bg-white border-primary/20'}`}>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold text-text-main flex items-center gap-2">
-          <CheckSquare size={18} className={allBooked ? 'text-moss-500' : 'text-primary'} />
-          Mes réservations
-        </h3>
+    <Card className="p-0">
+      <div className="flex items-center justify-between gap-3 px-6 pt-5">
+        <div>
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">Vous</span>
+          <h2 className="mt-1 font-display text-[22px] font-medium tracking-[-0.01em] text-text-main">Mes réservations</h2>
+        </div>
         {allBooked && (
-          <span className="text-xs font-semibold text-moss-500 bg-moss-100 px-2.5 py-1 rounded-full flex items-center gap-1">
-            <CheckCircle2 size={13} /> Tout réservé
-          </span>
+          <Badge tone="moss"><CheckCircle2 size={13} /> Tout réservé</Badge>
         )}
       </div>
-      {saveError && <p className="text-clay-500 text-sm mb-3">{saveError}</p>}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => updateStatus('hasBookedFlight', !member.hasBookedFlight)}
-          disabled={saving}
-          className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-            member.hasBookedFlight
-              ? 'bg-moss-100 text-[#3d5a24] border-2 border-moss-500/40'
-              : 'bg-sand-100 text-text-secondary hover:bg-sand-200 border-2 border-transparent'
-          }`}
-        >
-          {saving ? <Loader2 size={16} className="animate-spin" /> : <Plane size={16} />}
-          {member.hasBookedFlight ? 'Vol réservé ✓' : 'Marquer vol réservé'}
-        </button>
-        <button
-          onClick={() => updateStatus('hasBookedHotel', !member.hasBookedHotel)}
-          disabled={saving}
-          className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-            member.hasBookedHotel
-              ? 'bg-moss-100 text-[#3d5a24] border-2 border-moss-500/40'
-              : 'bg-sand-100 text-text-secondary hover:bg-sand-200 border-2 border-transparent'
-          }`}
-        >
-          {saving ? <Loader2 size={16} className="animate-spin" /> : <Hotel size={16} />}
-          {member.hasBookedHotel ? 'Hôtel réservé ✓' : 'Marquer hôtel réservé'}
-        </button>
+      {saveError && <p className="px-6 pt-3 text-sm text-clay-500">{saveError}</p>}
+      <div className="px-6 pb-5 pt-1">
+        <MyBookingRow
+          icon={<Plane size={19} />}
+          label="Mon vol"
+          done={member.hasBookedFlight}
+          saving={saving}
+          onToggle={() => updateStatus('hasBookedFlight', !member.hasBookedFlight)}
+        />
+        <div className="h-px bg-sand-200" />
+        <MyBookingRow
+          icon={<Hotel size={19} />}
+          label="Ma chambre"
+          done={member.hasBookedHotel}
+          saving={saving}
+          onToggle={() => updateStatus('hasBookedHotel', !member.hasBookedHotel)}
+        />
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -1862,70 +2022,56 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
     <>
       {/* Group Members Booking Status */}
       {trip.members && trip.members.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-card border border-sand-200 p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-text-main">Suivi du groupe</h2>
+        <Card className="mb-5 p-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-6 pt-5">
+            <div>
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">Suivi du groupe</span>
+              <h2 className="mt-1 font-display text-[22px] font-medium tracking-[-0.01em] text-text-main">Qui a réservé quoi</h2>
+            </div>
             <div className="flex items-center gap-2">
               {reminderResult && (
                 <span className={`text-sm ${reminderResult.type === 'success' ? 'text-moss-500' : 'text-clay-500'}`}>
                   {reminderResult.message}
                 </span>
               )}
-              <button
+              <Button
+                size="sm"
+                variant="outline"
+                icon={sendingReminders ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
                 onClick={handleSendReminders}
                 disabled={sendingReminders || membersNeedingReminder.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-gold-100 text-[#7a5c1a] font-medium rounded-lg hover:brightness-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {sendingReminders ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <Bell size={18} />
-                )}
-                {sendingReminders ? 'Envoi...' : 'Rappeler les amis'}
-                {membersNeedingReminder.length > 0 && !sendingReminders && (
-                  <span className="bg-gold-500 text-white text-xs px-1.5 py-0.5 rounded-full">
-                    {membersNeedingReminder.length}
-                  </span>
-                )}
-              </button>
+                {sendingReminders ? 'Envoi…' : 'Rappeler les retardataires'}
+              </Button>
             </div>
           </div>
 
-          <div className="space-y-2">
-            {trip.members.map((member) => (
-              <div key={member.id} className="flex items-center justify-between p-3 bg-sand-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={member.user?.imageUrl || `https://ui-avatars.com/api/?name=${member.user?.firstName}`}
-                    alt={member.user?.firstName}
-                    className="w-8 h-8 rounded-full"
-                  />
-                  <span className="font-medium text-text-main">
-                    {member.user?.firstName} {member.user?.lastName}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {member.hasBookedFlight && (
-                    <span className="px-2 py-1 bg-gold-100 text-[#7a5c1a] text-xs rounded flex items-center gap-1">
-                      <Plane size={12} /> Vol
-                    </span>
-                  )}
-                  {member.hasBookedHotel && (
-                    <span className="px-2 py-1 bg-moss-100 text-[#3d5a24] text-xs rounded flex items-center gap-1">
-                      <Hotel size={12} /> Hôtel
-                    </span>
-                  )}
-                  {member.bookingConfirmed && (
-                    <CheckCircle2 size={18} className="text-moss-500" />
-                  )}
-                  {!member.hasBookedFlight && !member.hasBookedHotel && (
-                    <span className="text-xs text-text-secondary">En attente</span>
-                  )}
-                </div>
+          <div className="px-6 pb-5 pt-2">
+            {trip.members.map((member, i) => (
+              <div
+                key={member.id}
+                className={['flex items-center gap-3.5 py-3', i ? 'border-t border-sand-200' : ''].join(' ')}
+              >
+                <Avatar
+                  name={`${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim()}
+                  src={member.user?.imageUrl}
+                  size={36}
+                />
+                <span className="flex-1 text-[14.5px] font-medium text-text-main">
+                  {member.user?.firstName || 'Invité'}
+                </span>
+                <span className="flex gap-1.5">
+                  <Badge tone={member.hasBookedFlight ? 'moss' : 'neutral'}>
+                    <Plane size={12} /> {member.hasBookedFlight ? 'Vol ✓' : 'Vol …'}
+                  </Badge>
+                  <Badge tone={member.hasBookedHotel ? 'moss' : 'neutral'}>
+                    <Hotel size={12} /> {member.hasBookedHotel ? 'Hôtel ✓' : 'Hôtel …'}
+                  </Badge>
+                </span>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Booking Checklist Card using optimized links */}
@@ -1948,11 +2094,7 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
 // ========================================
 function TripEnhancementsSection({ trip, userName }) {
   const { getToken } = useAuth();
-  const [weather, setWeather] = useState(null);
-  const [events, setEvents] = useState({ upcoming: [], regular: [] });
-  const [packing, setPacking] = useState(null);
   const [itinerary, setItinerary] = useState([]);
-  const [loadingWeather, setLoadingWeather] = useState(true);
   const [loadingItinerary, setLoadingItinerary] = useState(true);
   const [generatingDay, setGeneratingDay] = useState(null);
   const [totalDays, setTotalDays] = useState(0);
@@ -1980,41 +2122,6 @@ function TripEnhancementsSection({ trip, userName }) {
     }, 2000);
     return () => clearInterval(interval);
   }, []);
-
-  // Fetch weather and events (fast endpoints)
-  useEffect(() => {
-    const fetchFastData = async () => {
-      try {
-        const token = await getToken();
-
-        // Fetch weather and events in parallel
-        const [weatherRes, eventsRes] = await Promise.all([
-          fetch(`${API_URL}/api/trips/${trip.id}/weather`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-          }),
-          fetch(`${API_URL}/api/trips/${trip.id}/events`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-          }),
-        ]);
-
-        if (weatherRes.ok) {
-          const weatherData = await weatherRes.json();
-          setWeather(weatherData.data?.weather);
-        }
-
-        if (eventsRes.ok) {
-          const eventsData = await eventsRes.json();
-          setEvents(eventsData.data?.events || { upcoming: [], regular: [] });
-        }
-      } catch (err) {
-        console.error('Error fetching fast data:', err);
-      } finally {
-        setLoadingWeather(false);
-      }
-    };
-
-    fetchFastData();
-  }, [trip.id, getToken]);
 
   // Stream itinerary using SSE
   useEffect(() => {
@@ -2077,16 +2184,10 @@ function TripEnhancementsSection({ trip, userName }) {
                     });
                     break;
 
-                  case 'packing':
-                    console.log('🎒 Received packing data');
-                    setPacking(data.packing);
-                    break;
-
                   case 'complete':
                     console.log('✅ Itinerary stream complete');
                     setLoadingItinerary(false);
                     setGeneratingDay(null);
-                    if (data.packing) setPacking(data.packing);
                     break;
 
                   case 'error':
@@ -2126,191 +2227,227 @@ function TripEnhancementsSection({ trip, userName }) {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Weather & Packing Section - Side by Side */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Weather Forecast */}
-        {loadingWeather ? (
-          <div className="bg-ember-50 rounded-2xl shadow-card border border-gold-100 p-6">
-            <div className="flex items-center gap-3">
-              <Loader2 className="w-6 h-6 text-primary animate-spin" />
-              <span className="text-text-secondary">Chargement de la météo...</span>
-            </div>
-          </div>
-        ) : weather ? (
-          <WeatherForecastCard weather={weather} destination={destination} />
-        ) : null}
-
-        {/* Packing Tips */}
-        {packing ? (
-          <PackingTipsCard packing={packing} destination={destination} />
-        ) : loadingItinerary ? (
-          <div className="bg-ember-50 rounded-2xl shadow-card border border-gold-100 p-6">
-            <div className="flex items-center gap-3">
-              <Loader2 className="w-6 h-6 text-gold-500 animate-spin" />
-              <span className="text-text-secondary">Préparation de la liste de bagages...</span>
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {/* Personalized Itinerary - Streaming */}
-      <div className="bg-white rounded-2xl shadow-card border border-sand-200 overflow-hidden">
-        <div className="p-6 border-b border-sand-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
-              <Calendar className="w-6 h-6 text-primary" />
-              Votre itinéraire personnalisé
+    <div className="overflow-hidden rounded-[18px] border border-sand-200 bg-white shadow-1">
+      <div className="border-b border-sand-200 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">Itinéraire jour par jour</span>
+            <h2 className="mt-1.5 flex items-center gap-2 font-display text-[26px] font-medium tracking-[-0.015em] text-text-main">
+              Votre itinéraire
             </h2>
-            {loadingItinerary && (
-              <div className="flex items-center gap-2 text-sm text-primary bg-primary/10 px-3 py-1.5 rounded-full">
-                <Sparkles className="w-4 h-4 animate-pulse" />
-                <span className="animate-pulse">{aiLoadingText}...</span>
-              </div>
-            )}
           </div>
-        </div>
-
-        {/* Day tabs */}
-        {(itinerary.length > 0 || generatingDay) && (
-          <div className="flex overflow-x-auto gap-2 p-4 border-b border-sand-200 bg-sand-50">
-            {itinerary.map((day, idx) => (
-              <button
-                key={day.day}
-                onClick={() => setActiveDay(idx)}
-                className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-all ${
-                  activeDay === idx
-                    ? 'bg-primary text-white shadow-md'
-                    : 'bg-white text-text-secondary hover:bg-sand-100 border border-sand-200'
-                }`}
-              >
-                Jour {day.day}
-              </button>
-            ))}
-            {/* Loading placeholder for next day */}
-            {loadingItinerary && generatingDay && generatingDay > itinerary.length && (
-              <div className="flex-shrink-0 px-4 py-2 rounded-lg bg-primary/10 border border-primary/30 flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                <span className="text-primary font-medium">Jour {generatingDay}</span>
-              </div>
-            )}
-            {/* Future days placeholder */}
-            {loadingItinerary && totalDays > 0 && Array.from({ length: Math.max(0, totalDays - Math.max(itinerary.length, generatingDay || 0)) }, (_, i) => (
-              <div
-                key={`future-${i}`}
-                className="flex-shrink-0 px-4 py-2 rounded-lg bg-sand-100 border border-sand-200 text-text-light"
-              >
-                Jour {Math.max(itinerary.length, generatingDay || 0) + i + 1}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Day content */}
-        <div className="p-6">
-          {itinerary.length === 0 && loadingItinerary ? (
-            <div className="text-center py-12">
-              <div className="relative inline-block">
-                <Sparkles className="w-16 h-16 text-primary animate-pulse mx-auto mb-4" />
-                <div className="absolute inset-0 w-16 h-16 mx-auto border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-              </div>
-              <p className="text-lg font-medium text-text-main mb-2">{aiLoadingText}...</p>
-              <p className="text-sm text-text-secondary">
-                Création d'un itinéraire jour par jour personnalisé pour vous
-              </p>
-              <div className="flex justify-center gap-1 mt-4">
-                {[0, 1, 2].map(i => (
-                  <div
-                    key={i}
-                    className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                    style={{ animationDelay: `${i * 0.15}s` }}
-                  />
-                ))}
-              </div>
+          {loadingItinerary && (
+            <div className="flex items-center gap-2 rounded-full bg-ember-50 px-3 py-1.5 text-sm text-ember-700">
+              <Sparkles className="h-4 w-4 animate-pulse" />
+              <span className="animate-pulse">{aiLoadingText}...</span>
             </div>
-          ) : itinerary.length > 0 ? (
-            <PersonalizedItineraryCard
-              itinerary={itinerary}
-              userName={userName}
-              activeDay={activeDay}
-              setActiveDay={setActiveDay}
-              destination={destination}
-              isStreaming={true}
-            />
-          ) : error ? (
-            <div className="text-center py-8">
-              <AlertCircle className="w-12 h-12 text-gold-500 mx-auto mb-3" />
-              <p className="text-text-main font-medium mb-1">Impossible de générer l'itinéraire</p>
-              <p className="text-sm text-text-secondary">{error}</p>
-            </div>
-          ) : null}
+          )}
         </div>
       </div>
 
-      {/* Local Events */}
-      {(events.upcoming.length > 0 || events.regular.length > 0) && (
-        <LocalEventsCard events={events} destination={destination} />
+      {/* Day tabs */}
+      {(itinerary.length > 0 || generatingDay) && (
+        <div className="flex gap-2 overflow-x-auto border-b border-sand-200 bg-sand-50 p-4">
+          {itinerary.map((day, idx) => (
+            <button
+              key={day.day}
+              onClick={() => setActiveDay(idx)}
+              className={`flex-shrink-0 rounded-[10px] px-4 py-2 font-medium transition-all ${
+                activeDay === idx
+                  ? 'bg-ember-600 text-white shadow-2'
+                  : 'border border-sand-200 bg-white text-text-secondary hover:bg-sand-100'
+              }`}
+            >
+              Jour {day.day}
+            </button>
+          ))}
+          {/* Loading placeholder for next day */}
+          {loadingItinerary && generatingDay && generatingDay > itinerary.length && (
+            <div className="flex flex-shrink-0 items-center gap-2 rounded-[10px] border border-ember-300/40 bg-ember-50 px-4 py-2">
+              <Loader2 className="h-4 w-4 animate-spin text-ember-600" />
+              <span className="font-medium text-ember-700">Jour {generatingDay}</span>
+            </div>
+          )}
+          {/* Future days placeholder */}
+          {loadingItinerary && totalDays > 0 && Array.from({ length: Math.max(0, totalDays - Math.max(itinerary.length, generatingDay || 0)) }, (_, i) => (
+            <div
+              key={`future-${i}`}
+              className="flex-shrink-0 rounded-[10px] border border-sand-200 bg-sand-100 px-4 py-2 text-text-light"
+            >
+              Jour {Math.max(itinerary.length, generatingDay || 0) + i + 1}
+            </div>
+          ))}
+        </div>
       )}
+
+      {/* Day content */}
+      <div className="p-6">
+        {itinerary.length === 0 && loadingItinerary ? (
+          <div className="py-12 text-center">
+            <div className="relative inline-block">
+              <Sparkles className="mx-auto mb-4 h-16 w-16 animate-pulse text-ember-500" />
+              <div className="absolute inset-0 mx-auto h-16 w-16 animate-spin rounded-full border-4 border-ember-300/30 border-t-ember-600" />
+            </div>
+            <p className="mb-2 font-display text-lg font-medium text-text-main">{aiLoadingText}...</p>
+            <p className="text-sm text-text-secondary">
+              Création d'un itinéraire jour par jour personnalisé pour vous
+            </p>
+            <div className="mt-4 flex justify-center gap-1">
+              {[0, 1, 2].map(i => (
+                <div
+                  key={i}
+                  className="h-2 w-2 animate-bounce rounded-full bg-ember-500"
+                  style={{ animationDelay: `${i * 0.15}s` }}
+                />
+              ))}
+            </div>
+          </div>
+        ) : itinerary.length > 0 ? (
+          <PersonalizedItineraryCard
+            itinerary={itinerary}
+            userName={userName}
+            activeDay={activeDay}
+            setActiveDay={setActiveDay}
+            destination={destination}
+            isStreaming={true}
+          />
+        ) : error ? (
+          <div className="py-8 text-center">
+            <AlertCircle className="mx-auto mb-3 h-12 w-12 text-gold-500" />
+            <p className="mb-1 font-medium text-text-main">Impossible de générer l'itinéraire</p>
+            <p className="text-sm text-text-secondary">{error}</p>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+// Weather + packing prep, relocated from overview to the "À faire" tab
+function TripPrepSection({ trip }) {
+  const { getToken } = useAuth();
+  const [weather, setWeather] = useState(null);
+  const [packing, setPacking] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const destInfo = getDestinationInfo(trip.finalDestination);
+  const destination = { city: destInfo.city, country: destInfo.country };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const token = await getToken();
+        const headers = { Authorization: `Bearer ${token}` };
+        const [wRes, pRes] = await Promise.all([
+          fetch(`${API_URL}/api/trips/${trip.id}/weather`, { headers })
+            .then(r => (r.ok ? r.json() : null))
+            .catch(() => null),
+          fetch(`${API_URL}/api/trips/${trip.id}/packing`, { headers })
+            .then(r => (r.ok ? r.json() : null))
+            .catch(() => null),
+        ]);
+        if (cancelled) return;
+        if (wRes?.data?.weather) setWeather(wRes.data.weather);
+        if (pRes?.data?.packing) setPacking(pRes.data.packing);
+        if (!wRes?.data?.weather && !pRes?.data?.packing) {
+          setError('Données indisponibles pour le moment.');
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [trip.id, getToken]);
+
+  return (
+    <div>
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">Avant le départ</span>
+      <h2 className="mt-1.5 font-display text-[26px] font-medium tracking-[-0.015em] text-text-main">Préparer vos valises</h2>
+      <div className="mt-4">
+        {loading ? (
+          <Card className="py-12 text-center">
+            <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-ember-500" />
+            <p className="text-sm text-text-secondary">Chargement de la météo et des conseils bagages…</p>
+          </Card>
+        ) : (weather || packing) ? (
+          <div className="grid gap-5 lg:grid-cols-2">
+            {weather && <WeatherForecastCard weather={weather} destination={destination} />}
+            {packing && <PackingTipsCard packing={packing} destination={destination} />}
+          </div>
+        ) : (
+          <Card className="py-8 text-center">
+            <AlertCircle className="mx-auto mb-3 h-10 w-10 text-gold-500" />
+            <p className="text-sm text-text-secondary">{error || 'Données indisponibles pour le moment.'}</p>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
 
 function WeatherForecastCard({ weather, destination }) {
   return (
-    <div className="bg-ember-50 rounded-2xl shadow-card border border-gold-100 overflow-hidden">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
-            <Sun className="w-6 h-6 text-yellow-500" />
-            Météo prévue
-          </h2>
-          <span className="text-sm text-text-secondary">{destination.city}</span>
+    <Card className="p-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">Météo</span>
+          <h3 className="mt-1 font-display text-[20px] font-medium tracking-[-0.01em] text-text-main">{destination.city}</h3>
         </div>
+        <Sun className="h-6 w-6 text-gold-500" />
+      </div>
 
-        {/* Current Weather */}
-        <div className="bg-white rounded-xl p-4 mb-4">
-          <p className="text-sm text-text-secondary mb-2">Conditions actuelles</p>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img src={weather.current.icon} alt={weather.current.condition} className="w-16 h-16" />
-              <div>
-                <p className="text-3xl font-bold text-text-main">{Math.round(weather.current.temp_c)}°C</p>
-                <p className="text-sm text-text-secondary">{weather.current.condition}</p>
-              </div>
+      {/* Current Weather */}
+      <div className="mt-4 rounded-[12px] bg-sand-50 p-4">
+        <p className="mb-2 text-[12.5px] text-text-muted">Conditions actuelles</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src={weather.current.icon} alt={weather.current.condition} className="h-16 w-16" />
+            <div>
+              <p className="font-mono text-3xl font-semibold text-text-main">{Math.round(weather.current.temp_c)}°C</p>
+              <p className="text-sm text-text-secondary">{weather.current.condition}</p>
             </div>
-            <div className="text-right text-sm text-text-secondary">
-              <div className="flex items-center gap-1 justify-end">
-                <Droplet className="w-4 h-4" />
-                <span>{weather.current.humidity}%</span>
-              </div>
-              <div className="flex items-center gap-1 justify-end mt-1">
-                <Wind className="w-4 h-4" />
-                <span>{Math.round(weather.current.wind_kph)} km/h</span>
-              </div>
+          </div>
+          <div className="text-right text-sm text-text-secondary">
+            <div className="flex items-center justify-end gap-1">
+              <Droplet className="h-4 w-4" />
+              <span className="font-mono">{weather.current.humidity}%</span>
+            </div>
+            <div className="mt-1 flex items-center justify-end gap-1">
+              <Wind className="h-4 w-4" />
+              <span className="font-mono">{Math.round(weather.current.wind_kph)} km/h</span>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* 7-Day Forecast */}
-        <div className="space-y-2">
-          <p className="text-sm font-semibold text-text-secondary mb-3">Prévisions 7 jours</p>
+      {/* 7-Day Forecast */}
+      <div className="mt-4">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">Prévisions 7 jours</p>
+        <div className="space-y-1.5">
           {weather.forecast.map((day, idx) => (
-            <div key={idx} className="bg-white rounded-lg p-3 flex items-center justify-between hover:bg-gold-100 transition-colors">
-              <div className="flex items-center gap-3 flex-1">
-                <span className="text-sm font-medium text-text-secondary w-20">
-                  {idx === 0 ? "Aujourd'hui" : new Date(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
+            <div key={idx} className="flex items-center justify-between rounded-[10px] px-2 py-2 transition-colors hover:bg-sand-50">
+              <div className="flex flex-1 items-center gap-3">
+                <span className="w-16 text-sm font-medium text-text-secondary">
+                  {idx === 0 ? "Auj." : new Date(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
                 </span>
-                <img src={day.day.icon} alt={day.day.condition} className="w-8 h-8" />
-                <span className="text-xs text-text-secondary flex-1">{day.day.condition}</span>
+                <img src={day.day.icon} alt={day.day.condition} className="h-8 w-8" />
+                <span className="flex-1 truncate text-xs text-text-muted">{day.day.condition}</span>
               </div>
               <div className="flex items-center gap-3">
                 {day.day.daily_chance_of_rain > 30 && (
-                  <span className="text-xs text-[#7a5c1a] flex items-center gap-1">
-                    <Droplet className="w-3 h-3" />
+                  <span className="flex items-center gap-1 font-mono text-xs text-[#7a5c1a]">
+                    <Droplet className="h-3 w-3" />
                     {day.day.daily_chance_of_rain}%
                   </span>
                 )}
-                <span className="text-sm font-semibold text-text-main">
+                <span className="font-mono text-sm font-semibold text-text-main">
                   {Math.round(day.day.maxtemp_c)}° / {Math.round(day.day.mintemp_c)}°
                 </span>
               </div>
@@ -2318,111 +2455,109 @@ function WeatherForecastCard({ weather, destination }) {
           ))}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
 // Packing Tips Card Component
 function PackingTipsCard({ packing, destination }) {
   return (
-    <div className="bg-ember-50 rounded-2xl shadow-card border border-ember-200 overflow-hidden">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
-            <Backpack className="w-6 h-6 text-ember-700" />
-            Conseils bagages
-          </h2>
-          <span className="text-sm text-text-secondary">{destination.city}</span>
+    <Card className="p-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">Bagages</span>
+          <h3 className="mt-1 font-display text-[20px] font-medium tracking-[-0.01em] text-text-main">Conseils valise</h3>
+        </div>
+        <Backpack className="h-6 w-6 text-ember-600" />
+      </div>
+
+      {/* Weather Summary */}
+      {packing.weatherSummary && (
+        <div className="mt-4 rounded-[12px] bg-sand-50 p-4">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">Conditions prévues</p>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-text-muted">Température moy.</p>
+              <p className="font-mono font-semibold text-text-main">{packing.weatherSummary.avgTemp}°C</p>
+            </div>
+            <div>
+              <p className="text-text-muted">Plage</p>
+              <p className="font-mono font-semibold text-text-main">{packing.weatherSummary.tempRange}</p>
+            </div>
+            {packing.weatherSummary.rainChance > 20 && (
+              <div>
+                <p className="text-text-muted">Risque de pluie</p>
+                <p className="font-mono font-semibold text-[#7a5c1a]">{packing.weatherSummary.rainChance}%</p>
+              </div>
+            )}
+            {packing.weatherSummary.maxUV > 5 && (
+              <div>
+                <p className="text-text-muted">UV max</p>
+                <p className="font-mono font-semibold text-ember-700">{packing.weatherSummary.maxUV}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Packing Lists */}
+      <div className="mt-4 space-y-4">
+        {/* Essential Items */}
+        <div>
+          <h4 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-clay-500">
+            <Heart className="h-3.5 w-3.5" />
+            Essentiels
+          </h4>
+          <div className="space-y-1.5 rounded-[10px] bg-sand-50 p-3">
+            {packing.essentials.map((item, idx) => {
+              const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
+              if (!text) return null;
+              return (
+                <div key={idx} className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-clay-500" />
+                  <span className="text-text-secondary">{text}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Weather Summary */}
-        {packing.weatherSummary && (
-          <div className="bg-white rounded-xl p-4 mb-4">
-            <p className="text-sm font-semibold text-text-secondary mb-2">Conditions prévues</p>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-text-secondary">Température moy.</p>
-                <p className="font-bold text-text-main">{packing.weatherSummary.avgTemp}°C</p>
-              </div>
-              <div>
-                <p className="text-text-secondary">Plage</p>
-                <p className="font-bold text-text-main">{packing.weatherSummary.tempRange}</p>
-              </div>
-              {packing.weatherSummary.rainChance > 20 && (
-                <div>
-                  <p className="text-text-secondary">Risque de pluie</p>
-                  <p className="font-bold text-[#7a5c1a]">{packing.weatherSummary.rainChance}%</p>
+        {/* Clothing */}
+        <div>
+          <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ember-700">Vêtements</h4>
+          <div className="space-y-1.5 rounded-[10px] bg-sand-50 p-3">
+            {packing.clothing.map((item, idx) => {
+              const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
+              if (!text) return null;
+              return (
+                <div key={idx} className="flex items-center gap-2 text-sm">
+                  <Circle className="h-4 w-4 flex-shrink-0 text-ember-300" />
+                  <span className="text-text-secondary">{text}</span>
                 </div>
-              )}
-              {packing.weatherSummary.maxUV > 5 && (
-                <div>
-                  <p className="text-text-secondary">UV max</p>
-                  <p className="font-bold text-ember-700">{packing.weatherSummary.maxUV}</p>
-                </div>
-              )}
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Optional Items */}
+        {packing.optional.length > 0 && (
+          <div>
+            <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">Optionnel</h4>
+            <div className="space-y-1.5 rounded-[10px] bg-sand-50 p-3">
+              {packing.optional.map((item, idx) => {
+                const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
+                if (!text) return null;
+                return (
+                  <div key={idx} className="flex items-center gap-2 text-sm">
+                    <Plus className="h-4 w-4 flex-shrink-0 text-text-light" />
+                    <span className="text-text-secondary">{text}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
-
-        {/* Packing Lists */}
-        <div className="space-y-4">
-          {/* Essential Items */}
-          <div>
-            <h3 className="text-sm font-bold text-clay-500 mb-2 flex items-center gap-1">
-              <Heart className="w-4 h-4" />
-              Essentiels (À ne pas oublier !)
-            </h3>
-            <div className="bg-white rounded-lg p-3 space-y-1.5">
-              {packing.essentials.map((item, idx) => {
-                const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
-                if (!text) return null;
-                return (
-                  <div key={idx} className="flex items-center gap-2 text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-clay-500 flex-shrink-0" />
-                    <span className="text-text-secondary">{text}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Clothing */}
-          <div>
-            <h3 className="text-sm font-bold text-ember-700 mb-2">Vêtements</h3>
-            <div className="bg-white rounded-lg p-3 space-y-1.5">
-              {packing.clothing.map((item, idx) => {
-                const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
-                if (!text) return null;
-                return (
-                  <div key={idx} className="flex items-center gap-2 text-sm">
-                    <Circle className="w-4 h-4 text-ember-300 flex-shrink-0" />
-                    <span className="text-text-secondary">{text}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Optional Items */}
-          {packing.optional.length > 0 && (
-            <div>
-              <h3 className="text-sm font-bold text-text-secondary mb-2">Optionnel (confort)</h3>
-              <div className="bg-white rounded-lg p-3 space-y-1.5">
-                {packing.optional.map((item, idx) => {
-                  const text = typeof item === 'string' ? item : (item?.word || item?.value || item?.name || '');
-                  if (!text) return null;
-                  return (
-                    <div key={idx} className="flex items-center gap-2 text-sm">
-                      <Plus className="w-4 h-4 text-text-light flex-shrink-0" />
-                      <span className="text-text-secondary">{text}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
-    </div>
+    </Card>
   );
 }

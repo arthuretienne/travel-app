@@ -15,6 +15,7 @@ import DestinationAutocomplete from '../components/DestinationAutocomplete';
 import { Button } from '../components/ui';
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '../i18n/format';
+import { track } from '../lib/analytics';
 
 // Unified activity grid
 const ACTIVITY_OPTIONS = [
@@ -404,6 +405,12 @@ function CreateTrip() {
 
     setLoading(true);
     setLoadingStage('analyzing');
+
+    track('search_started', {
+      group: !!formData.isGroupTrip,
+      hasDestination: !!formData.destination,
+      travelers: formData.travelers,
+    });
 
     try {
       const token = await getToken();
