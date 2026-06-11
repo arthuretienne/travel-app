@@ -2,6 +2,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-react';
+import { frFR } from '@clerk/localizations';
 
 // Pages - eagerly loaded (critical path)
 import Landing from './pages/Landing';
@@ -29,6 +30,20 @@ import { DEV_AUTH_ACTIVE, isDevImpersonating } from './lib/devAuth';
 const DevPersonaBar = lazy(() => import('./components/DevPersonaBar'));
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+// Clerk en français, brandé Skusku. Les sous-titres sont forcés pour ne pas
+// dépendre du nom d'application configuré côté dashboard Clerk (« Travel App »).
+const clerkLocalization = {
+  ...frFR,
+  signIn: {
+    ...frFR.signIn,
+    start: { ...frFR.signIn.start, subtitle: 'pour continuer vers Skusku' },
+  },
+  signUp: {
+    ...frFR.signUp,
+    start: { ...frFR.signUp.start, subtitle: 'pour continuer vers Skusku' },
+  },
+};
 
 if (!PUBLISHABLE_KEY) {
   console.warn('Missing Clerk Publishable Key - Auth features will be disabled');
@@ -186,6 +201,7 @@ function App() {
   return (
     <ClerkProvider
       publishableKey={PUBLISHABLE_KEY}
+      localization={clerkLocalization}
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/onboarding"
       afterSignOutUrl="/"
