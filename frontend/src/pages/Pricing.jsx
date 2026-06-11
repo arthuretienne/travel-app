@@ -115,7 +115,7 @@ const FAQ = [
   },
   {
     q: 'Que se passe-t-il si j’atteins ma limite de recherches ?',
-    a: 'Tu peux attendre le mois suivant, prendre un Trip Pass, ou passer à une offre supérieure.',
+    a: 'Trois options : attendre le 1er du mois (votre quota se recharge), prendre un Trip Pass 7 jours (5,99 €), ou passer à Starter.',
   },
 ];
 

@@ -26,13 +26,15 @@ export const PLANS = {
     interval: null,
     mode: 'subscription',
     features: {
-      maxSearchesPerMonth: 10,
-      maxGroupTrips: 2,
+      maxSearchesPerMonth: 5,
+      maxGroupTrips: 0,
       maxMembersPerTrip: 5,
+      maxPriceAlerts: 0,
       aiRecommendations: true,
       flightSearch: true,
       hotelSearch: true,
-      collaborativeVoting: true, // Enabled for beta testing
+      collaborativeVoting: false, // Wanderer-only (matches pricing page)
+      pushNotifications: false,
       prioritySupport: false,
     },
   },
@@ -48,13 +50,15 @@ export const PLANS = {
     interval: 'month',
     mode: 'subscription',
     features: {
-      maxSearchesPerMonth: 50,
-      maxGroupTrips: 5,
+      maxSearchesPerMonth: 40,
+      maxGroupTrips: 0,
       maxMembersPerTrip: 10,
+      maxPriceAlerts: 3,
       aiRecommendations: true,
       flightSearch: true,
       hotelSearch: true,
-      collaborativeVoting: true,
+      collaborativeVoting: false, // Wanderer-only (matches pricing page)
+      pushNotifications: false,
       prioritySupport: false,
     },
   },
@@ -73,10 +77,12 @@ export const PLANS = {
       maxSearchesPerMonth: -1, // Unlimited
       maxGroupTrips: -1, // Unlimited
       maxMembersPerTrip: -1, // Unlimited
+      maxPriceAlerts: -1, // Unlimited
       aiRecommendations: true,
       flightSearch: true,
       hotelSearch: true,
       collaborativeVoting: true,
+      pushNotifications: true,
       prioritySupport: true,
     },
   },
@@ -95,12 +101,14 @@ export const PLANS = {
     durationDays: 7,
     features: {
       maxSearchesPerMonth: -1,
-      maxGroupTrips: -1,
+      maxGroupTrips: 0,
       maxMembersPerTrip: -1,
+      maxPriceAlerts: 0,
       aiRecommendations: true,
       flightSearch: true,
       hotelSearch: true,
-      collaborativeVoting: true,
+      collaborativeVoting: false, // matrix pricing: groupe = Wanderer uniquement
+      pushNotifications: false,
       prioritySupport: true,
     },
   },

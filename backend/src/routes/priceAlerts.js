@@ -2,6 +2,7 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/auth.js';
 import { checkSubscription, requireFeature } from '../middleware/checkSubscription.js';
+import { getPlanDetails, getEffectivePlan } from '../services/stripeService.js';
 import {
   createPriceAlert,
   getUserAlerts,
@@ -132,17 +133,19 @@ router.post('/', authenticateUser, checkSubscription, async (req, res) => {
       });
     }
 
-    // Check alert limits based on plan (FREE: 3, EXPLORER: 10, WANDERER: unlimited)
+    // Alert limits per plan — source of truth: PLANS in stripeService.js,
+    // aligned on the public pricing page (Free: 0, Starter: 3, Wanderer: unlimited)
     const existingAlerts = await getUserAlerts(req.user.id);
-    const plan = req.subscription?.plan || 'FREE';
-    const limits = { FREE: 3, EXPLORER: 10, WANDERER: -1 };
-    const limit = limits[plan] || 3;
+    const planDetails = getPlanDetails(getEffectivePlan(req.subscription));
+    const limit = planDetails.features.maxPriceAlerts ?? 0;
 
     if (limit !== -1 && existingAlerts.length >= limit) {
       return res.status(403).json({
         success: false,
         error: 'Alert limit reached',
-        message: `Your ${plan} plan allows ${limit} price alerts. Upgrade to add more.`,
+        message: limit === 0
+          ? 'Les alertes de prix sont incluses à partir de l’offre Starter.'
+          : `Votre offre ${planDetails.name} permet ${limit} alertes de prix. Passez à Wanderer pour des alertes illimitées.`,
         currentCount: existingAlerts.length,
         limit,
         upgradeUrl: '/pricing',

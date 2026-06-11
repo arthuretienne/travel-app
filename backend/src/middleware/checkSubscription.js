@@ -130,9 +130,13 @@ export function requireFeature(featureName) {
       const hasAccess = plan.features[featureName];
 
       if (!hasAccess) {
+        const featureLabels = {
+          collaborativeVoting: 'Le voyage de groupe (vote, dépenses, chat) est inclus dans l’offre Wanderer.',
+          pushNotifications: 'Les notifications push sont incluses dans l’offre Wanderer.',
+        };
         return res.status(403).json({
           error: 'Feature not available',
-          message: `This feature requires ${featureName === 'collaborativeVoting' ? 'Explorer or Wanderer' : 'a higher'} plan.`,
+          message: featureLabels[featureName] || 'Cette fonctionnalité nécessite une offre supérieure.',
           currentPlan: req.subscription.plan,
           requiredFeature: featureName,
           upgradeUrl: '/pricing',

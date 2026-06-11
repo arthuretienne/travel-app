@@ -20,6 +20,19 @@ function PriceAlerts() {
   const [checkingId, setCheckingId] = useState(null);
   const [error, setError] = useState(null);
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
+  const [pushNotice, setPushNotice] = useState(null);
+
+  const handlePushToggle = async () => {
+    setPushNotice(null);
+    if (pushSubscribed) {
+      await pushUnsubscribe();
+      return;
+    }
+    const result = await pushSubscribe();
+    if (!result.success && result.message) {
+      setPushNotice({ message: result.message, upgradeUrl: result.upgradeUrl });
+    }
+  };
 
   useEffect(() => {
     fetchAlerts();
@@ -251,7 +264,7 @@ function PriceAlerts() {
               </div>
             </div>
             <button
-              onClick={pushSubscribed ? pushUnsubscribe : pushSubscribe}
+              onClick={handlePushToggle}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 pushSubscribed
                   ? 'bg-sand-100 text-sand-600 hover:bg-sand-200'
@@ -260,6 +273,21 @@ function PriceAlerts() {
             >
               {pushSubscribed ? 'Désactiver' : 'Activer'}
             </button>
+          </div>
+        )}
+
+        {/* Push notice (plan gate, permission refusée…) */}
+        {pushNotice && (
+          <div className="bg-gold-100 border border-gold-100 rounded-xl p-4 mb-6 flex items-center justify-between gap-3">
+            <p className="text-sm text-text-main">{pushNotice.message}</p>
+            {pushNotice.upgradeUrl && (
+              <Link
+                to={pushNotice.upgradeUrl}
+                className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary-hover"
+              >
+                Voir les offres
+              </Link>
+            )}
           </div>
         )}
 

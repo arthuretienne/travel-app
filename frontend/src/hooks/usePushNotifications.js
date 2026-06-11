@@ -45,13 +45,15 @@ export function usePushNotifications() {
   };
 
   const subscribe = useCallback(async () => {
-    if (!isSupported) return false;
+    if (!isSupported) return { success: false };
 
     try {
       // Request permission
       const perm = await Notification.requestPermission();
       setPermission(perm);
-      if (perm !== 'granted') return false;
+      if (perm !== 'granted') {
+        return { success: false, message: 'Autorisez les notifications dans votre navigateur pour activer les alertes.' };
+      }
 
       // Register service worker
       const registration = await navigator.serviceWorker.register('/sw.js');
@@ -59,7 +61,7 @@ export function usePushNotifications() {
 
       // Get VAPID public key
       const vapidRes = await fetch(`${API_URL}/api/push/vapid-key`);
-      if (!vapidRes.ok) return false;
+      if (!vapidRes.ok) return { success: false, message: 'Les notifications push sont indisponibles pour le moment.' };
       const { publicKey } = await vapidRes.json();
 
       // Subscribe to push
@@ -70,7 +72,7 @@ export function usePushNotifications() {
 
       // Send subscription to backend
       const token = await getToken();
-      await fetch(`${API_URL}/api/push/subscribe`, {
+      const res = await fetch(`${API_URL}/api/push/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,11 +81,22 @@ export function usePushNotifications() {
         body: JSON.stringify({ subscription: subscription.toJSON() }),
       });
 
+      if (!res.ok) {
+        // Backend refused (e.g. plan without push) — roll back the browser subscription
+        const data = await res.json().catch(() => ({}));
+        await subscription.unsubscribe().catch(() => {});
+        return {
+          success: false,
+          message: data.message || 'Activation impossible pour le moment.',
+          upgradeUrl: data.upgradeUrl,
+        };
+      }
+
       setIsSubscribed(true);
-      return true;
+      return { success: true };
     } catch (err) {
       console.error('[Push] Subscribe error:', err);
-      return false;
+      return { success: false, message: 'Activation impossible pour le moment.' };
     }
   }, [isSupported, getToken]);
 

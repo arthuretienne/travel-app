@@ -3,6 +3,7 @@
 
 import express from 'express';
 import { authenticateUser } from '../middleware/auth.js';
+import { requireFeature } from '../middleware/checkSubscription.js';
 import { saveSubscription, removeSubscription } from '../services/pushService.js';
 
 const router = express.Router();
@@ -23,7 +24,7 @@ router.get('/vapid-key', (req, res) => {
  * POST /api/push/subscribe
  * Save a push subscription for the authenticated user
  */
-router.post('/subscribe', authenticateUser, async (req, res) => {
+router.post('/subscribe', authenticateUser, requireFeature('pushNotifications'), async (req, res) => {
   try {
     const { subscription } = req.body;
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
