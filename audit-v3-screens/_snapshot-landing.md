@@ -1,0 +1,218 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - navigation [ref=e4]:
+      - generic [ref=e5]:
+        - link "Skusku — accueil" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e7]:
+            - img [ref=e9]
+            - generic [ref=e11]: Skusku
+        - generic [ref=e12]:
+          - button "Destinations" [ref=e13]:
+            - text: Destinations
+            - img [ref=e14]
+          - button "Où partir" [ref=e16]:
+            - text: Où partir
+            - img [ref=e17]
+          - button "Outils" [ref=e19]:
+            - text: Outils
+            - img [ref=e20]
+          - button "Itinéraires & Magazine" [ref=e22]:
+            - text: Itinéraires & Magazine
+            - img [ref=e23]
+          - link "Tarifs" [ref=e25] [cursor=pointer]:
+            - /url: /pricing
+        - generic [ref=e256]:
+          - button "Se connecter" [ref=e257]:
+            - generic [ref=e258]: Se connecter
+          - button "Créer mon voyage" [ref=e259]:
+            - generic [ref=e260]: Créer mon voyage
+            - img [ref=e261]
+    - main [ref=e26]:
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - generic [ref=e29]:
+            - generic [ref=e30]: Voyage par IA · sans carte bancaire
+            - heading "Le voyage qui vous ressemble déjà pensé." [level=1] [ref=e32]:
+              - generic [ref=e33]: Le voyage
+              - generic [ref=e34]: qui vous ressemble
+              - generic [ref=e35]: déjà pensé.
+            - paragraph [ref=e36]: Décrivez vos envies. On compose vols, hôtels et itinéraire, vous n'avez plus qu'à dire oui.
+            - generic [ref=e37]:
+              - button "Composer mon voyage" [ref=e263]:
+                - generic [ref=e264]: Composer mon voyage
+                - img [ref=e265]
+              - button "Comment ça marche" [ref=e38]:
+                - generic [ref=e39]: Comment ça marche
+                - img [ref=e40]
+            - paragraph [ref=e42]: 3 minutes · gratuit · puis vous comparez.
+          - generic [ref=e43]:
+            - img "Marrakech" [ref=e45]
+            - img "Lisbon" [ref=e47]
+            - img "Porto" [ref=e49]
+        - generic [ref=e50]:
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - generic [ref=e53]:
+                - img [ref=e54]
+                - textbox "Où voulez-vous partir ?" [ref=e57]
+              - button "Chercher" [disabled] [ref=e58]:
+                - img [ref=e59]
+                - generic [ref=e62]: Chercher
+            - generic [ref=e63]:
+              - generic [ref=e64]: Propositions recentes
+              - button "Lisbon" [ref=e65]
+              - button "Barcelona" [ref=e66]
+              - button "Rome" [ref=e67]
+              - button "Porto" [ref=e68]
+              - generic [ref=e69]:
+                - img [ref=e70]
+                - text: Propulsé par l'IA
+          - generic [ref=e73]:
+            - generic [ref=e74]:
+              - generic [ref=e75]:
+                - img "Lisbon, Portugal" [ref=e76]
+                - generic [ref=e78]: 96%
+              - generic [ref=e79]:
+                - generic [ref=e80]:
+                  - generic [ref=e81]:
+                    - heading "Lisbon" [level=3] [ref=e82]
+                    - paragraph [ref=e83]: Portugal
+                  - paragraph [ref=e84]: €847
+                - paragraph [ref=e85]: 7 j · vol + hotel
+            - generic [ref=e86]:
+              - generic [ref=e87]:
+                - img "Marrakech, Morocco" [ref=e88]
+                - generic [ref=e90]: 92%
+              - generic [ref=e91]:
+                - generic [ref=e92]:
+                  - generic [ref=e93]:
+                    - heading "Marrakech" [level=3] [ref=e94]
+                    - paragraph [ref=e95]: Morocco
+                  - paragraph [ref=e96]: €258
+                - paragraph [ref=e97]: 7 j · vol + hotel
+            - generic [ref=e98]:
+              - generic [ref=e99]:
+                - img "Porto, Portugal" [ref=e100]
+                - generic [ref=e102]: 88%
+              - generic [ref=e103]:
+                - generic [ref=e104]:
+                  - generic [ref=e105]:
+                    - heading "Porto" [level=3] [ref=e106]
+                    - paragraph [ref=e107]: Portugal
+                  - paragraph [ref=e108]: €620
+                - paragraph [ref=e109]: 7 j · vol + hotel
+      - generic [ref=e111]:
+        - paragraph [ref=e112]: Comment ça marche
+        - heading "Trois moments, pas trente onglets." [level=2] [ref=e113]
+        - generic [ref=e114]:
+          - generic [ref=e115]:
+            - img [ref=e117]
+            - paragraph [ref=e122]: 01 · Vous
+            - heading "On parle d'abord de vous" [level=3] [ref=e123]
+            - paragraph [ref=e124]: Budget, style, dates flexibles, qui voyage. Pas de formulaire administratif.
+          - generic [ref=e125]:
+            - img [ref=e127]
+            - paragraph [ref=e130]: 02 · IA
+            - heading "Une proposition complète" [level=3] [ref=e131]
+            - paragraph [ref=e132]: Une destination, ses dates idéales, son vol réel, son hôtel réel.
+          - generic [ref=e133]:
+            - img [ref=e135]
+            - paragraph [ref=e137]: 03 · Départ
+            - heading "Vous partez" [level=3] [ref=e138]
+            - paragraph [ref=e139]: Réservation directe chez les partenaires. Skusku garde l'œil sur les prix.
+      - generic [ref=e140]:
+        - img "Porto" [ref=e142]
+        - generic [ref=e145]:
+          - heading "Pensé pour les voyages abordables mais stylés." [level=2] [ref=e146]
+          - paragraph [ref=e147]: Pas du luxe inaccessible, pas du voyage au rabais. Le bon plan qui se raconte au retour.
+      - generic [ref=e149]:
+        - generic [ref=e150]:
+          - generic [ref=e151]: Skusku
+          - heading "Voyage clair, choix simple, groupe aligné." [level=2] [ref=e152]
+        - generic [ref=e153]:
+          - generic [ref=e154]:
+            - img [ref=e156]
+            - generic [ref=e159]:
+              - generic [ref=e160]: Vrais vols, vrais prix
+              - generic [ref=e161]: Données partenaires et liens de réservation, pas de tarifs d'appel.
+          - generic [ref=e162]:
+            - img [ref=e164]
+            - generic [ref=e166]:
+              - generic [ref=e167]: Dates intelligentes
+              - generic [ref=e168]: L'IA cherche les fenêtres où climat, prix et disponibilité s'alignent.
+          - generic [ref=e169]:
+            - img [ref=e171]
+            - generic [ref=e176]:
+              - generic [ref=e177]: Voyages de groupe
+              - generic [ref=e178]: Invitez vos amis, votez, suivez qui a réservé quoi.
+      - generic [ref=e180]:
+        - paragraph [ref=e181]: Des voyageurs nous racontent
+        - generic [ref=e182]:
+          - generic [ref=e183]:
+            - generic [ref=e184]:
+              - img [ref=e185]
+              - img [ref=e187]
+              - img [ref=e189]
+              - img [ref=e191]
+              - img [ref=e193]
+            - paragraph [ref=e195]: "\"En 5 minutes, j'avais trois propositions avec vols et hôtels pile dans mon budget.\""
+            - generic [ref=e196]:
+              - generic "Marie L." [ref=e197]: ML
+              - generic [ref=e198]:
+                - paragraph [ref=e199]: Marie L.
+                - paragraph [ref=e200]: Lisbonne, mars 2026
+          - generic [ref=e201]:
+            - generic [ref=e202]:
+              - img [ref=e203]
+              - img [ref=e205]
+              - img [ref=e207]
+              - img [ref=e209]
+              - img [ref=e211]
+            - paragraph [ref=e213]: "\"On avait quatre budgets. Skusku a trouvé une destination qui tenait pour tout le monde.\""
+            - generic [ref=e214]:
+              - generic "Thomas R." [ref=e215]: TR
+              - generic [ref=e216]:
+                - paragraph [ref=e217]: Thomas R.
+                - paragraph [ref=e218]: Prague à 4, fév. 2026
+          - generic [ref=e219]:
+            - generic [ref=e220]:
+              - img [ref=e221]
+              - img [ref=e223]
+              - img [ref=e225]
+              - img [ref=e227]
+              - img [ref=e229]
+            - paragraph [ref=e231]: "\"L'IA a compris randonnée et bonne cuisine sans nous sortir une liste interminable.\""
+            - generic [ref=e232]:
+              - generic "Sophie M." [ref=e233]: SM
+              - generic [ref=e234]:
+                - paragraph [ref=e235]: Sophie M.
+                - paragraph [ref=e236]: San Sebastian, week-end
+      - generic [ref=e238]:
+        - heading "Et si vous partiez, vraiment ?" [level=2] [ref=e239]
+        - button "Trouver mon prochain voyage" [ref=e268]:
+          - generic [ref=e269]: Trouver mon prochain voyage
+          - img [ref=e270]
+    - contentinfo [ref=e240]:
+      - generic [ref=e241]:
+        - generic [ref=e242]:
+          - img [ref=e244]
+          - generic [ref=e246]: Skusku
+        - generic [ref=e247]:
+          - link "Lisbon" [ref=e248] [cursor=pointer]:
+            - /url: /destination/lisbon
+          - link "Barcelona" [ref=e249] [cursor=pointer]:
+            - /url: /destination/barcelona
+          - link "Rome" [ref=e250] [cursor=pointer]:
+            - /url: /destination/rome
+          - link "Porto" [ref=e251] [cursor=pointer]:
+            - /url: /destination/porto
+          - link "Amsterdam" [ref=e252] [cursor=pointer]:
+            - /url: /destination/amsterdam
+          - link "Prague" [ref=e253] [cursor=pointer]:
+            - /url: /destination/prague
+          - link "Marrakech" [ref=e254] [cursor=pointer]:
+            - /url: /destination/marrakech
+          - link "Dubrovnik" [ref=e255] [cursor=pointer]:
+            - /url: /destination/dubrovnik
+  - button "🧪 Dev personas" [ref=e273]
