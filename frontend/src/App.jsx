@@ -21,6 +21,10 @@ const PriceAlerts = lazy(() => import('./pages/PriceAlerts'));
 const Destinations = lazy(() => import('./pages/Destinations'));
 const DestinationLanding = lazy(() => import('./pages/DestinationLanding'));
 const TripProposal = lazy(() => import('./pages/TripProposal'));
+const Privacy = lazy(() => import('./pages/legal/Privacy'));
+const Terms = lazy(() => import('./pages/legal/Terms'));
+const MentionsLegales = lazy(() => import('./pages/legal/MentionsLegales'));
+const Contact = lazy(() => import('./pages/legal/Contact'));
 
 // Layout
 import AppLayout from './components/Layout/AppLayout';
@@ -79,6 +83,12 @@ function AppContent() {
         <Route path="/destination/:slug" element={<DestinationLanding />} />
         {/* Pricing is public so prospects can evaluate before signing up. */}
         <Route path="/pricing" element={<Pricing />} />
+
+        {/* Legal & contact — public (obligation légale FR/UE pour un service payant) */}
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/mentions-legales" element={<MentionsLegales />} />
+        <Route path="/contact" element={<Contact />} />
 
         {/* Onboarding Route - Semi-Protected */}
         <Route

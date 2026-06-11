@@ -1,5 +1,5 @@
 // frontend/src/components/Layout/AppLayout.jsx
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { UserButton, useUser } from '@clerk/clerk-react';
 import { LayoutDashboard, PlusCircle, User } from 'lucide-react';
 import { Logo } from '../ui';
@@ -128,9 +128,10 @@ function AppLayout({ children }) {
               <span>&copy; 2026</span>
             </div>
             <div className="flex gap-6 text-sm text-text-secondary">
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-primary transition-colors">Confidentialité</a>
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-primary transition-colors">Conditions</a>
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-primary transition-colors">Support</a>
+              <Link to="/privacy" className="hover:text-primary transition-colors">Confidentialité</Link>
+              <Link to="/terms" className="hover:text-primary transition-colors">Conditions</Link>
+              <Link to="/mentions-legales" className="hover:text-primary transition-colors">Mentions légales</Link>
+              <Link to="/contact" className="hover:text-primary transition-colors">Contact</Link>
             </div>
           </div>
         </div>

@@ -570,6 +570,15 @@ function Landing() {
             ))}
           </div>
         </div>
+        <div className="mx-auto mt-6 flex max-w-6xl flex-col gap-3 border-t border-sand-200 pt-5 text-sm text-text-secondary md:flex-row md:items-center md:justify-between">
+          <span>Skusku © 2026</span>
+          <nav className="flex flex-wrap gap-x-4 gap-y-2">
+            <Link to="/mentions-legales" className="hover:text-ember-700">Mentions légales</Link>
+            <Link to="/terms" className="hover:text-ember-700">Conditions générales</Link>
+            <Link to="/privacy" className="hover:text-ember-700">Confidentialité</Link>
+            <Link to="/contact" className="hover:text-ember-700">Contact</Link>
+          </nav>
+        </div>
       </footer>
     </div>
   );
