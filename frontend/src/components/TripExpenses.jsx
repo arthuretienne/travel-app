@@ -166,7 +166,7 @@ export default function TripExpenses({ tripId, currentUserId }) {
         <Card className="p-0">
           <div className="flex items-center justify-between gap-3 px-6 pt-5">
             <div>
-              <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">Tricount du groupe</span>
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">Dépenses du groupe</span>
               <h2 className="mt-1 font-display text-[22px] font-medium tracking-[-0.01em] text-text-main">Dépenses</h2>
             </div>
             <Button size="sm" icon={<Plus size={15} />} onClick={() => setShowForm(v => !v)}>Ajouter</Button>

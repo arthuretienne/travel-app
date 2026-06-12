@@ -81,7 +81,7 @@ const FEATURE_GROUPS = [
     title: 'Voyage à plusieurs',
     rows: [
       ['Voyage de groupe (vote + planif.)', false, false, true, '—'],
-      ['Partage de dépenses (style Tricount)', false, false, true, '—'],
+      ['Partage des dépenses du groupe', false, false, true, '—'],
     ],
   },
   {
@@ -140,7 +140,7 @@ function planHighlights(id) {
   if (id === 'wanderer') return [
     'Recherches & alertes illimitées',
     'Voyage de groupe : vote + planif. collab.',
-    'Partage des dépenses (style Tricount)',
+    'Partage des dépenses du groupe',
     'Accès prioritaire · sans attente',
   ];
   return [];
