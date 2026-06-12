@@ -230,6 +230,17 @@ function Landing() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Un anonyme renvoyé d'une route protégée (?signup=1) voit la modal de
+  // création de compte au lieu d'un rebond silencieux.
+  useEffect(() => {
+    if (isSignedIn) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('signup') === '1') {
+      window.history.replaceState({}, '', '/');
+      openSignUp();
+    }
+  }, [isSignedIn, openSignUp]);
+
   return (
     <div className="min-h-screen bg-surface-subtle font-sans text-text-main">
       <MegaMenu

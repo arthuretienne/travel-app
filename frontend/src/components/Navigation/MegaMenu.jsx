@@ -2,23 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
-  Calendar,
   ChevronDown,
   ChevronRight,
-  Globe,
   Menu,
-  Plane,
-  Search,
-  Sparkles,
-  TrendingUp,
-  Wallet,
   X,
 } from 'lucide-react';
 import { Logo } from '../ui';
 import { MEGA_MENU, MENU_PHOTO } from '../../data/megaMenu';
 import { formatEUR } from '../../utils/format';
-
-const TOOL_ICON = { wallet: Wallet, calendar: Calendar, plane: Plane };
 
 /* ---------- Sub-link row inside a column ---------- */
 function SubLink({ item, withPrice }) {
@@ -151,158 +142,10 @@ function PanelDestinations({ entry }) {
   );
 }
 
-function PanelOuPartir({ entry }) {
-  return (
-    <>
-      <PanelAccroche entry={entry} />
-      <div className="grid grid-cols-[1fr_1fr_1fr_1.05fr] gap-8 px-8 pb-6 pt-7">
-        {entry.columns.map((col) => (
-          <div key={col.title}>
-            <ColHeader title={col.title} kicker={col.kicker} />
-            <div className="grid gap-0.5">
-              {col.items.map((it) => (
-                <SubLink key={it.href} item={it} />
-              ))}
-            </div>
-          </div>
-        ))}
-        <div className="self-start rounded-[14px] border border-sand-200 bg-sand-50 p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">
-            {entry.feature.eyebrow}
-          </div>
-          <div className="mt-1.5 font-display text-xl font-medium leading-tight text-text-main">
-            {entry.feature.title}
-          </div>
-          <div className="mb-2.5 mt-0.5 text-xs text-text-light">{entry.feature.sub}</div>
-          <div className="grid gap-2">
-            {entry.feature.list.map((d) => (
-              <Link
-                key={d.city}
-                to={entry.feature.href}
-                className="flex items-center gap-2.5 rounded-[10px] border border-sand-200 bg-white p-2"
-              >
-                <span
-                  className="h-9 w-9 flex-shrink-0 rounded-lg bg-cover bg-center"
-                  style={{ backgroundImage: `url(${MENU_PHOTO[d.photo]})` }}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-medium text-text-main">{d.city}</span>
-                  <span className="block text-[11px] text-text-light">{d.country}</span>
-                </span>
-                <span className="text-right">
-                  <span className="block font-mono text-xs font-medium text-text-main">{formatEUR(d.price)}</span>
-                  <span className="block font-mono text-[10px] text-moss-500">{d.drop}%</span>
-                </span>
-              </Link>
-            ))}
-          </div>
-          <Link
-            to={entry.feature.href}
-            className="mt-3 inline-flex items-center gap-1 text-[13px] font-medium text-ember-700"
-          >
-            {entry.feature.cta} <ArrowRight size={14} />
-          </Link>
-        </div>
-      </div>
-      <PanelFooter entry={entry} />
-    </>
-  );
-}
-
-function PanelOutils({ entry }) {
-  return (
-    <>
-      <PanelAccroche entry={entry} />
-      <div className="grid grid-cols-[0.95fr_1.3fr] gap-7 px-8 pb-6 pt-7">
-        <Link
-          to={entry.hero.href}
-          className="relative block overflow-hidden rounded-[16px] bg-sand-900 p-5 text-white"
-        >
-          <span
-            className="pointer-events-none absolute -right-8 -top-8 h-44 w-44"
-            style={{
-              background:
-                'radial-gradient(circle, rgba(164,77,48,.45), transparent 70%)',
-            }}
-          />
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-300">
-            {entry.hero.eyebrow}
-          </div>
-          <div className="mt-2.5 font-display text-[28px] font-medium leading-tight">
-            {entry.hero.title}
-          </div>
-          <p className="mt-2.5 text-sm leading-normal text-white/[0.78]">{entry.hero.sub}</p>
-          <span className="mt-4 inline-flex items-center gap-2 rounded-[10px] bg-ember-600 px-4 py-2.5 text-sm font-medium text-white">
-            {entry.hero.cta} <ArrowRight size={16} />
-          </span>
-        </Link>
-        <div>
-          <ColHeader title={entry.columns[0].title} kicker={entry.columns[0].kicker} />
-          <div className="grid gap-2">
-            {entry.columns[0].items.map((it) => {
-              const Ic = TOOL_ICON[it.icon] || Sparkles;
-              return (
-                <Link
-                  key={it.href}
-                  to={it.href}
-                  className="group flex items-start gap-3 rounded-xl border border-sand-200 bg-white p-3 transition-colors hover:border-sand-300 hover:bg-sand-50"
-                >
-                  <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-[10px] bg-ember-50 text-ember-700">
-                    <Ic size={18} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-text-main">{it.label}</span>
-                    <span className="mt-0.5 block text-[12.5px] leading-snug text-text-light">
-                      {it.desc}
-                    </span>
-                  </span>
-                  <ArrowRight
-                    size={16}
-                    className="text-ember-700 transition-transform group-hover:translate-x-0.5"
-                  />
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-      <PanelFooter entry={entry} />
-    </>
-  );
-}
-
-function PanelItiMag({ entry }) {
-  return (
-    <>
-      <PanelAccroche entry={entry} />
-      <div className="grid grid-cols-[1fr_1fr_1.1fr] gap-8 px-8 pb-6 pt-7">
-        {entry.columns.map((col) => (
-          <div key={col.title}>
-            <ColHeader title={col.title} kicker={col.kicker} />
-            <div className="grid gap-0.5">
-              {col.items.map((it) => (
-                <SubLink key={it.href} item={it} />
-              ))}
-            </div>
-          </div>
-        ))}
-        <FeatureCard feature={entry.feature} />
-      </div>
-      <PanelFooter entry={entry} />
-    </>
-  );
-}
-
 function renderPanel(entry) {
   switch (entry.id) {
     case 'destinations':
       return <PanelDestinations entry={entry} />;
-    case 'ou-partir':
-      return <PanelOuPartir entry={entry} />;
-    case 'outils':
-      return <PanelOutils entry={entry} />;
-    case 'itineraires-magazine':
-      return <PanelItiMag entry={entry} />;
     default:
       return null;
   }
@@ -314,86 +157,27 @@ function MobileSection({ entry }) {
     <div className="pb-3.5">
       <p className="mb-2.5 px-1 text-[12.5px] leading-normal text-text-light">{entry.accroche}</p>
 
-      {entry.id === 'outils' && (
-        <Link
-          to={entry.hero.href}
-          className="mb-3 block rounded-xl bg-sand-900 p-3.5 text-white"
-        >
-          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ember-300">
-            {entry.hero.eyebrow}
-          </span>
-          <div className="mt-1.5 font-display text-xl font-medium leading-tight">
-            {entry.hero.title}
-          </div>
-          <div className="mt-1.5 text-[12.5px] leading-normal text-white/75">{entry.hero.sub}</div>
-          <span className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-ember-600 px-3 py-2 text-[13px] font-medium">
-            {entry.hero.cta} <ArrowRight size={14} />
-          </span>
-        </Link>
-      )}
-
       {entry.columns?.map((col) => (
         <div key={col.title} className="mb-3.5">
           <div className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-light">
             {col.title}
           </div>
-          {col.items.map((it) => {
-            const Ic = it.icon ? TOOL_ICON[it.icon] || Sparkles : null;
-            return (
-              <Link
-                key={it.href}
-                to={it.href}
-                className="flex items-center justify-between border-b border-sand-100 px-1 py-[11px] text-sm text-text-main"
-              >
-                <span className="inline-flex items-center gap-2.5">
-                  {Ic && (
-                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-ember-50 text-ember-700">
-                      <Ic size={15} />
-                    </span>
-                  )}
-                  {it.label}
-                </span>
-                {it.from && (
-                  <span className="font-mono text-xs text-text-light">dès {formatEUR(it.from)}</span>
-                )}
-              </Link>
-            );
-          })}
+          {col.items.map((it) => (
+            <Link
+              key={it.href}
+              to={it.href}
+              className="flex items-center justify-between border-b border-sand-100 px-1 py-[11px] text-sm text-text-main"
+            >
+              <span>{it.label}</span>
+              {it.from && (
+                <span className="font-mono text-xs text-text-light">dès {formatEUR(it.from)}</span>
+              )}
+            </Link>
+          ))}
         </div>
       ))}
 
-      {entry.feature && entry.id === 'ou-partir' && (
-        <div className="mb-1.5 rounded-xl border border-sand-200 bg-sand-50 p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ember-700">
-            {entry.feature.eyebrow}
-          </div>
-          <div className="mt-1 font-display text-[17px] font-medium">{entry.feature.title}</div>
-          <div className="mt-2 grid gap-1.5">
-            {entry.feature.list.map((d) => (
-              <Link
-                key={d.city}
-                to={entry.feature.href}
-                className="flex items-center gap-2.5 rounded-[10px] border border-sand-200 bg-white p-2"
-              >
-                <span
-                  className="h-8 w-8 rounded-md bg-cover bg-center"
-                  style={{ backgroundImage: `url(${MENU_PHOTO[d.photo]})` }}
-                />
-                <span className="flex-1">
-                  <span className="block text-[13px] font-medium">{d.city}</span>
-                  <span className="block text-[11px] text-text-light">{d.country}</span>
-                </span>
-                <span className="text-right">
-                  <span className="block font-mono text-xs">{formatEUR(d.price)}</span>
-                  <span className="block font-mono text-[10px] text-moss-500">{d.drop}%</span>
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {entry.feature && entry.id !== 'ou-partir' && (
+      {entry.feature && (
         <Link
           to={entry.feature.href}
           className="flex items-center gap-3 rounded-xl border border-sand-200 bg-white p-2.5"
@@ -486,11 +270,14 @@ export default function MegaMenu({ actions, mobileCta, mobileFooter }) {
                 );
               }
               return (
-                <button
+                // Survol = panneau, clic = navigation vers la page d'index de
+                // l'entrée. L'ancien clic-toggle refermait le panneau ouvert au
+                // survol — pattern déroutant relevé par l'audit V3.
+                <Link
                   key={entry.id}
-                  type="button"
+                  to={entry.href}
                   onMouseEnter={() => handleEnter(entry)}
-                  onClick={() => setOpen(isOpen ? null : entry.id)}
+                  onClick={() => setOpen(null)}
                   aria-expanded={isOpen}
                   aria-haspopup="true"
                   className={[
@@ -510,7 +297,7 @@ export default function MegaMenu({ actions, mobileCta, mobileFooter }) {
                       isOpen ? 'rotate-180' : 'rotate-0',
                     ].join(' ')}
                   />
-                </button>
+                </Link>
               );
             })}
           </div>
@@ -564,14 +351,6 @@ export default function MegaMenu({ actions, mobileCta, mobileFooter }) {
       {drawer && (
         <div className="fixed inset-0 top-16 z-40 flex flex-col bg-white xl:hidden">
           <div className="flex-1 overflow-y-auto px-4 pb-28 pt-3">
-            <div className="mb-3.5 flex items-center gap-2 rounded-full border border-sand-200 bg-sand-50 px-3.5 py-2.5">
-              <Search size={16} className="text-text-light" />
-              <input
-                placeholder="Une destination, un mois, une envie…"
-                className="flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-text-light"
-              />
-            </div>
-
             {MEGA_MENU.map((entry) => {
               if (entry.simple) {
                 return (

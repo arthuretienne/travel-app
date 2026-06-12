@@ -67,7 +67,9 @@ function ProtectedRoute({ children }) {
         <AppLayout>{children}</AppLayout>
       </SignedIn>
       <SignedOut>
-        <Navigate to="/" replace />
+        {/* ?signup=1 : la landing ouvre la modal de création de compte au lieu
+            d'un rebond silencieux (audit V3 — l'intention ne meurt plus). */}
+        <Navigate to="/?signup=1" replace />
       </SignedOut>
     </>
   );
@@ -91,7 +93,7 @@ function TripProtectedRoute({ children }) {
       <SignedOut>
         {guestSession
           ? <GuestTripLayout guestName={guestSession.guestName}>{children}</GuestTripLayout>
-          : <Navigate to="/" replace />}
+          : <Navigate to="/?signup=1" replace />}
       </SignedOut>
     </>
   );
