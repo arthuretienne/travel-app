@@ -1,6 +1,16 @@
 // frontend/src/components/ItineraryPDF.jsx
 // PDF export for trip itineraries using @react-pdf/renderer
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+
+// Police standard PDF (Helvetica) plutôt qu'une font téléchargée : les woff2
+// Google Fonts faisaient planter l'embedding fontkit (« RangeError: Offset is
+// outside the bounds of the DataView ») → export cassé à 100 %. Helvetica est
+// embarquée dans tout lecteur PDF : zéro réseau, zéro subsetting, zéro panne.
+// Contrepartie : encodage WinAnsi (latin-1 étendu) — d'où la sanitisation
+// ci-dessous des caractères que WinAnsi ne sait pas encoder (emoji, etc.).
+const WINANSI_EXTRAS = '\u20AC\u201A\u0192\u201E\u2026\u2020\u2021\u02C6\u2030\u0160\u2039\u0152\u017D\u2018\u2019\u201C\u201D\u2022\u2013\u2014\u02DC\u2122\u0161\u203A\u0153\u017E\u0178';
+const sanitizeWinAnsi = (str) =>
+  str.replace(/[^\u0020-\u00FF\n\t]/g, (ch) => (WINANSI_EXTRAS.includes(ch) ? ch : ''));
 
 // AI / Booking data often carries keyword objects like {word,count,value}.
 // react-pdf throws (React error #31) if such an object is rendered as a Text
@@ -8,23 +18,13 @@ import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/rendere
 // value to a safe string before it reaches a <Text>.
 const safeText = (value) => {
   if (value === null || value === undefined) return '';
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') return sanitizeWinAnsi(value);
   if (typeof value === 'number') return String(value);
   if (typeof value === 'object') {
-    return value.word || value.value || value.name || value.text || value.label || '';
+    return sanitizeWinAnsi(String(value.word || value.value || value.name || value.text || value.label || ''));
   }
-  return String(value);
+  return sanitizeWinAnsi(String(value));
 };
-
-// Register a clean sans-serif font
-Font.register({
-  family: 'Inter',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff2', fontWeight: 400 },
-    { src: 'https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fAZ9hiJ-Ek-_EeA.woff2', fontWeight: 600 },
-    { src: 'https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYAZ9hiJ-Ek-_EeA.woff2', fontWeight: 700 },
-  ],
-});
 
 const TEAL = '#0d9488';
 const TEAL_LIGHT = '#ccfbf1';
@@ -33,7 +33,7 @@ const DARK = '#1f2937';
 
 const styles = StyleSheet.create({
   page: {
-    fontFamily: 'Inter',
+    fontFamily: 'Helvetica',
     fontSize: 10,
     color: DARK,
     paddingTop: 40,
@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
   },
   // Cover page
   coverPage: {
-    fontFamily: 'Inter',
+    fontFamily: 'Helvetica',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
@@ -240,7 +240,6 @@ const styles = StyleSheet.create({
   activityTransport: {
     fontSize: 8,
     color: GRAY,
-    fontStyle: 'italic',
     marginTop: 2,
   },
   activityMeta: {

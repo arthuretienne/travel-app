@@ -212,6 +212,13 @@ export default function SavedTripDetail() {
   const [showSticky, setShowSticky] = useState(false);
   const heroRef = useRef(null);
 
+  // Le toast d'erreur se ferme tout seul (la croix reste disponible)
+  useEffect(() => {
+    if (!actionError) return undefined;
+    const timer = setTimeout(() => setActionError(null), 6000);
+    return () => clearTimeout(timer);
+  }, [actionError]);
+
   // --- Fetch trip ----------------------------------------------------------
   useEffect(() => {
     let cancelled = false;
