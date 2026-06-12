@@ -191,6 +191,15 @@ export function getDestinationImage({ city, country, tripData } = {}) {
 /**
  * Get all available static destinations (for landing page showcase)
  */
+/**
+ * srcset responsive pour les images Unsplash (elles acceptent ?w=).
+ * Retourne undefined pour les autres sources : le navigateur retombe sur src.
+ */
+export function buildResponsiveSrcSet(url, widths = [480, 800, 1200]) {
+  if (!url || !url.includes('images.unsplash.com') || !/w=\d+/.test(url)) return undefined;
+  return widths.map((w) => `${url.replace(/w=\d+/, `w=${w}`)} ${w}w`).join(', ');
+}
+
 export function getFeaturedDestinations() {
   return [
     { city: 'Lisbon', country: 'Portugal', image: STATIC_DESTINATION_PHOTOS['Lisbon'] },

@@ -372,15 +372,19 @@ function Landing() {
             </div>
 
             <div className="grid grid-cols-[1.35fr_0.9fr] grid-rows-[170px_110px] gap-3 md:grid-rows-[260px_150px]">
+              {/* Image LCP de la landing : preload couplé dans index.html —
+                  garder le sizes synchronisé avec imagesizes là-bas. */}
               <PhotoBlock
                 city="Marrakech"
                 country="Morocco"
                 className="row-span-2 rounded-[22px] shadow-2"
                 alt="Marrakech"
                 overlay={false}
+                priority
+                sizes="(max-width: 1023px) 56vw, 360px"
               />
-              <PhotoBlock city="Lisbon" country="Portugal" className="rounded-[22px] shadow-1" alt="Lisbon" overlay={false} />
-              <PhotoBlock city="Porto" country="Portugal" className="rounded-[22px] shadow-1" alt="Porto" overlay={false} />
+              <PhotoBlock city="Lisbon" country="Portugal" className="rounded-[22px] shadow-1" alt="Lisbon" overlay={false} sizes="(max-width: 1023px) 38vw, 245px" />
+              <PhotoBlock city="Porto" country="Portugal" className="rounded-[22px] shadow-1" alt="Porto" overlay={false} sizes="(max-width: 1023px) 38vw, 245px" />
             </div>
           </div>
 
