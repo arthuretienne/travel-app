@@ -6,6 +6,7 @@ import { Plane, ArrowRight, MapPin, Sparkles } from 'lucide-react';
 import SEO from '../components/SEO';
 import { DESTINATIONS } from '../data/destinations';
 import { getDestinationImage } from '../utils/destinationImages';
+import { formatEUR } from '../utils/format';
 
 // Group by continent
 function groupByContinent(destinations) {
@@ -119,10 +120,10 @@ function Destinations() {
                       <div className="flex items-center justify-between pt-3 border-t border-sand-50 mt-3">
                         <div>
                           <span className="text-xs text-text-secondary">From </span>
-                          <span className="font-semibold text-primary">€{dest.avgFlightPrice}</span>
+                          <span className="font-semibold text-primary">{formatEUR(dest.avgFlightPrice)}</span>
                         </div>
                         <div className="text-xs text-text-secondary">
-                          Hotel ~€{dest.avgHotelPrice}/night
+                          Hotel ~{formatEUR(dest.avgHotelPrice)}/night
                         </div>
                       </div>
                     </div>

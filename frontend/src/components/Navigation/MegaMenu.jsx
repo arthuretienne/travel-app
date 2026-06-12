@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Logo } from '../ui';
 import { MEGA_MENU, MENU_PHOTO } from '../../data/megaMenu';
+import { formatEUR } from '../../utils/format';
 
 const TOOL_ICON = { wallet: Wallet, calendar: Calendar, plane: Plane };
 
@@ -29,7 +30,7 @@ function SubLink({ item, withPrice }) {
       <span>{item.label}</span>
       {withPrice && item.from && (
         <span className="font-mono text-xs font-medium text-text-secondary tabular-nums group-hover:text-ember-700">
-          dès €{item.from}
+          dès {formatEUR(item.from)}
         </span>
       )}
     </Link>
@@ -137,7 +138,7 @@ function PanelDestinations({ entry }) {
                     </span>
                     <span className="mt-0.5 block text-[11px] opacity-85">{it.country}</span>
                   </span>
-                  <span className="font-mono text-[11px] opacity-95">€{it.from}</span>
+                  <span className="font-mono text-[11px] opacity-95">{formatEUR(it.from)}</span>
                 </span>
               </Link>
             ))}
@@ -189,7 +190,7 @@ function PanelOuPartir({ entry }) {
                   <span className="block text-[11px] text-text-light">{d.country}</span>
                 </span>
                 <span className="text-right">
-                  <span className="block font-mono text-xs font-medium text-text-main">€{d.price}</span>
+                  <span className="block font-mono text-xs font-medium text-text-main">{formatEUR(d.price)}</span>
                   <span className="block font-mono text-[10px] text-moss-500">{d.drop}%</span>
                 </span>
               </Link>
@@ -353,7 +354,7 @@ function MobileSection({ entry }) {
                   {it.label}
                 </span>
                 {it.from && (
-                  <span className="font-mono text-xs text-text-light">dès €{it.from}</span>
+                  <span className="font-mono text-xs text-text-light">dès {formatEUR(it.from)}</span>
                 )}
               </Link>
             );
@@ -383,7 +384,7 @@ function MobileSection({ entry }) {
                   <span className="block text-[11px] text-text-light">{d.country}</span>
                 </span>
                 <span className="text-right">
-                  <span className="block font-mono text-xs">€{d.price}</span>
+                  <span className="block font-mono text-xs">{formatEUR(d.price)}</span>
                   <span className="block font-mono text-[10px] text-moss-500">{d.drop}%</span>
                 </span>
               </Link>

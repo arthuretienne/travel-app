@@ -16,6 +16,7 @@ import { Button } from '../components/ui';
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '../i18n/format';
 import { track } from '../lib/analytics';
+import { formatEUR } from '../utils/format';
 
 // Unified activity grid
 const ACTIVITY_OPTIONS = [
@@ -836,8 +837,8 @@ function CreateTrip() {
               className="w-full h-2 bg-sand-200 rounded-lg appearance-none cursor-pointer accent-primary"
             />
             <div className="flex justify-between text-xs text-text-secondary mt-1.5">
-              <span>€{BUDGET_CONFIG.min}</span>
-              <span>€{BUDGET_CONFIG.max}+</span>
+              <span>{formatEUR(BUDGET_CONFIG.min)}</span>
+              <span>{formatEUR(BUDGET_CONFIG.max)}+</span>
             </div>
           </div>
         </div>

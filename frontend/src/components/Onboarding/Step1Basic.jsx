@@ -1,5 +1,6 @@
 // frontend/src/components/Onboarding/Step1Basic.jsx
 import { useState, useEffect } from 'react';
+import { formatEUR } from '../../utils/format';
 
 function Step1Basic({ data, onUpdate, onNext }) {
   const [formData, setFormData] = useState({
@@ -51,7 +52,7 @@ function Step1Basic({ data, onUpdate, onNext }) {
             value={formData.budget}
             onChange={(e) => setFormData({ ...formData, budget: parseInt(e.target.value) })}
           />
-          <span className="slider-value">€{formData.budget}</span>
+          <span className="slider-value">{formatEUR(formData.budget)}</span>
         </div>
       </div>
 

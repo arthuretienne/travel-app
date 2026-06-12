@@ -6,6 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { Loader2 } from 'lucide-react';
 import { track } from '../lib/analytics';
+import { formatEUR } from '../utils/format';
 
 function Results() {
   const { searchId } = useParams();
@@ -541,16 +542,16 @@ function Results() {
               <ul className="space-y-2 text-sm text-gold-500">
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5">•</span>
-                  Budget saisi : <strong>€{totalBudget}</strong> total (€{budget}/pers.)
+                  Budget saisi : <strong>{formatEUR(totalBudget)}</strong> total ({formatEUR(budget)}/pers.)
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5">•</span>
-                  Minimum estimé : <strong>~€{minEstimate}</strong> (vol ~€{80 * travelers} + hôtel ~€{50 * Math.ceil(travelers / 2) * nights})
+                  Minimum estimé : <strong>~{formatEUR(minEstimate)}</strong> (vol ~{formatEUR(80 * travelers)} + hôtel ~{formatEUR(50 * Math.ceil(travelers / 2) * nights)})
                 </li>
               </ul>
               <p className="text-xs text-gold-500 mt-3 font-medium">Suggestions :</p>
               <ul className="space-y-1 text-xs text-gold-500 mt-1">
-                <li>→ Augmenter le budget à €{Math.ceil(minEstimate / travelers / 50) * 50}/pers. minimum</li>
+                <li>→ Augmenter le budget à {formatEUR(Math.ceil(minEstimate / travelers / 50) * 50)}/pers. minimum</li>
                 <li>→ Réduire la durée à {Math.max(2, nights - 2)} nuits</li>
                 {travelers > 2 && <li>→ Partir à {travelers - 1} personnes</li>}
               </ul>
@@ -679,7 +680,7 @@ function Results() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-moss-500">€{alt.price}</p>
+                            <p className="font-bold text-moss-500">{formatEUR(alt.price)}</p>
                             <p className="text-xs text-sand-500">aller-retour</p>
                           </div>
                           {alt.hasBeach && (
@@ -846,23 +847,23 @@ function TripCard({
           </InfoCard>
 
           <InfoCard label="Coût total">
-            <p className="text-text-main font-semibold text-xl">€{formatNumber(pricing?.total)}</p>
+            <p className="text-text-main font-semibold text-xl">{formatEUR((pricing?.total))}</p>
             {isUnderBudget ? (
-              <p className="text-sm text-status-positive">€{formatNumber(pricing?.remaining)} sous le budget</p>
+              <p className="text-sm text-status-positive">{formatEUR((pricing?.remaining))} sous le budget</p>
             ) : (
-              <p className="text-sm text-clay-500">€{formatNumber(Math.abs(pricing?.remaining))} dépassé</p>
+              <p className="text-sm text-clay-500">{formatEUR((Math.abs(pricing?.remaining)))} dépassé</p>
             )}
           </InfoCard>
 
           <InfoCard label="Vol">
-            <p className="text-text-main font-semibold">€{formatNumber(pricing?.flight)}</p>
+            <p className="text-text-main font-semibold">{formatEUR((pricing?.flight))}</p>
             <p className="text-sm text-text-secondary">
               {flightDetails?.outbound?.stops === 0 ? 'Direct' : `${flightDetails?.outbound?.stops || 0} escale${(flightDetails?.outbound?.stops || 0) > 1 ? 's' : ''}`}
             </p>
           </InfoCard>
 
           <InfoCard label="Hôtel">
-            <p className="text-text-main font-semibold">€{formatNumber(pricing?.hotel)}</p>
+            <p className="text-text-main font-semibold">{formatEUR((pricing?.hotel))}</p>
             <p className="text-sm text-text-secondary">{hotelOptions?.nights || slot?.duration - 1} nuits</p>
           </InfoCard>
         </div>
@@ -915,7 +916,7 @@ function TripCard({
                 <div key={i} className="flex items-center justify-between px-3 py-2 bg-surface-subtle rounded-lg">
                   <span className="text-sm text-text-main truncate">{activity.name}</span>
                   <span className={`text-sm font-medium flex-shrink-0 ml-2 ${activity.price === 0 ? 'text-status-positive' : 'text-text-secondary'}`}>
-                    {activity.price === 0 ? 'Gratuit' : `€${activity.price}`}
+                    {activity.price === 0 ? 'Gratuit' : `${formatEUR(activity.price)}`}
                   </span>
                 </div>
               ))}
@@ -1005,7 +1006,7 @@ function TripCard({
                         )}
                       </div>
                       <p className="text-sm text-text-secondary">
-                        €{formatNumber(hotel.price || hotel.pricePerNight)}/nuit
+                        {formatEUR((hotel.price || hotel.pricePerNight))}/nuit
                       </p>
                     </div>
                   </div>
@@ -1183,19 +1184,19 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
         <div className="grid grid-cols-4 gap-3 mb-6">
           <div className="p-4 bg-surface-subtle rounded-xl">
             <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Transport</p>
-            <p className="text-text-main font-semibold">€{formatNumber(Math.round(pricing?.transport || 0))}</p>
+            <p className="text-text-main font-semibold">{formatEUR((Math.round(pricing?.transport || 0)))}</p>
           </div>
           <div className="p-4 bg-surface-subtle rounded-xl">
             <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Hôtels</p>
-            <p className="text-text-main font-semibold">€{formatNumber(Math.round(pricing?.hotels || 0))}</p>
+            <p className="text-text-main font-semibold">{formatEUR((Math.round(pricing?.hotels || 0)))}</p>
           </div>
           <div className="p-4 bg-surface-subtle rounded-xl">
             <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Activités</p>
-            <p className="text-text-main font-semibold">€{formatNumber(Math.round(pricing?.activities || 0))}</p>
+            <p className="text-text-main font-semibold">{formatEUR((Math.round(pricing?.activities || 0)))}</p>
           </div>
           <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
             <p className="text-xs font-medium text-primary uppercase tracking-wide mb-1">Total</p>
-            <p className="text-primary font-bold">€{formatNumber(Math.round(totalCost))}</p>
+            <p className="text-primary font-bold">{formatEUR((Math.round(totalCost)))}</p>
           </div>
         </div>
 
@@ -1246,7 +1247,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
                   </div>
                   {city.hotel && (
                     <div className="text-right flex-shrink-0 hidden sm:block">
-                      <p className="text-sm font-medium text-text-main">€{city.hotel.pricePerNight}/nuit</p>
+                      <p className="text-sm font-medium text-text-main">{formatEUR(city.hotel.pricePerNight)}/nuit</p>
                       <p className="text-xs text-text-secondary truncate max-w-32">{city.hotel.name}</p>
                     </div>
                   )}
@@ -1270,7 +1271,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
                           <div>
                             <p className="font-medium text-text-main">{city.hotel.name}</p>
                             <p className="text-sm text-text-secondary">
-                              {city.hotel.stars > 0 && '★'.repeat(Math.min(city.hotel.stars, 5))} · €{city.hotel.pricePerNight}/nuit
+                              {city.hotel.stars > 0 && '★'.repeat(Math.min(city.hotel.stars, 5))} · {formatEUR(city.hotel.pricePerNight)}/nuit
                             </p>
                             {city.hotel.rating > 0 && (
                               <p className="text-sm text-primary font-medium">{city.hotel.rating}/10</p>
@@ -1287,7 +1288,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
                             <div key={j} className="flex items-center justify-between">
                               <p className="text-sm text-text-main">{a.name}</p>
                               <p className="text-sm text-text-secondary ml-2 flex-shrink-0">
-                                {a.price === 0 ? 'Gratuit' : a.price ? `€${a.price}` : ''}
+                                {a.price === 0 ? 'Gratuit' : a.price ? `${formatEUR(a.price)}` : ''}
                               </p>
                             </div>
                           ))}

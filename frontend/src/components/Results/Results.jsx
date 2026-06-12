@@ -2,6 +2,7 @@
 // Premium functional design - calm, structured, decision-focused
 
 import { useState } from 'react';
+import { formatEUR } from '../../utils/format';
 
 function Results({ recommendations, onReset }) {
   const [expandedTrip, setExpandedTrip] = useState(null);
@@ -185,18 +186,18 @@ function TripCard({
           {/* Total Cost */}
           <div className="p-4 bg-surface-subtle rounded-xl">
             <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Total cost</p>
-            <p className="text-text-main font-semibold text-xl">€{formatNumber(pricing?.total)}</p>
+            <p className="text-text-main font-semibold text-xl">{formatEUR(formatNumber(pricing?.total))}</p>
             {isUnderBudget ? (
-              <p className="text-sm text-status-positive">€{formatNumber(pricing?.remaining)} under budget</p>
+              <p className="text-sm text-status-positive">{formatEUR(formatNumber(pricing?.remaining))} under budget</p>
             ) : (
-              <p className="text-sm text-red-600">€{formatNumber(Math.abs(pricing?.remaining))} over</p>
+              <p className="text-sm text-red-600">{formatEUR(formatNumber(Math.abs(pricing?.remaining)))} over</p>
             )}
           </div>
 
           {/* Flight */}
           <div className="p-4 bg-surface-subtle rounded-xl">
             <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Flight</p>
-            <p className="text-text-main font-semibold">€{formatNumber(pricing?.flight)}</p>
+            <p className="text-text-main font-semibold">{formatEUR(formatNumber(pricing?.flight))}</p>
             <p className="text-sm text-text-secondary">
               {flightDetails?.outbound?.stops === 0 ? 'Direct' : `${flightDetails?.outbound?.stops || 0} stop${flightDetails?.outbound?.stops > 1 ? 's' : ''}`}
             </p>
@@ -205,7 +206,7 @@ function TripCard({
           {/* Hotel */}
           <div className="p-4 bg-surface-subtle rounded-xl">
             <p className="text-xs font-medium text-text-light uppercase tracking-wide mb-1">Hotel</p>
-            <p className="text-text-main font-semibold">€{formatNumber(pricing?.hotel)}</p>
+            <p className="text-text-main font-semibold">{formatEUR(formatNumber(pricing?.hotel))}</p>
             <p className="text-sm text-text-secondary">{hotelOptions?.nights || slot?.duration - 1} nights</p>
           </div>
         </div>
@@ -372,7 +373,7 @@ function TripCard({
                         )}
                       </div>
                       <p className="text-sm text-text-secondary">
-                        €{formatNumber(hotel.price || hotel.pricePerNight)}/night · {hotelOptions?.nights || 'N'} nights
+                        {formatEUR(formatNumber(hotel.price || hotel.pricePerNight))}/night · {hotelOptions?.nights || 'N'} nights
                       </p>
                     </div>
                   </div>

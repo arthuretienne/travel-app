@@ -19,6 +19,7 @@ import { Avatar, Badge, Button, Logo, PhotoBlock } from '../components/ui';
 import MegaMenu from '../components/Navigation/MegaMenu';
 import { getDestinationImage } from '../utils/destinationImages';
 import { searchAirports, getPrimaryAirport } from '../data/airports';
+import { formatEUR } from '../utils/format';
 
 const POPULAR_DESTINATIONS = [
   { city: 'Lisbon', country: 'Portugal', iata: 'LIS' },
@@ -456,7 +457,7 @@ function Landing() {
                         <h3 className="font-display text-xl font-medium">{dest.city}</h3>
                         <p className="text-sm text-text-secondary">{dest.country}</p>
                       </div>
-                      <p className="font-display text-xl font-medium">€{dest.price}</p>
+                      <p className="font-display text-xl font-medium">{formatEUR(dest.price)}</p>
                     </div>
                     <p className="mt-3 border-t border-sand-100 pt-3 text-xs text-text-secondary">7 j · vol + hotel</p>
                   </div>

@@ -14,6 +14,24 @@ import {
   Utensils,
 } from 'lucide-react';
 import { Avatar, Badge, Button, Card, PhotoBlock } from '../ui';
+import { formatDateFR, formatTimeFR } from '../../utils/format';
+
+// Les données de vol mélangent horaires déjà formatés (« 17:50 ») et
+// timestamps ISO bruts (« 2026-07-14T17:50:00 ») selon la source. On ne
+// montre JAMAIS l'ISO à l'utilisateur (audit V3, page trip confirmé).
+function legTime(value) {
+  if (!value) return '—';
+  if (typeof value === 'string' && value.includes('T')) return formatTimeFR(value) || value;
+  return value;
+}
+
+function legDate(value) {
+  if (!value) return '';
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return formatDateFR(value, { day: 'numeric', month: 'short' }) || value;
+  }
+  return value;
+}
 
 function relativeTime(dateStr) {
   if (!dateStr) return '';
@@ -272,12 +290,12 @@ function FlightLeg({ label, leg }) {
       <div className="mb-1.5 flex justify-between whitespace-nowrap text-[11px] text-text-secondary">
         <span>
           {label}
-          {leg.date ? ` · ${leg.date}` : ''}
+          {leg.date ? ` · ${legDate(leg.date)}` : ''}
         </span>
         <span>{leg.duration || ''}</span>
       </div>
       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2.5 font-mono text-[12.5px] text-text-main">
-        <span>{leg.departureTime || '—'}</span>
+        <span>{legTime(leg.departureTime)}</span>
         <span className="flex items-center justify-center gap-1.5 text-text-secondary">
           {dep}
           <span className="h-px min-w-[16px] flex-1 bg-sand-200" />
@@ -285,7 +303,7 @@ function FlightLeg({ label, leg }) {
           <span className="h-px min-w-[16px] flex-1 bg-sand-200" />
           {arr}
         </span>
-        <span>{leg.arrivalTime || '—'}</span>
+        <span>{legTime(leg.arrivalTime)}</span>
       </div>
     </div>
   );
@@ -368,7 +386,7 @@ function HotelRecapCard({ hotel, pricing, nights }) {
           <div className="mt-3.5 flex items-baseline justify-between gap-2">
             <div>
               <span className="font-display text-[21px] font-medium text-text-main">{formatCurrency(total)}</span>
-              {nights ? <span className="ml-1.5 font-mono text-[11px] text-text-secondary">{nights} nuits</span> : null}
+              {nights ? <span className="ml-1.5 font-mono text-[11px] text-text-secondary">· {nights} nuits</span> : null}
             </div>
             {url ? (
               <a href={url} target="_blank" rel="noreferrer">

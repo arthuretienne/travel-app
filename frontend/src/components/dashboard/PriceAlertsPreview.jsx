@@ -1,6 +1,7 @@
 import { Bell, ChevronRight, TrendingDown, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { EmptyState } from '../ui';
+import { formatEUR } from '../../utils/format';
 
 const monthShort = (dateStr) => {
   if (!dateStr) return '';
@@ -36,12 +37,12 @@ function AlertRow({ alert }) {
       <div className="min-w-0">
         <div className="text-sm font-semibold text-text-main truncate">{alert.destination}</div>
         <div className="text-xs font-mono text-text-secondary truncate">
-          {alert.origin} → {alert.destination?.slice(0, 3).toUpperCase()} · {monthShort(alert.departureDate)} · ≤ {alert.targetPrice}€
+          {alert.origin} → {alert.destination?.slice(0, 3).toUpperCase()} · {monthShort(alert.departureDate)} · ≤ {formatEUR(alert.targetPrice)}
         </div>
       </div>
       <div className="hidden sm:block">
         <div className="text-[10px] font-mono uppercase tracking-widest text-text-light">Seuil</div>
-        <div className="text-sm font-mono text-text-secondary">≤ {alert.targetPrice}€</div>
+        <div className="text-sm font-mono text-text-secondary">≤ {formatEUR(alert.targetPrice)}</div>
       </div>
       <div className="text-right sm:text-left">
         <div className="text-[10px] font-mono uppercase tracking-widest text-text-light">Actuel</div>

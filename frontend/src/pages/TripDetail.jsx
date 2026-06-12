@@ -61,6 +61,7 @@ import GroupTripOverview from '../components/group/GroupTripOverview';
 import JourneyRibbon from '../components/group/JourneyRibbon';
 import { Avatar, AvatarStack, Badge, Button, Card, PhotoBlock } from '../components/ui';
 import { STATIC_DESTINATION_PHOTOS } from '../utils/destinationImages';
+import { formatEUR, formatTimeFR } from '../utils/format';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -1077,7 +1078,7 @@ function PlanningSection({ trip, navigate }) {
   const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
   const prefRows = groupPrefs
     ? [
-        { Icon: Wallet, label: 'Budget moyen', value: `€${groupPrefs.budget?.average ?? '—'} / pers.` },
+        { Icon: Wallet, label: 'Budget moyen', value: `${formatEUR(groupPrefs.budget?.average ?? '—')} / pers.` },
         { Icon: Users, label: 'Voyageurs', value: `${groupPrefs.defaultTravelers || memberCount}` },
         { Icon: Plane, label: 'Vol maximum', value: `${groupPrefs.maxFlightHours || 12} h` },
         { Icon: Heart, label: 'Activité phare', value: cap(groupPrefs.activities?.[0]) || 'Toutes' },
@@ -1277,13 +1278,18 @@ function FlightLeg({ label, leg }) {
   if (!leg) return null;
   const dep = leg.departureAirport || leg.from || '';
   const arr = leg.arrivalAirport || leg.to || '';
+  // Horaire déjà formaté (« 17:50 ») ou timestamp ISO brut selon la source —
+  // on ne montre jamais l'ISO à l'utilisateur.
+  const legTime = (value) => (
+    typeof value === 'string' && value.includes('T') ? (formatTimeFR(value) || value) : (value || '')
+  );
   return (
     <div className="flex items-center gap-3 rounded-xl bg-sand-50 px-4 py-3">
       <Plane size={16} className="shrink-0 text-ember-600" />
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">{label}</div>
         <div className="font-mono text-[13px] text-text-main">
-          {dep} {leg.departureTime || ''} → {arr} {leg.arrivalTime || ''}
+          {dep} {legTime(leg.departureTime)} → {arr} {legTime(leg.arrivalTime)}
         </div>
       </div>
       <div className="shrink-0 text-right text-xs text-text-muted">
@@ -1373,7 +1379,7 @@ function ProposalDetailModal({ proposal, onClose }) {
           {!!price && (
             <div className="flex items-center justify-between rounded-xl bg-sand-900 px-4 py-3 text-white">
               <span className="text-sm text-white/75">Estimation par personne</span>
-              <span className="font-mono text-lg font-semibold">€{price}</span>
+              <span className="font-mono text-lg font-semibold">{formatEUR(price)}</span>
             </div>
           )}
         </div>
@@ -1589,7 +1595,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
                       </span>
                     )}
                     {!!price && (
-                      <span className="font-mono font-semibold text-text-main">€{price}<span className="font-sans font-normal text-text-muted">/pers</span></span>
+                      <span className="font-mono font-semibold text-text-main">{formatEUR(price)}<span className="font-sans font-normal text-text-muted">/pers</span></span>
                     )}
                   </div>
                   {isMyVote && <Badge tone="moss" dot>Votre choix</Badge>}

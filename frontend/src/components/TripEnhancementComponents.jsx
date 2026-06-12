@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { formatEUR } from '../utils/format';
 
 // Complete Trip Plan Card - AI-Generated Personalized Plan - Teal Design System
 export function CompleteTripPlanCard({ trip, enhancements, userName }) {
@@ -180,7 +181,7 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
                             )}
                             <div className="flex items-center gap-3 mt-2">
                               {item.cost > 0 && (
-                                <span className="text-sm font-semibold text-text-main">€{item.cost}</span>
+                                <span className="text-sm font-semibold text-text-main">{formatEUR(item.cost)}</span>
                               )}
                               {item.cost === 0 && (
                                 <span className="text-sm font-semibold text-primary">FREE</span>
@@ -225,7 +226,7 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
                           <TrendingUp className="w-4 h-4" />
                           {day.walkingDistance}
                         </span>
-                        <span>€{day.totalCost} budget</span>
+                        <span>{formatEUR(day.totalCost)} budget</span>
                       </div>
                       {day.highlights && day.highlights.length > 0 && (
                         <div className="flex gap-2">
@@ -334,7 +335,7 @@ function DayContent({ day: currentDay, userName }) {
             {currentDay.walkingDistance}
           </span>
           <span className="flex items-center gap-1">
-            €{currentDay.totalCost} budget
+            {formatEUR(currentDay.totalCost)} budget
           </span>
         </div>
         {currentDay.highlights && currentDay.highlights.length > 0 && (
@@ -401,7 +402,7 @@ function DayContent({ day: currentDay, userName }) {
                 )}
                 <div className="flex items-center gap-2 mt-2">
                   <span className={`text-xs font-semibold ${item.cost === 0 ? 'text-moss-500' : 'text-sand-700'}`}>
-                    {item.cost === 0 ? 'FREE' : `€${item.cost}`}
+                    {item.cost === 0 ? 'FREE' : `${formatEUR(item.cost)}`}
                   </span>
                   <span className="text-xs bg-sand-100 text-sand-600 px-2 py-0.5 rounded">
                     {item.type}

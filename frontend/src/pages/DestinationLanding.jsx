@@ -18,6 +18,7 @@ import { DESTINATIONS, getDestinationBySlug, getMonthName } from '../data/destin
 import { getDestinationImage } from '../utils/destinationImages';
 import { generateFlightLink, generateHotelLink } from '../utils/bookingLinks';
 import { Badge, Button, Logo, PhotoBlock } from '../components/ui';
+import { formatEUR } from '../utils/format';
 
 function DestinationLanding() {
   const { slug } = useParams();
@@ -85,7 +86,7 @@ function DestinationLanding() {
   return (
     <div className="min-h-screen bg-surface-subtle font-sans text-text-main">
       <SEO
-        title={`${dest.city}, ${dest.country} — Flights & Hotels from €${dest.avgFlightPrice} | Skusku`}
+        title={`${dest.city}, ${dest.country} — Flights & Hotels from ${formatEUR(dest.avgFlightPrice)} | Skusku`}
         description={dest.descriptionEn}
         canonical={`https://skusku.life/destination/${dest.slug}`}
         ogImage={imageUrl}
@@ -142,8 +143,8 @@ function DestinationLanding() {
 
       <section className="border-b border-sand-200 bg-white">
         <div className="mx-auto grid max-w-6xl gap-5 px-5 py-6 sm:grid-cols-2 md:grid-cols-4 md:px-8">
-          <QuickFact icon={<Plane size={18} />} label={t('destDetail.avgFlight')} value={`€${dest.avgFlightPrice}`} />
-          <QuickFact icon={<Hotel size={18} />} label={t('destDetail.avgHotel')} value={`€${dest.avgHotelPrice}`} />
+          <QuickFact icon={<Plane size={18} />} label={t('destDetail.avgFlight')} value={`${formatEUR(dest.avgFlightPrice)}`} />
+          <QuickFact icon={<Hotel size={18} />} label={t('destDetail.avgHotel')} value={`${formatEUR(dest.avgHotelPrice)}`} />
           <QuickFact icon={<Sun size={18} />} label={t('destDetail.summerLabel')} value={`${dest.avgTemp.summer}°C`} />
           <QuickFact icon={<Globe size={18} />} label={t('destDetail.language')} value={dest.language} />
         </div>
@@ -223,11 +224,11 @@ function DestinationLanding() {
             <p className="mt-1 text-sm text-text-secondary">{t('destDetail.costSubtitle')}</p>
 
             <div className="mt-6 space-y-3">
-              <EstimateRow label={t('destDetail.returnFlight')} value={`€${dest.avgFlightPrice}`} />
-              <EstimateRow label={t('destDetail.hotelNights')} value={`€${dest.avgHotelPrice * 5}`} />
+              <EstimateRow label={t('destDetail.returnFlight')} value={`${formatEUR(dest.avgFlightPrice)}`} />
+              <EstimateRow label={t('destDetail.hotelNights')} value={`${formatEUR(dest.avgHotelPrice * 5)}`} />
               <div className="flex items-baseline justify-between border-t border-sand-200 pt-4">
                 <span className="font-semibold text-text-main">{t('destDetail.totalEstimate')}</span>
-                <span className="font-display text-3xl font-medium text-ember-700">€{totalEstimate}</span>
+                <span className="font-display text-3xl font-medium text-ember-700">{formatEUR(totalEstimate)}</span>
               </div>
             </div>
 

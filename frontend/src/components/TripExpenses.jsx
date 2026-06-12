@@ -8,6 +8,7 @@ import {
   Utensils, Plane, Home, ShoppingBag, Ticket, HelpCircle,
 } from 'lucide-react';
 import { Avatar, Button, Card } from './ui';
+import { formatEUR } from '../utils/format';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -145,12 +146,12 @@ export default function TripExpenses({ tripId, currentUserId }) {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="p-5">
           <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Total des dépenses</span>
-          <div className="mt-2 font-display text-[34px] font-medium leading-none text-text-main">€{Math.round(totalExpenses)}</div>
+          <div className="mt-2 font-display text-[34px] font-medium leading-none text-text-main">{formatEUR(Math.round(totalExpenses))}</div>
           <div className="mt-1.5 text-[13px] text-text-muted">{expenses.length} dépenses · {members.length} participants</div>
         </Card>
         <Card className="p-5">
           <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Par personne</span>
-          <div className="mt-2 font-display text-[34px] font-medium leading-none text-text-main">€{Math.round(perPerson)}</div>
+          <div className="mt-2 font-display text-[34px] font-medium leading-none text-text-main">{formatEUR(Math.round(perPerson))}</div>
           <div className="mt-1.5 text-[13px] text-text-muted">part moyenne</div>
         </Card>
         <Card className="p-5">
@@ -252,7 +253,7 @@ export default function TripExpenses({ tripId, currentUserId }) {
                         Payé par {expense.paidBy?.firstName || 'Inconnu'} · {new Date(expense.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}
                       </div>
                     </div>
-                    <span className="font-mono text-sm font-medium text-text-main">€{expense.amount.toFixed(2)}</span>
+                    <span className="font-mono text-sm font-medium text-text-main">{formatEUR(expense.amount, { decimals: 2 })}</span>
                     {canDelete && (
                       <button
                         onClick={() => handleDelete(expense.id)}
@@ -290,7 +291,7 @@ export default function TripExpenses({ tripId, currentUserId }) {
                           rounded === 0 ? 'text-text-muted' : rounded > 0 ? 'text-moss-500' : 'text-clay-500',
                         ].join(' ')}
                       >
-                        {rounded > 0 ? '+' : ''}{rounded} €
+                        {rounded > 0 ? '+' : ''}{formatEUR(rounded, { decimals: 2 })}
                       </span>
                     </div>
                   );
@@ -314,7 +315,7 @@ export default function TripExpenses({ tripId, currentUserId }) {
                     <ArrowRight size={15} className="text-ember-300" />
                     <Avatar name={s.to?.firstName || 'Invité'} src={s.to?.imageUrl} size={26} />
                     <span className="font-medium">{s.to?.firstName || 'Invité'}</span>
-                    <span className="ml-auto font-mono font-semibold text-ember-200">€{s.amount.toFixed(2)}</span>
+                    <span className="ml-auto font-mono font-semibold text-ember-200">{formatEUR(s.amount, { decimals: 2 })}</span>
                   </div>
                 ))}
               </div>

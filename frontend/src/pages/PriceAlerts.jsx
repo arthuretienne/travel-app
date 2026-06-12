@@ -8,6 +8,7 @@ import {
   Plane, Calendar, DollarSign, Target, ChevronRight, Plus,
   AlertCircle, CheckCircle, Clock, Zap
 } from 'lucide-react';
+import { formatEUR } from '../utils/format';
 
 function PriceAlerts() {
   const { getToken } = useAuth();
@@ -229,7 +230,7 @@ function PriceAlerts() {
                 </div>
                 <div>
                   <div className="text-2xl font-semibold text-text-main">
-                    {stats.totalSavings > 0 ? `€${stats.totalSavings}` : '—'}
+                    {stats.totalSavings > 0 ? `${formatEUR(stats.totalSavings)}` : '—'}
                   </div>
                   <div className="text-xs text-text-secondary">Économies</div>
                 </div>
@@ -377,14 +378,14 @@ function PriceAlerts() {
                         <div>
                           <div className="text-xs text-text-secondary mb-1">Prix actuel</div>
                           <div className="text-xl font-bold text-text-main">
-                            €{Math.round(alert.currentPrice || alert.initialPrice)}
+                            {formatEUR(Math.round(alert.currentPrice || alert.initialPrice))}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-text-secondary mb-1">Objectif</div>
                           <div className="text-xl font-semibold text-primary flex items-center gap-1">
                             <Target size={16} />
-                            €{Math.round(alert.targetPrice)}
+                            {formatEUR(Math.round(alert.targetPrice))}
                           </div>
                         </div>
                         {priceChange && (
@@ -394,7 +395,7 @@ function PriceAlerts() {
                               priceChange.isDown ? 'text-moss-500' : 'text-clay-500'
                             }`}>
                               {priceChange.isDown ? <TrendingDown size={16} /> : <TrendingUp size={16} />}
-                              {priceChange.isDown ? '-' : '+'}€{Math.abs(Math.round(priceChange.change))}
+                              {priceChange.isDown ? '-' : '+'}{formatEUR(Math.abs(Math.round(priceChange.change)))}
                               <span className="text-sm">({priceChange.percent}%)</span>
                             </div>
                           </div>

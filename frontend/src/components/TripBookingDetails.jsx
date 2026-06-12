@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { generateAllBookingLinks, getIataCode } from '../utils/bookingLinks';
+import { formatEUR } from '../utils/format';
 
 /**
  * TripBookingDetails - Shows saved flight and hotel recommendations
@@ -102,7 +103,7 @@ export default function TripBookingDetails({
               </h3>
               {pricing?.flight && (
                 <span className="font-display text-2xl text-primary">
-                  €{Math.round(pricing.flight)}
+                  {formatEUR(Math.round(pricing.flight))}
                 </span>
               )}
             </div>
@@ -236,7 +237,7 @@ export default function TripBookingDetails({
               </h3>
               {hotel.pricePerNight && (
                 <span className="font-display text-2xl text-moss-500">
-                  €{Math.round(hotel.pricePerNight)}/nuit
+                  {formatEUR(Math.round(hotel.pricePerNight))}/nuit
                 </span>
               )}
             </div>
@@ -328,7 +329,7 @@ export default function TripBookingDetails({
                         {hotelOptions?.nights || Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) - 1} nuits
                       </span>
                       <span className="font-bold text-text-main">
-                        Total: €{Math.round(hotel.totalPrice)}
+                        Total: {formatEUR(Math.round(hotel.totalPrice))}
                       </span>
                     </div>
                   </div>
@@ -356,14 +357,14 @@ export default function TripBookingDetails({
               <span className="text-text-secondary">Budget estimé total</span>
               <div className="text-right">
                 <span className="text-2xl font-bold text-primary">
-                  €{Math.round(pricing.total || (pricing.flight || 0) + (pricing.hotel || 0))}
+                  {formatEUR(Math.round(pricing.total || (pricing.flight || 0) + (pricing.hotel || 0)))}
                 </span>
                 <span className="text-sm text-text-secondary ml-1">/personne</span>
               </div>
             </div>
             {pricing.activities > 0 && (
               <p className="text-xs text-text-secondary mt-1">
-                + €{Math.round(pricing.activities)} budget activités
+                + {formatEUR(Math.round(pricing.activities))} budget activités
               </p>
             )}
           </div>

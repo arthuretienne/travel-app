@@ -54,6 +54,7 @@ import { getDestinationImage } from '../utils/destinationImages';
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '../i18n/format';
 import '../styles/tripDetail.css';
+import { formatEUR } from '../utils/format';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -1319,7 +1320,7 @@ function ProgramStep({ step, t }) {
           </div>
           {(step.cost || step.cost === 0) && (
             <span className="whitespace-nowrap font-mono text-[13px] font-semibold text-text-main">
-              {step.cost === 0 ? t('savedTrip.free') : `€${step.cost}`}
+              {step.cost === 0 ? t('savedTrip.free') : formatEUR(step.cost)}
             </span>
           )}
         </div>

@@ -8,6 +8,7 @@ import {
   LogOut, Save, Globe, Briefcase, Heart, MapPin,
   Clock, Plane, Shield, AlertCircle, CreditCard, Loader2, Bell
 } from 'lucide-react';
+import { formatEUR } from '../utils/format';
 
 // These option sets MUST stay in sync with Onboarding.jsx — the onboarding
 // flow persists the exact value strings/codes below, and the Account form
@@ -908,7 +909,7 @@ function Account() {
                         </p>
                       </div>
                       <div className="px-4 py-2 bg-moss-100 text-moss-500 rounded-full text-sm font-semibold">
-                        {subscription.planDetails.price === 0 ? 'Gratuit' : `€${subscription.planDetails.price}/${subscription.planDetails.interval}`}
+                        {subscription.planDetails.price === 0 ? 'Gratuit' : `${formatEUR(subscription.planDetails.price, { decimals: 2 })} / ${subscription.planDetails.interval === 'year' ? 'an' : 'mois'}`}
                       </div>
                     </div>
 
