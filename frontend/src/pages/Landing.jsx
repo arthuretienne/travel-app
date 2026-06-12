@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { SignedIn, SignedOut, SignInButton, UserButton, useAuth, useUser } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useAuth, useClerk, useUser } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
+import { track } from '../lib/analytics';
 import {
   ArrowRight,
   Calendar,
@@ -35,7 +36,7 @@ const COPY = {
     eyebrow: 'Voyage par IA · sans carte bancaire',
     title: ['Le voyage', 'qui vous ressemble', 'déjà pensé.'],
     subtitle: "Décrivez vos envies. On compose vols, hôtels et itinéraire, vous n'avez plus qu'à dire oui.",
-    cta: 'Composer mon voyage',
+    cta: 'Composer mon voyage — gratuit',
     proof: '3 minutes · gratuit · puis vous comparez.',
     how: 'Comment ça marche',
     howTitle: ['Trois moments,', 'pas trente onglets.'],
@@ -63,10 +64,12 @@ const COPY = {
     createTrip: 'Créer mon voyage',
     mySpace: 'Mon espace',
     pricing: 'Tarifs',
-    popular: 'Propositions recentes',
+    popular: 'Propositions récentes',
     powered: "Propulsé par l'IA",
     searchPlaceholder: 'Où voulez-vous partir ?',
     searchButton: 'Chercher',
+    searchButtonAnon: 'Voir mes destinations',
+    searchSignupHint: 'Créez votre compte pour découvrir vos 3 destinations — 30 secondes, gratuit.',
   },
   en: {
     eyebrow: 'AI travel · no card required',
@@ -104,6 +107,8 @@ const COPY = {
     powered: 'AI powered',
     searchPlaceholder: 'Where do you want to go?',
     searchButton: 'Search',
+    searchButtonAnon: 'See my destinations',
+    searchSignupHint: 'Create your account to discover your 3 destinations — 30 seconds, free.',
   },
 };
 
@@ -123,13 +128,16 @@ function LanguageSwitcher() {
   );
 }
 
-function SignInPrimary({ children, className = '' }) {
+// CTA principal pour un anonyme : un nouveau visiteur doit atterrir sur le
+// SIGN-UP (l'ancien SignInButton ouvrait la connexion — friction au moment
+// exact de la conversion, audit V3 P1).
+function SignUpPrimary({ children, className = '' }) {
   return (
-    <SignInButton mode="modal">
+    <SignUpButton mode="modal">
       <Button size="lg" iconRight={<ArrowRight size={18} />} className={className}>
         {children}
       </Button>
-    </SignInButton>
+    </SignUpButton>
   );
 }
 
@@ -137,6 +145,7 @@ function Landing() {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const { isSignedIn } = useAuth();
+  const { openSignUp } = useClerk();
   const { user } = useUser();
   const lang = i18n.language?.startsWith('fr') ? 'fr' : 'en';
   const c = COPY[lang];
@@ -148,6 +157,7 @@ function Landing() {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState(null);
+  const [showSignupHint, setShowSignupHint] = useState(false);
   const searchRef = useRef(null);
   const howItWorksRef = useRef(null);
 
@@ -195,7 +205,17 @@ function Landing() {
     }
 
     if (!dest?.city) return;
-    if (!isSignedIn) sessionStorage.setItem('pendingDestination', JSON.stringify(dest));
+
+    // Anonyme : l'intention la plus chaude du site. On conserve la saisie et
+    // on ouvre le sign-up — plus de rebond silencieux vers / (audit V3 P0).
+    if (!isSignedIn) {
+      sessionStorage.setItem('pendingDestination', JSON.stringify(dest));
+      setShowSignupHint(true);
+      track('hero_search_submitted', { city: dest.city });
+      openSignUp();
+      return;
+    }
+
     navigate('/create-trip', { state: { prefilledDestination: dest } });
   };
 
@@ -221,7 +241,7 @@ function Landing() {
               <SignInButton mode="modal">
                 <Button variant="ghost" size="md" className="whitespace-nowrap">{c.signin}</Button>
               </SignInButton>
-              <SignInButton mode="modal">
+              <SignUpButton mode="modal">
                 <Button
                   variant="primary"
                   size="md"
@@ -230,7 +250,7 @@ function Landing() {
                 >
                   {c.createTrip}
                 </Button>
-              </SignInButton>
+              </SignUpButton>
             </SignedOut>
             <SignedIn>
               <Button
@@ -283,11 +303,11 @@ function Landing() {
         mobileCta={
           <>
             <SignedOut>
-              <SignInButton mode="modal">
+              <SignUpButton mode="modal">
                 <Button variant="primary" size="lg" full iconRight={<ArrowRight size={16} />}>
                   {c.createTrip}
                 </Button>
-              </SignInButton>
+              </SignUpButton>
             </SignedOut>
             <SignedIn>
               <Button
@@ -320,7 +340,7 @@ function Landing() {
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <SignedOut>
-                  <SignInPrimary>{c.cta}</SignInPrimary>
+                  <SignUpPrimary>{c.cta}</SignUpPrimary>
                 </SignedOut>
                 <SignedIn>
                   <Button size="lg" onClick={() => navigate('/create-trip')} iconRight={<ArrowRight size={18} />}>
@@ -367,9 +387,13 @@ function Landing() {
                   />
                 </div>
                 <Button variant="ink" onClick={handleSearch} disabled={!searchQuery} icon={<Search size={18} />}>
-                  {c.searchButton}
+                  {isSignedIn ? c.searchButton : c.searchButtonAnon}
                 </Button>
               </div>
+
+              {!isSignedIn && showSignupHint && (
+                <p className="mt-3 px-1 text-sm text-ember-700">{c.searchSignupHint}</p>
+              )}
 
               {showSuggestions && suggestions.length > 0 && (
                 <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-[16px] border border-sand-200 bg-white shadow-3">
@@ -545,9 +569,9 @@ function Landing() {
             <h2 className="relative font-display text-4xl font-medium">{c.finalTitle}</h2>
             <div className="relative mt-8 flex justify-center">
               <SignedOut>
-                <SignInButton mode="modal">
+                <SignUpButton mode="modal">
                   <Button size="lg" iconRight={<ArrowRight size={18} />}>{c.finalCta}</Button>
-                </SignInButton>
+                </SignUpButton>
               </SignedOut>
               <SignedIn>
                 <Button size="lg" onClick={() => navigate('/create-trip')} iconRight={<ArrowRight size={18} />}>
