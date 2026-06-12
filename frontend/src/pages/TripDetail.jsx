@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { track } from '../lib/analytics';
+import { readGuestSession, useTripAuthToken } from '../lib/guestSession';
 import {
   ArrowLeft,
   Users,
@@ -98,7 +99,7 @@ function getDestinationInfo(finalDestination) {
 export default function TripDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
   const { user } = useUser();
 
   const [loading, setLoading] = useState(true);
@@ -119,25 +120,22 @@ export default function TripDetail() {
   const [sendingReminder, setSendingReminder] = useState(false);
   const [reminderMessage, setReminderMessage] = useState(null);
 
-  // Guest session detection - check if we have a valid guest session for this trip
-  const [guestSession, setGuestSession] = useState(null);
+  // Guest session detection - check if we have a valid guest session for this
+  // trip. Lazy init (pas un effect) : le premier fetchTripDetails doit déjà
+  // savoir s'il authentifie en invité, sinon l'invité reçoit un 401 et croit
+  // que le voyage a disparu.
+  const [guestSession, setGuestSession] = useState(() => readGuestSession(id));
 
   useEffect(() => {
-    // Check for guest session in localStorage
-    try {
-      const storedSession = localStorage.getItem('guestSession');
-      if (storedSession) {
-        const session = JSON.parse(storedSession);
-        // Only use the session if it's for this specific trip
-        if (session.tripId === id) {
-          setGuestSession(session);
-          console.log('🔐 Guest session found for this trip');
-        }
-      }
-    } catch (e) {
-      console.error('Error parsing guest session:', e);
-    }
+    // Re-evaluate when navigating between trips
+    setGuestSession(readGuestSession(id));
   }, [id]);
+
+  // Jeton d'API : session invitée (`guest:<token>`, même convention que le
+  // socket) quand l'utilisateur n'a pas de compte, sinon jeton Clerk.
+  const getAuthToken = async () => (
+    guestSession && !isSignedIn ? `guest:${guestSession.sessionToken}` : await getToken()
+  );
 
   useEffect(() => {
     fetchTripDetails();
@@ -148,7 +146,7 @@ export default function TripDetail() {
       setLoading(true);
       setError(null);
 
-      const token = await getToken();
+      const token = await getAuthToken();
       const response = await fetch(`${API_URL}/api/trips/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -234,7 +232,7 @@ export default function TripDetail() {
       setInviting(true);
       setInviteError(null);
 
-      const token = await getToken();
+      const token = await getAuthToken();
       const response = await fetch(`${API_URL}/api/trips/${trip.id}/invitations`, {
         method: 'POST',
         headers: {
@@ -271,7 +269,7 @@ export default function TripDetail() {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce voyage ? Cette action est irréversible.')) return;
 
     try {
-      const token = await getToken();
+      const token = await getAuthToken();
       await fetch(`${API_URL}/api/trips/${id}`, {
         method: 'DELETE',
         headers: {
@@ -294,7 +292,7 @@ export default function TripDetail() {
     setReminderMessage(null);
 
     try {
-      const token = await getToken();
+      const token = await getAuthToken();
       const response = await fetch(`${API_URL}/api/trips/${id}/reminders`, {
         method: 'POST',
         headers: {
@@ -668,14 +666,14 @@ export default function TripDetail() {
                     <MyBookingCard
                       member={myMember}
                       tripId={trip.id}
-                      getToken={getToken}
+                      getToken={getAuthToken}
                       onUpdate={fetchTripDetails}
                     />
                   );
                 })()}
 
                 {/* Group tracking + optimized booking links */}
-                <BookingChecklistSection trip={trip} fetchTripDetails={fetchTripDetails} getToken={getToken} />
+                <BookingChecklistSection trip={trip} fetchTripDetails={fetchTripDetails} getToken={getAuthToken} />
 
                 {/* Weather & packing prep */}
                 <TripPrepSection trip={trip} />
@@ -701,7 +699,7 @@ export default function TripDetail() {
           <TripSettingsTab
             trip={trip}
             userRole={userRole}
-            getToken={getToken}
+            getToken={getAuthToken}
             fetchTripDetails={fetchTripDetails}
             handleDelete={handleDelete}
           />
@@ -883,7 +881,7 @@ function PrefRow({ Icon, label, value, last }) {
 }
 
 function PlanningSection({ trip, navigate }) {
-  const { getToken } = useAuth();
+  const getToken = useTripAuthToken(trip.id);
   const [groupPrefs, setGroupPrefs] = useState(null);
   const [loadingPrefs, setLoadingPrefs] = useState(true);
   const [proposalMode, setProposalMode] = useState('ai'); // 'ai' or 'custom'
@@ -1386,7 +1384,7 @@ function ProposalDetailModal({ proposal, onClose }) {
 
 // Voting Section - When destinations are proposed
 function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
-  const { getToken } = useAuth();
+  const getToken = useTripAuthToken(trip.id);
   const [voting, setVoting] = useState(false);
   const [votedForId, setVotedForId] = useState(null); // track locally which dest user just voted for
   const [voteError, setVoteError] = useState(null);
@@ -2095,7 +2093,7 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
 // Uses SSE streaming for itinerary generation
 // ========================================
 function TripEnhancementsSection({ trip, userName }) {
-  const { getToken } = useAuth();
+  const getToken = useTripAuthToken(trip.id);
   const [itinerary, setItinerary] = useState([]);
   const [loadingItinerary, setLoadingItinerary] = useState(true);
   const [generatingDay, setGeneratingDay] = useState(null);
@@ -2332,7 +2330,7 @@ function TripEnhancementsSection({ trip, userName }) {
 
 // Weather + packing prep, relocated from overview to the "À faire" tab
 function TripPrepSection({ trip }) {
-  const { getToken } = useAuth();
+  const getToken = useTripAuthToken(trip.id);
   const [weather, setWeather] = useState(null);
   const [packing, setPacking] = useState(null);
   const [loading, setLoading] = useState(true);

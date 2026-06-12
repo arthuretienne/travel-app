@@ -1,7 +1,7 @@
 // backend/src/routes/messages.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateUser } from '../middleware/auth.js';
+import { authenticateUser, authenticateUserOrGuest } from '../middleware/auth.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -14,7 +14,7 @@ const prisma = new PrismaClient();
  * GET /api/trips/:tripId/messages
  * Get messages for a trip
  */
-router.get('/:tripId/messages', authenticateUser, async (req, res) => {
+router.get('/:tripId/messages', authenticateUserOrGuest, async (req, res) => {
   try {
     const user = req.user; // Already authenticated by middleware
     const { tripId } = req.params;
@@ -32,11 +32,12 @@ router.get('/:tripId/messages', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Trip not found' });
     }
 
-    // Check if user is a member
+    // Check if user is a member (guest sessions count, for their trip only)
     const isMember = trip.members.some((m) => m.userId === user.id);
     const isCreator = trip.creatorId === user.id;
+    const isGuestMember = user.isGuest === true && user.allowedTripId === tripId;
 
-    if (!isMember && !isCreator) {
+    if (!isMember && !isCreator && !isGuestMember) {
       return res.status(403).json({ error: 'Only trip members can view messages' });
     }
 

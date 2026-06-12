@@ -73,10 +73,12 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
   const loadMessageHistory = async () => {
     setLoadingHistory(true);
     try {
-      // For guests, we can load history without auth (public trip access)
-      // For authenticated users, we use their token
+      // Guests authenticate with their session token (`guest:<token>`, same
+      // convention as the socket); authenticated users use their Clerk token.
       const headers = {};
-      if (!isGuestMode) {
+      if (isGuestMode) {
+        headers['Authorization'] = `Bearer guest:${guestSession.sessionToken}`;
+      } else {
         const token = await getToken();
         headers['Authorization'] = `Bearer ${token}`;
       }

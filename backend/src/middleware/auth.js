@@ -131,6 +131,53 @@ export async function authenticateUser(req, res, next) {
 }
 
 /**
+ * Authentification utilisateur OU invité (guest).
+ * Accepte `Authorization: Bearer guest:<sessionToken>` — le token de session
+ * créé à l'acceptation d'une invitation sans compte (invitations.js). Même
+ * convention et même forme synthétique de user que socketService.js, pour que
+ * l'invité accède en REST à ce que le socket lui donne déjà.
+ * Tout autre header retombe sur authenticateUser (chemin Clerk inchangé).
+ */
+export async function authenticateUserOrGuest(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (authHeader && authHeader.startsWith('Bearer guest:')) {
+    try {
+      const sessionToken = authHeader.slice('Bearer guest:'.length).trim();
+      if (!sessionToken) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'Session invitée invalide' });
+      }
+
+      const member = await prisma.tripMember.findUnique({
+        where: { sessionToken },
+        select: { id: true, tripId: true, guestName: true, guestEmail: true, role: true },
+      });
+
+      if (!member) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'Session invitée invalide ou expirée' });
+      }
+
+      req.user = {
+        id: `guest_${member.id}`,
+        firstName: member.guestName,
+        lastName: '',
+        email: member.guestEmail,
+        imageUrl: null,
+        isGuest: true,
+        guestMemberId: member.id,
+        allowedTripId: member.tripId, // l'invité n'accède qu'à CE voyage
+      };
+      return next();
+    } catch (error) {
+      console.error('❌ Guest authentication error:', error.message);
+      return res.status(401).json({ error: 'Unauthorized', message: 'Authentication failed' });
+    }
+  }
+
+  return authenticateUser(req, res, next);
+}
+
+/**
  * Optional authentication middleware
  * Attache l'utilisateur s'il est authentifié, sinon continue sans erreur
  */

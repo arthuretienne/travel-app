@@ -1,6 +1,6 @@
 // frontend/src/App.jsx
 import { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-react';
 import { frFR } from '@clerk/localizations';
 
@@ -28,9 +28,11 @@ const Contact = lazy(() => import('./pages/legal/Contact'));
 
 // Layout
 import AppLayout from './components/Layout/AppLayout';
+import GuestTripLayout from './components/Layout/GuestTripLayout';
 
 // DEV-ONLY persona impersonation
 import { DEV_AUTH_ACTIVE, isDevImpersonating } from './lib/devAuth';
+import { readGuestSession } from './lib/guestSession';
 const DevPersonaBar = lazy(() => import('./components/DevPersonaBar'));
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -66,6 +68,30 @@ function ProtectedRoute({ children }) {
       </SignedIn>
       <SignedOut>
         <Navigate to="/" replace />
+      </SignedOut>
+    </>
+  );
+}
+
+// Garde dédiée à /trips/:id : un invité avec une guestSession valide pour CE
+// voyage y accède sans compte Clerk — il ne doit plus jamais rebondir sur la
+// landing après avoir accepté une invitation (fuite n°1 du canal viral).
+function TripProtectedRoute({ children }) {
+  const { id } = useParams();
+  const guestSession = readGuestSession(id);
+
+  if (DEV_AUTH_ACTIVE && isDevImpersonating()) {
+    return <AppLayout>{children}</AppLayout>;
+  }
+  return (
+    <>
+      <SignedIn>
+        <AppLayout>{children}</AppLayout>
+      </SignedIn>
+      <SignedOut>
+        {guestSession
+          ? <GuestTripLayout guestName={guestSession.guestName}>{children}</GuestTripLayout>
+          : <Navigate to="/" replace />}
       </SignedOut>
     </>
   );
@@ -149,9 +175,9 @@ function AppContent() {
         <Route
           path="/trips/:id"
           element={
-            <ProtectedRoute>
+            <TripProtectedRoute>
               <TripDetail />
-            </ProtectedRoute>
+            </TripProtectedRoute>
           }
         />
         <Route

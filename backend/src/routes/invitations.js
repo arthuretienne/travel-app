@@ -402,7 +402,7 @@ router.post('/:token/accept', async (req, res) => {
     } else {
       // Guest mode - create member without userId, with session token for chat access
       if (!guestName || guestName.trim().length === 0) {
-        return res.status(400).json({ error: 'Guest name is required' });
+        return res.status(400).json({ error: 'Indiquez votre prénom pour rejoindre le voyage' });
       }
 
       // Generate a unique session token for guest WebSocket authentication

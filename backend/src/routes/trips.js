@@ -1,7 +1,7 @@
 // backend/src/routes/trips.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateUser } from '../middleware/auth.js';
+import { authenticateUser, authenticateUserOrGuest } from '../middleware/auth.js';
 import { checkLimit, incrementUsage, requireFeature } from '../middleware/checkSubscription.js';
 import { sendBookingReminder } from '../services/emailService.js';
 
@@ -181,7 +181,7 @@ router.get('/', authenticateUser, async (req, res) => {
  * GET /api/trips/:id
  * Get detailed information about a specific collaborative trip
  */
-router.get('/:id', authenticateUser, async (req, res) => {
+router.get('/:id', authenticateUserOrGuest, async (req, res) => {
   try {
     const user = req.user; // Already authenticated by middleware
     const { id } = req.params;
@@ -307,10 +307,14 @@ router.get('/:id', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Trip not found' });
     }
 
-    // Check if user has access to this trip
+    // Check if user has access to this trip.
+    // Guest sessions (invitation acceptée sans compte) ne donnent accès qu'au
+    // voyage de leur invitation — jamais d'invitation pendante par email pour
+    // eux (leur email peut être null, le findFirst matcherait des lignes null).
+    const isGuestMember = user.isGuest === true && user.allowedTripId === id;
     const isMember = trip.members.some((m) => m.userId === user.id);
     const isCreator = trip.creatorId === user.id;
-    const hasInvitation = await prisma.tripInvitation.findFirst({
+    const hasInvitation = user.isGuest ? null : await prisma.tripInvitation.findFirst({
       where: {
         tripId: id,
         email: user.email,
@@ -321,7 +325,7 @@ router.get('/:id', authenticateUser, async (req, res) => {
       },
     });
 
-    if (!isMember && !isCreator && !hasInvitation) {
+    if (!isMember && !isCreator && !hasInvitation && !isGuestMember) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -340,7 +344,7 @@ router.get('/:id', authenticateUser, async (req, res) => {
           canPropose: isMember || isCreator,
           canVote: isMember || isCreator,
           canEditSettings: isCreator,
-          canSendMessages: isMember || isCreator,
+          canSendMessages: isMember || isCreator || isGuestMember,
         },
       },
     });

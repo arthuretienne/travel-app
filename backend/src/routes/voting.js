@@ -1,7 +1,7 @@
 // backend/src/routes/voting.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateUser } from '../middleware/auth.js';
+import { authenticateUser, authenticateUserOrGuest } from '../middleware/auth.js';
 import { broadcastTripUpdate, broadcastSystemMessage } from '../services/socketService.js';
 
 const router = express.Router();
@@ -340,7 +340,7 @@ router.post('/:tripId/vote', authenticateUser, async (req, res) => {
  * GET /api/trips/:tripId/voting-results
  * Calculate voting results using score-based algorithm
  */
-router.get('/:tripId/voting-results', authenticateUser, async (req, res) => {
+router.get('/:tripId/voting-results', authenticateUserOrGuest, async (req, res) => {
   try {
     const user = req.user; // Already authenticated by middleware
     const { tripId } = req.params;
@@ -383,11 +383,12 @@ router.get('/:tripId/voting-results', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Trip not found' });
     }
 
-    // Check if user has access
+    // Check if user has access (guest sessions count, for their trip only)
     const isMember = trip.members.some((m) => m.userId === user.id);
     const isCreator = trip.creatorId === user.id;
+    const isGuestMember = user.isGuest === true && user.allowedTripId === tripId;
 
-    if (!isMember && !isCreator) {
+    if (!isMember && !isCreator && !isGuestMember) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
