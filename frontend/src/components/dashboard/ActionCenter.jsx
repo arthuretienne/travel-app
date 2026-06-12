@@ -153,8 +153,8 @@ export default function ActionCenter({ items, loading, error, onAct, onPlan, has
         <EmptyState
           icon={<Sparkles size={28} />}
           title="Rien d'urgent — bon moment pour explorer une nouvelle destination."
-          sub="Tu n'as pas encore de trip. Lance une première recherche pour activer ton cockpit."
-          action={{ label: 'Explorer', onClick: onPlan, variant: 'primary' }}
+          sub="Vous n'avez pas encore de voyage. Lancez une première recherche pour commencer."
+          action={{ label: 'Composer un voyage', onClick: onPlan, variant: 'primary' }}
         />
       </section>
     );
@@ -168,7 +168,7 @@ export default function ActionCenter({ items, loading, error, onAct, onPlan, has
             À faire <em className="font-display italic text-ember-700 not-italic">maintenant</em>
           </h2>
           <p className="mt-1 text-sm text-text-secondary">
-            {visibleItems.length} élément{visibleItems.length > 1 ? 's' : ''} demande{visibleItems.length > 1 ? 'nt' : ''} ta décision · trié par urgence
+            {visibleItems.length} élément{visibleItems.length > 1 ? 's' : ''} attend{visibleItems.length > 1 ? 'ent' : ''} votre décision · trié par urgence
           </p>
         </div>
       </div>

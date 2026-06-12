@@ -415,7 +415,7 @@ export default function TripsSection({
       ) : error ? (
         <EmptyState
           icon={<Map size={28} />}
-          title="Impossible de charger tes trips"
+          title="Impossible de charger vos voyages"
           sub={error}
           action={{ label: 'Réessayer', onClick: onRetry, variant: 'primary' }}
         />
@@ -424,14 +424,14 @@ export default function TripsSection({
           <EmptyState
             icon={<Map size={30} />}
             title="Et après ?"
-            sub="Décris ta prochaine envie — Skusku compose la destination, les dates, le vol et l'hôtel."
+            sub="Décrivez votre prochaine envie — Skusku compose la destination, les dates, le vol et l'hôtel."
             action={{ label: 'Planifier', onClick: onPlan, iconRight: <ChevronRight size={14} /> }}
           />
         ) : (
           <EmptyState
             icon={<Map size={28} />}
             title="Aucun trip pour ce filtre"
-            sub="Élargis ta sélection ou lance une nouvelle recherche."
+            sub="Élargissez votre sélection ou lancez une nouvelle recherche."
             action={{ label: 'Tout afficher', onClick: () => { setTemporal('upcoming'); setType('all'); setSearch(''); }, variant: 'outline' }}
           />
         )

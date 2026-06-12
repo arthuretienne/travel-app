@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Plus, Sparkles } from 'lucide-react';
 import useDashboardData from '../hooks/useDashboardData';
 import { useFormat } from '../i18n/format';
-import { EmptyState } from '../components/ui';
+import { Button, EmptyState } from '../components/ui';
 import HeroGreeting from '../components/dashboard/HeroGreeting';
 import ActionCenter from '../components/dashboard/ActionCenter';
 import NextTripSpotlight from '../components/dashboard/NextTripSpotlight';
@@ -94,7 +94,32 @@ function Dashboard() {
       <div className="grid min-h-screen place-items-center bg-surface-subtle">
         <div className="text-center">
           <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-ember-700" />
-          <p className="text-sm text-text-secondary">Préparation de ton cockpit…</p>
+          <p className="text-sm text-text-secondary">Préparation de votre espace…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Dashboard vide = UNE action évidente, pas six CTA concurrents
+  // (Annexe A #5 audit V3).
+  if (!loading && !hasAnyTrip) {
+    return (
+      <div className="min-h-screen bg-surface-subtle">
+        <div className="mx-auto max-w-2xl px-5 py-20 text-center sm:py-28">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-[16px] bg-ember-50 text-ember-700">
+            <Sparkles size={26} />
+          </span>
+          <h1 className="mt-6 font-display text-4xl font-medium leading-tight text-text-main md:text-5xl">
+            Où partez-vous en premier ?
+          </h1>
+          <p className="mx-auto mt-4 max-w-md text-base leading-7 text-text-secondary">
+            Décrivez votre envie — Skusku compose la destination, les dates, le vol et l'hôtel.
+          </p>
+          <div className="mt-8 flex justify-center">
+            <Button size="lg" onClick={handleCreateTrip} icon={<Plus size={18} />}>
+              Composer mon premier voyage
+            </Button>
+          </div>
         </div>
       </div>
     );

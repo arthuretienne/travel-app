@@ -272,7 +272,7 @@ export default function useDashboardData() {
         id: 'seasonal',
         eyebrow: 'Fenêtre récurrente',
         keyword: monthName,
-        body: 'Tu cherches souvent en {keyword}. De nouvelles destinations matchent ton profil.',
+        body: 'Vous cherchez souvent en {keyword}. De nouvelles destinations correspondent à votre profil.',
         cta: 'Voir les pistes',
         href: '/create-trip',
       });

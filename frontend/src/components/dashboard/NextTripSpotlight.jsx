@@ -57,7 +57,7 @@ export default function NextTripSpotlight({ trip, daysUntil, helpers, onOpen, on
             Ton <em className="font-display italic text-ember-700 not-italic">prochain</em> départ
           </h2>
           <p className="mt-1 text-sm text-text-secondary">
-            Aucun trip à venir — voici une fenêtre qui matche ton profil.
+            Aucun voyage à venir — voici une fenêtre qui correspond à votre profil.
           </p>
         </div>
         <div className="rounded-[22px] border border-sand-200 bg-white p-7 shadow-1">
@@ -71,11 +71,11 @@ export default function NextTripSpotlight({ trip, daysUntil, helpers, onOpen, on
                   Suggestion personnalisée
                 </p>
                 <h3 className="font-display text-2xl font-medium text-text-main">
-                  Précise tes envies, on cale une fenêtre.
+                  Précisez vos envies, on cale une fenêtre.
                 </h3>
                 <p className="mt-1 text-sm text-text-secondary max-w-md">
-                  Lance une recherche : on combine ta préférence de durée, ton budget et la saison pour
-                  proposer une destination réelle, pas un mock.
+                  Lancez une recherche : Skusku combine votre durée préférée, votre budget et la saison pour
+                  proposer une destination réelle.
                 </p>
               </div>
             </div>
@@ -161,7 +161,7 @@ export default function NextTripSpotlight({ trip, daysUntil, helpers, onOpen, on
           <h3 className="mt-2 font-display text-2xl font-medium text-text-main">
             {firstMissing
               ? `Vol ${flightOk ? 'confirmé' : 'à réserver'}. ${firstMissing.label} ${firstMissing.status === 'missing' ? 'manquant' : 'à compléter'}.`
-              : 'Tout est prêt — ouvre ton itinéraire.'}
+              : 'Tout est prêt — ouvrez votre itinéraire.'}
           </h3>
 
           <div className="mt-5 space-y-2">

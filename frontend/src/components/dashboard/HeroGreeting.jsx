@@ -3,7 +3,7 @@ import { Button } from '../ui';
 
 const greetingByHour = (h) => {
   if (h >= 5 && h < 11) return 'Bonjour';
-  if (h >= 11 && h < 18) return 'Salut';
+  if (h >= 11 && h < 18) return 'Bonjour';
   return 'Bonsoir';
 };
 
@@ -28,22 +28,22 @@ export default function HeroGreeting({ firstName, context, onPrimary, onSecondar
   switch (variant) {
     case 'countdown': {
       const days = countdown;
-      const city = next?.city || 'ta destination';
+      const city = next?.city || 'votre destination';
       headline = (
         <>
-          {greeting} <em className="not-italic font-display italic text-ember-700">{name}</em> — il te reste{' '}
+          {greeting} <em className="not-italic font-display italic text-ember-700">{name}</em> — il vous reste{' '}
           <em className="not-italic font-display italic text-ember-700">{days} jour{days > 1 ? 's' : ''}</em> avant {city}.
           {decisions > 0 && (
             <>
               {' '}
-              <strong className="text-text-main">{decisions} décision{decisions > 1 ? 's' : ''} t'attendent.</strong>
+              <strong className="text-text-main">{decisions} décision{decisions > 1 ? 's' : ''} vous attendent.</strong>
             </>
           )}
         </>
       );
       sub = decisions > 0
-        ? 'Règle ce qui bloque ton départ, ou ouvre directement ton trip.'
-        : 'Ton prochain départ est proche — vérifie ce qu’il reste à régler.';
+        ? 'Réglez ce qui bloque votre départ, ou ouvrez directement votre voyage.'
+        : 'Votre prochain départ approche — vérifiez ce qu’il reste à régler.';
       primaryLabel = decisions > 0 ? 'Régler les décisions' : `Voir ${city}`;
       primaryIcon = decisions > 0 ? <Vote size={16} /> : <ChevronRight size={16} />;
       secondaryLabel = decisions > 0 ? `Voir ${city}` : null;
@@ -53,23 +53,23 @@ export default function HeroGreeting({ firstName, context, onPrimary, onSecondar
       headline = (
         <>
           {greeting} <em className="not-italic font-display italic text-ember-700">{name}</em> —{' '}
-          <strong className="text-text-main">{decisions} décision{decisions > 1 ? 's' : ''} t'attendent.</strong>
+          <strong className="text-text-main">{decisions} décision{decisions > 1 ? 's' : ''} vous attendent.</strong>
         </>
       );
-      sub = 'Vote, invitations, baisses de prix : ce qui demande ton input apparaît juste en dessous.';
+      sub = 'Vote, invitations, baisses de prix : ce qui attend votre décision apparaît juste en dessous.';
       primaryLabel = 'Régler les décisions';
       primaryIcon = <Vote size={16} />;
       break;
     }
     case 'priceDrop': {
-      const title = priceDrop?.title || 'une de tes alertes';
+      const title = priceDrop?.title || 'une de vos alertes';
       headline = (
         <>
           {greeting} <em className="not-italic font-display italic text-ember-700">{name}</em> — une baisse de prix vient de tomber sur{' '}
           <strong className="text-text-main">{title}</strong>.
         </>
       );
-      sub = 'Le prix est sous ton seuil cible. Bonne fenêtre pour réserver.';
+      sub = 'Le prix est sous votre seuil cible. Bonne fenêtre pour réserver.';
       primaryLabel = "Voir l'offre";
       primaryIcon = <TrendingDown size={16} />;
       break;
@@ -78,12 +78,12 @@ export default function HeroGreeting({ firstName, context, onPrimary, onSecondar
     default: {
       headline = (
         <>
-          {greeting} <em className="not-italic font-display italic text-ember-700">{name}</em>. Aucun trip prévu —{' '}
+          {greeting} <em className="not-italic font-display italic text-ember-700">{name}</em>. Aucun voyage prévu —{' '}
           <strong className="text-text-main">bonne fenêtre pour explorer.</strong>
         </>
       );
-      sub = 'Lance une recherche, on cale les dates, le vol et l’hôtel sur ton profil.';
-      primaryLabel = 'Planifier un trip';
+      sub = 'Lancez une recherche : Skusku cale les dates, le vol et l’hôtel sur votre profil.';
+      primaryLabel = 'Composer un voyage';
       primaryIcon = <Plus size={16} />;
     }
   }
@@ -108,7 +108,7 @@ export default function HeroGreeting({ firstName, context, onPrimary, onSecondar
           </Button>
         )}
         <Button variant="ghost" onClick={onCompose} iconRight={<Plus size={14} />} className="w-full sm:w-auto">
-          Planifier un nouveau trip
+          Composer un nouveau voyage
         </Button>
       </div>
     </section>

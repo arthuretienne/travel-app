@@ -19,10 +19,10 @@ export default function InsightsRow({ insights }) {
     <section className="mb-10">
       <div className="mb-5">
         <h2 className="font-display text-2xl font-medium text-text-main">
-          Tes <em className="font-display italic text-ember-700 not-italic">habitudes</em>, en pistes
+          Vos <em className="font-display italic text-ember-700 not-italic">habitudes</em>, en pistes
         </h2>
         <p className="mt-1 text-sm text-text-secondary">
-          {insights.length} observation{insights.length > 1 ? 's' : ''} basée{insights.length > 1 ? 's' : ''} sur tes recherches · ignorables, jamais imposées
+          {insights.length} observation{insights.length > 1 ? 's' : ''} basée{insights.length > 1 ? 's' : ''} sur vos recherches · ignorables, jamais imposées
         </p>
       </div>
 
