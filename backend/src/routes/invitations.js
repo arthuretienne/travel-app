@@ -434,8 +434,8 @@ router.post('/:token/accept', async (req, res) => {
       data: {
         tripId: invitation.tripId,
         content: authenticatedUser
-          ? `${authenticatedUser.firstName || authenticatedUser.email} joined the trip`
-          : `${guestName} joined the trip`,
+          ? `${authenticatedUser.firstName || authenticatedUser.email} a rejoint le voyage`
+          : `${guestName} a rejoint le voyage`,
         type: 'system',
       },
     });

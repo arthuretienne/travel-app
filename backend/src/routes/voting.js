@@ -111,7 +111,7 @@ router.post('/:tripId/destinations', authenticateUser, async (req, res) => {
     await prisma.tripMessage.create({
       data: {
         tripId,
-        content: `${user.firstName || user.email} proposed ${city}, ${country}`,
+        content: `${user.firstName || user.email} a proposé ${city}, ${country}`,
         type: 'system',
       },
     });
@@ -273,7 +273,7 @@ router.post('/:tripId/vote', authenticateUser, async (req, res) => {
     await prisma.tripMessage.create({
       data: {
         tripId,
-        content: `${user.firstName || user.email} voted`,
+        content: `${user.firstName || user.email} a voté`,
         type: 'vote_update',
       },
     });
@@ -534,7 +534,7 @@ router.post('/:tripId/finalize-vote', authenticateUser, async (req, res) => {
     await prisma.tripMessage.create({
       data: {
         tripId,
-        content: `Voting complete! ${selectedDestination.city}, ${selectedDestination.country} has been selected.`,
+        content: `Vote terminé — ${selectedDestination.city} l'emporte 🎉`,
         type: 'system',
       },
     });

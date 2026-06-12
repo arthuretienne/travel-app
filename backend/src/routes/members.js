@@ -121,8 +121,8 @@ router.delete('/:tripId/members/:memberId', authenticateUser, async (req, res) =
       data: {
         tripId,
         content: isSelf
-          ? `${memberName} left the trip`
-          : `${memberName} was removed from the trip`,
+          ? `${memberName} a quitté le voyage`
+          : `${memberName} a été retiré du voyage`,
         type: 'system',
       },
     });
@@ -201,7 +201,7 @@ router.patch('/:tripId/members/:memberId/booking', authenticateUser, async (req,
       await prisma.tripMessage.create({
         data: {
           tripId,
-          content: `${memberName} confirmed their booking!`,
+          content: `${memberName} a confirmé sa réservation ✅`,
           type: 'system',
         },
       });

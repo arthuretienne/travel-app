@@ -123,13 +123,23 @@ export default function TripChat({ tripId, tripName, embedded = false, guestSess
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Highlight @assistant mentions in the signature ember tone
+  // Rendu inline des messages : @assistant en ember + markdown léger
+  // (**gras**, *italique*). L'assistant répond en markdown — sans ce rendu,
+  // l'utilisateur voyait des « ** » bruts (audit V3 P1). Les retours à la
+  // ligne et les puces « - » sont déjà gérés par whitespace-pre-wrap.
   const renderMentions = (text) =>
-    String(text).split(/(@assistant)/g).map((part, i) =>
-      part === '@assistant'
-        ? <span key={i} className="font-semibold text-ember-600">{part}</span>
-        : <span key={i}>{part}</span>
-    );
+    String(text).split(/(@assistant|\*\*[^*\n]+\*\*|\*[^*\n]+\*)/g).map((part, i) => {
+      if (part === '@assistant') {
+        return <span key={i} className="font-semibold text-ember-600">{part}</span>;
+      }
+      if (/^\*\*[^*\n]+\*\*$/.test(part)) {
+        return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
+      }
+      if (/^\*[^*\n]+\*$/.test(part)) {
+        return <em key={i}>{part.slice(1, -1)}</em>;
+      }
+      return <span key={i}>{part}</span>;
+    });
 
   // Format date header
   const formatDateHeader = (dateStr) => {
