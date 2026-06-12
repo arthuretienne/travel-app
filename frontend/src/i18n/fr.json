@@ -310,8 +310,8 @@
   },
   "createTrip": {
     "profileLoading": "Chargement de vos préférences…",
-    "profileLoadingSub": "Le serveur démarre, cela peut prendre quelques secondes",
-    "coldStart": "Démarrage en cours… Vos préférences seront chargées dans quelques instants. Vous pouvez déjà remplir le formulaire.",
+    "profileLoadingSub": "Quelques secondes — vos préférences arrivent",
+    "coldStart": "Vos préférences mettent un peu de temps à arriver — vous pouvez déjà remplir le formulaire.",
     "back": "Retour",
     "cancel": "Annuler",
     "continue": "Continuer",

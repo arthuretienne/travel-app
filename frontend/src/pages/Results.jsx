@@ -64,7 +64,8 @@ function Results() {
           controller.abort();
           setIsStreaming(false);
           setStreamingStatus('');
-          setError((prev) => prev || 'La recherche prend trop de temps. Réessayez dans un instant (le serveur démarre peut-être).');
+          // Honnête, sans fuite infra : c'est nous, pas les critères de l'utilisateur.
+          setError((prev) => prev || 'La recherche prend plus de temps que prévu — c’est de notre côté. Réessayez dans une minute.');
         }
       }, 120000);
 
@@ -512,8 +513,11 @@ function Results() {
     );
   }
 
-  // Empty state
-  if (recommendations.length === 0 && !isStreaming) {
+  // Empty state. Quand le backend a envoyé un budget_warning, on laisse le
+  // rendu principal afficher ses suggestions + alternatives train — cet
+  // early-return les avalait et l'utilisateur ne voyait que « Aucun
+  // résultat » (cas E1 de l'audit V3 : moteur honnête, restitution ratée).
+  if (recommendations.length === 0 && !isStreaming && !budgetWarning) {
     // Extract context from search payload if available
     const searchPayload = location.state?.searchPayload;
     const budget = searchPayload?.preferences?.budget;
@@ -535,11 +539,14 @@ function Results() {
           <h3 className="font-display text-2xl text-text-main mb-2">Aucun résultat trouvé</h3>
 
           {totalBudget && totalBudget < minEstimate ? (
-            <div className="text-left bg-gold-100 border border-gold-100 rounded-2xl p-5 mb-6">
-              <p className="text-sm font-semibold text-gold-500 mb-3">
+            /* Texte en text-main/secondary sur fond gold-100 : l'ancien
+               gold-500 sur gold-100 était à 2.17:1 — quasi illisible au
+               moment exact où l'utilisateur doute (audit V3 P1). */
+            <div className="text-left bg-gold-100 border border-gold-500/30 rounded-2xl p-5 mb-6">
+              <p className="text-sm font-semibold text-text-main mb-3">
                 Budget insuffisant pour {travelers} {travelers > 1 ? 'personnes' : 'personne'}, {nights} nuits
               </p>
-              <ul className="space-y-2 text-sm text-gold-500">
+              <ul className="space-y-2 text-sm text-text-main">
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5">•</span>
                   Budget saisi : <strong>{formatEUR(totalBudget)}</strong> total ({formatEUR(budget)}/pers.)
@@ -549,16 +556,20 @@ function Results() {
                   Minimum estimé : <strong>~{formatEUR(minEstimate)}</strong> (vol ~{formatEUR(80 * travelers)} + hôtel ~{formatEUR(50 * Math.ceil(travelers / 2) * nights)})
                 </li>
               </ul>
-              <p className="text-xs text-gold-500 mt-3 font-medium">Suggestions :</p>
-              <ul className="space-y-1 text-xs text-gold-500 mt-1">
+              <p className="text-xs text-text-main mt-3 font-semibold">Suggestions :</p>
+              <ul className="space-y-1 text-xs text-text-secondary mt-1">
                 <li>→ Augmenter le budget à {formatEUR(Math.ceil(minEstimate / travelers / 50) * 50)}/pers. minimum</li>
                 <li>→ Réduire la durée à {Math.max(2, nights - 2)} nuits</li>
                 {travelers > 2 && <li>→ Partir à {travelers - 1} personnes</li>}
               </ul>
             </div>
           ) : (
+            /* Sans signal budget du backend, la cause la plus probable d'un
+               zéro-résultat est un incident côté partenaires — on ne fait
+               plus porter le chapeau aux critères (Annexe A #7). */
             <p className="text-text-secondary mb-6">
-              Aucune destination ne correspond à vos critères actuels. Essayez d'ajuster vos préférences ou votre budget.
+              Nos partenaires vols/hôtels n'ont pas répondu pour cette recherche.
+              Vos critères sont bons — c'est de notre côté. Réessayez dans quelques minutes.
             </p>
           )}
 
@@ -653,11 +664,14 @@ function Results() {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-gold-500 mb-2">{budgetWarning.message}</h3>
-                <ul className="text-sm text-gold-500 space-y-1 mb-4">
+                {/* text-main sur gold-100 : l'ancien gold-sur-gold (2.17:1)
+                    rendait illisible le message d'explication le plus
+                    important du tunnel (audit V3 P1). */}
+                <h3 className="font-semibold text-text-main mb-2">{budgetWarning.message}</h3>
+                <ul className="text-sm text-text-main space-y-1 mb-4">
                   {budgetWarning.suggestions?.map((suggestion, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <span className="text-gold-500 mt-1">•</span>
+                      <span className="mt-1">•</span>
                       {suggestion}
                     </li>
                   ))}
@@ -665,8 +679,8 @@ function Results() {
 
                 {/* Train/Bus Alternatives */}
                 {trainAlternatives.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-gold-100">
-                    <h4 className="font-medium text-gold-500 mb-3 flex items-center gap-2">
+                  <div className="mt-4 pt-4 border-t border-gold-500/30">
+                    <h4 className="font-medium text-text-main mb-3 flex items-center gap-2">
                       <span>🚂</span> Alternatives train & bus (moins cher !)
                     </h4>
                     <div className="grid gap-2">

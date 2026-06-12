@@ -402,13 +402,15 @@ export async function discoverDestinations({
         flightOptions: fallbackOptions.length ? fallbackOptions : overBudgetOptions,
         alternatives: trainAlternatives,
         overBudgetOptions,
+        // Message utilisateur : toujours en français (Annexe A #8 audit V3 —
+        // ce warning arrivait en anglais sur un produit français).
         budgetWarning: {
-          message: `Flight prices exceed your €${budget} budget. Here are your best options:`,
+          message: `Les vols dépassent votre budget de ${budget} €. Pour rester dedans, voici vos meilleures options :`,
           suggestions: [
-            'Consider train or bus for nearby destinations (often cheaper)',
-            'Try flexible dates (±3 days can save 30-50%)',
-            'Book further in advance (2-3 months)',
-            `Increase budget by €${Math.round(overBudgetOptions[0]?.priceDifference || 100)} for more options`
+            'Partir en train ou en bus vers une destination proche (souvent moins cher)',
+            'Élargir vos dates de ±3 jours (jusqu’à 30-50 % d’économie)',
+            'Réserver 2-3 mois à l’avance',
+            `Augmenter le budget d’environ ${Math.round(overBudgetOptions[0]?.priceDifference || 100)} € pour débloquer plus d’options`
           ]
         }
       };
