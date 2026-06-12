@@ -275,7 +275,7 @@ Run `npx prisma db push` in the Render shell, or add it to the build command abo
 - ✅ `/api/billing/usage` endpoint for frontend stats
 - ✅ `SearchUsageWidget` component on Dashboard & CreateTrip
 - ✅ Blocks search when limit reached, prompts upgrade
-- Plans: FREE (10/mo), EXPLORER (50/mo), WANDERER (unlimited)
+- Plans: FREE (5/mo), EXPLORER "Starter" (40/mo), WANDERER (unlimited) — aligned on the public pricing page (decision 2026-06-11: the pricing page is the source of truth)
 
 ### Stripe Integration - ✅ READY
 - ✅ Checkout session creation (`/api/billing/checkout`)
@@ -290,7 +290,7 @@ Run `npx prisma db push` in the Render shell, or add it to the build command abo
 - ✅ API routes: `/api/price-alerts` (CRUD + manual check)
 - ✅ Email notifications via Resend (`sendPriceDropEmail`)
 - ✅ Frontend page at `/price-alerts`
-- Alert limits: FREE (3), EXPLORER (10), WANDERER (unlimited)
+- Alert limits: FREE (0), EXPLORER "Starter" (3), WANDERER (unlimited) — aligned on the pricing page comparison table; push notifications gated to WANDERER (requireFeature('pushNotifications'))
 - Features:
   - Create alerts with target price (default -10% from current)
   - Daily/weekly price checking
