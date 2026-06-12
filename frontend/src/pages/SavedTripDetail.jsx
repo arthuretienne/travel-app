@@ -255,6 +255,13 @@ export default function SavedTripDetail() {
   useEffect(() => {
     if (!trip?.id) return;
     let cancelled = false;
+    let retryTimer = null;
+
+    const fetchItinerary = (headers) =>
+      fetch(`${API_URL}/api/trips/${trip.id}/itinerary`, { headers })
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null);
+
     const fetchAll = async () => {
       try {
         const token = await getToken();
@@ -262,22 +269,51 @@ export default function SavedTripDetail() {
         const [w, p, it, ev] = await Promise.all([
           fetch(`${API_URL}/api/trips/${trip.id}/weather`,   { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
           fetch(`${API_URL}/api/trips/${trip.id}/packing`,   { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch(`${API_URL}/api/trips/${trip.id}/itinerary`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetchItinerary(headers),
           fetch(`${API_URL}/api/trips/${trip.id}/events`,    { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
         ]);
         if (cancelled) return;
         setWeather(w?.data?.weather || null);
         setPacking(p?.data?.packing || null);
-        setItinerary(it?.data?.itinerary || null);
         setEvents(ev?.data?.events || null);
-        setItineraryLoading(false);
+
+        if (it?.data?.itinerary?.length) {
+          setItinerary(it.data.itinerary);
+          setItineraryLoading(false);
+          return;
+        }
+
+        // La génération continue côté serveur même quand NOTRE requête a
+        // échoué/expiré : une fois le cache écrit, la relecture est
+        // instantanée. On re-tente quelques fois au lieu de laisser l'UI
+        // bloquée sur « Création de votre itinéraire… » jusqu'au reload
+        // manuel (audit V3 P1). Après ~2 min sans succès, on rend l'état
+        // vide (avec son invitation à rafraîchir).
+        let attempts = 0;
+        const poll = async () => {
+          if (cancelled) return;
+          attempts += 1;
+          const again = await fetchItinerary(headers);
+          if (cancelled) return;
+          if (again?.data?.itinerary?.length) {
+            setItinerary(again.data.itinerary);
+            setItineraryLoading(false);
+            return;
+          }
+          if (attempts >= 5) {
+            setItineraryLoading(false);
+            return;
+          }
+          retryTimer = setTimeout(poll, 20000);
+        };
+        retryTimer = setTimeout(poll, 15000);
       } catch (err) {
         console.error('Error loading enhancements:', err);
         if (!cancelled) setItineraryLoading(false);
       }
     };
     fetchAll();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(retryTimer); };
   }, [trip?.id, getToken]);
 
   // --- Sticky summary bar reveal on scroll past hero -----------------------
