@@ -4,6 +4,11 @@ import { Resend } from 'resend';
 // Initialize Resend only if API key is available
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Skusku <noreply@skusku.life>';
+
+// Format monétaire FR unique pour tous les emails : « 1 136 € », jamais « €1,136 »
+const fmtEUR = (n) => `${Math.round(Number(n) || 0).toLocaleString('fr-FR')} €`;
+
 /**
  * Send trip invitation email
  */
@@ -31,12 +36,14 @@ export async function sendTripInvitation({
     }
 
     console.log('✅ RESEND_API_KEY is configured');
-    console.log('📧 From Address:', process.env.EMAIL_FROM || 'Travel AI <noreply@yourdomain.com>');
+    console.log('📧 From Address:', EMAIL_FROM);
 
+    // Le prénom de l'invitant en premier mot : c'est lui l'argument de
+    // conversion, pas le produit (Annexe A #9 audit V3).
     const emailPayload = {
-      from: process.env.EMAIL_FROM || 'Travel AI <noreply@yourdomain.com>',
+      from: EMAIL_FROM,
       to: [to],
-      subject: `🌍 You're invited to join "${tripName}"!`,
+      subject: `${inviterName} vous invite : ${tripName} ✈️`,
       html: generateInvitationEmail({
         tripName,
         inviterName,
@@ -86,17 +93,17 @@ export async function sendTripInvitation({
 function generateInvitationEmail({ tripName, inviterName, acceptUrl, message }) {
   return `
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="fr">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Trip Invitation</title>
+      <title>Invitation à un voyage</title>
       <style>
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
           line-height: 1.6;
-          color: #333;
-          background-color: #f5f7fa;
+          color: #3d3528;
+          background-color: #f7f4ef;
           margin: 0;
           padding: 0;
         }
@@ -106,17 +113,17 @@ function generateInvitationEmail({ tripName, inviterName, acceptUrl, message }) 
           background: white;
           border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 4px 6px rgba(61, 53, 40, 0.08);
         }
         .header {
-          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+          background: #2e2a23;
           color: white;
           padding: 40px 30px;
           text-align: center;
         }
         .header h1 {
           margin: 0;
-          font-size: 28px;
+          font-size: 26px;
           font-weight: bold;
         }
         .content {
@@ -125,20 +132,20 @@ function generateInvitationEmail({ tripName, inviterName, acceptUrl, message }) 
         .trip-name {
           font-size: 24px;
           font-weight: bold;
-          color: #3b82f6;
+          color: #b85c38;
           margin: 20px 0;
           text-align: center;
         }
         .message-box {
-          background: #f0f9ff;
-          border-left: 4px solid #3b82f6;
+          background: #faf6f0;
+          border-left: 4px solid #b85c38;
           padding: 20px;
           margin: 20px 0;
           border-radius: 8px;
         }
         .cta-button {
           display: inline-block;
-          background: #3b82f6;
+          background: #b85c38;
           color: white;
           text-decoration: none;
           padding: 16px 32px;
@@ -153,12 +160,12 @@ function generateInvitationEmail({ tripName, inviterName, acceptUrl, message }) 
           margin: 30px 0;
         }
         .footer {
-          background: #f9fafb;
+          background: #faf8f4;
           padding: 30px;
           text-align: center;
-          color: #6b7280;
+          color: #8a7d68;
           font-size: 14px;
-          border-top: 1px solid #e5e7eb;
+          border-top: 1px solid #ebe4d8;
         }
         .features {
           margin: 30px 0;
@@ -169,8 +176,8 @@ function generateInvitationEmail({ tripName, inviterName, acceptUrl, message }) 
           margin: 15px 0;
         }
         .feature-icon {
-          background: #dbeafe;
-          color: #3b82f6;
+          background: #f6e7df;
+          color: #b85c38;
           width: 40px;
           height: 40px;
           border-radius: 8px;
@@ -185,11 +192,11 @@ function generateInvitationEmail({ tripName, inviterName, acceptUrl, message }) 
         }
         .feature-title {
           font-weight: 600;
-          color: #1f2937;
+          color: #2e2a23;
           margin-bottom: 4px;
         }
         .feature-description {
-          color: #6b7280;
+          color: #8a7d68;
           font-size: 14px;
         }
       </style>
@@ -197,19 +204,19 @@ function generateInvitationEmail({ tripName, inviterName, acceptUrl, message }) 
     <body>
       <div class="container">
         <div class="header">
-          <h1>✈️ You're Invited!</h1>
-          <p style="margin: 10px 0 0 0; opacity: 0.9;">Join us for an amazing trip</p>
+          <h1>✈️ ${inviterName} vous invite</h1>
+          <p style="margin: 10px 0 0 0; opacity: 0.85;">Un voyage se prépare — il ne manque que vous</p>
         </div>
 
         <div class="content">
-          <p>Hey there! 👋</p>
-          <p><strong>${inviterName}</strong> has invited you to join a collaborative trip planning adventure:</p>
+          <p>Bonjour,</p>
+          <p><strong>${inviterName}</strong> vous invite à organiser un voyage ensemble :</p>
 
           <div class="trip-name">${tripName}</div>
 
           ${message ? `
             <div class="message-box">
-              <strong>Personal message:</strong><br>
+              <strong>Message personnel :</strong><br>
               ${message}
             </div>
           ` : ''}
@@ -218,46 +225,46 @@ function generateInvitationEmail({ tripName, inviterName, acceptUrl, message }) 
             <div class="feature">
               <div class="feature-icon">🤝</div>
               <div class="feature-text">
-                <div class="feature-title">Collaborate Together</div>
-                <div class="feature-description">Plan your trip with friends in real-time</div>
+                <div class="feature-title">Planifiez ensemble</div>
+                <div class="feature-description">Organisez le voyage avec vos amis, en temps réel</div>
               </div>
             </div>
 
             <div class="feature">
               <div class="feature-icon">🗳️</div>
               <div class="feature-text">
-                <div class="feature-title">Vote on Destinations</div>
-                <div class="feature-description">Everyone gets a say in where to go</div>
+                <div class="feature-title">Votez pour la destination</div>
+                <div class="feature-description">Chacun donne son avis, le groupe décide</div>
               </div>
             </div>
 
             <div class="feature">
               <div class="feature-icon">🤖</div>
               <div class="feature-text">
-                <div class="feature-title">AI-Powered Suggestions</div>
-                <div class="feature-description">Get personalized recommendations based on group preferences</div>
+                <div class="feature-title">Suggestions par IA</div>
+                <div class="feature-description">Des propositions adaptées aux envies du groupe</div>
               </div>
             </div>
           </div>
 
           <div class="button-container">
             <a href="${acceptUrl}" class="cta-button">
-              Accept Invitation & Join Trip
+              Rejoindre le voyage
             </a>
           </div>
 
-          <p style="text-align: center; color: #6b7280; font-size: 14px; margin-top: 30px;">
-            Or copy and paste this link into your browser:<br>
-            <a href="${acceptUrl}" style="color: #3b82f6; word-break: break-all;">${acceptUrl}</a>
+          <p style="text-align: center; color: #8a7d68; font-size: 14px; margin-top: 30px;">
+            Ou copiez ce lien dans votre navigateur :<br>
+            <a href="${acceptUrl}" style="color: #b85c38; word-break: break-all;">${acceptUrl}</a>
           </p>
         </div>
 
         <div class="footer">
           <p style="margin: 0 0 10px 0;">
-            Powered by <strong>Travel AI</strong> × Claude AI × Amadeus
+            Envoyé via <strong>Skusku</strong> — skusku.life
           </p>
           <p style="margin: 0; font-size: 12px;">
-            This invitation will expire in 7 days
+            Cette invitation expire dans 7 jours
           </p>
         </div>
       </div>
@@ -283,9 +290,9 @@ export async function sendTripUpdateNotification({
     }
 
     const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM || 'Travel AI <noreply@yourdomain.com>',
+      from: EMAIL_FROM,
       to: [to],
-      subject: `🔔 Update for "${tripName}"`,
+      subject: `Du nouveau sur « ${tripName} »`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -301,13 +308,13 @@ export async function sendTripUpdateNotification({
         <body>
           <div class="container">
             <div class="header">
-              <h2>Trip Update: ${tripName}</h2>
+              <h2>Du nouveau sur ${tripName}</h2>
             </div>
             <div class="content">
               <h3>${updateType}</h3>
               <p>${updateMessage}</p>
               <div style="text-align: center;">
-                <a href="${tripUrl}" class="button">View Trip Details</a>
+                <a href="${tripUrl}" class="button">Voir le voyage</a>
               </div>
             </div>
           </div>
@@ -371,9 +378,9 @@ export async function sendBookingReminder({
     }).join(' et ');
 
     const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM || 'Skusku <noreply@skusku.life>',
+      from: EMAIL_FROM,
       to: [to],
-      subject: `⏰ Rappel: Réserve ton ${missingText} pour ${destination}!`,
+      subject: `⏰ Rappel : votre ${missingText} pour ${destination}`,
       html: `
         <!DOCTYPE html>
         <html lang="fr">
@@ -462,13 +469,13 @@ export async function sendBookingReminder({
         <body>
           <div class="container">
             <div class="header">
-              <h1>⏰ Petit rappel!</h1>
-              <p style="margin: 10px 0 0 0; opacity: 0.9;">Il est temps de finaliser ta réservation</p>
+              <h1>⏰ Petit rappel</h1>
+              <p style="margin: 10px 0 0 0; opacity: 0.9;">Il est temps de finaliser votre réservation</p>
             </div>
 
             <div class="content">
-              <p>Salut ${memberName}! 👋</p>
-              <p><strong>${senderName}</strong> te rappelle gentiment qu'il faut réserver pour votre voyage:</p>
+              <p>Bonjour ${memberName},</p>
+              <p><strong>${senderName}</strong> vous rappelle gentiment qu'il reste une réservation à faire pour votre voyage :</p>
 
               <div class="trip-card">
                 <div class="trip-name">🌍 ${destination}</div>
@@ -478,11 +485,11 @@ export async function sendBookingReminder({
               </div>
 
               <div class="missing-box">
-                <strong>Il te reste à réserver:</strong><br>
+                <strong>Il vous reste à réserver :</strong><br>
                 ${missingText}
               </div>
 
-              <p>Le groupe compte sur toi pour que tout soit prêt à temps! 🙌</p>
+              <p>Le groupe compte sur vous pour que tout soit prêt à temps 🙌</p>
 
               <div class="button-container">
                 <a href="${tripUrl}" class="cta-button">
@@ -492,9 +499,9 @@ export async function sendBookingReminder({
             </div>
 
             <div class="footer">
-              <p>Envoyé via <strong>Skusku</strong> - AI Travel Planning</p>
+              <p>Envoyé via <strong>Skusku</strong> — skusku.life</p>
               <p style="margin-top: 10px; font-size: 11px; color: #9ca3af;">
-                Tu reçois cet email car tu fais partie du voyage "${tripName}"
+                Vous recevez cet email car vous faites partie du voyage « ${tripName} »
               </p>
             </div>
           </div>
@@ -548,9 +555,9 @@ export async function sendVotingCompleteNotification({
     };
 
     const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM || 'Skusku <noreply@skusku.life>',
+      from: EMAIL_FROM,
       to: [to],
-      subject: `🎉 C'est décidé! Direction ${winningDestination}!`,
+      subject: `🎉 C'est décidé : direction ${winningDestination} !`,
       html: `
         <!DOCTYPE html>
         <html lang="fr">
@@ -655,13 +662,13 @@ export async function sendVotingCompleteNotification({
         <body>
           <div class="container">
             <div class="header">
-              <h1>🎉 Le vote est terminé!</h1>
+              <h1>🎉 Le vote est terminé !</h1>
               <p style="margin: 10px 0 0 0; opacity: 0.9;">La destination de ${tripName} est choisie</p>
             </div>
 
             <div class="content">
-              <p>Hey ${memberName}! 👋</p>
-              <p>Le groupe a voté et la destination gagnante est...</p>
+              <p>Bonjour ${memberName},</p>
+              <p>Le groupe a voté, et la destination gagnante est…</p>
 
               <div class="destination-card">
                 <div class="destination-name">🌍 ${winningDestination}</div>
@@ -669,18 +676,18 @@ export async function sendVotingCompleteNotification({
               </div>
 
               <div class="next-steps">
-                <h3 style="margin-top: 0;">Prochaines étapes:</h3>
+                <h3 style="margin-top: 0;">Prochaines étapes :</h3>
                 <div class="step">
                   <div class="step-icon">1</div>
-                  <div>Réserve ton vol ✈️</div>
+                  <div>Réservez votre vol ✈️</div>
                 </div>
                 <div class="step">
                   <div class="step-icon">2</div>
-                  <div>Réserve ton hébergement 🏨</div>
+                  <div>Réservez votre hébergement 🏨</div>
                 </div>
                 <div class="step">
                   <div class="step-icon">3</div>
-                  <div>Prépare tes affaires 🎒</div>
+                  <div>Préparez vos affaires 🎒</div>
                 </div>
               </div>
 
@@ -692,7 +699,7 @@ export async function sendVotingCompleteNotification({
             </div>
 
             <div class="footer">
-              <p>Bon voyage avec <strong>Skusku</strong>! ✈️</p>
+              <p>Bon voyage avec <strong>Skusku</strong> ✈️</p>
             </div>
           </div>
         </body>
@@ -754,10 +761,12 @@ export async function sendPriceDropEmail({
     const frontendUrl = process.env.FRONTEND_URL || 'https://skusku.life';
     const bookingUrl = `${frontendUrl}/price-alerts?highlight=${alertId}`;
 
+    // Annexe A #10 audit V3 : la destination d'abord, le vrai format FR,
+    // et la preuve que l'alerte a servi — pas un simple constat.
     const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM || 'Skusku <noreply@skusku.life>',
+      from: EMAIL_FROM,
       to: [to],
-      subject: `🔔 Prix en baisse: ${destination} à €${Math.round(currentPrice)} (-${percentDrop}%)`,
+      subject: `${destination} vient de baisser : ${fmtEUR(currentPrice)} (−${percentDrop} %) — votre alerte a fonctionné`,
       html: `
         <!DOCTYPE html>
         <html lang="fr">
@@ -880,25 +889,25 @@ export async function sendPriceDropEmail({
         <body>
           <div class="container">
             <div class="header">
-              <h1>🔔 Alerte Prix!</h1>
-              <p style="margin: 10px 0 0 0; opacity: 0.9;">Le prix de ton vol a baissé</p>
+              <h1>🔔 Votre alerte a fonctionné</h1>
+              <p style="margin: 10px 0 0 0; opacity: 0.9;">Le prix de votre vol a baissé</p>
             </div>
 
             <div class="content">
-              <p>Hey ${userName}! 👋</p>
-              <p>Bonne nouvelle! Le prix du vol que tu surveilles vient de baisser:</p>
+              <p>Bonjour ${userName},</p>
+              <p>Bonne nouvelle : le prix du vol que vous surveillez vient de baisser.</p>
 
               <div class="price-card">
                 <div class="destination-name">✈️ ${destination}${country ? `, ${country}` : ''}</div>
                 <div class="route">${origin} → ${destination}</div>
 
                 <div class="price-container">
-                  <span class="old-price">€${Math.round(originalPrice)}</span>
-                  <span class="new-price">€${Math.round(currentPrice)}</span>
+                  <span class="old-price">${fmtEUR(originalPrice)}</span>
+                  <span class="new-price">${fmtEUR(currentPrice)}</span>
                 </div>
 
                 <div class="savings-badge">
-                  -${percentDrop}% | Tu économises €${Math.round(priceDrop)}
+                  −${percentDrop} % · vous économisez ${fmtEUR(priceDrop)}
                 </div>
 
                 <div class="dates">
@@ -907,24 +916,24 @@ export async function sendPriceDropEmail({
               </div>
 
               <div class="tip-box">
-                💡 <strong>Conseil:</strong> Les prix des vols fluctuent souvent. Si ce prix te convient, réserve rapidement car il pourrait remonter!
+                💡 <strong>À savoir :</strong> les prix last-minute remontent vite. Si ce tarif vous convient, c'est le bon moment pour réserver.
               </div>
 
               <div class="button-container">
                 <a href="${bookingUrl}" class="cta-button">
-                  Voir et réserver maintenant
+                  Voir le prix
                 </a>
               </div>
 
               <p style="text-align: center; color: #6b7280; font-size: 12px;">
-                Prix initial: €${Math.round(originalPrice)} | Prix cible: €${Math.round(targetPrice)}
+                Prix initial : ${fmtEUR(originalPrice)} · Prix cible : ${fmtEUR(targetPrice)}
               </p>
             </div>
 
             <div class="footer">
-              <p>Tu reçois cet email car tu as créé une alerte prix sur <strong>Skusku</strong></p>
+              <p>Vous recevez cet email car vous avez créé une alerte de prix sur <strong>Skusku</strong></p>
               <p style="margin-top: 10px;">
-                <a href="${frontendUrl}/price-alerts" style="color: #3b82f6;">Gérer mes alertes</a>
+                <a href="${frontendUrl}/price-alerts" style="color: #b85c38;">Gérer mes alertes</a>
               </p>
             </div>
           </div>

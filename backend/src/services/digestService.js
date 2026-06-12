@@ -125,14 +125,14 @@ async function buildDigestForUser(supabase, user) {
   // Build subject line
   const topDeal = opportunities?.[0];
   const subject = topDeal
-    ? `✈️ Deal détecté : ${topDeal.destinations?.city} à ${topDeal.flight_price_eur}€`
+    ? `✈️ Deal détecté : ${topDeal.destinations?.city} à ${topDeal.flight_price_eur} €`
     : `🌍 Votre destination de la semaine : ${topMatch?.city}`;
 
   return { subject, opportunities: opportunities || [], topMatch };
 }
 
 function renderDigestEmail({ opportunities, topMatch }, user) {
-  const firstName = user.name?.split(' ')[0] || 'là';
+  const firstName = user.name?.split(' ')[0] || '';
   const dashboardUrl = `${FRONTEND_URL}/dashboard`;
   const createTripUrl = `${FRONTEND_URL}/create-trip`;
 
@@ -157,7 +157,7 @@ function renderDigestEmail({ opportunities, topMatch }, user) {
                 ${o.match_reasons?.[0] ? `<div style="font-size:12px; color:#059669; margin-top:4px;">${o.match_reasons[0]}</div>` : ''}
               </div>
               <div style="text-align:right; flex-shrink:0; margin-left:16px;">
-                <div style="font-size:22px; font-weight:800; color:#059669;">${o.flight_price_eur}€</div>
+                <div style="font-size:22px; font-weight:800; color:#059669;">${o.flight_price_eur} €</div>
                 ${savings ? `<div style="font-size:11px; color:#059669;">-${savings}% vs normal</div>` : ''}
               </div>
             </div>
@@ -186,7 +186,7 @@ function renderDigestEmail({ opportunities, topMatch }, user) {
           ).join('')}
         </div>` : ''}
       <div style="margin-top:6px; font-size:13px; color:#6b7280;">
-        Vol depuis Paris : ~${topMatch.avg_flight_price_eur}€ A/R · Hôtel : ~${topMatch.avg_hotel_price_eur}€/nuit
+        Vol depuis Paris : ~${topMatch.avg_flight_price_eur} € A/R · Hôtel : ~${topMatch.avg_hotel_price_eur} €/nuit
       </div>
       <div style="margin-top:14px;">
         <a href="${createTripUrl}" style="display:inline-block; background:#3b82f6; color:white; text-decoration:none; padding:10px 20px; border-radius:8px; font-weight:600; font-size:13px;">
@@ -214,7 +214,7 @@ function renderDigestEmail({ opportunities, topMatch }, user) {
 
     <!-- Body -->
     <div style="padding:28px 32px;">
-      <p style="font-size:15px; color:#374151; margin:0 0 4px 0;">Salut ${firstName} 👋</p>
+      <p style="font-size:15px; color:#374151; margin:0 0 4px 0;">Bonjour${firstName ? ` ${firstName}` : ''} 👋</p>
       <p style="font-size:13px; color:#6b7280; margin:0 0 24px 0;">
         Voici vos opportunités voyage personnalisées de la semaine.
       </p>
