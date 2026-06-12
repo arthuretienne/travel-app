@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { SearchLoadingScreen } from '../components/SkeletonLoaders';
 import { SearchUsageWidget } from '../components/SearchUsageWidget';
+import PaywallBanner from '../components/PaywallBanner';
+import { DEV_AUTH_ACTIVE, isDevImpersonating } from '../lib/devAuth';
 import DestinationAutocomplete from '../components/DestinationAutocomplete';
 import { Button } from '../components/ui';
 import { useTranslation } from 'react-i18next';
@@ -162,9 +164,10 @@ function CreateTrip() {
   };
   const goPreviousStep = () => setCurrentStep(step => Math.max(1, step - 1));
 
-  // Load user preferences on mount
+  // Load user preferences on mount (dev personas have no Clerk user — the
+  // fetch shim injects the impersonation token, so load anyway)
   useEffect(() => {
-    if (user) {
+    if (user || (DEV_AUTH_ACTIVE && isDevImpersonating())) {
       loadUserPreferences();
     }
   }, [user]);
@@ -604,6 +607,14 @@ function CreateTrip() {
         <p className="mt-2 max-w-2xl text-text-secondary">
           {stepMeta[currentStep - 1].sub}
         </p>
+
+        {/* Quota épuisé : on le dit dès l'étape 1 — pas après 3 écrans remplis
+            pour rien (audit V3 P1). CTA actif, jamais de bouton mort. */}
+        {!formData.isGroupTrip && usageData?.needsUpgrade && (
+          <div className="mt-5">
+            <PaywallBanner usage={usageData} context="create-trip" />
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="mx-auto max-w-3xl space-y-4">
@@ -1148,13 +1159,8 @@ function CreateTrip() {
                 <SearchUsageWidget compact />
               </div>
               {usageData.needsUpgrade && (
-                <div className="mt-3 flex items-center justify-between gap-3 px-4 py-3 bg-gold-100 border border-gold-100 rounded-xl">
-                  <p className="text-sm text-[#7a5c1a] font-medium">
-                    {t('createTrip.limitReached')}
-                  </p>
-                  <Button type="button" size="sm" className="flex-shrink-0" onClick={() => navigate('/pricing')}>
-                    {t('createTrip.seeOffers')}
-                  </Button>
+                <div className="mt-3">
+                  <PaywallBanner usage={usageData} context="create-trip-submit" />
                 </div>
               )}
             </div>
@@ -1180,18 +1186,16 @@ function CreateTrip() {
               >
                 {t('createTrip.continue')}
               </Button>
-            ) : (
+            ) : !(usageData?.needsUpgrade && !formData.isGroupTrip) && (
               <Button
                 type="submit"
                 size="lg"
-                disabled={loading || (usageData?.needsUpgrade && !formData.isGroupTrip)}
+                disabled={loading}
                 icon={loading ? <Loader2 size={18} className="animate-spin" /> : null}
               >
                 {loading
                   ? (formData.isGroupTrip ? t('createTrip.creatingTrip') : t('createTrip.searching'))
-                  : usageData?.needsUpgrade && !formData.isGroupTrip
-                    ? t('createTrip.goPremium')
-                    : formData.isGroupTrip ? t('createTrip.createGroupTrip') : t('createTrip.findMyTrip')}
+                  : formData.isGroupTrip ? t('createTrip.createGroupTrip') : t('createTrip.findMyTrip')}
               </Button>
             )}
           </div>

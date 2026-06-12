@@ -138,10 +138,10 @@ export function SearchUsageWidget({ compact = false }) {
         </Link>
       )}
 
-      {/* Low usage warning */}
+      {/* Low usage warning — le chiffre exact, pas un conseil vague (Annexe A #13) */}
       {!needsUpgrade && !searches.unlimited && percentUsed >= 80 && (
         <div className="p-3 bg-amber-50 rounded-xl text-amber-700 text-sm">
-          Bientôt à court de recherches. Pensez à passer premium.
+          Plus que {searches.remaining} recherche{searches.remaining > 1 ? 's' : ''} ce mois-ci.
         </div>
       )}
     </div>
