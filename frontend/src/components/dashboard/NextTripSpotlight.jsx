@@ -54,7 +54,7 @@ export default function NextTripSpotlight({ trip, daysUntil, helpers, onOpen, on
       <section className="mb-10">
         <div className="mb-5">
           <h2 className="font-display text-2xl font-medium text-text-main">
-            Ton <em className="font-display italic text-ember-700 not-italic">prochain</em> départ
+            Votre <em className="font-display italic text-ember-700 not-italic">prochain</em> départ
           </h2>
           <p className="mt-1 text-sm text-text-secondary">
             Aucun voyage à venir — voici une fenêtre qui correspond à votre profil.
@@ -125,7 +125,7 @@ export default function NextTripSpotlight({ trip, daysUntil, helpers, onOpen, on
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-display text-2xl font-medium text-text-main">
-            Ton <em className="font-display italic text-ember-700 not-italic">prochain</em> départ
+            Votre <em className="font-display italic text-ember-700 not-italic">prochain</em> départ
           </h2>
           <p className="mt-1 text-sm text-text-secondary">
             {city}{country ? ` · ${country}` : ''} · {formatDateShort(trip.startDate)} → {formatDateShort(trip.endDate)}

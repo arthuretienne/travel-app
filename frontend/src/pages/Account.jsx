@@ -216,6 +216,14 @@ function Account() {
       if (params.get('plan') === 'trip_pass') {
         track('trip_pass_purchased', {});
       }
+      // Un accueil au lieu de rien (Annexe A #15) — le moment le plus
+      // gratifiant du produit n'affichait aucune confirmation.
+      const welcome = {
+        trip_pass: 'Trip Pass activé 🎉 Recherches illimitées pendant 7 jours — c’est parti.',
+        explorer: 'Bienvenue dans Starter 🎉 40 recherches par mois, itinéraires illimités, export PDF — c’est parti.',
+        wanderer: 'Bienvenue dans Wanderer 🎉 Recherches, groupes et alertes illimités — c’est parti.',
+      }[params.get('plan')] || 'Paiement confirmé 🎉 Votre offre est active.';
+      showAccountNotif('success', welcome);
       fetchSubscription();
       window.history.replaceState({}, '', '/account');
     }

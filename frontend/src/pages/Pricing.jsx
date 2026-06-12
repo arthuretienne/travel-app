@@ -19,7 +19,7 @@ const PLANS = [
     id: 'free',
     plan: 'FREE',
     name: 'Free',
-    tagline: 'Découvre ta prochaine destination',
+    tagline: 'Découvrez votre prochaine destination',
     audience: "Tester l'app",
     price: { monthly: 0, annual: 0 },
     priceNote: { monthly: '0 €/mois', annual: '0 €/an' },
@@ -32,7 +32,7 @@ const PLANS = [
     id: 'starter',
     plan: 'EXPLORER',
     name: 'Starter',
-    tagline: 'Planifie tous tes voyages de l’année',
+    tagline: 'Planifiez tous vos voyages de l’année',
     audience: 'Voyageur solo / couple occasionnel',
     price: { monthly: 3.99, annual: 29 },
     priceNote: { monthly: '/mois', annual: '/an' },
@@ -99,19 +99,19 @@ const FAQ = [
   },
   {
     q: 'Quelle différence entre Starter et Wanderer ?',
-    a: 'Starter couvre tes voyages perso (recherches + itinéraires + export). Wanderer ajoute le voyage à plusieurs : planification de groupe, vote, partage des dépenses et alertes prix illimitées.',
+    a: 'Starter couvre vos voyages perso (recherches + itinéraires + export). Wanderer ajoute le voyage à plusieurs : planification de groupe, vote, partage des dépenses et alertes prix illimitées.',
   },
   {
     q: 'Le Trip Pass, c’est quoi ?',
-    a: 'Un accès illimité de 7 jours pour 5,99 €, sans abonnement — idéal si tu planifies un seul voyage.',
+    a: 'Un accès illimité de 7 jours pour 5,99 €, sans abonnement — idéal si vous planifiez un seul voyage.',
   },
   {
     q: 'Pourquoi l’annuel est moins cher ?',
-    a: 'L’annuel équivaut à 2 mois offerts. Tu planifies souvent tes voyages par vagues : l’annuel couvre toute l’année.',
+    a: 'L’annuel équivaut à 2 mois offerts. Les voyages se planifient souvent par vagues : l’annuel couvre toute l’année.',
   },
   {
     q: 'Puis-je changer d’offre ou annuler ?',
-    a: 'Oui, à tout moment, en 1 clic depuis ton compte.',
+    a: 'Oui, à tout moment, en 1 clic depuis votre compte.',
   },
   {
     q: 'Que se passe-t-il si j’atteins ma limite de recherches ?',
@@ -422,7 +422,7 @@ function TripPassBlock({ mobile, loading, active, expiresAt, onSelect }) {
           maxWidth: 460,
         }}>
           Accès illimité pendant 7 jours · paiement unique, sans abonnement.
-          Idéal si tu planifies un seul voyage là, maintenant.
+          Idéal si vous planifiez un seul voyage là, maintenant.
         </p>
       </div>
 
@@ -697,14 +697,14 @@ function Hero({ billing, setBilling, mobile }) {
         fontSize: mobile ? 38 : 56, lineHeight: 1.04, letterSpacing: '-0.018em',
         color: 'var(--sand-900)', textWrap: 'pretty',
       }}>
-        Trouve, planifie et réserve ton prochain voyage —{' '}
+        Tous vos voyages, composés pour vous —{' '}
         <span style={{ fontStyle: 'italic', color: 'var(--ember-700)' }}>sans prise de tête</span>
       </h1>
       <p style={{
         margin: mobile ? '16px auto 0' : '20px auto 0',
         fontSize: mobile ? 16 : 18, lineHeight: 1.55, color: 'var(--sand-700)', maxWidth: 560,
       }}>
-        Commence gratuitement. Passe au premium quand tu veux aller plus loin.
+        Commencez gratuitement. Passez au premium quand vous voulez aller plus loin.
       </p>
       <div style={{ marginTop: mobile ? 24 : 32, display: 'flex', justifyContent: 'center' }}>
         <BillingToggle value={billing} onChange={setBilling} mobile={mobile} />
@@ -740,7 +740,7 @@ function FinalCTA({ mobile, onStart }) {
         fontSize: mobile ? 32 : 44, lineHeight: 1.08, letterSpacing: '-0.015em',
       }}>
         Prêt à composer{' '}
-        <span style={{ fontStyle: 'italic', color: 'var(--ember-300)' }}>ton prochain voyage&nbsp;?</span>
+        <span style={{ fontStyle: 'italic', color: 'var(--ember-300)' }}>votre prochain voyage&nbsp;?</span>
       </h2>
       <div style={{ position: 'relative', marginTop: 28, display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
         <Button variant="primary" onClick={onStart} iconRight={<ArrowRight size={18} />}>

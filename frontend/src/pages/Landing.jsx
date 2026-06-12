@@ -36,7 +36,7 @@ const COPY = {
   fr: {
     eyebrow: 'Voyage par IA · sans carte bancaire',
     title: ['Le voyage', 'qui vous ressemble', 'déjà pensé.'],
-    subtitle: "Décrivez vos envies. On compose vols, hôtels et itinéraire, vous n'avez plus qu'à dire oui.",
+    subtitle: "Décrivez vos envies. Skusku compose vols, hôtels et itinéraire — vous n'avez plus qu'à dire oui.",
     cta: 'Composer mon voyage — gratuit',
     proof: '3 minutes · gratuit · puis vous comparez.',
     how: 'Comment ça marche',
