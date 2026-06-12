@@ -212,7 +212,10 @@ function Account() {
     // Stripe checkout success redirect (?session_id=...&success=true). Fire the
     // conversion event once, then clean the URL so a refresh doesn't re-fire.
     if (params.get('success') === 'true' && params.get('session_id')) {
-      track('checkout_completed', { sessionId: params.get('session_id') });
+      track('checkout_completed', { sessionId: params.get('session_id'), plan: params.get('plan') || undefined });
+      if (params.get('plan') === 'trip_pass') {
+        track('trip_pass_purchased', {});
+      }
       fetchSubscription();
       window.history.replaceState({}, '', '/account');
     }

@@ -8,8 +8,11 @@
 // now and flip analytics on later without touching call sites.
 //
 // Funnel events to standardise on:
-//   signup · search_started · results_viewed · trip_saved ·
-//   checkout_started · checkout_completed · invitation_sent · invitation_accepted
+//   signup · hero_search_submitted · onboarding_started/completed/skipped ·
+//   search_started · search_failed · search_no_results · search_timeout ·
+//   results_viewed · trip_saved · pricing_viewed · paywall_viewed ·
+//   checkout_started · checkout_completed · trip_pass_purchased ·
+//   invitation_sent · invite_landing_viewed · invitation_accepted
 
 export function track(event, props = {}) {
   try {

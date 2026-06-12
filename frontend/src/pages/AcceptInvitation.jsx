@@ -35,6 +35,8 @@ export default function AcceptInvitation() {
 
       const data = await response.json();
       setInvitation(data.data);
+      // La vraie base du taux viral : l'invité qui VOIT la page, qu'il accepte ou non.
+      track('invite_landing_viewed', { tripId: data.data?.trip?.id });
     } catch (err) {
       console.error('Error fetching invitation:', err);
       setError(err.message);

@@ -168,7 +168,7 @@ router.post('/checkout', authenticateUser, async (req, res) => {
       userEmail: req.user.email,
       planName: planName.toUpperCase(),
       billing: billingCycle,
-      successUrl: `${frontendUrl}/account?session_id={CHECKOUT_SESSION_ID}&success=true`,
+      successUrl: `${frontendUrl}/account?session_id={CHECKOUT_SESSION_ID}&success=true&plan=${encodeURIComponent(planName.toLowerCase())}`,
       cancelUrl: `${frontendUrl}/pricing?canceled=true`,
     });
 

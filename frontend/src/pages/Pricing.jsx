@@ -765,6 +765,12 @@ export default function Pricing() {
   const [checkoutLoading, setCheckoutLoading] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
 
+  // Funnel : qui consulte les offres (anonyme compris)
+  useEffect(() => {
+    track('pricing_viewed', { signedIn: !!isSignedIn });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     // Page is public: only fetch the current subscription when signed in.
     if (!isSignedIn) return;

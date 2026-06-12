@@ -327,6 +327,8 @@ function Onboarding() {
         throw new Error(errorData.message || 'Failed to save preferences');
       }
 
+      track('onboarding_completed', { variant: onboardingType === 'short' ? 'express' : 'complet' });
+
       // Navigate to dashboard
       navigate('/dashboard');
     } catch (error) {
@@ -393,6 +395,7 @@ function Onboarding() {
               onClick={() => {
                 setOnboardingType('short');
                 setFormData(prev => ({ ...prev, onboardingType: 'short' }));
+                track('onboarding_started', { variant: 'express' });
               }}
               className="bg-white p-8 rounded-3xl border border-sand-200 hover:border-primary hover:shadow-xl transition-all cursor-pointer group text-left relative overflow-hidden"
             >
@@ -413,6 +416,7 @@ function Onboarding() {
               onClick={() => {
                 setOnboardingType('long');
                 setFormData(prev => ({ ...prev, onboardingType: 'long' }));
+                track('onboarding_started', { variant: 'complet' });
               }}
               className="bg-white p-8 rounded-3xl border-2 border-primary shadow-card cursor-pointer group text-left relative overflow-hidden"
             >
@@ -434,7 +438,7 @@ function Onboarding() {
           </div>
 
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => { track('onboarding_skipped', {}); navigate('/dashboard'); }}
             className="mt-8 text-sm text-text-secondary hover:text-text-main underline underline-offset-2 transition-colors"
           >
             Passer pour l'instant — je compléterai plus tard

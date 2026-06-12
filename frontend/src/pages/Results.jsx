@@ -1,7 +1,7 @@
 // frontend/src/pages/Results.jsx
 // Premium functional design - calm, structured, decision-focused
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { Loader2 } from 'lucide-react';
@@ -43,6 +43,16 @@ function Results() {
   // Check if we're proposing for a group trip
   const forGroupTrip = location.state?.forGroupTrip;
 
+  // Funnel : zéro résultat après une vraie recherche (distinct d'une panne —
+  // budgetWarning indique si le moteur a répondu avec un signal budget).
+  const noResultsTracked = useRef(false);
+  useEffect(() => {
+    if (noResultsTracked.current || loading || isStreaming) return;
+    if (recommendations.length > 0 || !location.state?.searchPayload) return;
+    noResultsTracked.current = true;
+    track('search_no_results', { budget_warning: !!budgetWarning });
+  }, [loading, isStreaming, recommendations.length, budgetWarning]);
+
   // Start streaming if we have streamingMode
   useEffect(() => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -65,6 +75,7 @@ function Results() {
           setIsStreaming(false);
           setStreamingStatus('');
           // Honnête, sans fuite infra : c'est nous, pas les critères de l'utilisateur.
+          track('search_timeout', {});
           setError((prev) => prev || 'La recherche prend plus de temps que prévu — c’est de notre côté. Réessayez dans une minute.');
         }
       }, 120000);
@@ -89,6 +100,7 @@ function Results() {
             // Surface an actionable message per status instead of a generic one.
             if (timeoutId) clearTimeout(timeoutId);
             setIsStreaming(false);
+            track('search_failed', { status: response.status });
             if (response.status === 401) {
               setError('Votre session a expiré. Reconnectez-vous puis relancez la recherche.');
             } else if (response.status === 403) {
@@ -130,6 +142,7 @@ function Results() {
           if (err.name === 'AbortError' || cancelled) return;
           console.error('Streaming error:', err);
           if (timeoutId) clearTimeout(timeoutId);
+          track('search_failed', { status: 'network' });
           setError('La recherche a échoué. Réessayez dans un instant.');
           setIsStreaming(false);
         }
