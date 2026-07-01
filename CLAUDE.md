@@ -29,13 +29,14 @@ Skusku is an AI travel planner that recommends personalized destinations based o
    - ✅ Keyword detection for all constraint types
    - ✅ Custom travelVibeDescription field parsed and used in prompts
    - ✅ All 20 tests passing
-   - 🔴 Bug: hostel proposé pour couple/amis quand budget serré
-   - 🔴 Bug: budget/personne vs budget total non clarifié → mauvaise interprétation
-   - 🔴 Bug: Paris Beauvais (BVA) non supporté dans IATA mapping
-   - 🔴 Bug: ratio vols hardcodé 50% → trop peu pour long-courrier, trop pour court-courrier
-   - 🟡 Bug: timing de vol non pris en compte (vol 6h du matin = levé 3h)
-   - 🟡 Bug: destinations répétitives en mode découverte
-   - Next: Sprint corrections critiques (voir algorithme.md §8)
+   - ✅ (2026-07-01, Sprint 2 audit V3) Chaîne T9 : durée « week-end » du texte libre parsée (freeTextSignals.js), cap vol 75 % du budget + plancher hôtel 30 €/nuit dans processDestination, échecs BUDGET_TIGHT agrégés en budget_warning FR
+   - ✅ (2026-07-01) « Sans avion » respecté : candidats = GROUND_ALTERNATIVES (Paris/Lyon/Marseille), package sans vol avec train/bus estimé, variant UI dédié
+   - ✅ (2026-07-01) Itinéraire : vrai vol/hôtel transmis au prompt (fini « Hotel Cubo » fantôme) + recommendedTransport jusqu'aux prompts jour-par-jour
+   - ✅ (2026-07-01) Contenu généré 100 % FR (insights, itinéraires, roadtrip, packing) + horaires 24h
+   - ✅ Ratio vols dynamique 40/50/65 % selon médiane (mai 2026) ; timing vol pénalisé (adjustedPrice +20/+40 € avant 7h/5h) ; diversité corrigée (E13 audit V3 : 10 villes uniques/12 slots) ; budget/pers ×travelers appliqué dans les deux endpoints
+   - 🟡 Bug: hostel proposé pour couple/amis quand budget serré (filtre non-hostel existe dans searchHotels — à revalider)
+   - 🟡 BVA : reconnu comme origine terrestre (resolveGroundOrigin) mais toujours absent du mapping IATA vols
+   - Reste (décision Arthur requise) : vote REST des guests (migration Prisma — Vote.voterId exige un User)
 
 2. **UX/Performance** - Target: <15s for 3 results
    - ✅ Switched to claude-3-5-haiku
