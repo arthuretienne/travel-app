@@ -36,7 +36,7 @@ export default function HeroGreeting({ firstName, context, onPrimary, onSecondar
           {decisions > 0 && (
             <>
               {' '}
-              <strong className="text-text-main">{decisions} décision{decisions > 1 ? 's' : ''} vous attendent.</strong>
+              <strong className="text-text-main">{decisions} décision{decisions > 1 ? 's' : ''} vous {decisions > 1 ? 'attendent' : 'attend'}.</strong>
             </>
           )}
         </>
@@ -53,7 +53,7 @@ export default function HeroGreeting({ firstName, context, onPrimary, onSecondar
       headline = (
         <>
           {greeting} <em className="not-italic font-display italic text-ember-700">{name}</em> —{' '}
-          <strong className="text-text-main">{decisions} décision{decisions > 1 ? 's' : ''} vous attendent.</strong>
+          <strong className="text-text-main">{decisions} décision{decisions > 1 ? 's' : ''} vous {decisions > 1 ? 'attendent' : 'attend'}.</strong>
         </>
       );
       sub = 'Vote, invitations, baisses de prix : ce qui attend votre décision apparaît juste en dessous.';
