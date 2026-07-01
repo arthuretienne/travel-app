@@ -437,9 +437,11 @@ export default function TripDetail() {
         </div>
       </div>
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation — cibles 44px + fondu de débordement mobile (audit V3 T9 :
+          tabs 40px et onglets cachés par un scroll horizontal non évident) */}
       <div className="bg-white border-b border-sand-200 sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent sm:hidden" aria-hidden="true" />
           <nav className="flex gap-1 overflow-x-auto py-2" aria-label="Tabs">
             {[
               { id: 'overview', label: 'Aperçu', icon: LayoutDashboard },
@@ -452,7 +454,7 @@ export default function TripDetail() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${activeTab === tab.id
+                className={`flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg font-medium text-sm whitespace-nowrap transition-all ${activeTab === tab.id
                   ? 'bg-primary text-white shadow-md'
                   : 'text-text-secondary hover:bg-sand-100 hover:text-text-main'
                   }`}
