@@ -723,16 +723,20 @@ function Results() {
           </div>
         )}
 
-        {/* Streaming skeleton */}
+        {/* Streaming : skeleton cards à la place du spinner plein écran
+            (audit V3 — 34 s de vide au moment le plus critique du produit).
+            Chaque carte réelle remplace un skeleton dès son event SSE. */}
         {isStreaming && recommendations.length === 0 && !budgetWarning && (
-          <div className="rounded-[20px] border border-sand-200 bg-white p-12 text-center shadow-2">
-            <Loader2 className="mx-auto mb-5 h-10 w-10 animate-spin text-ember-600" />
-            <h3 className="font-display text-2xl font-medium text-text-main">
-              {streamingStatus || 'Composition de vos voyages…'}
-            </h3>
-            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-text-secondary">
-              L’IA assemble destinations, vols et hôtels qui tiennent votre budget.
-            </p>
+          <div className="space-y-8">
+            <div className="flex items-center gap-3 px-1">
+              <Loader2 className="h-5 w-5 animate-spin text-ember-600" />
+              <p className="text-sm text-text-secondary">
+                {streamingStatus || 'Composition de vos voyages — destinations, vols et hôtels dans votre budget…'}
+              </p>
+            </div>
+            {[0, 1, 2].map((i) => (
+              <SkeletonTripCard key={i} />
+            ))}
           </div>
         )}
 
@@ -789,6 +793,11 @@ function Results() {
               isAlertCreated={alertCreatedFor.has(index)}
             />
           ))}
+          {/* Cartes encore en cours de composition : skeletons résiduels */}
+          {isStreaming && recommendations.length > 0 && expectedTotal > recommendations.length &&
+            Array.from({ length: Math.min(expectedTotal - recommendations.length, 3) }).map((_, i) => (
+              <SkeletonTripCard key={`skeleton-${i}`} />
+            ))}
         </div>
       </main>
     </div>
@@ -796,6 +805,28 @@ function Results() {
 }
 
 // Trip Card Component
+// Skeleton d'attente pendant le streaming SSE — même silhouette que TripCard
+// pour éviter tout layout shift quand la vraie carte arrive.
+function SkeletonTripCard() {
+  return (
+    <div className="rounded-[20px] border border-sand-200 bg-white overflow-hidden shadow-2">
+      <div className="sk-skel h-56 w-full rounded-none" />
+      <div className="p-6 sm:p-8">
+        <div className="sk-skel h-7 w-[45%] mb-3" />
+        <div className="sk-skel h-4 w-[70%] mb-8" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="rounded-xl border border-sand-100 p-4">
+              <div className="sk-skel h-3 w-[60%] mb-3" />
+              <div className="sk-skel h-5 w-[80%]" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TripCard({
   trip,
   index,
