@@ -1,7 +1,7 @@
 // frontend/src/pages/TripDetail.jsx
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth, useUser } from '@clerk/clerk-react';
+import { useAuth, useUser, SignUpButton } from '@clerk/clerk-react';
 import { track } from '../lib/analytics';
 import { readGuestSession, useTripAuthToken } from '../lib/guestSession';
 import {
@@ -436,6 +436,24 @@ export default function TripDetail() {
           </div>
         </div>
       </div>
+
+      {/* Conversion invité → compte (audit V3 : l'expérience guest n'avait
+          aucun CTA de création de compte — la boucle virale s'arrêtait là) */}
+      {guestSession && !isSignedIn && (
+        <div className="bg-ember-50 border-b border-ember-100">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-text-main">
+              Vous participez en tant qu'invité{guestSession.guestName ? ` (${guestSession.guestName})` : ''}.
+              <span className="text-text-secondary"> Créez votre compte pour garder ce voyage, voter et suivre les prix.</span>
+            </p>
+            <SignUpButton mode="modal" forceRedirectUrl={`/trips/${id}`}>
+              <button className="px-4 py-2 min-h-[40px] rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors">
+                Créer mon compte gratuit
+              </button>
+            </SignUpButton>
+          </div>
+        </div>
+      )}
 
       {/* Tab Navigation — cibles 44px + fondu de débordement mobile (audit V3 T9 :
           tabs 40px et onglets cachés par un scroll horizontal non évident) */}

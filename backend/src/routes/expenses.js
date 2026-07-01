@@ -8,6 +8,38 @@ import prisma from '../db/prisma.js';
 const router = express.Router();
 
 /**
+ * Participants du split = TOUS les membres du trip, invités guest compris
+ * (audit V3 T4 : l'invitée guest était exclue du partage des dépenses, ce
+ * qui faussait tous les soldes). Sans migration : les comptes gardent leur
+ * userId comme clé, les guests utilisent `guest:<memberId>` — stocké tel
+ * quel dans le Json splitAmong. Un guest peut DEVOIR de l'argent ; seul un
+ * compte peut être payeur (paidById est une FK User).
+ */
+async function getParticipants(tripId) {
+  const members = await prisma.tripMember.findMany({
+    where: { tripId },
+    include: {
+      user: { select: { id: true, firstName: true, lastName: true, imageUrl: true } },
+    },
+  });
+  const seen = new Set();
+  const participants = [];
+  for (const m of members) {
+    const key = m.userId || `guest:${m.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    participants.push({
+      id: key,
+      firstName: m.user?.firstName || m.guestName || 'Invité',
+      lastName: m.user?.lastName || '',
+      imageUrl: m.user?.imageUrl || null,
+      isGuest: !m.userId,
+    });
+  }
+  return participants;
+}
+
+/**
  * GET /api/trips/:tripId/expenses
  * Get all expenses for a trip
  */
@@ -31,22 +63,17 @@ router.get('/:tripId/expenses', authenticateUser, async (req, res) => {
       orderBy: { date: 'desc' },
     });
 
-    // Get all members for balance calculation
-    const members = await prisma.tripMember.findMany({
-      where: { tripId, userId: { not: null } },
-      include: {
-        user: { select: { id: true, firstName: true, lastName: true, imageUrl: true } },
-      },
-    });
+    // Participants = membres + guests (clé userId ou guest:<memberId>)
+    const participants = await getParticipants(tripId);
 
     // Calculate balances
-    const balances = calculateBalances(expenses, members);
+    const balances = calculateBalances(expenses, participants);
 
     res.json({
       success: true,
       expenses,
       balances,
-      members: members.map(m => m.user).filter(Boolean),
+      members: participants,
     });
   } catch (error) {
     console.error('[Expenses] Error fetching:', error.message);
@@ -78,12 +105,9 @@ router.post('/:tripId/expenses', authenticateUser, async (req, res) => {
     // If no splitAmong provided, default to equal split among all members
     let finalSplitAmong = splitAmong;
     if (!finalSplitAmong) {
-      const members = await prisma.tripMember.findMany({
-        where: { tripId, userId: { not: null } },
-        select: { userId: true },
-      });
-      const share = amount / members.length;
-      finalSplitAmong = members.map(m => ({ userId: m.userId, amount: share }));
+      const participants = await getParticipants(tripId);
+      const share = amount / participants.length;
+      finalSplitAmong = participants.map(p => ({ userId: p.id, amount: share }));
     }
 
     const expense = await prisma.tripExpense.create({
@@ -185,12 +209,12 @@ router.get('/:tripId/expenses/settlements', authenticateUser, async (req, res) =
  * Calculate net balance for each member
  * Positive = they are owed money, Negative = they owe money
  */
-function calculateBalances(expenses, members) {
+function calculateBalances(expenses, participants) {
   const balances = {};
 
-  // Initialize all members to 0
-  members.forEach(m => {
-    if (m.user) balances[m.user.id] = 0;
+  // Initialize all participants (comptes + guests) to 0
+  participants.forEach(p => {
+    balances[p.id] = 0;
   });
 
   expenses.forEach(expense => {
@@ -221,10 +245,10 @@ function calculateBalances(expenses, members) {
  * Calculate minimal settlements to resolve all debts
  * Uses greedy algorithm: match largest creditor with largest debtor
  */
-function calculateSettlements(balances, members) {
+function calculateSettlements(balances, participants) {
   const memberMap = {};
-  members.forEach(m => {
-    if (m.user) memberMap[m.user.id] = m.user;
+  participants.forEach(p => {
+    memberMap[p.id] = p;
   });
 
   // Separate creditors and debtors
