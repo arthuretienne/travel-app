@@ -41,7 +41,9 @@ export default {
         },
         gold: {
           100: '#f5ecd4',
-          500: '#c89b3c',
+          // Audit V3 : #c89b3c = 2.56:1 sur blanc pour 36 usages texte.
+          // 5.25:1 blanc · 4.46:1 sur gold-100. Aucun usage bg-gold-500.
+          500: '#8a661b',
         },
         // Legacy aliases now point to the Ember signature.
         primary: {
@@ -60,8 +62,13 @@ export default {
         text: {
           main: '#1a1612',
           secondary: '#7a6c56',
-          light: '#a89880',
-          muted: '#d4c8b3',
+          // Audit V3 : #a89880 = 2.81:1 sur blanc (78 usages sous le seuil
+          // AA 4.5). La hiérarchie passe par la graisse/taille, pas par un
+          // gris illisible.
+          light: '#7f6d52',   // 4.99:1 blanc · 4.67:1 sand-50 — AA
+          // Réservé au décoratif pur (jamais porteur de sens) : 3.58:1,
+          // AA large-text. Était 1.65:1.
+          muted: '#96856a',
         },
         // Status colors (subtle)
         status: {
