@@ -121,7 +121,7 @@ export function parseItineraryResponse(rawResponse) {
  * @returns {Promise<Array>} Daily itinerary
  */
 export async function generatePersonalizedItinerary(tripData, userProfile, userName, members = []) {
-  const { city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails } = tripData;
+  const { city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails, recommendedTransport } = tripData;
 
   console.log('📅 Generating itinerary for:', { city, country, startDate, endDate });
   console.log('🎯 Activities to include:', suggestedActivities?.length || 0);
@@ -184,6 +184,12 @@ FLIGHT INFORMATION (REAL DATA):
 ${returnFlight ? `- Return: ${returnFlight?.departure || city} → ${returnFlight?.arrival || 'origin'}
   - Departure: ${returnFlight?.departureTime || endDate}` : ''}
 - Total flight cost: €${flightDetails.totalCost || flightDetails.price || 'N/A'}`;
+  } else if (recommendedTransport) {
+    flightInfoText = `
+TRANSPORT INFORMATION (NO FLIGHT — traveler refuses flying):
+- Arrival and departure by ${recommendedTransport.mode || 'train'} (${recommendedTransport.operator || 'rail operator'}), ~${recommendedTransport.durationOneWay || '?'} each way
+- Plan Day 1 around a station arrival, and the last day around a station departure
+- CRITICAL: NEVER mention flights, airports or airport transfers anywhere in this itinerary`;
   }
 
   // Build hotel info section for the prompt
@@ -227,7 +233,7 @@ SUGGESTED ACTIVITIES TO INCLUDE:
 ${activitiesText}
 
 MISSION: Create a REALISTIC, PRACTICAL itinerary with:
-1. **Exact timing** for each activity (e.g., "9:00 AM - 11:30 AM")
+1. **Exact timing** for each activity (24-hour format, e.g., "9h00 - 11h30" — never AM/PM)
 2. **Transportation details** between locations (walk 10 min, metro line 2, taxi €8, etc.)
 3. **Meal breaks** (breakfast, lunch, dinner) with restaurant suggestions
 4. **Rest periods** - don't overschedule! Include downtime
@@ -282,7 +288,7 @@ IMPORTANT RULES:
 8. Include "insider tips" for each major activity
 9. Pace appropriately - don't exhaust travelers!
 10. Consider ${userProfile?.idealRhythm || 'balanced'} rhythm preference
-11. Include AIRPORT TRANSFER options with prices (taxi, metro, bus, Uber estimate)
+11. Include ${flightDetails ? 'AIRPORT TRANSFER options with prices (taxi, metro, bus, Uber estimate)' : recommendedTransport ? `STATION TRANSFER options (arrival/departure by ${recommendedTransport.mode || 'train'} — NEVER mention flights or airports)` : 'arrival/departure transfer options with prices'}
 
 PERSONALIZATION FOR ${userName}:
 - Address them directly in tips ("${userName}, you'll love...")
@@ -290,6 +296,8 @@ PERSONALIZATION FOR ${userName}:
 - Match activity intensity to their preferences
 - Include activities from the suggested list
 ${memberCount > 1 ? `- Suggest group-friendly activities for ${memberCount} people` : ''}
+
+LANGUE (NON NÉGOCIABLE — audit V3) : écris TOUT le contenu utilisateur en FRANÇAIS (thèmes, activités, descriptions, tips, repas). Les clés JSON restent en anglais. Horaires 24h.
 
 OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
 
@@ -349,7 +357,7 @@ OUTPUT: JSON array of ${days} days only, no markdown, no code blocks.`;
  * @returns {Promise<Array>} Complete itinerary array
  */
 export async function generateItineraryStreaming(tripData, userProfile, userName, members = [], onDay) {
-  const { city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails } = tripData;
+  const { city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails, recommendedTransport } = tripData;
 
   console.log('📅 [STREAMING] Generating itinerary for:', { city, country, startDate, endDate });
 
@@ -390,6 +398,14 @@ FLIGHT INFORMATION:
   - Departure: ${outbound?.departureTime || startDate}
   - Arrival: ${outbound?.arrivalTime || 'morning'}
 - Total flight cost: €${flightDetails.totalCost || flightDetails.price || 'N/A'}`;
+  } else if (recommendedTransport) {
+    // Voyage sans avion (audit E5) : l'itinéraire doit parler gare et
+    // train/bus — jamais d'aéroport ni de vol.
+    flightInfoText = `
+TRANSPORT INFORMATION (NO FLIGHT — traveler refuses flying):
+- Arrival and departure by ${recommendedTransport.mode || 'train'} (${recommendedTransport.operator || 'rail operator'}), ~${recommendedTransport.durationOneWay || '?'} each way
+- Plan Day 1 around a station arrival, and the last day around a station departure
+- CRITICAL: NEVER mention flights, airports or airport transfers anywhere in this itinerary`;
   }
 
   let hotelInfoText = '';
@@ -441,7 +457,7 @@ HOTEL INFORMATION:
     const dayPrompt = `Tu es un expert local créant le JOUR ${dayNum} sur ${days} d'un voyage ${groupText} à ${city}, ${country}.
 Date: ${dateStr}
 ${isFirstDay ? `\n⚡ C'est le jour d'arrivée. ${flightInfoText}` : ''}
-${isLastDay ? `\n⚡ C'est le jour de départ — inclure checkout + transfert aéroport avec timing précis.` : ''}
+${isLastDay ? `\n⚡ C'est le jour de départ — inclure checkout + transfert ${flightDetails ? 'aéroport' : recommendedTransport ? `GARE (retour en ${recommendedTransport.mode === 'bus' ? 'bus' : 'train'} ${recommendedTransport.operator || ''} — ce voyageur REFUSE l'avion, ne jamais mentionner aéroport ni vol)` : 'aéroport ou gare'} avec timing précis.${!flightDetails && recommendedTransport ? ` ${flightInfoText}` : ''}` : ''}
 ${hotelInfoText}
 
 PROFIL VOYAGEUR:
@@ -541,65 +557,65 @@ export function generatePackingFromItinerary(itinerary, weatherData, tripData) {
 
   // Base essentials
   const essentials = [
-    'Passport & travel documents',
-    'Phone & charger',
-    'Wallet & cards',
-    'Travel insurance docs',
-    'Medications',
+    'Passeport & documents de voyage',
+    'Téléphone & chargeur',
+    'Portefeuille & cartes',
+    'Attestation d’assurance voyage',
+    'Médicaments',
   ];
 
   // Clothing based on weather
-  const clothing = ['Underwear (1 per day + extra)', 'Socks'];
+  const clothing = ['Sous-vêtements (1/jour + rechange)', 'Chaussettes'];
 
   if (weatherData?.forecast) {
     const avgTemp = weatherData.forecast.reduce((acc, d) => acc + (d.day?.avgtemp_c || 20), 0) / weatherData.forecast.length;
     const hasRain = weatherData.forecast.some(d => d.day?.daily_chance_of_rain > 40);
 
     if (avgTemp < 15) {
-      clothing.push('Warm jacket', 'Sweaters/layers', 'Long pants');
+      clothing.push('Veste chaude', 'Pulls / couches superposables', 'Pantalons');
     } else if (avgTemp < 25) {
-      clothing.push('Light jacket', 'Mix of shorts & pants', 'Light layers');
+      clothing.push('Veste légère', 'Shorts et pantalons', 'Couches légères');
     } else {
-      clothing.push('Light clothing', 'Shorts', 'T-shirts', 'Sunhat');
+      clothing.push('Vêtements légers', 'Shorts', 'T-shirts', 'Chapeau de soleil');
     }
 
     if (hasRain) {
-      clothing.push('Rain jacket or umbrella');
+      clothing.push('Veste de pluie ou parapluie');
     }
   } else {
-    clothing.push('Versatile layers', 'Light jacket');
+    clothing.push('Couches polyvalentes', 'Veste légère');
   }
 
   // Activity-based items
   const activityItems = [];
 
   if (activityTypes.has('culture') || activityTypes.has('museum') || activityTypes.has('sightseeing')) {
-    activityItems.push('Comfortable walking shoes');
+    activityItems.push('Chaussures de marche confortables');
   }
   if (activityTypes.has('beach') || activityTypes.has('swimming') || activityTypes.has('pool')) {
-    activityItems.push('Swimsuit', 'Beach towel', 'Sandals', 'Sunscreen SPF 50');
+    activityItems.push('Maillot de bain', 'Serviette de plage', 'Sandales', 'Crème solaire SPF 50');
   }
   if (activityTypes.has('hiking') || activityTypes.has('nature') || activityTypes.has('outdoor')) {
-    activityItems.push('Hiking shoes', 'Daypack', 'Water bottle', 'Sunscreen');
+    activityItems.push('Chaussures de rando', 'Petit sac à dos', 'Gourde', 'Crème solaire');
   }
   if (activityTypes.has('nightlife') || activityTypes.has('dinner') || activityTypes.has('restaurant')) {
-    activityItems.push('Smart casual outfit', 'Nice shoes');
+    activityItems.push('Tenue smart casual', 'Belles chaussures');
   }
   if (activityTypes.has('sport') || activityTypes.has('adventure')) {
-    activityItems.push('Athletic wear', 'Sports shoes');
+    activityItems.push('Tenue de sport', 'Chaussures de sport');
   }
 
   // Always add walking shoes if not already
-  if (!activityItems.includes('Comfortable walking shoes') && !activityItems.includes('Hiking shoes')) {
-    activityItems.push('Comfortable walking shoes');
+  if (!activityItems.includes('Chaussures de marche confortables') && !activityItems.includes('Hiking shoes')) {
+    activityItems.push('Chaussures de marche confortables');
   }
 
   // Optional nice-to-haves
   const optional = [
-    'Book or e-reader',
-    'Reusable shopping bag',
-    'Snacks for travel',
-    'Travel pillow',
+    'Livre ou liseuse',
+    'Tote bag réutilisable',
+    'Snacks pour le trajet',
+    'Oreiller de voyage',
   ];
 
   return {

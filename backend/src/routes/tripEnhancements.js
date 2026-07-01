@@ -49,7 +49,7 @@ async function getTripData(id, userId) {
   }
 
   // Extract destination
-  let city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails;
+  let city, country, startDate, endDate, suggestedActivities, flightDetails, hotelDetails, recommendedTransport;
   if (isSavedTrip) {
     city = trip.city;
     country = trip.country;
@@ -59,8 +59,16 @@ async function getTripData(id, userId) {
     if (trip.tripData) {
       const tripData = typeof trip.tripData === 'string' ? JSON.parse(trip.tripData) : trip.tripData;
       suggestedActivities = tripData.suggestedActivities || [];
-      flightDetails = tripData.flight;
-      hotelDetails = tripData.hotel;
+      // Audit V3 T3 (« Hotel Cubo » fantôme) : les résultats sauvegardés
+      // stockent flightDetails/hotelOptions.hotels[], pas flight/hotel —
+      // le prompt itinéraire tournait donc sans le vrai vol ni le vrai hôtel
+      // et en inventait un.
+      flightDetails = tripData.flightDetails || tripData.flight;
+      hotelDetails = tripData.hotelDetails
+        || tripData.hotelOptions?.hotels?.[0]
+        || tripData.hotel
+        || tripData.hotelOptions;
+      recommendedTransport = tripData.recommendedTransport || null;
     }
   } else if (trip.finalDestination) {
     // finalDestination can be flat { city, country } or nested { destination: { city, country }, slot, pricing }
@@ -72,7 +80,8 @@ async function getTripData(id, userId) {
     // Activities might be at different levels
     suggestedActivities = fd.suggestedActivities || fd.destination?.suggestedActivities || [];
     flightDetails = fd.flightDetails || fd.flight;
-    hotelDetails = fd.hotelDetails || fd.hotelOptions;
+    hotelDetails = fd.hotelDetails || fd.hotelOptions?.hotels?.[0] || fd.hotel || fd.hotelOptions;
+    recommendedTransport = fd.recommendedTransport || null;
   } else {
     // Fallback
     city = 'Paris';
@@ -100,7 +109,8 @@ async function getTripData(id, userId) {
     expectedDays,
     suggestedActivities: suggestedActivities || [],
     flightDetails,
-    hotelDetails
+    hotelDetails,
+    recommendedTransport
   };
 }
 
@@ -233,7 +243,7 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Trip not found or access denied' });
     }
 
-    const { trip, isSavedTrip, members, city, country, startDate, endDate, expectedDays, suggestedActivities, flightDetails, hotelDetails } = tripData;
+    const { trip, isSavedTrip, members, city, country, startDate, endDate, expectedDays, suggestedActivities, flightDetails, hotelDetails, recommendedTransport } = tripData;
 
     // Check if itinerary already exists in tripData
     const existingTripData = typeof trip.tripData === 'string' ? JSON.parse(trip.tripData) : (trip.tripData || {});
@@ -268,7 +278,8 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
       endDate,
       suggestedActivities,
       flightDetails,
-      hotelDetails
+      hotelDetails,
+      recommendedTransport
     };
 
     // Get user preferences
@@ -377,7 +388,7 @@ router.get('/:id/itinerary/stream', authenticateUser, async (req, res) => {
       return;
     }
 
-    const { trip, isSavedTrip, members, city, country, startDate, endDate, expectedDays, suggestedActivities, flightDetails, hotelDetails } = tripData;
+    const { trip, isSavedTrip, members, city, country, startDate, endDate, expectedDays, suggestedActivities, flightDetails, hotelDetails, recommendedTransport } = tripData;
 
     // Check if itinerary already exists in cache
     const existingTripData = typeof trip.tripData === 'string' ? JSON.parse(trip.tripData) : (trip.tripData || {});
@@ -421,7 +432,8 @@ router.get('/:id/itinerary/stream', authenticateUser, async (req, res) => {
       endDate,
       suggestedActivities,
       flightDetails,
-      hotelDetails
+      hotelDetails,
+      recommendedTransport
     };
 
     // Get user preferences from database

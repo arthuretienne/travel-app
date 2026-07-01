@@ -706,6 +706,7 @@ Create a RICH, DETAILED roadtrip narrative with:
 10. **Hidden Gems** (1-2 unique experiences along the route)
 
 ⚠️ IMPORTANT FORMATTING:
+- Write ALL content in FRENCH (titres, descriptions, tips — audit V3 : le contenu partait en anglais sur un produit français)
 - Use **markdown** for emphasis
 - Be DESCRIPTIVE and NARRATIVE (not just bullet points)
 - Make it INSPIRATIONAL and INFORMATIVE

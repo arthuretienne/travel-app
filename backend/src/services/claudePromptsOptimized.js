@@ -80,14 +80,16 @@ ${accessibility ? `**Accessibility Needs:** ${accessibility}` : ''}
 Create a detailed, personalized day-by-day itinerary that:
 
 ### 1. **Realistic Timing**
-- **Day 1:** Activities start AFTER flight arrival (${flight.outbound.arrival})
+${flight ? `- **Day 1:** Activities start AFTER flight arrival (${flight.outbound.arrival})
   - Account for: immigration (~30min), baggage (~20min), airport → hotel transfer (~45min)
   - First activity should start around ${calculateFirstActivityTime(flight.outbound.arrival)}
   - Suggest evening activities near the hotel given arrival fatigue
 
 - **Day ${dates.duration}:** Wrap up activities 3 hours before departure (${flight.return?.departure || 'TBD'})
   - Morning activities only
-  - Hotel → airport transfer timing
+  - Hotel → airport transfer timing` : `- **Day 1:** Activities start after the ${recommendedTransport?.mode || 'train'} arrival at the station (~${recommendedTransport?.durationOneWay || '?'} from origin) — plan a station → hotel transfer, then a gentle first evening
+- **Day ${dates.duration}:** Morning activities only, then station departure
+- CRITICAL: this traveler refuses flying — NEVER mention flights, airports or airport transfers`}
 
 ### 2. **Budget Allocation (€${budget.remaining} total)**
 Allocate approximately:
@@ -124,6 +126,13 @@ ${accessibility ? `Accessibility: Ensure all suggested activities are ${accessib
 - Money-saving tips specific to ${destination.name}
 - Local customs and etiquette
 
+## Language & Formats (NON-NEGOTIABLE — audit V3 P1)
+
+- Write ALL user-facing text in FRENCH: day titles, descriptions, meals, activity names, tips, transport notes. JSON structure keys stay in English.
+- Times in 24-hour format ("14:30", never "2:30 PM").
+- Prices in euros, French style in text ("25 €").
+- The sample texts in the JSON template below show the STRUCTURE only — your content must be in French.
+
 ## Output Format
 
 Return ONLY valid JSON (no markdown, no code blocks):
@@ -136,7 +145,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
     "day1": {
       "title": "Arrival & Evening Exploration",
       "morning": null,
-      "afternoon": "Flight arrives ${flight.outbound.arrival}. Airport → hotel transfer (~45min). Check-in at ${hotel.name}. Rest and freshen up.",
+      "afternoon": "${flight ? `Flight arrives ${flight.outbound.arrival}. Airport → hotel transfer (~45min).` : `Arrivée en ${recommendedTransport?.mode === 'bus' ? 'bus' : 'train'}. Transfert gare → hôtel.`} Check-in at ${hotel.name}. Rest and freshen up.",
       "evening": "Gentle evening walk to [specific area]. Dinner at [specific restaurant]. Estimated €35.",
       "meals": {
         "breakfast": null,
@@ -145,7 +154,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
       },
       "activities": [
         {
-          "time": "${calculateFirstActivityTime(flight.outbound.arrival)}",
+          "time": "${flight ? calculateFirstActivityTime(flight.outbound.arrival) : '16:00'}",
           "activity": "Arrival and hotel check-in",
           "duration": "2 hours",
           "cost": 0,
@@ -270,9 +279,13 @@ Style: ${style}, Activities: ${interests.length > 0 ? interests.join(', ') : 'op
 ${userContext}
 SEASON: ${seasonalInsights.monthName} - ${seasonalInsights.weather.description}
 
+LANGUE & FORMATS (NON NÉGOCIABLE — audit V3 P1) :
+- Écris TOUT le contenu en FRANÇAIS : tagline, matchReason, seasonReason, noms d'activités, tips, budgetTips. Les clés JSON restent en anglais.
+- Prix en euros, horaires au format 24h (« 14h30 », jamais AM/PM).
+
 Return ONLY this JSON (no markdown):
 {
-  "tagline": "Max 10 words catchy phrase about ${destination.name}",
+  "tagline": "Max 10 words catchy phrase about ${destination.name} — EN FRANÇAIS",
   ${matchReasonInstruction},
   "seasonReason": "1 sentence about ${seasonalInsights.monthName} in ${destination.name}",
   "activities": [
