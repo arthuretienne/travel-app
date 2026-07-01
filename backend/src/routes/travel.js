@@ -12,6 +12,7 @@ import { strictLimiter, userStrictLimiter, userSearchLimiter } from '../middlewa
 import { checkLimit, incrementUsage } from '../middleware/checkSubscription.js';
 import { validateBody } from '../middleware/validateBody.js';
 import { recommendationsBodySchema, signalBodySchema } from '../schemas/recommendationSchemas.js';
+import { applyFreeTextSignals } from '../utils/freeTextSignals.js';
 import prisma from '../db/prisma.js';
 
 // Manually consume a "search" quota slot. Used only when a request actually
@@ -219,6 +220,14 @@ router.post('/recommendations',
       };
     } else {
       console.log('⚠️  No onboarding preferences found for user');
+    }
+
+    // Le texte libre porte des contraintes dures que le wizard ne capture pas
+    // (audit V3 T9/E5) : durée explicite (« week-end » → 3 j) et refus de
+    // l'avion. On les normalise dans le profil AVANT tout calcul.
+    const freeTextOverrides = applyFreeTextSignals(userProfile);
+    if (Object.keys(freeTextOverrides).length > 0) {
+      console.log('📝 Free-text signals applied:', freeTextOverrides);
     }
 
     // Determine origin city
@@ -1039,6 +1048,13 @@ router.post('/recommendations/stream',
         userProfile.onboardingPreferences = userPreferences;
       }
 
+      // Durée explicite + refus d'avion du texte libre (audit V3 T9/E5) —
+      // même normalisation que le endpoint JSON.
+      const freeTextOverrides = applyFreeTextSignals(userProfile);
+      if (Object.keys(freeTextOverrides).length > 0) {
+        console.log('📝 Free-text signals applied:', freeTextOverrides);
+      }
+
       const originCity = (userPreferences?.preferredAirports?.[0]) || userProfile.availability?.originCity || 'Paris';
       // Budget arrives per-person from the frontend; multiply by group size so
       // the discovery/optimisation pipeline sees the real total (matches the
@@ -1167,6 +1183,9 @@ router.post('/recommendations/stream',
       // ceiling — 5 in parallel currently fits the Pro tier.
       const destinationsToProcess = topDestinations.slice(0, 5);
       let completedCount = 0;
+      // Échecs typés BUDGET_TIGHT (cap vol / plancher hôtel) — agrégés en
+      // budget_warning après la boucle si rien n'a survécu.
+      const budgetFailures = [];
 
       // Extract trip context for streaming (same as non-streaming)
       const tripContextStreaming = userProfile.basic?.travelVibeDescription || null;
@@ -1414,10 +1433,30 @@ router.post('/recommendations/stream',
 
           } catch (error) {
             console.warn(`⚠️  Streaming: Failed to process ${dest.name}:`, error.message);
+            if (error.code === 'BUDGET_TIGHT') {
+              budgetFailures.push({ destination: dest.name, reason: error.userReason || null });
+            }
             sendEvent('warning', { destination: dest.name, error: 'Failed to process destination' });
           }
         })
       );
+
+      // Chaîne T9 (audit V3) : quand TOUTES les destinations échouent parce que
+      // le budget réel ne tient pas (vols chers, plancher hôtel), l'utilisateur
+      // recevait « Aucun résultat » sans explication. On agrège en un
+      // budget_warning honnête que le frontend sait déjà afficher.
+      if (completedCount === 0 && budgetFailures.length > 0) {
+        const example = budgetFailures.find(f => f.reason)?.reason;
+        sendEvent('budget_warning', {
+          message: `Votre budget de ${budget} € (${userProfile.basic?.travelers || 1} pers., ${duration} j) ne suffit pas pour ces destinations${example ? ` — par exemple, ${example}` : ''}.`,
+          suggestions: [
+            'Raccourcir le séjour ou partir en train vers une destination proche',
+            'Élargir vos dates de ±3 jours (jusqu’à 30-50 % d’économie)',
+            'Réserver 2-3 mois à l’avance',
+            'Augmenter le budget par personne pour débloquer plus d’options',
+          ],
+        });
+      }
 
       // Send completion event
       sendEvent('complete', {

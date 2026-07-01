@@ -830,13 +830,39 @@ export async function optimizeDestination({
       console.log(`   🏔️ Adventure trip → 50% hotel budget (activities priority)`);
     }
 
+    // Garde-fou audit V3 (chaîne T9) : le cap budget vol n'existait que sur les
+    // prix teaser de la shortlist — ici le vol réel repartait sans plafond
+    // (vol €752 retenu sur budget total €1000 → reliquat hôtel €30/nuit → zéro
+    // hôtel partout → échec silencieux). On plafonne et on échoue de façon
+    // TYPÉE pour que le stream puisse agréger en budget_warning honnête.
+    const MAX_FLIGHT_BUDGET_SHARE = 0.75;
+    if (flightCost > budget * MAX_FLIGHT_BUDGET_SHARE) {
+      const err = new Error(`Flight €${flightCost} exceeds ${Math.round(MAX_FLIGHT_BUDGET_SHARE * 100)}% of total budget €${budget}`);
+      err.code = 'BUDGET_TIGHT';
+      err.userReason = `vol à ${Math.round(flightCost)} € pour ${budget} € de budget total`;
+      throw err;
+    }
+
     const remainingForAccommodation = budget - flightCost;
     if (remainingForAccommodation <= 0) {
-      throw new Error(`Flight cost (€${flightCost}) leaves no hotel budget from total budget (€${budget})`);
+      const err = new Error(`Flight cost (€${flightCost}) leaves no hotel budget from total budget (€${budget})`);
+      err.code = 'BUDGET_TIGHT';
+      err.userReason = `le vol consomme tout le budget (${Math.round(flightCost)} € sur ${budget} €)`;
+      throw err;
     }
 
     const totalNights = duration;
     const maxNightlyRate = (remainingForAccommodation / totalNights) * hotelBudgetRatio;
+
+    // Plancher de viabilité : sous ~€30/nuit il n'existe pas d'inventaire hôtel
+    // réel — chercher quand même produit des « No hotels found » silencieux.
+    const MIN_VIABLE_NIGHTLY_RATE = 30;
+    if (maxNightlyRate < MIN_VIABLE_NIGHTLY_RATE) {
+      const err = new Error(`Hotel budget €${Math.round(maxNightlyRate)}/night is below viable floor (€${MIN_VIABLE_NIGHTLY_RATE}) after €${flightCost} flight`);
+      err.code = 'BUDGET_TIGHT';
+      err.userReason = `après le vol (${Math.round(flightCost)} €), il reste ${Math.round(maxNightlyRate)} €/nuit pour l'hôtel`;
+      throw err;
+    }
 
     console.log(`🏨 Budget for hotel: €${Math.round(maxNightlyRate)}/night × ${totalNights} nights (${Math.round(hotelBudgetRatio * 100)}% ratio)`);
 
