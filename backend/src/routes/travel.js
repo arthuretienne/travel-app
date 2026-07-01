@@ -69,7 +69,9 @@ async function getDestinationPhotos(cityNames) {
 function calculateScoreFromTrip(trip, userBudget) {
   const totalCost = trip.budget.total;
   const remaining = trip.budget.remaining;
-  const flightCost = trip.flight.totalCost;
+  // flight peut être null (voyage sans avion) — le transport principal est
+  // alors dans budget.mainTransportCost.
+  const flightCost = trip.flight?.totalCost ?? trip.budget.mainTransportCost ?? 0;
 
   // Score based on budget utilization (optimal around 80-90%)
   const budgetUtilization = (totalCost / userBudget) * 100;
@@ -282,7 +284,7 @@ router.post('/recommendations',
         isFixedDate, // Respect fixed dates if specified
       });
 
-      console.log(`✅ Trip optimized: €${optimizedTrip.flight.totalCost} flight + €${optimizedTrip.hotel.totalPrice} hotel`);
+      console.log(`✅ Trip optimized: €${optimizedTrip.flight?.totalCost ?? 0} flight + €${optimizedTrip.hotel.totalPrice} hotel${optimizedTrip.flight === null ? ' (sans avion)' : ''}`);
 
       // Step 2+3: Generate destination insights + fetch photos in parallel
       console.log('🤖 Step 2+3: Generating insights + fetching photos in parallel...');
@@ -314,7 +316,7 @@ router.post('/recommendations',
             endDate: optimizedTrip.dates.return,
           },
           flightOffer: {
-            price: optimizedTrip.flight.totalCost,
+            price: optimizedTrip.flight?.totalCost ?? 0,
           }
         },
         originCity
@@ -352,7 +354,7 @@ router.post('/recommendations',
         },
         // Ground transport info (if flying to nearby airport instead of destination)
         groundTransport: optimizedTrip.groundTransport,
-        flightDetails: {
+        flightDetails: optimizedTrip.flight === null ? null : {
           outbound: {
             departureTime: optimizedTrip.flight.outbound.departureTime,
             arrivalTime: optimizedTrip.flight.outbound.arrivalTime,
@@ -1082,6 +1084,24 @@ router.post('/recommendations/stream',
       sendEvent('status', { stage: 'discovering', message: 'Finding perfect destinations...' });
 
       let discoveryResult;
+      if (userProfile.constraints?.noFly) {
+        // Contrainte « sans avion » (audit E5) : les candidats sont la table
+        // des routes terrestres connues — pas le moteur vectoriel, qui
+        // proposerait des destinations inatteignables sans vol.
+        discoveryResult = destinationService.getGroundReachableDestinations(originCity);
+        console.log(`🚄 No-fly search: ${discoveryResult.length} ground-reachable candidates from ${originCity}`);
+        if (discoveryResult.length === 0) {
+          sendEvent('no_destinations', {
+            message: `Vous avez demandé un voyage sans avion, mais nous ne connaissons pas encore de liaisons train/bus au départ de ${originCity}. Les départs couverts : Paris, Lyon, Marseille.`,
+            suggestions: [
+              'Choisissez Paris, Lyon ou Marseille comme ville de départ',
+              'Ou retirez la contrainte sans avion pour voir toutes les destinations',
+            ],
+          });
+          res.end();
+          return;
+        }
+      } else {
       try {
         const vectorDestinations = await getRecommendations(
           { ...userProfile, userId: req.user.id },
@@ -1112,6 +1132,7 @@ router.post('/recommendations/stream',
           userId: req.user.id
         });
       }
+      } // fin discovery (bypass sans-avion vs moteur vectoriel)
 
       // Handle budget exceeded case (returns object with alternatives)
       let topDestinations;
@@ -1243,7 +1264,7 @@ router.post('/recommendations/stream',
                   endDate: trip.dates.return,
                 },
                 flightOffer: {
-                  price: trip.flight.totalCost,
+                  price: trip.flight?.totalCost ?? 0,
                 }
               },
               originCity
@@ -1265,7 +1286,12 @@ router.post('/recommendations/stream',
               ? activitiesWithPrices.reduce((sum, act) => sum + (act.price || 0), 0)
               : Math.round(25 * trip.dates.duration);
 
-            const actualTotal = trip.budget.flight + trip.budget.hotel + estimatedActivitiesCost;
+            // Sans avion : le transport principal est le train/bus estimé —
+            // il doit compter dans le total affiché, sinon la carte ment.
+            const mainTransportForTotal = trip.flight === null
+              ? (trip.budget.mainTransportCost ?? 0)
+              : trip.budget.flight;
+            const actualTotal = mainTransportForTotal + trip.budget.hotel + estimatedActivitiesCost;
             const actualRemaining = budget - actualTotal;
 
             // Build result with all data properly mapped
@@ -1304,7 +1330,7 @@ router.post('/recommendations/stream',
                 realisticTotal: trip.budget.realisticTotal ?? null,
                 overBudget: trip.budget.overBudget ?? false,
               },
-              flightDetails: {
+              flightDetails: trip.flight === null ? null : {
                 outbound: {
                   departureTime: trip.flight.outbound.departureTime,
                   arrivalTime: trip.flight.outbound.arrivalTime,

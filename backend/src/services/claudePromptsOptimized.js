@@ -19,6 +19,7 @@ export function generateItineraryWithDestination({
   flight,
   hotel,
   budget,
+  recommendedTransport,
 }) {
   // Extract user preferences safely from nested structure
   const interests = userProfile.basic?.activities || userProfile.preferences?.interests || [];
@@ -35,7 +36,7 @@ export function generateItineraryWithDestination({
 
 **Dates:** ${dates.departure} to ${dates.return} (${dates.duration} days)
 
-**Outbound Flight:**
+${flight ? `**Outbound Flight:**
 - ${flight.outbound.carrier}
 - Departure: ${flight.outbound.departure} from ${origin.name} (${flight.outbound.origin})
 - Arrival: ${flight.outbound.arrival} at ${destination.name} (${flight.outbound.destination})
@@ -48,7 +49,10 @@ ${flight.return ? `**Return Flight:**
 - Departure: ${flight.return.departure} from ${destination.name}
 - Arrival: ${flight.return.arrival} at ${origin.name}
 - Duration: ${Math.floor(flight.return.duration / 60)}h ${flight.return.duration % 60}min
-- ${flight.return.stops === 0 ? 'Direct flight' : `${flight.return.stops} stop(s)`}` : ''}
+- ${flight.return.stops === 0 ? 'Direct flight' : `${flight.return.stops} stop(s)`}` : ''}` : `**Transport (NO FLIGHT — the traveler explicitly refuses flying):**
+- ${recommendedTransport?.mode === 'bus' ? 'Bus' : 'Train'} with ${recommendedTransport?.operator || 'rail/bus operator'} from ${origin.name}, ~${recommendedTransport?.durationOneWay || '?'} one way
+- Estimated round trip: €${recommendedTransport?.priceRoundTrip || '?'} (to be booked separately, e.g. SNCF/Trainline/FlixBus)
+- IMPORTANT: never suggest flights or airport logistics for this trip — arrival and departure are by ${recommendedTransport?.mode || 'train'} station`}
 
 **Accommodation:**
 - ${hotel.name} (${hotel.stars}★)

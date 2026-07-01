@@ -47,13 +47,21 @@ export function guardRecommendation(result, ctx = {}) {
     return { keep: false, reason: `city === country ("${city}")` };
   }
 
+  // Voyage sans avion (contrainte no-fly, audit E5) : flightDetails est null
+  // par design et le transport principal est un train/bus estimé. Les règles
+  // de sanité du prix de vol ne s'appliquent pas.
+  const isGroundTrip = result?.flightDetails === null &&
+    result?.recommendedTransport?.reason === 'no_fly';
+
   // 3. Flight price sanity.
   const flight = num(result?.pricing?.flight) ?? num(result?.flightDetails?.totalPrice);
-  if (flight === null || flight <= 0) {
-    return { keep: false, reason: `flight price missing/invalid (${flight})` };
-  }
-  if (flight < FLIGHT_PRICE_FLOOR_EUR || flight > FLIGHT_PRICE_CEILING_EUR) {
-    return { keep: false, reason: `flight price implausible (€${flight})` };
+  if (!isGroundTrip) {
+    if (flight === null || flight <= 0) {
+      return { keep: false, reason: `flight price missing/invalid (${flight})` };
+    }
+    if (flight < FLIGHT_PRICE_FLOOR_EUR || flight > FLIGHT_PRICE_CEILING_EUR) {
+      return { keep: false, reason: `flight price implausible (€${flight})` };
+    }
   }
 
   // 4. Economic absurdity. If the flight alone blows the whole budget and

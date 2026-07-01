@@ -816,7 +816,10 @@ function TripCard({
   isAlertCreating,
   isAlertCreated
 }) {
-  const { destination, slot, pricing, flightDetails, hotelOptions, links } = trip;
+  const { destination, slot, pricing, flightDetails, hotelOptions, links, recommendedTransport } = trip;
+  // Voyage sans avion (contrainte utilisateur) : pas de flightDetails, le
+  // transport principal est un train/bus estimé à réserver séparément.
+  const isGroundTrip = !flightDetails && recommendedTransport?.reason === 'no_fly';
   const hotel = hotelOptions?.hotels?.[0];
   const isUnderBudget = (pricing?.remaining ?? 0) >= 0;
 
@@ -882,12 +885,21 @@ function TripCard({
             )}
           </InfoCard>
 
-          <InfoCard label="Vol">
-            <p className="text-text-main font-semibold">{formatEUR((pricing?.flight))}</p>
-            <p className="text-sm text-text-secondary">
-              {flightDetails?.outbound?.stops === 0 ? 'Direct' : `${flightDetails?.outbound?.stops || 0} escale${(flightDetails?.outbound?.stops || 0) > 1 ? 's' : ''}`}
-            </p>
-          </InfoCard>
+          {isGroundTrip ? (
+            <InfoCard label={recommendedTransport.mode === 'bus' ? 'Bus' : 'Train'}>
+              <p className="text-text-main font-semibold">≈ {formatEUR(recommendedTransport.priceRoundTrip)}</p>
+              <p className="text-sm text-text-secondary">
+                {recommendedTransport.operator} · {recommendedTransport.durationOneWay} · à réserver séparément
+              </p>
+            </InfoCard>
+          ) : (
+            <InfoCard label="Vol">
+              <p className="text-text-main font-semibold">{formatEUR((pricing?.flight))}</p>
+              <p className="text-sm text-text-secondary">
+                {flightDetails?.outbound?.stops === 0 ? 'Direct' : `${flightDetails?.outbound?.stops || 0} escale${(flightDetails?.outbound?.stops || 0) > 1 ? 's' : ''}`}
+              </p>
+            </InfoCard>
+          )}
 
           <InfoCard label="Hôtel">
             <p className="text-text-main font-semibold">{formatEUR((pricing?.hotel))}</p>
@@ -972,6 +984,20 @@ function TripCard({
 
           {isExpanded && (
             <div className="mt-6 space-y-6 animate-fadeIn">
+              {/* Transport terrestre (voyage sans avion demandé) */}
+              {isGroundTrip && (
+                <div className="p-5 bg-surface-subtle rounded-xl">
+                  <h4 className="text-sm font-semibold text-text-main mb-2">
+                    {recommendedTransport.mode === 'bus' ? '🚌 Trajet en bus' : '🚄 Trajet en train'} — sans avion, comme demandé
+                  </h4>
+                  <p className="text-sm text-text-secondary">
+                    {recommendedTransport.operator} · environ {recommendedTransport.durationOneWay} par trajet ·
+                    ≈ {formatEUR(recommendedTransport.priceRoundTrip)} aller-retour (prix estimé, compté dans le total).
+                    Réservez sur SNCF Connect, Trainline ou FlixBus.
+                  </p>
+                </div>
+              )}
+
               {/* Flight Details */}
               {flightDetails && (
                 <div className="p-5 bg-surface-subtle rounded-xl">

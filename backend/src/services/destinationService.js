@@ -646,6 +646,44 @@ export async function optimizeDestination({
     console.log(`📅 Step 2: Checking ${dateCandidates.length} date option(s) ${isFixedDate ? '(FIXED DATE)' : 'for best price'}...`);
     console.log(`   Dates: ${dateCandidates.join(', ')}`);
 
+    // Contrainte dure « sans avion » (audit V3 E5) : l'utilisateur qui écrit
+    // « surtout pas d'avion » recevait quand même un vol dans le package.
+    // Ici : zéro recherche de vol, transport = route terrestre CONNUE
+    // (GROUND_ALTERNATIVES, prix estimés) ou échec typé si aucune route.
+    const noFly = userProfile?.constraints?.noFly === true;
+    let bestFlight = null;
+    let flightCost = 0;
+    let selectedDepartureDate = null;
+    let selectedReturnDate = null;
+    let noFlyTransport = null;
+    let noFlyGroundCost = 0;
+
+    if (noFly) {
+      const groundRoute = findGroundRoute(origin, destination);
+      if (!groundRoute) {
+        const err = new Error(`No known train/bus route from ${origin} to ${destination} (no-fly constraint)`);
+        err.code = 'NO_GROUND_ROUTE';
+        err.userReason = `pas d'itinéraire train/bus connu vers ${destination}`;
+        throw err;
+      }
+      const paxCount = numAdults + numChildren;
+      noFlyGroundCost = groundRoute.price * 2 * paxCount;
+      noFlyTransport = {
+        mode: groundRoute.transport,
+        operator: groundRoute.operator,
+        durationOneWay: groundRoute.duration,
+        priceRoundTrip: noFlyGroundCost,
+        estimated: true,
+        reason: 'no_fly',
+        note: `${groundRoute.transport === 'train' ? '🚄' : '🚌'} ${groundRoute.operator} ~${groundRoute.price * 2} € A/R par personne (estimé) — sans avion, comme demandé`,
+      };
+      selectedDepartureDate = dateCandidates[0];
+      const noFlyReturn = new Date(selectedDepartureDate);
+      noFlyReturn.setDate(noFlyReturn.getDate() + duration);
+      selectedReturnDate = noFlyReturn.toISOString().split('T')[0];
+      console.log(`🚄 No-fly trip: ${groundRoute.operator} ${groundRoute.duration}, ~€${noFlyGroundCost} A/R total (${paxCount} pax)`);
+    } else {
+
     // Search flights for all date candidates in parallel (max 5 concurrent for speed)
     let flightSearches = [];
     const batchSize = 5; // Increased from 3 to 5 for faster response
@@ -781,12 +819,14 @@ export async function optimizeDestination({
       }
     }
 
-    const bestFlight = bestOption.flight;
-    const flightCost = bestOption.price;
-    const selectedDepartureDate = bestOption.departureDate;
-    const selectedReturnDate = bestOption.returnDate;
+    bestFlight = bestOption.flight;
+    flightCost = bestOption.price;
+    selectedDepartureDate = bestOption.departureDate;
+    selectedReturnDate = bestOption.returnDate;
 
     console.log(`✅ Best flight: ${bestFlight.outbound.airline} - €${flightCost}`);
+
+    } // fin du bloc vol (sauté en mode sans-avion)
 
     // STEP 3: Calculate remaining budget for hotel
     // Use tripType selector (explicit choice) + tripContext (free text) to determine hotel budget ratio
@@ -843,11 +883,11 @@ export async function optimizeDestination({
       throw err;
     }
 
-    const remainingForAccommodation = budget - flightCost;
+    const remainingForAccommodation = budget - flightCost - noFlyGroundCost;
     if (remainingForAccommodation <= 0) {
-      const err = new Error(`Flight cost (€${flightCost}) leaves no hotel budget from total budget (€${budget})`);
+      const err = new Error(`Transport cost (€${flightCost + noFlyGroundCost}) leaves no hotel budget from total budget (€${budget})`);
       err.code = 'BUDGET_TIGHT';
-      err.userReason = `le vol consomme tout le budget (${Math.round(flightCost)} € sur ${budget} €)`;
+      err.userReason = `le transport consomme tout le budget (${Math.round(flightCost + noFlyGroundCost)} € sur ${budget} €)`;
       throw err;
     }
 
@@ -1070,7 +1110,10 @@ export async function optimizeDestination({
     // here we just attach the smarter transport so realisticTotal is sane.
     const groundRoute = findGroundRoute(origin, destination);
     let recommendedTransport = null;
-    if (groundRoute) {
+    if (noFlyTransport) {
+      // Mode sans-avion : le transport terrestre EST le transport principal.
+      recommendedTransport = noFlyTransport;
+    } else if (groundRoute) {
       const groundRoundTrip = groundRoute.price * 2;
       // "absurd" = flying costs more than 2× the ground round trip
       if (flightCost > groundRoundTrip * 2) {
@@ -1140,7 +1183,7 @@ export async function optimizeDestination({
         userRequestedDate: departureDate, // Original user request (if any)
         datesChecked: dateCandidates.length, // How many dates we checked
       },
-      flight: {
+      flight: bestFlight === null ? null : {
         outbound: {
           departureTime: bestFlight.outbound.departureTime,
           arrivalTime: bestFlight.outbound.arrivalTime,
@@ -1466,10 +1509,28 @@ const GROUND_ALTERNATIVES = {
   ],
 };
 
+/**
+ * Candidats pour une recherche « sans avion » (audit V3 E5) : les destinations
+ * de la table terrestre, dédupliquées. Zéro LLM, zéro invention — on ne
+ * propose que des routes train/bus dont on connaît opérateur et prix estimé.
+ */
+export function getGroundReachableDestinations(origin) {
+  const key = resolveGroundOrigin(origin);
+  if (!key) return [];
+  const seen = new Set();
+  const out = [];
+  for (const alt of GROUND_ALTERNATIVES[key] || []) {
+    if (seen.has(alt.name)) continue;
+    seen.add(alt.name);
+    out.push({ name: alt.name, country: alt.country, groundOnly: true, hasBeach: alt.hasBeach });
+  }
+  return out;
+}
+
 function resolveGroundOrigin(origin) {
   if (!origin) return 'Paris';
   const o = origin.toLowerCase();
-  if (o.includes('paris') || o === 'cdg' || o === 'ory' || o === 'bva') return 'Paris';
+  if (o.includes('paris') || o === 'par' || o === 'cdg' || o === 'ory' || o === 'bva') return 'Paris';
   if (o.includes('lyon') || o === 'lys') return 'Lyon';
   if (o.includes('marseille') || o === 'mrs') return 'Marseille';
   return null; // no known ground network for this origin → flight only
