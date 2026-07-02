@@ -224,6 +224,34 @@ export async function getRecommendations(userProfile, searchParams) {
 }
 
 /**
+ * Villes explicitement rejetées par l'utilisateur (signal 'rejected').
+ * Best-effort : le chemin de fallback (discoverDestinations) doit pouvoir
+ * les exclure même quand le moteur vectoriel est down — audit V4, E14 :
+ * une ville rejetée réapparaissait dans la relance parce que seuls les
+ * candidats ANN étaient filtrés. Retourne [] sur toute erreur.
+ */
+export async function getRejectedDestinations(userId) {
+  if (!userId) return [];
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('user_travel_profiles')
+      .select('rejected_destinations')
+      .eq('user_id', userId)
+      .single();
+    // PGRST116 = pas de profil → liste vide, cas normal.
+    if (error && error.code !== 'PGRST116') {
+      console.warn('[Reco] rejected_destinations indisponibles (on continue sans):', error.message);
+      return [];
+    }
+    return data?.rejected_destinations || [];
+  } catch (err) {
+    console.warn('[Reco] rejected_destinations indisponibles (on continue sans):', err.message);
+    return [];
+  }
+}
+
+/**
  * Capture un signal comportemental (click, save, reject)
  */
 export async function captureSignal(userId, destinationCity, signalType) {
@@ -239,18 +267,29 @@ export async function captureSignal(userId, destinationCity, signalType) {
 
   const supabase = getSupabase();
 
-  const { data: existing } = await supabase
+  // supabase-js ne throw pas : il retourne { data, error }. L'ancienne
+  // version ignorait `error`, donc un Supabase injoignable renvoyait 200 au
+  // client alors que le signal n'était jamais persisté (audit V4, E14 : le
+  // « rejet » semblait accepté puis la ville revenait). PGRST116 = pas de
+  // ligne pour ce user → cas normal (liste vide), pas une erreur.
+  const { data: existing, error: readError } = await supabase
     .from('user_travel_profiles')
     .select(column)
     .eq('user_id', userId)
     .single();
+  if (readError && readError.code !== 'PGRST116') {
+    throw new Error(`Signal store unreachable: ${readError.message}`);
+  }
 
   const current = existing?.[column] || [];
   if (!current.includes(destinationCity)) {
     const updated = [...current, destinationCity];
-    await supabase
+    const { error: writeError } = await supabase
       .from('user_travel_profiles')
       .upsert({ user_id: userId, [column]: updated, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    if (writeError) {
+      throw new Error(`Signal store write failed: ${writeError.message}`);
+    }
 
     // Regenerate DNA vector with new signal (async, non-blocking)
     regenerateDNA(supabase, userId).catch(err =>

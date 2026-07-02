@@ -4,6 +4,7 @@
 
 import * as bookingService from './bookingService.js';
 import { generateDestinationShortlist } from './claudeService.js';
+import { getRejectedDestinations } from './recommendationEngine.js';
 import * as hotelService from './hotelService.js'; // Old hotel service (not used)
 
 const FLIGHT_DURATION_TOLERANCE_MINUTES = 30;
@@ -218,6 +219,15 @@ export async function discoverDestinations({
       .map(c => String(c).trim())
       .filter(Boolean);
 
+    // Villes rejetées par l'utilisateur (signal 'rejected') : le moteur
+    // vectoriel les filtre déjà, mais CE chemin est le fallback quand il est
+    // down — sans cette lecture, un rejet réapparaissait immédiatement
+    // (audit V4, E14). Best-effort : [] si Supabase ne répond pas.
+    const rejectedCities = await getRejectedDestinations(userId);
+    if (rejectedCities.length > 0) {
+      console.log(`🚫 User-rejected destinations excluded: ${rejectedCities.join(', ')}`);
+    }
+
     const shortlist = await generateDestinationShortlist(userProfile, {
       budget,
       duration,
@@ -226,6 +236,7 @@ export async function discoverDestinations({
       userId, // Pass userId for diversity (avoids recently recommended destinations)
       maxFlightHours: userProfile?.basic?.maxFlightHours || userProfile?.constraints?.maxFlightHours || null,
       avoidCountries, // hard-exclusion list passed straight to the prompt
+      excludeDestinations: rejectedCities, // rejoint le « DO NOT SUGGEST » du prompt
     });
 
     console.log(`✅ Claude suggested: ${shortlist.join(', ')}`);
@@ -340,6 +351,22 @@ export async function discoverDestinations({
       const dropped = beforeAvoid - destinationsWithFlights.length;
       if (dropped > 0) {
         console.log(`🚫 Filtered out ${dropped} destination(s) in user-excluded countries: ${avoidCountries.join(', ')}`);
+      }
+    }
+
+    // Défense en profondeur sur les rejets : même logique que avoidCountries —
+    // le prompt est censé les exclure, on garantit qu'aucune ville rejetée ne
+    // sort quand même (E14).
+    if (rejectedCities.length > 0) {
+      const lcRejected = rejectedCities.map(c => String(c).toLowerCase());
+      const beforeRejected = destinationsWithFlights.length;
+      destinationsWithFlights = destinationsWithFlights.filter(d => {
+        const city = (d.cityName || d.name || '').toLowerCase();
+        return !lcRejected.some(r => city.includes(r) || r.includes(city));
+      });
+      const droppedRejected = beforeRejected - destinationsWithFlights.length;
+      if (droppedRejected > 0) {
+        console.log(`🚫 Filtered out ${droppedRejected} user-rejected destination(s)`);
       }
     }
 
