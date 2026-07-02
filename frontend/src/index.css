@@ -133,3 +133,17 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-300;
 }
+
+/* Accessibilité (audit V3) : respecter prefers-reduced-motion — coupe les
+   4 animations en boucle (pulse, halo, skeleton) et toutes les transitions
+   pour les utilisateurs qui l'ont demandé à l'OS. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
