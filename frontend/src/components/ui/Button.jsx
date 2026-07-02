@@ -25,7 +25,9 @@ export default function Button({
   return (
     <button
       className={[
-        'inline-flex items-center justify-center font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50',
+        // active:scale = feedback pressed systémique (audit V4 motion) —
+        // neutralisé par le kill-switch prefers-reduced-motion d'index.css.
+        'inline-flex items-center justify-center font-medium transition-all active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100',
         VARIANTS[variant] || VARIANTS.primary,
         SIZES[size] || SIZES.md,
         full ? 'w-full' : '',
