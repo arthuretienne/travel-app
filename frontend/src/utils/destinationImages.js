@@ -20,8 +20,8 @@ const STATIC_DESTINATION_PHOTOS = {
   'Valencia': 'https://images.pexels.com/photos/1388030/pexels-photo-1388030.jpeg?auto=compress&cs=tinysrgb&w=800',
 
   // Portugal
-  'Lisbon': 'https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=1200&q=80&auto=format&fit=crop',
-  'Porto': 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=1200&q=80&auto=format&fit=crop',
+  'Lisbon': '/hero/lisbon-1200.jpg', // self-hosted
+  'Porto': '/hero/porto-1200.jpg', // self-hosted
 
   // Italy
   'Rome': 'https://images.pexels.com/photos/2064827/pexels-photo-2064827.jpeg?auto=compress&cs=tinysrgb&w=800',
@@ -60,7 +60,7 @@ const STATIC_DESTINATION_PHOTOS = {
   'Munich': 'https://images.pexels.com/photos/3618540/pexels-photo-3618540.jpeg?auto=compress&cs=tinysrgb&w=800',
 
   // Morocco
-  'Marrakech': 'https://images.unsplash.com/photo-1597212618440-806262de4f6b?w=1200&q=80&auto=format&fit=crop',
+  'Marrakech': '/hero/marrakech-1200.jpg', // self-hosted (LCP landing — audit V4 perf)
   'Casablanca': 'https://images.pexels.com/photos/4577791/pexels-photo-4577791.jpeg?auto=compress&cs=tinysrgb&w=800',
   'Fez': 'https://images.pexels.com/photos/4577793/pexels-photo-4577793.jpeg?auto=compress&cs=tinysrgb&w=800',
 
@@ -196,7 +196,13 @@ export function getDestinationImage({ city, country, tripData } = {}) {
  * Retourne undefined pour les autres sources : le navigateur retombe sur src.
  */
 export function buildResponsiveSrcSet(url, widths = [480, 800, 1200]) {
-  if (!url || !url.includes('images.unsplash.com') || !/w=\d+/.test(url)) return undefined;
+  if (!url) return undefined;
+  // Images self-hostées (/hero/name-1200.jpg) : variantes -480/-800/-1200.
+  const local = url.match(/^(\/hero\/[a-z-]+)-1200\.jpg$/);
+  if (local) {
+    return widths.map((w) => `${local[1]}-${w}.jpg ${w}w`).join(', ');
+  }
+  if (!url.includes('images.unsplash.com') || !/w=\d+/.test(url)) return undefined;
   return widths.map((w) => `${url.replace(/w=\d+/, `w=${w}`)} ${w}w`).join(', ');
 }
 

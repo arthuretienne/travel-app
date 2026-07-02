@@ -453,7 +453,7 @@ function Landing() {
                 { city: 'Porto', country: 'Portugal', price: 620, badge: 'Week-end idéal' },
               ].map((dest) => (
                 <div key={dest.city} className="overflow-hidden rounded-[16px] border border-sand-200 bg-white shadow-1">
-                  <PhotoBlock city={dest.city} country={dest.country} className="h-32" alt={`${cityFr(dest.city)}, ${countryFr(dest.country)}`}>
+                  <PhotoBlock city={dest.city} country={dest.country} className="h-32" sizes="(max-width: 767px) 92vw, 350px" alt={`${cityFr(dest.city)}, ${countryFr(dest.country)}`}>
                     <Badge tone="ember" className="absolute right-3 top-3 shadow-1">
                       {dest.badge}
                     </Badge>
