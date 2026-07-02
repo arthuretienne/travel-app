@@ -128,6 +128,8 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-surface-subtle">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-5 sm:py-10 md:px-8 md:py-14">
+        {/* Motion système (audit V3) : les sections montent en cascade douce */}
+        <div className="sk-enter">
         <HeroGreeting
           firstName={user?.firstName}
           context={heroContext}
@@ -136,6 +138,8 @@ function Dashboard() {
           onCompose={handleCreateTrip}
         />
 
+        </div>
+        <div className="sk-enter" style={{ '--rise-delay': '60ms' }}>
         <ActionCenter
           items={actionItems}
           loading={loading}
@@ -144,6 +148,8 @@ function Dashboard() {
           hasAnyTrip={hasAnyTrip}
         />
 
+        </div>
+        <div className="sk-enter" style={{ '--rise-delay': '120ms' }}>
         <NextTripSpotlight
           trip={nextTrip}
           daysUntil={nextTrip ? helpers.daysUntil(nextTrip.startDate) : null}
@@ -155,6 +161,8 @@ function Dashboard() {
           onPlan={handleCreateTrip}
         />
 
+        </div>
+        <div className="sk-enter" style={{ '--rise-delay': '180ms' }}>
         <TripsSection
           savedTrips={savedTrips}
           collaborativeTrips={collaborativeTrips}
@@ -172,12 +180,17 @@ function Dashboard() {
           onPlan={handleCreateTrip}
         />
 
+        </div>
+        <div className="sk-enter" style={{ '--rise-delay': '240ms' }}>
         <InsightsRow insights={insights} />
+        </div>
 
+        <div className="sk-enter" style={{ '--rise-delay': '300ms' }}>
         <PriceAlertsPreview
           alerts={priceAlerts}
           onCreate={() => navigate('/dashboard')}
         />
+        </div>
       </div>
     </div>
   );

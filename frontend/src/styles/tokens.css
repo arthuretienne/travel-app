@@ -152,3 +152,11 @@
 .sk-noscroll::-webkit-scrollbar {
   display: none;
 }
+
+/* Motion système (audit V3 Sprint 3) : entrée staggerable des cartes et
+   sections. Délai par élément via --rise-delay ; coupé automatiquement par
+   prefers-reduced-motion (index.css). */
+.sk-enter {
+  animation: sk-rise 380ms var(--ease-out) both;
+  animation-delay: var(--rise-delay, 0ms);
+}

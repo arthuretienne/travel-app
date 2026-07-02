@@ -735,7 +735,9 @@ function Results() {
               </p>
             </div>
             {[0, 1, 2].map((i) => (
-              <SkeletonTripCard key={i} />
+              <div key={i} className="sk-enter" style={{ '--rise-delay': `${i * 90}ms` }}>
+                <SkeletonTripCard />
+              </div>
             ))}
           </div>
         )}
@@ -764,8 +766,8 @@ function Results() {
         {/* Trip Cards */}
         <div className="space-y-8">
           {destinationTrips.map((trip, index) => (
+            <div key={index} className="sk-enter" style={{ '--rise-delay': `${Math.min(index, 4) * 70}ms` }}>
             <TripCard
-              key={index}
               trip={trip}
               index={index}
               isExpanded={expandedTrip === index}
@@ -792,6 +794,7 @@ function Results() {
               isAlertCreating={alertingTripId === index}
               isAlertCreated={alertCreatedFor.has(index)}
             />
+            </div>
           ))}
           {/* Cartes encore en cours de composition : skeletons résiduels */}
           {isStreaming && recommendations.length > 0 && expectedTotal > recommendations.length &&

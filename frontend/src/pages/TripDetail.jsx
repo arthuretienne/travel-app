@@ -1,5 +1,5 @@
 // frontend/src/pages/TripDetail.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth, useUser, SignUpButton } from '@clerk/clerk-react';
 import { track } from '../lib/analytics';
@@ -141,6 +141,22 @@ export default function TripDetail() {
   useEffect(() => {
     fetchTripDetails();
   }, [id]);
+
+  // Célébration sobre quand le voyage passe à « confirmé » PENDANT la session
+  // (finalisation du vote) — motion système audit V3 Sprint 3. Jamais au
+  // premier chargement d'un trip déjà confirmé.
+  const confirmedFlag = !!trip?.finalDestination;
+  const wasConfirmedRef = useRef(null);
+  const [justConfirmed, setJustConfirmed] = useState(false);
+  useEffect(() => {
+    if (wasConfirmedRef.current === false && confirmedFlag) {
+      setJustConfirmed(true);
+      const t = setTimeout(() => setJustConfirmed(false), 2600);
+      wasConfirmedRef.current = confirmedFlag;
+      return () => clearTimeout(t);
+    }
+    if (trip) wasConfirmedRef.current = confirmedFlag;
+  }, [confirmedFlag, trip]);
 
   const fetchTripDetails = async () => {
     try {
@@ -436,6 +452,21 @@ export default function TripDetail() {
           </div>
         </div>
       </div>
+
+      {/* Célébration sobre à la finalisation du vote (disparaît en 2,6 s ;
+          respecte prefers-reduced-motion via le kill-switch global) */}
+      {justConfirmed && (
+        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
+          <div className="sk-enter rounded-2xl bg-white border border-sand-200 shadow-2xl px-8 py-6 text-center">
+            <span className="sk-halo mx-auto grid h-12 w-12 place-items-center rounded-full bg-moss-100 text-moss-500">
+              <Check size={24} />
+            </span>
+            <p className="mt-3 font-display text-xl text-text-main">
+              C'est décidé — direction {trip.finalDestination?.city || trip.finalDestination?.destination?.city || 'votre destination'} !
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Conversion invité → compte (audit V3 : l'expérience guest n'avait
           aucun CTA de création de compte — la boucle virale s'arrêtait là) */}
