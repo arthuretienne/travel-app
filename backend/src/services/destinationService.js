@@ -128,10 +128,19 @@ function getFlightBudgetRatio(destinationsWithFlights) {
   }
 }
 
-function getMaxFlightMinutes(userProfile) {
+// Garde-fou très courts séjours (audit V3/V4, E10a) : pour 1-2 jours,
+// personne ne vole 7 h — on borne au court-courrier même si l'utilisateur
+// n'a rien précisé (sa préférence explicite plus stricte reste prioritaire).
+const SHORT_TRIP_MAX_FLIGHT_HOURS = 3.5;
+
+function getMaxFlightMinutes(userProfile, duration = null) {
   const hours = userProfile?.basic?.maxFlightHours || userProfile?.constraints?.maxFlightHours || null;
-  if (!hours) return null;
-  return (Number(hours) * 60) + FLIGHT_DURATION_TOLERANCE_MINUTES;
+  const shortTripCap = duration != null && duration <= 2 ? SHORT_TRIP_MAX_FLIGHT_HOURS : null;
+  const effective = shortTripCap != null
+    ? Math.min(Number(hours) || shortTripCap, shortTripCap)
+    : (hours ? Number(hours) : null);
+  if (!effective) return null;
+  return (effective * 60) + FLIGHT_DURATION_TOLERANCE_MINUTES;
 }
 
 function flightFitsMaxDuration(flight, maxFlightMinutes) {
@@ -234,7 +243,11 @@ export async function discoverDestinations({
       origin,
       count: 8, // More candidates → better country diversity after filtering
       userId, // Pass userId for diversity (avoids recently recommended destinations)
-      maxFlightHours: userProfile?.basic?.maxFlightHours || userProfile?.constraints?.maxFlightHours || null,
+      // Très court séjour (≤ 2 j) : borne court-courrier, même sans
+      // préférence explicite (E10a : Montréal proposé pour 24 h).
+      maxFlightHours: duration <= 2
+        ? Math.min(Number(userProfile?.basic?.maxFlightHours || userProfile?.constraints?.maxFlightHours) || SHORT_TRIP_MAX_FLIGHT_HOURS, SHORT_TRIP_MAX_FLIGHT_HOURS)
+        : (userProfile?.basic?.maxFlightHours || userProfile?.constraints?.maxFlightHours || null),
       avoidCountries, // hard-exclusion list passed straight to the prompt
       excludeDestinations: rejectedCities, // rejoint le « DO NOT SUGGEST » du prompt
     });
@@ -323,7 +336,7 @@ export async function discoverDestinations({
     });
 
     const flightResults = await Promise.all(flightPromises);
-    const maxFlightMinutes = getMaxFlightMinutes(userProfile);
+    const maxFlightMinutes = getMaxFlightMinutes(userProfile, duration);
     let destinationsWithFlights = flightResults.filter(d => d !== null);
 
     if (maxFlightMinutes) {
