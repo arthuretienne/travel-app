@@ -2,7 +2,7 @@
 // Expense splitting routes for collaborative trips (Tricount-style)
 
 import express from 'express';
-import { authenticateUser } from '../middleware/auth.js';
+import { authenticateUser, authenticateUserOrGuest } from '../middleware/auth.js';
 import prisma from '../db/prisma.js';
 
 const router = express.Router();
@@ -43,12 +43,13 @@ async function getParticipants(tripId) {
  * GET /api/trips/:tripId/expenses
  * Get all expenses for a trip
  */
-router.get('/:tripId/expenses', authenticateUser, async (req, res) => {
+router.get('/:tripId/expenses', authenticateUserOrGuest, async (req, res) => {
   try {
     const { tripId } = req.params;
 
-    // Verify user is a member of the trip
-    const member = await prisma.tripMember.findFirst({
+    // Verify user is a member of the trip (guest = membre de CE voyage)
+    const isGuestWithAccess = req.user.isGuest === true && req.user.allowedTripId === tripId;
+    const member = isGuestWithAccess ? true : await prisma.tripMember.findFirst({
       where: { tripId, userId: req.user.id },
     });
     if (!member) {
@@ -170,11 +171,12 @@ router.delete('/:tripId/expenses/:expenseId', authenticateUser, async (req, res)
  * GET /api/trips/:tripId/expenses/settlements
  * Calculate optimal settlement plan (who owes whom)
  */
-router.get('/:tripId/expenses/settlements', authenticateUser, async (req, res) => {
+router.get('/:tripId/expenses/settlements', authenticateUserOrGuest, async (req, res) => {
   try {
     const { tripId } = req.params;
 
-    const member = await prisma.tripMember.findFirst({
+    const isGuestWithAccess = req.user.isGuest === true && req.user.allowedTripId === tripId;
+    const member = isGuestWithAccess ? true : await prisma.tripMember.findFirst({
       where: { tripId, userId: req.user.id },
     });
     if (!member) {
@@ -188,15 +190,14 @@ router.get('/:tripId/expenses/settlements', authenticateUser, async (req, res) =
       },
     });
 
-    const members = await prisma.tripMember.findMany({
-      where: { tripId, userId: { not: null } },
-      include: {
-        user: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
+    // Même source de participants que GET /expenses (audit V4 P1 #4) :
+    // l'ancienne requête excluait les guests ET indexait les soldes par
+    // TripMember.id — aucune clé ne matchait paidById/splitAmong, donc le
+    // plan répondait « Tout est équilibré » sur des soldes non nuls.
+    const participants = await getParticipants(tripId);
 
-    const balances = calculateBalances(expenses, members);
-    const settlements = calculateSettlements(balances, members);
+    const balances = calculateBalances(expenses, participants);
+    const settlements = calculateSettlements(balances, participants);
 
     res.json({ success: true, settlements, balances });
   } catch (error) {

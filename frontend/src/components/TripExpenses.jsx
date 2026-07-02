@@ -2,11 +2,11 @@
 // Tricount-style expense splitting for collaborative trips
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@clerk/clerk-react';
 import {
   Plus, Trash2, ArrowRight, Loader2, Scale,
   Utensils, Plane, Home, ShoppingBag, Ticket, HelpCircle,
 } from 'lucide-react';
+import { useTripAuthToken } from '../lib/guestSession';
 import { Avatar, Button, Card } from './ui';
 import { formatEUR } from '../utils/format';
 
@@ -26,7 +26,9 @@ function getCategoryInfo(id) {
 }
 
 export default function TripExpenses({ tripId, currentUserId }) {
-  const { getToken } = useAuth();
+  // Jeton trip-aware : compte Clerk OU session invitée — l'invité lit
+  // les dépenses et les soldes (l'ajout reste réservé aux comptes).
+  const getToken = useTripAuthToken(tripId);
   const [expenses, setExpenses] = useState([]);
   const [balances, setBalances] = useState({});
   const [members, setMembers] = useState([]);
