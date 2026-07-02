@@ -2,6 +2,7 @@
 // Session invitée : créée par AcceptInvitation quand quelqu'un rejoint un
 // voyage de groupe sans compte. Convention de jeton `guest:<sessionToken>`,
 // comprise par le socket (socketService) et le REST (authenticateUserOrGuest).
+import { useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 
 export function readGuestSession(tripId) {
@@ -20,11 +21,15 @@ export function readGuestSession(tripId) {
  */
 export function useTripAuthToken(tripId) {
   const { getToken, isSignedIn } = useAuth();
-  return async () => {
+  // useCallback est indispensable : ce jeton sert de dépendance d'effects
+  // (stream SSE d'itinéraire). Une identité neuve à chaque render relançait
+  // le stream en continu — 463 requêtes mesurées sur une seule page ouverte
+  // (audit V4, P0 #1).
+  return useCallback(async () => {
     if (!isSignedIn) {
       const session = readGuestSession(tripId);
       if (session) return `guest:${session.sessionToken}`;
     }
     return getToken();
-  };
+  }, [tripId, isSignedIn, getToken]);
 }

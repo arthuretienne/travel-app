@@ -1,6 +1,6 @@
 // backend/src/routes/tripEnhancements.js
 import express from 'express';
-import { authenticateUser } from '../middleware/auth.js';
+import { authenticateUser, authenticateUserOrGuest } from '../middleware/auth.js';
 import { getWeatherForecast, getPackingRecommendations } from '../services/weatherService.js';
 import { generatePersonalizedItinerary, generatePackingFromItinerary, generateItineraryStreaming } from '../services/itineraryService.js';
 import { getDestinationPhotoGallery } from '../services/pexelsService.js';
@@ -12,7 +12,13 @@ import prisma from '../db/prisma.js';
 const router = express.Router();
 
 // Helper function to get trip data (used by all routes)
-async function getTripData(id, userId) {
+// `user` = req.user : soit un compte (id), soit un invité (isGuest +
+// allowedTripId, posé par authenticateUserOrGuest). L'invité n'a accès
+// qu'au voyage de son invitation — audit V4 P0 #1 : le stream d'itinéraire
+// lui renvoyait 401 et le frontend bouclait dessus.
+async function getTripData(id, user) {
+  const userId = typeof user === 'string' ? user : user?.id;
+  const isGuestWithAccess = typeof user === 'object' && user?.isGuest === true && user?.allowedTripId === id;
   // Try collaborative trip first
   let trip = await prisma.collaborativeTrip.findUnique({
     where: { id },
@@ -43,8 +49,9 @@ async function getTripData(id, userId) {
     const userMember = trip.members.find(m => m.userId === userId);
     const isCreator = trip.creatorId === userId;
     members = trip.members;
-    if (!isCreator && !userMember) return null;
+    if (!isCreator && !userMember && !isGuestWithAccess) return null;
   } else {
+    // Les invités n'ont jamais accès aux voyages solo sauvegardés.
     if (trip.userId !== userId) return null;
   }
 
@@ -142,10 +149,10 @@ async function enrichDaysWithPhotos(itinerary, city, country) {
  * GET /api/trips/:id/weather
  * FAST: Get weather forecast only (2-3 seconds)
  */
-router.get('/:id/weather', authenticateUser, async (req, res) => {
+router.get('/:id/weather', authenticateUserOrGuest, async (req, res) => {
   try {
     const { id } = req.params;
-    const tripData = await getTripData(id, req.user.id);
+    const tripData = await getTripData(id, req.user);
 
     if (!tripData) {
       return res.status(404).json({ error: 'Trip not found or access denied' });
@@ -191,10 +198,10 @@ router.get('/:id/weather', authenticateUser, async (req, res) => {
  * GET /api/trips/:id/packing
  * FAST: Get packing recommendations (depends on weather, 3-5 seconds)
  */
-router.get('/:id/packing', authenticateUser, async (req, res) => {
+router.get('/:id/packing', authenticateUserOrGuest, async (req, res) => {
   try {
     const { id } = req.params;
-    const tripData = await getTripData(id, req.user.id);
+    const tripData = await getTripData(id, req.user);
 
     if (!tripData) {
       return res.status(404).json({ error: 'Trip not found or access denied' });
@@ -234,10 +241,10 @@ router.get('/:id/packing', authenticateUser, async (req, res) => {
  * SLOW: Generate personalized itinerary with Claude AI (10-15 seconds)
  * CACHING: Saves itinerary to tripData to avoid regeneration on revisit
  */
-router.get('/:id/itinerary', authenticateUser, async (req, res) => {
+router.get('/:id/itinerary', authenticateUserOrGuest, async (req, res) => {
   try {
     const { id } = req.params;
-    const tripData = await getTripData(id, req.user.id);
+    const tripData = await getTripData(id, req.user);
 
     if (!tripData) {
       return res.status(404).json({ error: 'Trip not found or access denied' });
@@ -365,7 +372,7 @@ router.get('/:id/itinerary', authenticateUser, async (req, res) => {
  * STREAMING: Generate personalized itinerary day by day
  * Uses Server-Sent Events (SSE) to stream each day as it's generated
  */
-router.get('/:id/itinerary/stream', authenticateUser, async (req, res) => {
+router.get('/:id/itinerary/stream', authenticateUserOrGuest, async (req, res) => {
   // Set SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -380,7 +387,7 @@ router.get('/:id/itinerary/stream', authenticateUser, async (req, res) => {
 
   try {
     const { id } = req.params;
-    const tripData = await getTripData(id, req.user.id);
+    const tripData = await getTripData(id, req.user);
 
     if (!tripData) {
       sendEvent('error', { message: 'Trip not found or access denied' });
@@ -562,10 +569,10 @@ router.get('/:id/itinerary/stream', authenticateUser, async (req, res) => {
  * GET /api/trips/:id/events
  * FAST: Get local events (instant, from static data)
  */
-router.get('/:id/events', authenticateUser, async (req, res) => {
+router.get('/:id/events', authenticateUserOrGuest, async (req, res) => {
   try {
     const { id } = req.params;
-    const tripData = await getTripData(id, req.user.id);
+    const tripData = await getTripData(id, req.user);
 
     if (!tripData) {
       return res.status(404).json({ error: 'Trip not found or access denied' });
@@ -612,7 +619,7 @@ router.get('/:id/events', authenticateUser, async (req, res) => {
  * DEPRECATED: Use separate routes above for better performance
  * Keep for backward compatibility
  */
-router.get('/:id/enhancements', authenticateUser, async (req, res) => {
+router.get('/:id/enhancements', authenticateUserOrGuest, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -655,9 +662,10 @@ router.get('/:id/enhancements', authenticateUser, async (req, res) => {
     if (!isSavedTrip) {
       const userMember = trip.members.find(m => m.userId === req.user.id);
       const isCreator = trip.creatorId === req.user.id;
+      const isGuestWithAccess = req.user.isGuest === true && req.user.allowedTripId === id;
       members = trip.members;
 
-      if (!isCreator && !userMember) {
+      if (!isCreator && !userMember && !isGuestWithAccess) {
         return res.status(403).json({ error: 'Access denied' });
       }
     } else {
@@ -785,7 +793,7 @@ router.patch('/:id/itinerary/activities', authenticateUser, async (req, res) => 
       return res.status(400).json({ error: 'Missing required fields: action, dayNumber, activity' });
     }
 
-    const tripData = await getTripData(id, req.user.id);
+    const tripData = await getTripData(id, req.user);
     if (!tripData) {
       return res.status(404).json({ error: 'Trip not found or access denied' });
     }

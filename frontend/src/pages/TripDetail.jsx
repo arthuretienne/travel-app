@@ -2199,9 +2199,15 @@ function TripEnhancementsSection({ trip, userName }) {
     // concurrent reader writing into the same state — and could re-trigger
     // server-side Claude generation when the itinerary wasn't cached yet.
     const controller = new AbortController();
+    // Audit V4 P0 #1 : jamais plus d'un retry automatique par montage, avec
+    // backoff — la version sans garde relançait le stream en continu et
+    // épuisait le rate limiter de l'IP (401 invité / 429 généralisé).
+    let attempts = 0;
+    let retryTimer = null;
 
     const streamItinerary = async () => {
       try {
+        attempts += 1;
         const token = await getToken();
 
         // Use EventSource with auth header via fetch
@@ -2214,7 +2220,9 @@ function TripEnhancementsSection({ trip, userName }) {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to start itinerary stream');
+          const err = new Error('Failed to start itinerary stream');
+          err.status = response.status;
+          throw err;
         }
 
         const reader = response.body.getReader();
@@ -2280,7 +2288,18 @@ function TripEnhancementsSection({ trip, userName }) {
         // A deliberate abort is not an error worth surfacing to the user.
         if (err.name === 'AbortError') return;
         console.error('Error streaming itinerary:', err);
-        setError(err.message);
+        // 401/403 : réessayer ne changera rien (droits) ; sinon, un seul
+        // retry après backoff, puis on affiche un état d'erreur stable.
+        const retriable = err.status !== 401 && err.status !== 403;
+        if (retriable && attempts < 2 && !controller.signal.aborted) {
+          retryTimer = setTimeout(streamItinerary, 4000 * attempts);
+          return;
+        }
+        setError(
+          err.status === 401 || err.status === 403
+            ? "L'itinéraire détaillé n'est pas disponible pour le moment."
+            : "L'itinéraire n'a pas pu se charger. Rechargez la page pour réessayer."
+        );
         setLoadingItinerary(false);
       }
     };
@@ -2289,6 +2308,7 @@ function TripEnhancementsSection({ trip, userName }) {
 
     return () => {
       controller.abort();
+      if (retryTimer) clearTimeout(retryTimer);
     };
   }, [trip.id, getToken]);
 
