@@ -12,10 +12,9 @@ import {
   Plane,
   Search,
   Sparkles,
-  Star,
   Users,
 } from 'lucide-react';
-import { Avatar, Badge, Button, Logo, PhotoBlock } from '../components/ui';
+import { Badge, Button, Logo, PhotoBlock } from '../components/ui';
 import MegaMenu from '../components/Navigation/MegaMenu';
 import { getDestinationImage } from '../utils/destinationImages';
 import { searchAirports, getPrimaryAirport } from '../data/airports';
@@ -53,11 +52,6 @@ const COPY = {
       ['Dates intelligentes', "L'IA cherche les fenêtres où climat, prix et disponibilité s'alignent."],
       ['Voyages de groupe', 'Invitez vos amis, votez, suivez qui a réservé quoi.'],
     ],
-    testimonials: [
-      ['Marie L.', 'Lisbonne, mars 2026', "En 5 minutes, j'avais trois propositions avec vols et hôtels pile dans mon budget."],
-      ['Thomas R.', 'Prague à 4, fév. 2026', 'On avait quatre budgets. Skusku a trouvé une destination qui tenait pour tout le monde.'],
-      ['Sophie M.', 'San Sebastian, week-end', "L'IA a compris randonnée et bonne cuisine sans nous sortir une liste interminable."],
-    ],
     finalTitle: 'Et si vous partiez, vraiment ?',
     finalCta: 'Trouver mon prochain voyage',
     signin: 'Se connecter',
@@ -91,11 +85,6 @@ const COPY = {
       ['Real flights, real prices', 'Partner data and booking links, no bait pricing.'],
       ['Smart dates', 'AI looks for windows where weather, price and availability line up.'],
       ['Group trips', 'Invite friends, vote, track who booked what.'],
-    ],
-    testimonials: [
-      ['Marie L.', 'Lisbon, March 2026', 'In 5 minutes I had three flight and hotel proposals right on budget.'],
-      ['Thomas R.', 'Prague for 4, Feb 2026', 'Four different budgets. Skusku found a destination that worked for everyone.'],
-      ['Sophie M.', 'San Sebastian, weekend', 'The AI understood hiking and food without giving us an endless list.'],
     ],
     finalTitle: 'What if you actually went?',
     finalCta: 'Find my next trip',
@@ -550,27 +539,30 @@ function Landing() {
           </div>
         </section>
 
-        <section className="border-y border-sand-200 bg-white px-5 py-16 md:px-8">
+        {/* Réassurance vérifiable — remplace les témoignages à initiales
+            invérifiables (audit V3 P1 : sous la barre Revolut). Chaque claim
+            est factuel ; brancher de vraies métriques/avis quand ils existent. */}
+        <section className="border-y border-sand-200 bg-white px-5 py-14 md:px-8">
           <div className="mx-auto max-w-6xl">
-            <p className="text-xs font-semibold uppercase tracking-widest text-ember-700">
-              {lang === 'fr' ? 'Des voyageurs nous racontent' : 'Travellers tell us'}
-            </p>
-            <div className="mt-6 grid gap-5 md:grid-cols-3">
-              {c.testimonials.map(([name, trip, quote]) => (
-                <div key={name} className="rounded-[16px] border border-sand-200 bg-surface-subtle p-6">
-                  <div className="mb-4 flex gap-1">
-                    {[0, 1, 2, 3, 4].map((star) => (
-                      <Star key={star} size={14} className="fill-gold-500 text-gold-500" />
-                    ))}
-                  </div>
-                  <p className="font-display text-lg italic leading-7 text-text-main">"{quote}"</p>
-                  <div className="mt-6 flex items-center gap-3 border-t border-sand-200 pt-4">
-                    <Avatar name={name} size={34} />
-                    <div>
-                      <p className="text-sm font-semibold">{name}</p>
-                      <p className="text-xs text-text-secondary">{trip}</p>
-                    </div>
-                  </div>
+            <div className="grid gap-5 sm:grid-cols-3">
+              {(lang === 'fr'
+                ? [
+                    [Plane, 'Données réelles', 'Vols et hôtels issus de nos partenaires de réservation — pas de tarifs d’appel.'],
+                    [Sparkles, 'Gratuit pour essayer', 'Vos premières recherches sans carte bancaire, sans engagement.'],
+                    [Users, 'Pensé pour les groupes', 'Invitation, vote et partage des dépenses inclus — même pour les invités sans compte.'],
+                  ]
+                : [
+                    [Plane, 'Real data', 'Flights and hotels from our booking partners — no teaser fares.'],
+                    [Sparkles, 'Free to try', 'Your first searches without a credit card, no commitment.'],
+                    [Users, 'Built for groups', 'Invitations, voting and expense splitting included — even for guests without an account.'],
+                  ]
+              ).map(([Icon, title, body]) => (
+                <div key={title} className="rounded-[16px] border border-sand-200 bg-surface-subtle p-6">
+                  <span className="grid h-10 w-10 place-items-center rounded-[12px] bg-ember-50 text-ember-700">
+                    <Icon size={20} />
+                  </span>
+                  <p className="mt-4 text-sm font-semibold text-text-main">{title}</p>
+                  <p className="mt-1.5 text-sm leading-6 text-text-secondary">{body}</p>
                 </div>
               ))}
             </div>
