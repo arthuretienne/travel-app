@@ -242,7 +242,7 @@ export function OptimalPeriodsWidget() {
           <div className="flex items-center gap-3 mt-1">
             <p className="text-text-secondary text-sm">Les meilleurs moments pour partir, selon vos envies</p>
             {calendarConnected ? (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-moss-500 bg-moss-100/60 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-moss-700 bg-moss-100/60 px-2 py-0.5 rounded-full">
                 <CheckCircle2 size={11} />
                 Calendrier synchronisé
               </span>
@@ -267,7 +267,7 @@ export function OptimalPeriodsWidget() {
                 : 'text-text-secondary hover:text-text-main'
               }`}
           >
-            <Rocket size={14} className={view === 'short' ? 'text-moss-500' : ''} />
+            <Rocket size={14} className={view === 'short' ? 'text-moss-700' : ''} />
             Bientôt
           </button>
           <button
@@ -339,7 +339,7 @@ export function OptimalPeriodsWidget() {
                       : "bg-primary text-white shadow-lg shadow-primary/30 scale-110 font-bold z-10";
                   } else if (isSelected) {
                     cellClass += view === 'short'
-                      ? "bg-moss-100 text-moss-500 font-semibold"
+                      ? "bg-moss-100 text-moss-700 font-semibold"
                       : "bg-primary/10 text-primary font-semibold";
                   } else if (isPast) {
                     cellClass += "text-text-muted cursor-not-allowed";
@@ -378,7 +378,7 @@ export function OptimalPeriodsWidget() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-sand-100">
                   <div className="text-xs font-bold text-text-light uppercase tracking-wider mb-1">Économies</div>
-                  <div className="text-2xl font-bold text-moss-500 flex items-center gap-1">
+                  <div className="text-2xl font-bold text-moss-700 flex items-center gap-1">
                     {currentPeriod.savings}
                     <TrendingUp size={16} />
                   </div>

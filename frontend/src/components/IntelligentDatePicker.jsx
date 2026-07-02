@@ -81,7 +81,7 @@ export function IntelligentDatePicker({ onSelectPeriod }) {
     // Actually, we can return string of classes.
 
     if (period.confidence >= 95) {
-      classes += ' bg-moss-100 text-moss-500 font-bold rounded-full';
+      classes += ' bg-moss-100 text-moss-700 font-bold rounded-full';
     } else if (period.confidence >= 85) {
       classes += ' bg-ember-100 text-ember-800 font-medium rounded-full';
     }
@@ -285,7 +285,7 @@ export function IntelligentDatePicker({ onSelectPeriod }) {
                   <p className="text-sm text-text-secondary mb-3 pl-9">{period.reason}</p>
 
                   <div className="flex gap-2 pl-9 mb-3">
-                    <div className="px-2 py-1 bg-moss-100/60 text-moss-500 rounded-lg text-xs font-medium flex items-center gap-1">
+                    <div className="px-2 py-1 bg-moss-100/60 text-moss-700 rounded-lg text-xs font-medium flex items-center gap-1">
                       <PiggyBank size={12} />
                       -{period.savings}
                     </div>

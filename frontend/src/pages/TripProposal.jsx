@@ -180,23 +180,23 @@ export default function TripProposal() {
             {/* Key stats */}
             <div className="grid grid-cols-3 divide-x divide-sand-100 border-b border-sand-100">
               <div className="p-5 text-center">
-                <div className="text-xs font-bold text-sand-400 uppercase tracking-wider mb-1.5">Dates</div>
+                <div className="text-xs font-bold text-text-light uppercase tracking-wider mb-1.5">Dates</div>
                 <div className="font-semibold text-sand-900 text-sm leading-snug">
                   {startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                  <span className="text-sand-400 mx-1">→</span>
+                  <span className="text-text-light mx-1">→</span>
                   {endDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                 </div>
               </div>
               <div className="p-5 text-center">
-                <div className="text-xs font-bold text-sand-400 uppercase tracking-wider mb-1.5">Durée</div>
+                <div className="text-xs font-bold text-text-light uppercase tracking-wider mb-1.5">Durée</div>
                 <div className="flex items-center justify-center gap-1.5 font-semibold text-sand-900">
                   <Clock size={14} className="text-sand-400" />
                   {proposal.duration} {proposal.duration === 1 ? 'jour' : 'jours'}
                 </div>
               </div>
               <div className="p-5 text-center">
-                <div className="text-xs font-bold text-sand-400 uppercase tracking-wider mb-1.5">Économies</div>
-                <div className="flex items-center justify-center gap-1 font-bold text-moss-500 text-lg">
+                <div className="text-xs font-bold text-text-light uppercase tracking-wider mb-1.5">Économies</div>
+                <div className="flex items-center justify-center gap-1 font-bold text-moss-700 text-lg">
                   {proposal.savings}
                   <TrendingUp size={14} />
                 </div>
@@ -258,7 +258,7 @@ export default function TripProposal() {
                     }`}
                   >
                     <span className="font-bold text-sm leading-tight">{opt.label}</span>
-                    <span className="text-[10px] text-sand-400 mt-0.5 leading-tight">{opt.description}</span>
+                    <span className="text-[10px] text-text-light mt-0.5 leading-tight">{opt.description}</span>
                   </button>
                 ))}
               </div>

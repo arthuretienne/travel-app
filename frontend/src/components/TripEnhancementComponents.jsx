@@ -106,10 +106,10 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <h3 className="text-lg font-bold text-text-main">
-                          {isFirstDay ? '🛬 Arrival Day' : isLastDay ? '🛫 Departure Day' : `Day ${day.day}`}: {day.theme}
+                          {isFirstDay ? '🛬 Jour d’arrivée' : isLastDay ? '🛫 Jour du départ' : `Jour ${day.day}`} : {day.theme}
                         </h3>
                         <p className="text-sm text-text-secondary">
-                          {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                          {new Date(day.date).toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' })}
                         </p>
                       </div>
                       {/* Weather inline */}
@@ -132,22 +132,23 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
                         <div className="flex gap-4 border-l-4 border-primary pl-4 pb-4">
                           <div className="flex-shrink-0 w-20">
                             <div className="text-sm font-bold text-primary">
-                              {flightDetails.outbound.arrivalTime || '10:30 AM'}
+                              {flightDetails.outbound.arrivalTime || 'À confirmer'}
                             </div>
-                            <div className="text-xs text-text-light">Arrival</div>
+                            <div className="text-xs text-text-light">Arrivée</div>
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <Plane className="w-5 h-5 text-primary" />
-                              <h4 className="font-bold text-text-main">Land at {flightDetails.outbound.destination}</h4>
+                              <h4 className="font-bold text-text-main">Atterrissage{flightDetails.outbound.destination ? ` à ${flightDetails.outbound.destination}` : ''}</h4>
                             </div>
-                            <p className="text-sm text-text-secondary mb-2">
-                              {flightDetails.outbound.carrier} flight from {flightDetails.outbound.origin}
-                            </p>
+                            {(flightDetails.outbound.carrier || flightDetails.outbound.origin) && (
+                              <p className="text-sm text-text-secondary mb-2">
+                                {[flightDetails.outbound.carrier, flightDetails.outbound.origin ? `depuis ${flightDetails.outbound.origin}` : ''].filter(Boolean).join(' — ')}
+                              </p>
+                            )}
                             <div className="bg-primary-light rounded-lg p-3 text-sm">
                               <p className="text-text-secondary">
-                                <strong className="text-text-main">Transfer to city center:</strong> Take the airport shuttle (€8, 25min) or taxi (€25-30, 15min).
-                                Head to your hotel to drop off luggage.
+                                <strong className="text-text-main">Rejoindre le centre :</strong> navette, métro ou taxi selon l'aéroport — déposez vos bagages à l'hôtel avant de commencer la journée.
                               </p>
                             </div>
                           </div>
@@ -199,7 +200,7 @@ export function CompleteTripPlanCard({ trip, enhancements, userName }) {
                             <div className="text-sm font-bold text-gold-500">
                               {flightDetails.return.departureTime || '6:00 PM'}
                             </div>
-                            <div className="text-xs text-text-light">Departure</div>
+                            <div className="text-xs text-text-light">Départ</div>
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
@@ -283,7 +284,7 @@ export function PersonalizedItineraryCard({ itinerary, userName, activeDay, setA
       <div className="p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-sand-900 flex items-center gap-2">
-            <Navigation className="w-6 h-6 text-moss-500" />
+            <Navigation className="w-6 h-6 text-moss-700" />
             Your Personalized Itinerary
           </h2>
           <span className="text-sm text-sand-600">{destination?.city}</span>
@@ -326,7 +327,7 @@ function DayContent({ day: currentDay, userName }) {
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-bold text-sand-900">{currentDay.theme}</h3>
           <span className="text-sm text-sand-600">
-            {new Date(currentDay.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            {new Date(currentDay.date).toLocaleDateString('fr-FR', { weekday: 'long', month: 'short', day: 'numeric' })}
           </span>
         </div>
         <div className="flex items-center gap-4 text-sm text-sand-600">
@@ -368,7 +369,7 @@ function DayContent({ day: currentDay, userName }) {
               <div className="flex-shrink-0 mt-1">
                 {item.type === 'Food' && <Utensils className="w-5 h-5 text-orange-500" />}
                 {item.type === 'Culture' && <MapPin className="w-5 h-5 text-purple-500" />}
-                {item.type === 'Nature' && <Sun className="w-5 h-5 text-moss-500" />}
+                {item.type === 'Nature' && <Sun className="w-5 h-5 text-moss-700" />}
                 {item.type === 'Transport' && <Navigation className="w-5 h-5 text-ember-500" />}
                 {!['Food', 'Culture', 'Nature', 'Transport'].includes(item.type) && (
                   <Sparkles className="w-5 h-5 text-pink-500" />
@@ -401,7 +402,7 @@ function DayContent({ day: currentDay, userName }) {
                   </p>
                 )}
                 <div className="flex items-center gap-2 mt-2">
-                  <span className={`text-xs font-semibold ${item.cost === 0 ? 'text-moss-500' : 'text-sand-700'}`}>
+                  <span className={`text-xs font-semibold ${item.cost === 0 ? 'text-moss-700' : 'text-sand-700'}`}>
                     {item.cost === 0 ? 'FREE' : `${formatEUR(item.cost)}`}
                   </span>
                   <span className="text-xs bg-sand-100 text-sand-600 px-2 py-0.5 rounded">
@@ -505,7 +506,7 @@ export function LocalEventsCard({ events, destination }) {
                       <p className="text-xs text-text-secondary mb-1 line-clamp-2">{event.description}</p>
                       <span className="text-xs text-text-light">
                         {typeof event.month === 'number'
-                          ? new Date(2025, event.month - 1, 1).toLocaleDateString('en-US', { month: 'long' })
+                          ? new Date(2025, event.month - 1, 1).toLocaleDateString('fr-FR', { month: 'long' })
                           : event.month}
                       </span>
                     </div>

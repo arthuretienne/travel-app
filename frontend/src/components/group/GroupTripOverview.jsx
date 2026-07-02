@@ -53,6 +53,16 @@ function messageAuthorName(msg) {
   return `${first} ${last}`.trim() || msg.guestName || msg.author?.email || 'Invité';
 }
 
+// Les réponses de l'assistant arrivent en markdown ; le chat le rend, le
+// feed montrait les ** bruts (audit V4 P2 #13) → on strippe pour l'extrait.
+function stripMd(text) {
+  return String(text || '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/^#+\s*/gm, '')
+    .replace(/`([^`]+)`/g, '$1');
+}
+
 function truncate(text, max) {
   if (!text) return '';
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
@@ -497,11 +507,11 @@ function LiveFeedCard({ messages }) {
                 <div className="min-w-0 pt-0.5">
                   <div className="text-[13.5px] leading-5 text-text-secondary">
                     {isSystem ? (
-                      truncate(msg.content, 100)
+                      truncate(stripMd(msg.content), 100)
                     ) : (
                       <>
                         <strong className="font-semibold text-text-main">{name.split(' ')[0]}</strong>{' '}
-                        {truncate(msg.content, 90)}
+                        {truncate(stripMd(msg.content), 90)}
                       </>
                     )}
                   </div>

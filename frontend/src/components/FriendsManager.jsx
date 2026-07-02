@@ -470,7 +470,7 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
                       </button>
                     </div>
                     {message && (
-                      <p className={`text-sm ${message.type === 'success' ? 'text-moss-500' : 'text-clay-500'}`}>
+                      <p className={`text-sm ${message.type === 'success' ? 'text-moss-700' : 'text-clay-500'}`}>
                         {message.text}
                       </p>
                     )}
@@ -524,7 +524,7 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
                               </div>
                             </div>
                             {user.relationshipStatus === 'friends' ? (
-                              <span className="px-3 py-1.5 bg-moss-100 text-moss-500 text-xs rounded-lg">
+                              <span className="px-3 py-1.5 bg-moss-100 text-moss-700 text-xs rounded-lg">
                                 Ami
                               </span>
                             ) : user.relationshipStatus === 'request_sent' ? (

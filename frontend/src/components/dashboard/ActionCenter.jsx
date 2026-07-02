@@ -79,8 +79,8 @@ function ActionItem({ item, onAct, onDismiss }) {
                 {' · '}
                 <span className="line-through text-text-light text-sm">{item.extra.before}€</span>
                 {' '}
-                <span className="text-moss-500 font-semibold">{item.extra.after}€</span>
-                <span className="ml-2 text-xs font-mono font-semibold text-moss-500">−{item.extra.drop}%</span>
+                <span className="text-moss-700 font-semibold">{item.extra.after}€</span>
+                <span className="ml-2 text-xs font-mono font-semibold text-moss-700">−{item.extra.drop}%</span>
               </>
             ) : (
               item.title

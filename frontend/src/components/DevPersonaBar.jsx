@@ -131,7 +131,7 @@ export default function DevPersonaBar() {
                     <span className="block truncate font-medium text-text-main">
                       {p.firstName} {p.lastName}
                       {active && (
-                        <span className="ml-1 text-xs text-moss-500">●</span>
+                        <span className="ml-1 text-xs text-moss-700">●</span>
                       )}
                     </span>
                     <span className="block truncate text-xs text-text-light">

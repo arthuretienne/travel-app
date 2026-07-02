@@ -7,6 +7,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { Loader2 } from 'lucide-react';
 import { track } from '../lib/analytics';
 import { formatEUR } from '../utils/format';
+import { countryFr, cityFr } from '../utils/i18nNames';
 
 function Results() {
   const { searchId } = useParams();
@@ -702,12 +703,12 @@ function Results() {
                           <div className="flex items-center gap-3">
                             <span className="text-lg">{alt.transport === 'train' ? '🚂' : '🚌'}</span>
                             <div>
-                              <p className="font-medium text-sand-900">{alt.name}, {alt.country}</p>
+                              <p className="font-medium text-sand-900">{cityFr(alt.name)}, {countryFr(alt.country)}</p>
                               <p className="text-xs text-sand-500">{alt.operator} • {alt.duration}</p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-moss-500">{formatEUR(alt.price)}</p>
+                            <p className="font-bold text-moss-700">{formatEUR(alt.price)}</p>
                             <p className="text-xs text-sand-500">aller-retour</p>
                           </div>
                           {alt.hasBeach && (
@@ -878,7 +879,7 @@ function TripCard({
               <h2 className="font-display text-3xl lg:text-4xl text-white mb-1">
                 {destination?.city}
               </h2>
-              <p className="text-white/80 text-lg">{destination?.country}</p>
+              <p className="text-white/80 text-lg">{countryFr(destination?.country)}</p>
             </div>
             {index === 0 && (
               <div className="px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full">
@@ -1145,7 +1146,7 @@ function TripCard({
                 disabled={isAlertCreating || isAlertCreated}
                 className={`flex items-center justify-center gap-2 px-6 py-4 font-medium rounded-xl transition-colors ${
                   isAlertCreated
-                    ? 'bg-moss-100 text-moss-500 cursor-default'
+                    ? 'bg-moss-100 text-moss-700 cursor-default'
                     : 'bg-gold-100 text-gold-500 hover:bg-gold-100'
                 }`}
                 title="Être notifié quand le prix baisse"
@@ -1328,7 +1329,7 @@ function RoadtripCard({ trip, onSave, isSaving, formatNumber, forGroupTrip, onPr
                         {i + 1}
                       </div>
                       <p className="font-semibold text-text-main">{city.name}</p>
-                      <span className="text-text-secondary text-sm">· {city.country}</span>
+                      <span className="text-text-secondary text-sm">· {countryFr(city.country)}</span>
                     </div>
                     <p className="text-sm text-text-secondary ml-7">{city.nights} nuit{city.nights !== 1 ? 's' : ''}</p>
                   </div>

@@ -124,7 +124,7 @@ export default function StickyBookingProgress({
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className={`text-sm font-medium ${isComplete ? 'text-moss-500' : 'text-text-secondary'}`}>
+              <span className={`text-sm font-medium ${isComplete ? 'text-moss-700' : 'text-text-secondary'}`}>
                 {bookedCount}/{items.length}
               </span>
             </div>
@@ -144,14 +144,14 @@ export default function StickyBookingProgress({
                       onClick={() => !isBooked && setShowConfirmation(item.key)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
                         isBooked
-                          ? 'bg-moss-100 text-moss-500 hover:bg-moss-100'
+                          ? 'bg-moss-100 text-moss-700 hover:bg-moss-100'
                           : item.key === 'activities'
                             ? 'bg-primary text-white hover:bg-primary-hover'
                             : 'bg-stone-100 text-text-main hover:bg-stone-200'
                       }`}
                     >
                       {isBooked ? (
-                        <CheckCircle2 size={16} className="text-moss-500" />
+                        <CheckCircle2 size={16} className="text-moss-700" />
                       ) : (
                         <Icon size={16} />
                       )}
@@ -204,17 +204,17 @@ export default function StickyBookingProgress({
                           className="flex-shrink-0"
                         >
                           {isBooked ? (
-                            <CheckCircle2 size={22} className="text-moss-500" />
+                            <CheckCircle2 size={22} className="text-moss-700" />
                           ) : (
                             <Circle size={22} className="text-stone-300" />
                           )}
                         </button>
                         <div>
-                          <span className={`font-medium ${isBooked ? 'text-moss-500 line-through' : 'text-text-main'}`}>
+                          <span className={`font-medium ${isBooked ? 'text-moss-700 line-through' : 'text-text-main'}`}>
                             {item.label}
                           </span>
                           {isBooked && (
-                            <span className="block text-xs text-moss-500">Réservé ✓</span>
+                            <span className="block text-xs text-moss-700">Réservé ✓</span>
                           )}
                         </div>
                       </div>
@@ -372,8 +372,8 @@ export function BookingChecklistCard({
     green: {
       bg: 'bg-moss-500 hover:bg-moss-500',
       light: 'bg-moss-100/60',
-      text: 'text-moss-500',
-      check: 'text-moss-500'
+      text: 'text-moss-700',
+      check: 'text-moss-700'
     },
     purple: {
       bg: 'bg-ember-600 hover:bg-ember-700',
@@ -394,7 +394,7 @@ export function BookingChecklistCard({
           </div>
           <div className={`px-4 py-2 rounded-full font-semibold ${
             progress === 100
-              ? 'bg-moss-100 text-moss-500'
+              ? 'bg-moss-100 text-moss-700'
               : 'bg-primary-light text-primary'
           }`}>
             {bookedCount}/{items.length}
@@ -432,7 +432,7 @@ export function BookingChecklistCard({
                 className="flex-shrink-0"
               >
                 {isBooked ? (
-                  <CheckCircle2 size={24} className="text-moss-500" />
+                  <CheckCircle2 size={24} className="text-moss-700" />
                 ) : (
                   <Circle size={24} className="text-stone-300 hover:text-stone-400" />
                 )}
@@ -463,7 +463,7 @@ export function BookingChecklistCard({
                   <ExternalLink size={14} />
                 </a>
               ) : (
-                <span className="px-4 py-2 text-moss-500 text-sm font-medium">
+                <span className="px-4 py-2 text-moss-700 text-sm font-medium">
                   ✓ Réservé
                 </span>
               )}
@@ -491,7 +491,7 @@ export function BookingChecklistCard({
                 />
                 <span className="text-sm text-text-main">{member.user?.firstName}</span>
                 {member.bookingConfirmed && (
-                  <CheckCircle2 size={14} className="text-moss-500" />
+                  <CheckCircle2 size={14} className="text-moss-700" />
                 )}
               </div>
             ))}

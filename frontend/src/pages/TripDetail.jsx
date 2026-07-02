@@ -1,5 +1,6 @@
 // frontend/src/pages/TripDetail.jsx
 import { useState, useEffect, useRef } from 'react';
+import { countryFr } from '../utils/i18nNames';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth, useUser, SignUpButton } from '@clerk/clerk-react';
 import { track } from '../lib/analytics';
@@ -424,7 +425,7 @@ export default function TripDetail() {
 
           <div className="flex flex-wrap items-center gap-2">
             {inviteSuccess && (
-              <span className="flex items-center gap-1 text-sm font-medium text-moss-500">
+              <span className="flex items-center gap-1 text-sm font-medium text-moss-700">
                 <CheckCircle2 size={16} />
                 {inviteSuccess}
               </span>
@@ -458,7 +459,7 @@ export default function TripDetail() {
       {justConfirmed && (
         <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
           <div className="sk-enter rounded-2xl bg-white border border-sand-200 shadow-2xl px-8 py-6 text-center">
-            <span className="sk-halo mx-auto grid h-12 w-12 place-items-center rounded-full bg-moss-100 text-moss-500">
+            <span className="sk-halo mx-auto grid h-12 w-12 place-items-center rounded-full bg-moss-100 text-moss-700">
               <Check size={24} />
             </span>
             <p className="mt-3 font-display text-xl text-text-main">
@@ -561,7 +562,7 @@ export default function TripDetail() {
                 </div>
                 <div className="flex items-center gap-2">
                   {reminderMessage && (
-                    <span className={`text-sm ${reminderMessage.type === 'success' ? 'text-moss-500' : 'text-clay-500'}`}>
+                    <span className={`text-sm ${reminderMessage.type === 'success' ? 'text-moss-700' : 'text-clay-500'}`}>
                       {reminderMessage.text}
                     </span>
                   )}
@@ -573,7 +574,7 @@ export default function TripDetail() {
 
               <div>
                 {trip.members?.map((member, i) => {
-                  const name = `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim() || 'Membre';
+                  const name = `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim() || member.guestName || 'Invité';
                   const isCreator = member.role === 'creator';
                   return (
                     <div
@@ -590,7 +591,7 @@ export default function TripDetail() {
                           )}
                         </div>
                         <div className="mt-0.5 text-[13px] text-text-muted">
-                          {member.user?.email || 'Email non disponible'}
+                          {member.user?.email || (member.guestName ? 'Invité sans compte' : 'Email non disponible')}
                         </div>
                         {isConfirmed && (
                           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -604,7 +605,7 @@ export default function TripDetail() {
                         )}
                       </div>
                       {isConfirmed && member.bookingConfirmed ? (
-                        <CheckCircle2 size={20} className="shrink-0 text-moss-500" />
+                        <CheckCircle2 size={20} className="shrink-0 text-moss-700" />
                       ) : isConfirmed ? (
                         <Button
                           size="sm"
@@ -1211,7 +1212,7 @@ function PlanningSection({ trip, navigate }) {
             </div>
             {avail?.availabilityMessage && (
               <div className="mt-2 flex items-center gap-2.5 rounded-xl bg-sand-50 px-3.5 py-3 text-[13px] text-text-muted">
-                <Users size={15} className="text-moss-500 shrink-0" />
+                <Users size={15} className="text-moss-700 shrink-0" />
                 <span>{avail.availabilityMessage}</span>
               </div>
             )}
@@ -1392,7 +1393,7 @@ function ProposalDetailModal({ proposal, onClose }) {
           <div className="absolute inset-x-0 bottom-0 z-[2] p-5 text-white">
             <span className="text-2xl">{getCountryEmoji(country)}</span>
             <h3 className="font-display text-[26px] font-medium leading-tight">{city}</h3>
-            {country && <div className="text-sm text-white/80">{country}</div>}
+            {country && <div className="text-sm text-white/80">{countryFr(country)}</div>}
           </div>
         </PhotoBlock>
 
@@ -1568,7 +1569,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
   const progressPct = memberCount > 0 ? Math.min(100, Math.round((votedMembersCount / memberCount) * 100)) : 0;
   const memberPeople = (trip.members || []).map((m) => ({
     id: m.id,
-    name: `${m.user?.firstName || ''} ${m.user?.lastName || ''}`.trim() || 'Membre',
+    name: `${m.user?.firstName || ''} ${m.user?.lastName || ''}`.trim() || m.guestName || 'Invité',
     src: m.user?.imageUrl,
   }));
   const canFinalize = trip.proposedTrips?.some((p) => p.votes?.length > 0);
@@ -1599,7 +1600,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
           />
         </div>
         {hasVoted && (
-          <div className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-moss-500">
+          <div className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-moss-700">
             <CheckCircle2 size={14} /> Vous avez voté
           </div>
         )}
@@ -1641,7 +1642,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
                 <div className="absolute inset-x-0 bottom-0 z-[2] p-4 text-white">
                   <h3 className="font-display text-[24px] font-medium leading-none">{city}</h3>
                   <div className="mt-1 text-[13px] text-white/80">
-                    {country}
+                    {countryFr(country)}
                     {proposed.proposer?.firstName ? ` · proposé par ${proposed.proposer.firstName}` : ''}
                   </div>
                 </div>
@@ -1721,7 +1722,7 @@ function VotingSection({ trip, fetchTripDetails, user, isCreator }) {
                     voting && votedForId === proposed.id ? (
                       <Loader2 size={16} className="animate-spin" />
                     ) : isMyVote ? (
-                      <CheckCircle2 size={16} className="text-moss-500" />
+                      <CheckCircle2 size={16} className="text-moss-700" />
                     ) : (
                       <Vote size={16} />
                     )
@@ -1907,7 +1908,7 @@ function TripSettingsTab({ trip, userRole, getToken, fetchTripDetails, handleDel
           <div className="mt-5 flex items-center justify-end gap-3 border-t border-sand-200 pt-5">
             {saveError && <p className="text-sm text-clay-500">{saveError}</p>}
             {saveSuccess && (
-              <p className="flex items-center gap-1 text-sm text-moss-500"><CheckCircle2 size={14} /> Sauvegardé</p>
+              <p className="flex items-center gap-1 text-sm text-moss-700"><CheckCircle2 size={14} /> Sauvegardé</p>
             )}
             <Button
               icon={saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
@@ -2099,7 +2100,7 @@ function BookingChecklistSection({ trip, fetchTripDetails, getToken }) {
             </div>
             <div className="flex items-center gap-2">
               {reminderResult && (
-                <span className={`text-sm ${reminderResult.type === 'success' ? 'text-moss-500' : 'text-clay-500'}`}>
+                <span className={`text-sm ${reminderResult.type === 'success' ? 'text-moss-700' : 'text-clay-500'}`}>
                   {reminderResult.message}
                 </span>
               )}

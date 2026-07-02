@@ -38,6 +38,10 @@ export default {
         moss: {
           100: '#e6efd9',
           500: '#6b8b4a',
+          // Audit V4 : moss-500 en TEXTE = 3,88:1 blanc / 3,27:1 moss-100
+          // (sous AA, 53 usages). Le texte passe en moss-700 (5,58 / 4,70) ;
+          // moss-500 reste pour les fonds/décor.
+          700: '#55703a',
         },
         gold: {
           100: '#f5ecd4',

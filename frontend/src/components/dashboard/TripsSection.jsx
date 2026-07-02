@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { countryFr } from '../../utils/i18nNames';
 import { Bell, Calendar, ChevronDown, ChevronRight, Copy, FileText, Map, MoreHorizontal, Search, Share2, X } from 'lucide-react';
 import { AvatarStack, Badge, Button, EmptyState, PhotoBlock } from '../ui';
 
@@ -54,7 +55,7 @@ function TripCard({ trip, onClick, onAlert, onPdf, onShare, onDuplicate, formatD
       <button type="button" onClick={onClick} className="block w-full text-left">
         <PhotoBlock
           city={dest.city}
-          country={dest.country}
+          country={countryFr(dest.country)}
           tripData={isGroup ? trip.finalDestination : trip.tripData}
           className="h-40"
           alt={`${dest.city}, ${dest.country || ''}`}

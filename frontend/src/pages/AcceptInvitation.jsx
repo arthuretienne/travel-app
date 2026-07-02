@@ -140,7 +140,7 @@ export default function AcceptInvitation() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-subtle p-4">
         <div className="bg-white rounded-[20px] shadow-3 border border-sand-200 max-w-md w-full p-8 text-center">
-          <CheckCircle className="w-16 h-16 text-moss-500 mx-auto mb-4" />
+          <CheckCircle className="w-16 h-16 text-moss-700 mx-auto mb-4" />
           <h1 className="font-display text-2xl font-medium text-text-main mb-2">Bienvenue à bord !</h1>
           <p className="text-text-secondary mb-4">
             Vous avez rejoint <strong>{invitation.trip.name}</strong>

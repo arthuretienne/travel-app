@@ -19,6 +19,7 @@ import MegaMenu from '../components/Navigation/MegaMenu';
 import { getDestinationImage } from '../utils/destinationImages';
 import { searchAirports, getPrimaryAirport } from '../data/airports';
 import { formatEUR } from '../utils/format';
+import { countryFr, cityFr } from '../utils/i18nNames';
 
 const POPULAR_DESTINATIONS = [
   { city: 'Lisbon', country: 'Portugal', iata: 'LIS' },
@@ -412,7 +413,7 @@ function Landing() {
                         <Plane size={16} />
                       </span>
                       <span>
-                        <span className="block font-medium text-text-main">{dest.city}</span>
+                        <span className="block font-medium text-text-main">{cityFr(dest.city)}</span>
                         <span className="block text-sm text-text-secondary">{dest.country}</span>
                       </span>
                       {dest.iata && (
@@ -433,7 +434,7 @@ function Landing() {
                     onClick={() => handleSelectDestination(dest)}
                     className="rounded-full border border-sand-200 bg-white px-2.5 py-1 text-xs text-text-secondary transition-colors hover:border-ember-300 hover:text-ember-700"
                   >
-                    {dest.city}
+                    {cityFr(dest.city)}
                   </button>
                 ))}
                 <span className="ml-auto hidden items-center gap-1 text-xs text-text-secondary sm:flex">
@@ -444,27 +445,29 @@ function Landing() {
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {/* Audit V3 P2 : « 96 % de match » pour un anonyme = claim de
+                  personnalisation sans données. Badge factuel à la place. */}
               {[
-                { city: 'Lisbon', country: 'Portugal', price: 847, match: 96 },
-                { city: 'Marrakech', country: 'Morocco', price: 258, match: 92 },
-                { city: 'Porto', country: 'Portugal', price: 620, match: 88 },
+                { city: 'Lisbon', country: 'Portugal', price: 847, badge: 'Vol direct' },
+                { city: 'Marrakech', country: 'Morocco', price: 258, badge: 'Petit budget' },
+                { city: 'Porto', country: 'Portugal', price: 620, badge: 'Week-end idéal' },
               ].map((dest) => (
                 <div key={dest.city} className="overflow-hidden rounded-[16px] border border-sand-200 bg-white shadow-1">
-                  <PhotoBlock city={dest.city} country={dest.country} className="h-32" alt={`${dest.city}, ${dest.country}`}>
+                  <PhotoBlock city={dest.city} country={dest.country} className="h-32" alt={`${cityFr(dest.city)}, ${countryFr(dest.country)}`}>
                     <Badge tone="ember" className="absolute right-3 top-3 shadow-1">
-                      {dest.match}%
+                      {dest.badge}
                     </Badge>
                   </PhotoBlock>
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         {/* p, pas h3 : label de carte avant le premier h2 — heading-order Lighthouse (audit V3) */}
-                        <p className="font-display text-xl font-medium">{dest.city}</p>
-                        <p className="text-sm text-text-secondary">{dest.country}</p>
+                        <p className="font-display text-xl font-medium">{cityFr(dest.city)}</p>
+                        <p className="text-sm text-text-secondary">{countryFr(dest.country)}</p>
                       </div>
                       <p className="font-display text-xl font-medium">{formatEUR(dest.price)}</p>
                     </div>
-                    <p className="mt-3 border-t border-sand-100 pt-3 text-xs text-text-secondary">7 j · vol + hotel</p>
+                    <p className="mt-3 border-t border-sand-100 pt-3 text-xs text-text-secondary">7 j · vol + hôtel</p>
                   </div>
                 </div>
               ))}
@@ -598,7 +601,7 @@ function Landing() {
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-text-secondary">
             {POPULAR_DESTINATIONS.map((d) => (
               <Link key={d.city} to={`/destination/${d.city.toLowerCase()}`} className="hover:text-ember-700">
-                {d.city}
+                {cityFr(d.city)}
               </Link>
             ))}
           </div>

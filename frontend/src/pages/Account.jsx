@@ -806,7 +806,7 @@ function Account() {
                   </div>
                 </div>
                 {formData.annualLeaveDays && formData.takenLeaveDays !== null && (
-                  <div className="p-4 bg-moss-100 text-moss-500 rounded-xl border border-moss-100 flex items-center gap-3">
+                  <div className="p-4 bg-moss-100 text-moss-700 rounded-xl border border-moss-100 flex items-center gap-3">
                     <CheckCircle size={20} />
                     <p>
                       Il vous reste <strong>{formData.annualLeaveDays - formData.takenLeaveDays} jours</strong> de congés
@@ -849,7 +849,7 @@ function Account() {
                 <div className="p-5 md:p-8 bg-sand-50 rounded-2xl border border-sand-200 border-dashed text-center">
                   {calendarStatus?.connected ? (
                     <div className="flex flex-col items-center gap-4">
-                      <div className="px-4 py-2 bg-moss-100 text-moss-500 rounded-full text-sm font-medium flex items-center gap-2">
+                      <div className="px-4 py-2 bg-moss-100 text-moss-700 rounded-full text-sm font-medium flex items-center gap-2">
                         <CheckCircle size={16} />
                         Calendrier Google connecté
                       </div>
@@ -919,7 +919,7 @@ function Account() {
                           {subscription.subscription.status === 'active' ? 'Actif' : subscription.subscription.status}
                         </p>
                       </div>
-                      <div className="px-4 py-2 bg-moss-100 text-moss-500 rounded-full text-sm font-semibold">
+                      <div className="px-4 py-2 bg-moss-100 text-moss-700 rounded-full text-sm font-semibold">
                         {subscription.planDetails.price === 0 ? 'Gratuit' : `${formatEUR(subscription.planDetails.price, { decimals: 2 })} / ${subscription.planDetails.interval === 'year' ? 'an' : 'mois'}`}
                       </div>
                     </div>
@@ -991,7 +991,7 @@ function Account() {
                         return (
                           <li key={key} className="flex items-center gap-3">
                             {isAvailable ? (
-                              <CheckCircle className="w-5 h-5 text-moss-500 flex-shrink-0" />
+                              <CheckCircle className="w-5 h-5 text-moss-700 flex-shrink-0" />
                             ) : (
                               <XCircle className="w-5 h-5 text-sand-300 flex-shrink-0" />
                             )}

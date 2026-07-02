@@ -214,7 +214,7 @@ function PriceAlerts() {
             </div>
             <div className="bg-white p-4 rounded-xl border border-sand-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-moss-100 text-moss-500 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-moss-100 text-moss-700 rounded-lg flex items-center justify-center">
                   <TrendingDown size={18} />
                 </div>
                 <div>
@@ -350,7 +350,7 @@ function PriceAlerts() {
                           {alert.country && <span className="text-text-secondary font-normal">, {alert.country}</span>}
                         </h3>
                         {isTriggered && (
-                          <span className="px-2 py-0.5 bg-moss-100 text-moss-500 text-xs font-medium rounded-full">
+                          <span className="px-2 py-0.5 bg-moss-100 text-moss-700 text-xs font-medium rounded-full">
                             Objectif atteint
                           </span>
                         )}
@@ -392,7 +392,7 @@ function PriceAlerts() {
                           <div>
                             <div className="text-xs text-text-secondary mb-1">Variation</div>
                             <div className={`text-lg font-semibold flex items-center gap-1 ${
-                              priceChange.isDown ? 'text-moss-500' : 'text-clay-500'
+                              priceChange.isDown ? 'text-moss-700' : 'text-clay-500'
                             }`}>
                               {priceChange.isDown ? <TrendingDown size={16} /> : <TrendingUp size={16} />}
                               {priceChange.isDown ? '-' : '+'}{formatEUR(Math.abs(Math.round(priceChange.change)))}
@@ -425,7 +425,7 @@ function PriceAlerts() {
                         className={`p-2 rounded-lg transition-colors ${
                           alert.isActive
                             ? 'text-gold-500 hover:bg-gold-100'
-                            : 'text-moss-500 hover:bg-moss-100'
+                            : 'text-moss-700 hover:bg-moss-100'
                         }`}
                         title={alert.isActive ? 'Mettre en pause' : 'Reprendre'}
                       >

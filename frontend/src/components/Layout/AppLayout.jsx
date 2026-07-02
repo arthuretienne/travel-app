@@ -63,7 +63,7 @@ function AppLayout({ children }) {
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex flex-col items-end">
               <span className="text-sm font-medium text-text-main">
-                {user?.firstName || 'Traveler'}
+                {user?.firstName || 'Voyageur'}
               </span>
               <span className="text-xs text-text-secondary">
                 {user?.primaryEmailAddress?.emailAddress}

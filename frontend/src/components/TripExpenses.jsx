@@ -290,7 +290,7 @@ export default function TripExpenses({ tripId, currentUserId }) {
                       <span
                         className={[
                           'whitespace-nowrap font-mono text-[13.5px] font-semibold',
-                          rounded === 0 ? 'text-text-muted' : rounded > 0 ? 'text-moss-500' : 'text-clay-500',
+                          rounded === 0 ? 'text-text-muted' : rounded > 0 ? 'text-moss-700' : 'text-clay-500',
                         ].join(' ')}
                       >
                         {rounded > 0 ? '+' : ''}{formatEUR(rounded, { decimals: 2 })}

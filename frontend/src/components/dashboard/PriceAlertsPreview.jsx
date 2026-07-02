@@ -46,8 +46,8 @@ function AlertRow({ alert }) {
       </div>
       <div className="text-right sm:text-left">
         <div className="text-[10px] font-mono uppercase tracking-widest text-text-light">Actuel</div>
-        <div className={['text-sm font-mono font-semibold', triggered ? 'text-moss-500' : 'text-text-main'].join(' ')}>
-          {alert.currentPrice ? `${Math.round(alert.currentPrice)}€` : '—'}
+        <div className={['text-sm font-mono font-semibold', triggered ? 'text-moss-700' : 'text-text-main'].join(' ')}>
+          {alert.currentPrice ? formatEUR(Math.round(alert.currentPrice)) : '—'}
         </div>
       </div>
       <div className={['hidden sm:inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-mono font-semibold', trendClass].join(' ')}>
@@ -85,7 +85,7 @@ export default function PriceAlertsPreview({ alerts, onCreate }) {
         <EmptyState
           icon={<Bell size={26} />}
           title="Aucune alerte active"
-          sub="Crée-en une depuis n'importe quel trip sauvegardé pour suivre les baisses."
+          sub="Créez-en une depuis n'importe quel voyage sauvegardé pour suivre les baisses."
           action={{ label: 'Voir mes trips', onClick: onCreate, variant: 'outline' }}
         />
       </section>

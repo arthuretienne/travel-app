@@ -232,11 +232,11 @@ export default function TripBookingDetails({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-text-main flex items-center gap-2">
-                <Hotel className="w-5 h-5 text-moss-500" />
+                <Hotel className="w-5 h-5 text-moss-700" />
                 Hébergement recommandé
               </h3>
               {hotel.pricePerNight && (
-                <span className="font-display text-2xl text-moss-500">
+                <span className="font-display text-2xl text-moss-700">
                   {formatEUR(Math.round(hotel.pricePerNight))}/nuit
                 </span>
               )}
@@ -284,7 +284,7 @@ export default function TripBookingDetails({
                         <span className="text-xs text-[#3d5a24]">{hotel.rating.word}</span>
                       )}
                       {hotel.rating.count && (
-                        <span className="text-xs text-moss-500">({hotel.rating.count} avis)</span>
+                        <span className="text-xs text-moss-700">({hotel.rating.count} avis)</span>
                       )}
                     </div>
                   )}
