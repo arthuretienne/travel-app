@@ -12,11 +12,22 @@ const BOOKING_API_KEY = process.env.BOOKING_API_KEY;
  * parallel discovery fan-out; without a retry, one 429 silently drops an entire
  * destination. 4xx errors other than 429 are NOT retried (they won't succeed).
  */
-async function bookingGet(url, config = {}, { retries = 1, backoffMs = 1500 } = {}) {
+async function bookingGet(url, config = {}, { retries = 1, backoffMs = 1500, softFailCheck = null } = {}) {
   let lastErr;
+  let lastResponse = null;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      return await axios.get(url, config);
+      const response = await axios.get(url, config);
+      // RapidAPI throttle parfois en HTTP 200 + { status: false } : sans ce
+      // check, une recherche valide passait pour « rien trouvé » (audit V4, E2).
+      if (softFailCheck && !softFailCheck(response) && attempt < retries) {
+        lastResponse = response;
+        const wait = backoffMs * (attempt + 1);
+        console.warn(`⚠️  Booking soft-fail (status:false) — retry ${attempt + 1}/${retries} in ${wait}ms`);
+        await new Promise((r) => setTimeout(r, wait));
+        continue;
+      }
+      return response;
     } catch (err) {
       const status = err.response?.status;
       const transient = !status || status === 429 || status >= 500;
@@ -27,6 +38,7 @@ async function bookingGet(url, config = {}, { retries = 1, backoffMs = 1500 } = 
       await new Promise((r) => setTimeout(r, wait));
     }
   }
+  if (lastResponse) return lastResponse; // soft-fail persistant : l'appelant gère le vide
   throw lastErr;
 }
 
@@ -623,7 +635,7 @@ async function searchRoundTripDirect({
       'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
     },
     timeout: 30000 // 30s timeout - faster fallback to one-way
-  });
+  }, { softFailCheck: (r) => !!(r.data?.status && r.data?.data?.flightOffers?.length) });
 
   if (!response.data?.status || !response.data?.data?.flightOffers?.length) {
     throw new Error('No round-trip flights found');
@@ -1205,14 +1217,28 @@ export async function searchHotels({
       searchParams.price_max = maxPrice;
     }
 
-    const hotelsResponse = await bookingGet(`${BASE_URL}/api/v1/hotels/searchHotels`, {
-      params: searchParams,
-      headers: {
-        'x-rapidapi-key': BOOKING_API_KEY,
-        'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
-      },
-      timeout: 30000
-    });
+    // RapidAPI throttle parfois en HTTP 200 avec { status: false } — le
+    // bookingGet ne le voit pas (pas d'erreur HTTP) et une recherche
+    // parfaitement valide rendait « No hotels found » (audit V4, E2 : les 5
+    // hôtels luxe échouaient simultanément sous charge parallèle). Un retry
+    // applicatif avec backoff couvre ce mode de panne.
+    let hotelsResponse;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      hotelsResponse = await bookingGet(`${BASE_URL}/api/v1/hotels/searchHotels`, {
+        params: searchParams,
+        headers: {
+          'x-rapidapi-key': BOOKING_API_KEY,
+          'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
+        },
+        timeout: 30000
+      });
+      if (hotelsResponse.data?.status && hotelsResponse.data?.data?.hotels) break;
+      if (attempt === 0) {
+        const msg = hotelsResponse.data?.message || hotelsResponse.data?.error || 'status:false';
+        console.warn(`⚠️  Hotel search soft-failed for ${destinationQuery} (${JSON.stringify(msg).slice(0, 120)}) — retry in 2s`);
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
 
     if (!hotelsResponse.data?.status || !hotelsResponse.data?.data?.hotels) {
       console.warn(`⚠️  No hotels found in ${destinationQuery}`);
