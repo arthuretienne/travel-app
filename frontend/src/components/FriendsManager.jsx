@@ -221,21 +221,21 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden animate-scale-in">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+        <div className="flex items-center justify-between p-4 border-b border-sand-100">
           <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
             Mes amis
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-sand-100 rounded-lg transition-colors"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-100">
+        <div className="flex border-b border-sand-100">
           <button
             onClick={() => setActiveTab('friends')}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
@@ -256,7 +256,7 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
           >
             Demandes
             {pendingReceived.length > 0 && (
-              <span className="absolute top-2 right-1/4 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+              <span className="absolute top-2 right-1/4 w-5 h-5 bg-clay-500 text-white text-xs rounded-full flex items-center justify-center">
                 {pendingReceived.length}
               </span>
             )}
@@ -302,7 +302,7 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
                     friends.map((friend) => (
                       <div
                         key={friend.friendshipId}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                        className="flex items-center justify-between p-3 bg-sand-50 rounded-xl hover:bg-sand-100 transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <img
@@ -331,7 +331,7 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
                           )}
                           <button
                             onClick={() => handleRemove(friend.friendshipId)}
-                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-1.5 text-text-light hover:text-clay-500 hover:bg-clay-100/60 rounded-lg transition-colors"
                             title="Retirer"
                           >
                             <UserMinus size={16} />
@@ -358,7 +358,7 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
                         {pendingReceived.map((req) => (
                           <div
                             key={req.requestId}
-                            className="flex items-center justify-between p-3 bg-blue-50 rounded-xl"
+                            className="flex items-center justify-between p-3 bg-ember-50 rounded-xl"
                           >
                             <div className="flex items-center gap-3">
                               <img
@@ -376,14 +376,14 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => handleAccept(req.requestId)}
-                                className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                                className="p-2 bg-moss-500 text-white rounded-lg hover:bg-moss-500 transition-colors"
                                 title="Accepter"
                               >
                                 <Check size={16} />
                               </button>
                               <button
                                 onClick={() => handleDecline(req.requestId)}
-                                className="p-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition-colors"
+                                className="p-2 bg-sand-200 text-text-secondary rounded-lg hover:bg-sand-300 transition-colors"
                                 title="Refuser"
                               >
                                 <X size={16} />
@@ -407,7 +407,7 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
                         {pendingSent.map((req) => (
                           <div
                             key={req.requestId}
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"
+                            className="flex items-center justify-between p-3 bg-sand-50 rounded-xl"
                           >
                             <div className="flex items-center gap-3">
                               <img
@@ -426,7 +426,7 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
                             </div>
                             <button
                               onClick={() => handleCancel(req.requestId)}
-                              className="px-3 py-1.5 text-gray-600 bg-gray-200 text-sm rounded-lg hover:bg-gray-300 transition-colors"
+                              className="px-3 py-1.5 text-text-secondary bg-sand-200 text-sm rounded-lg hover:bg-sand-300 transition-colors"
                             >
                               Annuler
                             </button>
@@ -448,13 +448,13 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
                     </label>
                     <div className="flex gap-2">
                       <div className="flex-1 relative">
-                        <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-light" />
                         <input
                           type="email"
                           value={addEmail}
                           onChange={(e) => setAddEmail(e.target.value)}
                           placeholder="ami@email.com"
-                          className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          className="w-full pl-10 pr-4 py-2.5 bg-sand-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
                         />
                       </div>
                       <button
@@ -470,33 +470,33 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
                       </button>
                     </div>
                     {message && (
-                      <p className={`text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                      <p className={`text-sm ${message.type === 'success' ? 'text-moss-500' : 'text-clay-500'}`}>
                         {message.text}
                       </p>
                     )}
                   </form>
 
                   {/* Search */}
-                  <div className="pt-4 border-t border-gray-100">
+                  <div className="pt-4 border-t border-sand-100">
                     <label className="text-sm font-medium text-text-main">
                       Rechercher un utilisateur
                     </label>
                     <div className="flex gap-2 mt-2">
                       <div className="flex-1 relative">
-                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-light" />
                         <input
                           type="text"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                           placeholder="Nom ou email..."
-                          className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          className="w-full pl-10 pr-4 py-2.5 bg-sand-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
                         />
                       </div>
                       <button
                         onClick={handleSearch}
                         disabled={searchQuery.length < 2 || searching}
-                        className="px-4 py-2.5 bg-gray-200 text-text-main rounded-xl hover:bg-gray-300 transition-colors disabled:opacity-50"
+                        className="px-4 py-2.5 bg-sand-200 text-text-main rounded-xl hover:bg-sand-300 transition-colors disabled:opacity-50"
                       >
                         {searching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
                       </button>
@@ -508,7 +508,7 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
                         {searchResults.map((user) => (
                           <div
                             key={user.id}
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"
+                            className="flex items-center justify-between p-3 bg-sand-50 rounded-xl"
                           >
                             <div className="flex items-center gap-3">
                               <img
@@ -524,17 +524,17 @@ export default function FriendsManager({ isOpen, onClose, onSelectFriend }) {
                               </div>
                             </div>
                             {user.relationshipStatus === 'friends' ? (
-                              <span className="px-3 py-1.5 bg-green-100 text-green-700 text-xs rounded-lg">
+                              <span className="px-3 py-1.5 bg-moss-100 text-moss-500 text-xs rounded-lg">
                                 Ami
                               </span>
                             ) : user.relationshipStatus === 'request_sent' ? (
-                              <span className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg">
+                              <span className="px-3 py-1.5 bg-sand-100 text-text-secondary text-xs rounded-lg">
                                 Demande envoyée
                               </span>
                             ) : user.relationshipStatus === 'request_received' ? (
                               <button
                                 onClick={() => handleAccept(user.friendshipId)}
-                                className="px-3 py-1.5 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600"
+                                className="px-3 py-1.5 bg-moss-500 text-white text-xs rounded-lg hover:bg-moss-500"
                               >
                                 Accepter
                               </button>

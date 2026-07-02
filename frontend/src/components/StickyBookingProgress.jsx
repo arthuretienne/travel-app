@@ -120,11 +120,11 @@ export default function StickyBookingProgress({
             <div className="hidden md:flex items-center gap-4 flex-1 justify-center max-w-md mx-4">
               <div className="flex-1 h-2 bg-stone-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-500 ${isComplete ? 'bg-green-500' : 'bg-primary'}`}
+                  className={`h-full transition-all duration-500 ${isComplete ? 'bg-moss-500' : 'bg-primary'}`}
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className={`text-sm font-medium ${isComplete ? 'text-green-600' : 'text-text-secondary'}`}>
+              <span className={`text-sm font-medium ${isComplete ? 'text-moss-500' : 'text-text-secondary'}`}>
                 {bookedCount}/{items.length}
               </span>
             </div>
@@ -144,14 +144,14 @@ export default function StickyBookingProgress({
                       onClick={() => !isBooked && setShowConfirmation(item.key)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
                         isBooked
-                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          ? 'bg-moss-100 text-moss-500 hover:bg-moss-100'
                           : item.key === 'activities'
                             ? 'bg-primary text-white hover:bg-primary-hover'
                             : 'bg-stone-100 text-text-main hover:bg-stone-200'
                       }`}
                     >
                       {isBooked ? (
-                        <CheckCircle2 size={16} className="text-green-600" />
+                        <CheckCircle2 size={16} className="text-moss-500" />
                       ) : (
                         <Icon size={16} />
                       )}
@@ -177,7 +177,7 @@ export default function StickyBookingProgress({
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex-1 h-2 bg-stone-100 rounded-full overflow-hidden">
                   <div
-                    className={`h-full transition-all ${isComplete ? 'bg-green-500' : 'bg-primary'}`}
+                    className={`h-full transition-all ${isComplete ? 'bg-moss-500' : 'bg-primary'}`}
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -195,7 +195,7 @@ export default function StickyBookingProgress({
                     <div
                       key={item.key}
                       className={`flex items-center justify-between p-3 rounded-xl ${
-                        isBooked ? 'bg-green-50' : 'bg-stone-50'
+                        isBooked ? 'bg-moss-100/60' : 'bg-stone-50'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -204,17 +204,17 @@ export default function StickyBookingProgress({
                           className="flex-shrink-0"
                         >
                           {isBooked ? (
-                            <CheckCircle2 size={22} className="text-green-600" />
+                            <CheckCircle2 size={22} className="text-moss-500" />
                           ) : (
                             <Circle size={22} className="text-stone-300" />
                           )}
                         </button>
                         <div>
-                          <span className={`font-medium ${isBooked ? 'text-green-700 line-through' : 'text-text-main'}`}>
+                          <span className={`font-medium ${isBooked ? 'text-moss-500 line-through' : 'text-text-main'}`}>
                             {item.label}
                           </span>
                           {isBooked && (
-                            <span className="block text-xs text-green-600">Réservé ✓</span>
+                            <span className="block text-xs text-moss-500">Réservé ✓</span>
                           )}
                         </div>
                       </div>
@@ -227,10 +227,10 @@ export default function StickyBookingProgress({
                           onClick={() => setShowConfirmation(item.key)}
                           className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg ${
                             item.color === 'blue'
-                              ? 'bg-blue-600 text-white hover:bg-blue-700'
+                              ? 'bg-ember-600 text-white hover:bg-ember-700'
                               : item.color === 'green'
-                                ? 'bg-green-600 text-white hover:bg-green-700'
-                                : 'bg-purple-600 text-white hover:bg-purple-700'
+                                ? 'bg-moss-500 text-white hover:bg-moss-500'
+                                : 'bg-ember-600 text-white hover:bg-ember-700'
                           }`}
                         >
                           Réserver
@@ -280,7 +280,7 @@ export default function StickyBookingProgress({
               </button>
               <button
                 onClick={() => confirmBooking(showConfirmation)}
-                className="flex-1 px-4 py-3 text-white font-medium bg-green-600 rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-3 text-white font-medium bg-moss-500 rounded-xl hover:bg-moss-500 transition-colors flex items-center justify-center gap-2"
               >
                 <CheckCircle2 size={18} />
                 Oui, réservé
@@ -364,29 +364,29 @@ export function BookingChecklistCard({
 
   const colorClasses = {
     blue: {
-      bg: 'bg-blue-600 hover:bg-blue-700',
-      light: 'bg-blue-50',
-      text: 'text-blue-600',
-      check: 'text-blue-600'
+      bg: 'bg-ember-600 hover:bg-ember-700',
+      light: 'bg-ember-50',
+      text: 'text-ember-600',
+      check: 'text-ember-600'
     },
     green: {
-      bg: 'bg-green-600 hover:bg-green-700',
-      light: 'bg-green-50',
-      text: 'text-green-600',
-      check: 'text-green-600'
+      bg: 'bg-moss-500 hover:bg-moss-500',
+      light: 'bg-moss-100/60',
+      text: 'text-moss-500',
+      check: 'text-moss-500'
     },
     purple: {
-      bg: 'bg-purple-600 hover:bg-purple-700',
-      light: 'bg-purple-50',
-      text: 'text-purple-600',
-      check: 'text-purple-600'
+      bg: 'bg-ember-600 hover:bg-ember-700',
+      light: 'bg-ember-50',
+      text: 'text-ember-600',
+      check: 'text-ember-600'
     }
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-card border border-sand-100 overflow-hidden">
       {/* Header with Progress */}
-      <div className="bg-gradient-to-r from-primary/5 to-purple-500/5 p-6 border-b border-gray-100">
+      <div className="bg-gradient-to-r from-primary/5 to-ember-500/5 p-6 border-b border-sand-100">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-bold text-text-main">Réservations</h2>
@@ -394,7 +394,7 @@ export function BookingChecklistCard({
           </div>
           <div className={`px-4 py-2 rounded-full font-semibold ${
             progress === 100
-              ? 'bg-green-100 text-green-700'
+              ? 'bg-moss-100 text-moss-500'
               : 'bg-primary-light text-primary'
           }`}>
             {bookedCount}/{items.length}
@@ -405,7 +405,7 @@ export function BookingChecklistCard({
         <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all duration-500 ${
-              progress === 100 ? 'bg-green-500' : 'bg-primary'
+              progress === 100 ? 'bg-moss-500' : 'bg-primary'
             }`}
             style={{ width: `${progress}%` }}
           />
@@ -413,7 +413,7 @@ export function BookingChecklistCard({
       </div>
 
       {/* Checklist Items */}
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-sand-100">
         {items.map((item) => {
           const Icon = item.icon;
           const isBooked = bookingStatus[item.key];
@@ -423,7 +423,7 @@ export function BookingChecklistCard({
             <div
               key={item.key}
               className={`p-4 flex items-center gap-4 transition-colors ${
-                isBooked ? 'bg-gray-50' : 'hover:bg-gray-50'
+                isBooked ? 'bg-sand-50' : 'hover:bg-sand-50'
               }`}
             >
               {/* Checkbox */}
@@ -432,7 +432,7 @@ export function BookingChecklistCard({
                 className="flex-shrink-0"
               >
                 {isBooked ? (
-                  <CheckCircle2 size={24} className="text-green-600" />
+                  <CheckCircle2 size={24} className="text-moss-500" />
                 ) : (
                   <Circle size={24} className="text-stone-300 hover:text-stone-400" />
                 )}
@@ -445,7 +445,7 @@ export function BookingChecklistCard({
 
               {/* Label */}
               <div className="flex-1 min-w-0">
-                <p className={`font-semibold ${isBooked ? 'text-gray-400 line-through' : 'text-text-main'}`}>
+                <p className={`font-semibold ${isBooked ? 'text-text-light line-through' : 'text-text-main'}`}>
                   {item.label}
                 </p>
                 <p className="text-sm text-text-secondary truncate">{item.description}</p>
@@ -463,7 +463,7 @@ export function BookingChecklistCard({
                   <ExternalLink size={14} />
                 </a>
               ) : (
-                <span className="px-4 py-2 text-green-600 text-sm font-medium">
+                <span className="px-4 py-2 text-moss-500 text-sm font-medium">
                   ✓ Réservé
                 </span>
               )}
@@ -474,7 +474,7 @@ export function BookingChecklistCard({
 
       {/* Group Members Status (if applicable) */}
       {members.length > 0 && (
-        <div className="p-4 border-t border-gray-100 bg-gray-50">
+        <div className="p-4 border-t border-sand-100 bg-sand-50">
           <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-3">
             Statut du groupe
           </p>
@@ -482,7 +482,7 @@ export function BookingChecklistCard({
             {members.map((member) => (
               <div
                 key={member.id}
-                className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-gray-200"
+                className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-sand-200"
               >
                 <img
                   src={member.user?.imageUrl || `https://ui-avatars.com/api/?name=${member.user?.firstName}`}
@@ -491,7 +491,7 @@ export function BookingChecklistCard({
                 />
                 <span className="text-sm text-text-main">{member.user?.firstName}</span>
                 {member.bookingConfirmed && (
-                  <CheckCircle2 size={14} className="text-green-600" />
+                  <CheckCircle2 size={14} className="text-moss-500" />
                 )}
               </div>
             ))}

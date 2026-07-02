@@ -222,7 +222,7 @@ export function OptimalPeriodsWidget() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-3xl shadow-sm p-8 border border-gray-100 animate-pulse h-[400px]"></div>
+      <div className="bg-white rounded-3xl shadow-sm p-8 border border-sand-100 animate-pulse h-[400px]"></div>
     );
   }
 
@@ -231,18 +231,18 @@ export function OptimalPeriodsWidget() {
   const weekDays = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-3xl shadow-sm border border-sand-100 overflow-hidden">
       {/* Header */}
-      <div className="p-6 md:p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 md:p-8 border-b border-sand-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Sparkles className="text-amber-400" size={20} />
+          <h3 className="text-xl font-bold text-text-main flex items-center gap-2">
+            <Sparkles className="text-gold-500" size={20} />
             Vos prochaines escapades
           </h3>
           <div className="flex items-center gap-3 mt-1">
-            <p className="text-gray-500 text-sm">Les meilleurs moments pour partir, selon vos envies</p>
+            <p className="text-text-secondary text-sm">Les meilleurs moments pour partir, selon vos envies</p>
             {calendarConnected ? (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-moss-500 bg-moss-100/60 px-2 py-0.5 rounded-full">
                 <CheckCircle2 size={11} />
                 Calendrier synchronisé
               </span>
@@ -259,22 +259,22 @@ export function OptimalPeriodsWidget() {
           </div>
         </div>
 
-        <div className="flex bg-gray-100/80 p-1 rounded-xl self-start md:self-auto">
+        <div className="flex bg-sand-100/80 p-1 rounded-xl self-start md:self-auto">
           <button
             onClick={() => setView('short')}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${view === 'short'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-white text-text-main shadow-sm'
+                : 'text-text-secondary hover:text-text-main'
               }`}
           >
-            <Rocket size={14} className={view === 'short' ? 'text-emerald-500' : ''} />
+            <Rocket size={14} className={view === 'short' ? 'text-moss-500' : ''} />
             Bientôt
           </button>
           <button
             onClick={() => setView('long')}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${view === 'long'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-white text-text-main shadow-sm'
+                : 'text-text-secondary hover:text-text-main'
               }`}
           >
             <Target size={14} className={view === 'long' ? 'text-primary' : ''} />
@@ -285,14 +285,14 @@ export function OptimalPeriodsWidget() {
 
       {!calendarConnected && (
         <div className="mx-6 md:mx-8 mb-0 -mt-px">
-          <div className="flex items-center justify-between gap-4 bg-blue-50 border border-blue-100 rounded-2xl px-5 py-4 mb-6">
+          <div className="flex items-center justify-between gap-4 bg-ember-50 border border-ember-100 rounded-2xl px-5 py-4 mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
-                <CalendarIcon size={17} className="text-blue-600" />
+              <div className="w-9 h-9 bg-ember-100 rounded-xl flex items-center justify-center shrink-0">
+                <CalendarIcon size={17} className="text-ember-600" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900">Connecter Google Agenda</p>
-                <p className="text-xs text-gray-500 mt-0.5">Suggestions basées sur vos vraies dates libres</p>
+                <p className="text-sm font-semibold text-text-main">Connecter Google Agenda</p>
+                <p className="text-xs text-text-secondary mt-0.5">Suggestions basées sur vos vraies dates libres</p>
               </div>
             </div>
             <button
@@ -308,16 +308,16 @@ export function OptimalPeriodsWidget() {
 
       <div className="grid lg:grid-cols-12 gap-0">
         {/* Calendar Section - Custom Static Grid */}
-        <div className="lg:col-span-7 p-6 md:p-8 border-b lg:border-b-0 lg:border-r border-gray-50 flex flex-col justify-center items-center">
+        <div className="lg:col-span-7 p-6 md:p-8 border-b lg:border-b-0 lg:border-r border-sand-100 flex flex-col justify-center items-center">
           {currentPeriod ? (
             <div className="w-full max-w-md">
               <div className="text-center mb-6">
-                <h4 className="text-lg font-bold text-gray-900 uppercase tracking-wide">{monthName}</h4>
+                <h4 className="text-lg font-bold text-text-main uppercase tracking-wide">{monthName}</h4>
               </div>
 
               <div className="grid grid-cols-7 gap-2 mb-2">
                 {weekDays.map(day => (
-                  <div key={day} className="text-center text-xs font-bold text-gray-400 uppercase">
+                  <div key={day} className="text-center text-xs font-bold text-text-light uppercase">
                     {day}
                   </div>
                 ))}
@@ -335,16 +335,16 @@ export function OptimalPeriodsWidget() {
 
                   if (isEdge) {
                     cellClass += view === 'short'
-                      ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200 scale-110 font-bold z-10"
+                      ? "bg-moss-500 text-white shadow-lg shadow-emerald-200 scale-110 font-bold z-10"
                       : "bg-primary text-white shadow-lg shadow-primary/30 scale-110 font-bold z-10";
                   } else if (isSelected) {
                     cellClass += view === 'short'
-                      ? "bg-emerald-100 text-emerald-700 font-semibold"
+                      ? "bg-moss-100 text-moss-500 font-semibold"
                       : "bg-primary/10 text-primary font-semibold";
                   } else if (isPast) {
-                    cellClass += "text-gray-300 cursor-not-allowed";
+                    cellClass += "text-text-muted cursor-not-allowed";
                   } else {
-                    cellClass += "text-gray-600 hover:bg-gray-50";
+                    cellClass += "text-text-secondary hover:bg-sand-50";
                   }
 
                   return (
@@ -356,35 +356,35 @@ export function OptimalPeriodsWidget() {
               </div>
             </div>
           ) : (
-            <div className="text-center text-gray-400">No dates available</div>
+            <div className="text-center text-text-light">No dates available</div>
           )}
         </div>
 
         {/* Details Section - Side Panel */}
-        <div className="lg:col-span-5 bg-gray-50/50 p-6 md:p-8 flex flex-col justify-center">
+        <div className="lg:col-span-5 bg-sand-50/50 p-6 md:p-8 flex flex-col justify-center">
           {currentPeriod ? (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
               <div>
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-text-secondary mb-2">
                   <CalendarIcon size={16} />
                   Période recommandée
                 </div>
-                <h4 className="text-2xl font-bold text-gray-900 mb-1">{currentPeriod.title}</h4>
-                <p className="text-lg text-gray-600">
+                <h4 className="text-2xl font-bold text-text-main mb-1">{currentPeriod.title}</h4>
+                <p className="text-lg text-text-secondary">
                   {new Date(currentPeriod.startDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - {new Date(currentPeriod.endDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Économies</div>
-                  <div className="text-2xl font-bold text-emerald-600 flex items-center gap-1">
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-sand-100">
+                  <div className="text-xs font-bold text-text-light uppercase tracking-wider mb-1">Économies</div>
+                  <div className="text-2xl font-bold text-moss-500 flex items-center gap-1">
                     {currentPeriod.savings}
                     <TrendingUp size={16} />
                   </div>
                 </div>
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                  <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Fiabilité</div>
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-sand-100">
+                  <div className="text-xs font-bold text-text-light uppercase tracking-wider mb-1">Fiabilité</div>
                   <div className="text-2xl font-bold text-primary flex items-center gap-1">
                     {currentPeriod.confidence}%
                     <CheckCircle2 size={16} />
@@ -392,25 +392,25 @@ export function OptimalPeriodsWidget() {
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-sand-100">
                 <div className="flex items-start gap-3">
-                  <Info size={20} className="text-amber-500 shrink-0 mt-0.5" />
+                  <Info size={20} className="text-gold-500 shrink-0 mt-0.5" />
                   <div>
-                    <h5 className="font-semibold text-gray-900 text-sm mb-1">Pourquoi cette période ?</h5>
-                    <p className="text-gray-600 text-sm leading-relaxed">
+                    <h5 className="font-semibold text-text-main text-sm mb-1">Pourquoi cette période ?</h5>
+                    <p className="text-text-secondary text-sm leading-relaxed">
                       {currentPeriod.reason}
                     </p>
                   </div>
                 </div>
 
                 {currentPeriod.tags && Array.isArray(currentPeriod.tags) && (
-                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-50">
+                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-sand-100">
                     {currentPeriod.tags.map((tag, idx) => {
                       // Handle both string tags and object tags {word, count, value}
                       const tagText = typeof tag === 'string' ? tag : (tag?.word || tag?.value || '');
                       if (!tagText) return null;
                       return (
-                        <span key={idx} className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-md">
+                        <span key={idx} className="px-2.5 py-1 bg-sand-100 text-text-secondary text-xs font-medium rounded-md">
                           #{tagText}
                         </span>
                       );
@@ -422,21 +422,21 @@ export function OptimalPeriodsWidget() {
               <div className="space-y-2.5 pt-1">
                 <button
                   onClick={handleAcceptProposal}
-                  className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-gray-200"
+                  className="w-full py-3.5 bg-sand-900 hover:bg-sand-800 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-gray-200"
                 >
                   J'accepte cette proposition
                   <ArrowRight size={18} />
                 </button>
                 <button
                   onClick={handlePlanTrip}
-                  className="w-full py-3 text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
+                  className="w-full py-3 text-text-secondary hover:text-text-main text-sm font-medium transition-colors"
                 >
                   Choisir mes propres dates
                 </button>
               </div>
             </div>
           ) : (
-            <div className="text-center text-gray-400 py-12">
+            <div className="text-center text-text-light py-12">
               <p>Sélectionnez une période pour voir les suggestions</p>
             </div>
           )}
