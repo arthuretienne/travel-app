@@ -1176,8 +1176,15 @@ function CreateTrip() {
             >
               {currentStep > 1 ? t('createTrip.back') : t('createTrip.cancel')}
             </Button>
+            {/* Les `key` distinctes sont indispensables : sans elles, React
+                réutilise le même <button> DOM et le passage type=button →
+                type=submit se produit PENDANT le dispatch du clic de l'étape 3
+                — le navigateur applique alors l'action par défaut (submit) sur
+                le nœud muté et l'étape 4 (dates, récap, paywall) est sautée
+                (audit V4, P1 #3). */}
             {currentStep < 4 ? (
               <Button
+                key="wizard-next"
                 type="button"
                 size="lg"
                 disabled={loading}
@@ -1188,6 +1195,7 @@ function CreateTrip() {
               </Button>
             ) : !(usageData?.needsUpgrade && !formData.isGroupTrip) && (
               <Button
+                key="wizard-submit"
                 type="submit"
                 size="lg"
                 disabled={loading}
