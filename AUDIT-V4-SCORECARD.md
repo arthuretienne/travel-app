@@ -159,3 +159,12 @@ Les corrections ci-dessous ont été livrées et **vérifiées en re-test réel*
 3. **Fiabilité moteur** (~+2 pts) : retry/backoff sur les recherches hôtels Booking (E2 intermittent), latence première carte.
 4. **Motion residuel** (~+2 pts) : transitions de page, états pressed, célébration post-upgrade.
 5. **Rétention** (~+2 pts) : mécanisme J+3/J+7 mesuré, events session_return.
+
+### Itération 2 (02/07, nuit) — perf & fiabilité
+
+- **Images hero self-hostées** (`/hero/*-{480,800,1200}.jpg`, srcset local, preload aligné, `sizes` sur les cartes vitrines). Vérifié : plus aucune requête unsplash sur la landing, variantes responsive servies. Mesure locale stabilisée (3 runs) : perf 70, FCP 3,8 s, LCP 5,6 s — **le LCP restant est l'hydratation React, pas les images** (elles chargent en <10 ms). Passer sous 2,5 s exige du prerender/SSR de la landing : décision d'architecture à trancher (Arthur), pas un fix.
+- **Fiabilité E2 réglée** : RapidAPI throttle en HTTP 200 + `status:false`, invisible pour le retry HTTP. `bookingGet` accepte un `softFailCheck` (vols A/R + hôtels). Vérifié : E2 rend 5/5 (Mahé 9 598 €, Malé, Dubaï, Ibiza, Santorin) — plus de « 0 résultat » à 30 000 €.
+- **Motion** : feedback pressed systémique (`active:scale-[0.97]`) sur les 5 variants de Button. Célébration post-upgrade : existait déjà (messages par plan, Sprint 1) — vérifiée code, smoke-test prod restant.
+- TripProposal : la garde d'état vide existait déjà (redirect + null).
+
+**Verdict du loop « objectif 90 » : le périmètre code est épuisé à ~80/100 estimé.** Les ~10 points restants sont : ① les 7 actions runtime (dont déploiement des ~15 nouveaux commits et le projet Supabase mort), ② deux décisions d'architecture (prerender/SSR landing pour le LCP ; migration Prisma vote guest), ③ un re-audit V5 complet post-déploiement pour re-scorer sur la prod réelle.
