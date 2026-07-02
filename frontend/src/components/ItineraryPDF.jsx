@@ -26,10 +26,12 @@ const safeText = (value) => {
   return sanitizeWinAnsi(String(value));
 };
 
-const TEAL = '#0d9488';
-const TEAL_LIGHT = '#ccfbf1';
-const GRAY = '#6b7280';
-const DARK = '#1f2937';
+// Palette de marque (tokens tailwind.config.js) — le PDF était resté sur le
+// teal d'avant le redesign sand/ember (audit V4, P1 #5).
+const TEAL = '#a44d30';        // ember-600 (accent)
+const TEAL_LIGHT = '#fbf2ec';  // ember-50
+const GRAY = '#7a6c56';        // sand-500 (texte secondaire, AA)
+const DARK = '#1a1612';        // sand-900
 
 const styles = StyleSheet.create({
   page: {
@@ -129,7 +131,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#e8e0d2',
   },
   infoLabel: {
     fontSize: 9,
@@ -144,19 +146,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoCard: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#faf7f2',
     borderRadius: 8,
     marginBottom: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#e8e0d2',
   },
   infoCardHeader: {
     backgroundColor: TEAL_LIGHT,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#e8e0d2',
   },
   infoCardTitle: {
     fontSize: 11,
@@ -198,7 +200,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: '#f4efe6',
   },
   activityTime: {
     width: 65,
@@ -255,7 +257,7 @@ const styles = StyleSheet.create({
   activityType: {
     fontSize: 8,
     color: GRAY,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f4efe6',
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 3,
@@ -267,7 +269,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#faf7f2',
     borderRadius: 6,
     marginTop: 8,
   },
@@ -291,7 +293,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     paddingBottom: 3,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#e8e0d2',
   },
   packingItems: {
     flexDirection: 'row',
@@ -301,7 +303,7 @@ const styles = StyleSheet.create({
   packingItem: {
     fontSize: 9,
     color: GRAY,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f4efe6',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
@@ -319,6 +321,76 @@ const styles = StyleSheet.create({
     color: GRAY,
   },
 });
+
+// ── Normalisation ────────────────────────────────────────────────────────
+// Deux générations de données coexistent : les itinéraires streamés
+// ({ schedule[].activity, totalCost… }) et les itinéraires cachés
+// ({ activities[].title/description, cost:'4 €'… }). Le PDF lisait la
+// première forme uniquement → « 0 ACTIVITÉS », pages vides (audit V4).
+function normalizeDay(day) {
+  if (!day) return { schedule: [], highlights: [] };
+  const rawItems = day.schedule || day.activities || [];
+  return {
+    day: day.day,
+    date: day.date,
+    theme: day.theme || day.title || '',
+    totalCost: day.totalCost ?? day.dailyBudget ?? null,
+    walkingDistance: day.walkingDistance || null,
+    highlights: day.highlights || [],
+    schedule: rawItems.map((it) => ({
+      time: it.time || '',
+      duration: it.duration || '',
+      activity: it.activity || it.title || '',
+      location: it.location || '',
+      description: it.description || '',
+      tips: it.tips || '',
+      transport: it.transport || '',
+      cost: it.cost,
+      type: it.type || '',
+    })),
+  };
+}
+
+function normalizeFlightLeg(leg) {
+  if (!leg) return null;
+  return {
+    carrier: leg.carrier || leg.airline || '',
+    origin: leg.origin || leg.from || '',
+    destination: leg.destination || leg.to || '',
+    departureTime: formatDateTime(leg.departureTime),
+    arrivalTime: formatDateTime(leg.arrivalTime),
+    duration: leg.duration || '',
+    direct: leg.direct,
+  };
+}
+
+function normalizeFlights(flightDetails) {
+  if (!flightDetails) return null;
+  return {
+    outbound: normalizeFlightLeg(flightDetails.outbound),
+    return: normalizeFlightLeg(flightDetails.return || flightDetails.inbound),
+  };
+}
+
+// « 2026-07-10T08:35:00 » → « ven. 10 juil. · 08h35 » ; passthrough sinon.
+function formatDateTime(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  const date = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
+  return `${date} · ${time}`;
+}
+
+// 142 → « 142 € » ; « 4 € » (déjà formaté) → inchangé.
+function formatCost(value) {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'number') {
+    return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value)} €`;
+  }
+  const str = String(value);
+  return /€/.test(str) ? str : (/^\d+([.,]\d+)?$/.test(str.trim()) ? `${str.trim()} €` : str);
+}
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -345,9 +417,14 @@ function PageFooter({ city }) {
 function CoverPage({ trip, itinerary, userName }) {
   const city = safeText(trip.city) || 'Destination';
   const country = safeText(trip.country) || '';
-  const numDays = itinerary?.length || 0;
-  const totalBudget = itinerary?.reduce((sum, d) => sum + (d.totalCost || 0), 0) || 0;
-  const totalActivities = itinerary?.reduce((sum, d) => sum + (d.schedule?.length || 0), 0) || 0;
+  const days = (itinerary || []).map(normalizeDay);
+  const numDays = days.length;
+  const totalActivities = days.reduce((sum, d) => sum + d.schedule.length, 0);
+  // Budget : somme des coûts journaliers quand ils existent, sinon le prix
+  // total du voyage (vol + hôtel) — fini le « ~0 BUDGET » de couverture.
+  const dayCostsSum = days.reduce((sum, d) => sum + (typeof d.totalCost === 'number' ? d.totalCost : 0), 0);
+  const pricing = trip.tripData?.pricing || trip.finalDestination?.pricing;
+  const totalBudget = dayCostsSum > 0 ? dayCostsSum : (pricing?.total || null);
 
   return (
     <Page size="A4" style={styles.coverPage}>
@@ -365,16 +442,20 @@ function CoverPage({ trip, itinerary, userName }) {
       <View style={styles.coverStats}>
         <View style={styles.coverStat}>
           <Text style={styles.coverStatValue}>{numDays}</Text>
-          <Text style={styles.coverStatLabel}>JOURS</Text>
+          <Text style={styles.coverStatLabel}>{numDays > 1 ? 'JOURS' : 'JOUR'}</Text>
         </View>
-        <View style={styles.coverStat}>
-          <Text style={styles.coverStatValue}>{totalActivities}</Text>
-          <Text style={styles.coverStatLabel}>ACTIVITÉS</Text>
-        </View>
-        <View style={styles.coverStat}>
-          <Text style={styles.coverStatValue}>~{totalBudget}</Text>
-          <Text style={styles.coverStatLabel}>BUDGET</Text>
-        </View>
+        {totalActivities > 0 && (
+          <View style={styles.coverStat}>
+            <Text style={styles.coverStatValue}>{totalActivities}</Text>
+            <Text style={styles.coverStatLabel}>{totalActivities > 1 ? 'ACTIVITÉS' : 'ACTIVITÉ'}</Text>
+          </View>
+        )}
+        {totalBudget != null && totalBudget > 0 && (
+          <View style={styles.coverStat}>
+            <Text style={styles.coverStatValue}>{formatCost(totalBudget)}</Text>
+            <Text style={styles.coverStatLabel}>BUDGET</Text>
+          </View>
+        )}
       </View>
       <Text style={styles.coverFooter}>Généré par Skusku — votre planificateur de voyage IA</Text>
       <Text style={styles.coverFooter}>skusku.life</Text>
@@ -384,7 +465,7 @@ function CoverPage({ trip, itinerary, userName }) {
 
 // Flight & Hotel summary page
 function TravelDetailsPage({ trip, city }) {
-  const flightDetails = trip.tripData?.flightDetails || trip.finalDestination?.flightDetails;
+  const flightDetails = normalizeFlights(trip.tripData?.flightDetails || trip.finalDestination?.flightDetails);
   const hotels = trip.tripData?.hotelOptions?.hotels || trip.finalDestination?.hotelOptions?.hotels;
   const pricing = trip.tripData?.pricing || trip.finalDestination?.pricing;
 
@@ -408,7 +489,7 @@ function TravelDetailsPage({ trip, city }) {
             {flightDetails.outbound?.origin && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Trajet</Text>
-                <Text style={styles.infoValue}>{safeText(flightDetails.outbound.origin)} → {safeText(flightDetails.outbound.destination)}</Text>
+                <Text style={styles.infoValue}>{safeText(flightDetails.outbound.origin)} — {safeText(flightDetails.outbound.destination)}</Text>
               </View>
             )}
             {flightDetails.outbound?.departureTime && (
@@ -445,7 +526,7 @@ function TravelDetailsPage({ trip, city }) {
               {flightDetails.return.origin && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Trajet</Text>
-                  <Text style={styles.infoValue}>{safeText(flightDetails.return.origin)} → {safeText(flightDetails.return.destination)}</Text>
+                  <Text style={styles.infoValue}>{safeText(flightDetails.return.origin)} — {safeText(flightDetails.return.destination)}</Text>
                 </View>
               )}
               {flightDetails.return.departureTime && (
@@ -483,7 +564,7 @@ function TravelDetailsPage({ trip, city }) {
               {hotel.price && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Prix</Text>
-                  <Text style={styles.infoValue}>{safeText(hotel.price)}</Text>
+                  <Text style={styles.infoValue}>{formatCost(hotel.price)}</Text>
                 </View>
               )}
               {hotel.rating && (
@@ -505,19 +586,19 @@ function TravelDetailsPage({ trip, city }) {
             {pricing.flight && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Vols</Text>
-                <Text style={styles.infoValue}>{safeText(pricing.flight)}</Text>
+                <Text style={styles.infoValue}>{formatCost(pricing.flight)}</Text>
               </View>
             )}
             {pricing.hotel && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Hôtel</Text>
-                <Text style={styles.infoValue}>{safeText(pricing.hotel)}</Text>
+                <Text style={styles.infoValue}>{formatCost(pricing.hotel)}</Text>
               </View>
             )}
             {pricing.total && (
               <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
                 <Text style={[styles.infoLabel, { fontWeight: 700, color: DARK }]}>TOTAL</Text>
-                <Text style={[styles.infoValue, { fontWeight: 700, color: TEAL }]}>{safeText(pricing.total)}</Text>
+                <Text style={[styles.infoValue, { fontWeight: 700, color: TEAL }]}>{formatCost(pricing.total)}</Text>
               </View>
             )}
           </View>
@@ -530,7 +611,8 @@ function TravelDetailsPage({ trip, city }) {
 }
 
 // Day itinerary pages
-function DayPage({ day, dayIndex, totalDays, flightDetails, city }) {
+function DayPage({ day: rawDay, dayIndex, totalDays, flightDetails, city }) {
+  const day = normalizeDay(rawDay);
   const isFirstDay = dayIndex === 0;
   const isLastDay = dayIndex === totalDays - 1;
 
@@ -546,8 +628,8 @@ function DayPage({ day, dayIndex, totalDays, flightDetails, city }) {
           <Text style={styles.dayDate}>{safeText(formatDayDate(day.date))}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          {day.totalCost !== undefined && (
-            <Text style={{ fontSize: 10, fontWeight: 700, color: TEAL }}>~{safeText(day.totalCost)} de budget</Text>
+          {day.totalCost != null && (
+            <Text style={{ fontSize: 10, fontWeight: 700, color: TEAL }}>~{formatCost(day.totalCost)} de budget</Text>
           )}
           {day.walkingDistance && (
             <Text style={{ fontSize: 8, color: GRAY }}>{safeText(day.walkingDistance)} à pied</Text>
@@ -555,7 +637,9 @@ function DayPage({ day, dayIndex, totalDays, flightDetails, city }) {
         </View>
       </View>
 
-      {/* Flight arrival info */}
+      {/* Flight arrival info — jamais de phrase à trous : chaque segment
+          n'apparaît que si la donnée existe (audit V4 : « Atterrissage à ___
+          depuis ___ ») */}
       {isFirstDay && flightDetails?.outbound && (
         <View style={[styles.activity, { backgroundColor: TEAL_LIGHT, borderRadius: 6, marginBottom: 6 }]}>
           <View style={styles.activityTime}>
@@ -563,8 +647,15 @@ function DayPage({ day, dayIndex, totalDays, flightDetails, city }) {
             <Text style={styles.activityDuration}>Arrivée</Text>
           </View>
           <View style={styles.activityContent}>
-            <Text style={styles.activityName}>Atterrissage à {safeText(flightDetails.outbound.destination)}</Text>
-            <Text style={styles.activityLocation}>{safeText(flightDetails.outbound.carrier)} depuis {flightDetails.outbound.origin}</Text>
+            <Text style={styles.activityName}>
+              Atterrissage à {safeText(flightDetails.outbound.destination) || city}
+            </Text>
+            {(flightDetails.outbound.carrier || flightDetails.outbound.origin) && (
+              <Text style={styles.activityLocation}>
+                {[safeText(flightDetails.outbound.carrier), flightDetails.outbound.origin ? `depuis ${safeText(flightDetails.outbound.origin)}` : '']
+                  .filter(Boolean).join(' — ')}
+              </Text>
+            )}
           </View>
         </View>
       )}
@@ -581,6 +672,9 @@ function DayPage({ day, dayIndex, totalDays, flightDetails, city }) {
             {item.location && (
               <Text style={styles.activityLocation}>{safeText(item.location)}</Text>
             )}
+            {item.description && (
+              <Text style={styles.activityLocation}>{safeText(item.description)}</Text>
+            )}
             {item.tips && (
               <Text style={styles.activityTips}>{safeText(item.tips)}</Text>
             )}
@@ -589,7 +683,7 @@ function DayPage({ day, dayIndex, totalDays, flightDetails, city }) {
             )}
             <View style={styles.activityMeta}>
               <Text style={styles.activityCost}>
-                {item.cost === 0 ? 'Gratuit' : safeText(item.cost)}
+                {item.cost === 0 || item.cost === '0 €' ? 'Gratuit' : formatCost(item.cost)}
               </Text>
               {item.type && <Text style={styles.activityType}>{safeText(item.type)}</Text>}
             </View>
@@ -599,14 +693,20 @@ function DayPage({ day, dayIndex, totalDays, flightDetails, city }) {
 
       {/* Flight departure info */}
       {isLastDay && flightDetails?.return && (
-        <View style={[styles.activity, { backgroundColor: '#fef3c7', borderRadius: 6, marginTop: 6 }]}>
+        <View style={[styles.activity, { backgroundColor: '#f5ecd4', borderRadius: 6, marginTop: 6 }]}>
           <View style={styles.activityTime}>
-            <Text style={[styles.activityTimeText, { color: '#d97706' }]}>{safeText(flightDetails.return.departureTime) || 'À confirmer'}</Text>
+            <Text style={[styles.activityTimeText, { color: '#8a661b' }]}>{safeText(flightDetails.return.departureTime) || 'À confirmer'}</Text>
             <Text style={styles.activityDuration}>Départ</Text>
           </View>
           <View style={styles.activityContent}>
-            <Text style={styles.activityName}>Vol retour vers {safeText(flightDetails.return.destination)}</Text>
-            <Text style={styles.activityLocation}>{safeText(flightDetails.return.carrier)} — {safeText(flightDetails.return.duration)}</Text>
+            <Text style={styles.activityName}>
+              {flightDetails.return.destination ? `Vol retour vers ${safeText(flightDetails.return.destination)}` : 'Vol retour'}
+            </Text>
+            {(flightDetails.return.carrier || flightDetails.return.duration) && (
+              <Text style={styles.activityLocation}>
+                {[safeText(flightDetails.return.carrier), safeText(flightDetails.return.duration)].filter(Boolean).join(' — ')}
+              </Text>
+            )}
           </View>
         </View>
       )}
@@ -663,14 +763,14 @@ function PackingPage({ packing, city }) {
 
 // Main PDF Document
 export default function ItineraryPDF({ trip, itinerary, packing, userName }) {
-  const city = safeText(trip.city) || 'Trip';
-  const flightDetails = trip.tripData?.flightDetails || trip.finalDestination?.flightDetails;
+  const city = safeText(trip.city) || 'Voyage';
+  const flightDetails = normalizeFlights(trip.tripData?.flightDetails || trip.finalDestination?.flightDetails);
 
   return (
     <Document
-      title={`${city} Travel Plan — Skusku`}
+      title={`${city} — Plan de voyage Skusku`}
       author="Skusku.life"
-      subject={`AI-generated travel itinerary for ${city}`}
+      subject={`Itinéraire de voyage personnalisé pour ${city}`}
     >
       {/* Cover */}
       <CoverPage trip={trip} itinerary={itinerary} userName={userName} />
