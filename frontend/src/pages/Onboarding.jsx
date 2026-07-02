@@ -391,15 +391,22 @@ function Onboarding() {
           <p className="text-sm text-text-secondary mb-10">Vous ne le faites qu'une seule fois.</p>
 
           <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            {/* Audit V3 : on recommandait 10 minutes de questionnaire à
+                quelqu'un qui n'a encore rien reçu. Express = choix par défaut ;
+                le profil complet reste à un clic, enrichissable depuis Mon
+                compte à tout moment. */}
             <div
               onClick={() => {
                 setOnboardingType('short');
                 setFormData(prev => ({ ...prev, onboardingType: 'short' }));
                 track('onboarding_started', { variant: 'express' });
               }}
-              className="bg-white p-8 rounded-3xl border border-sand-200 hover:border-primary hover:shadow-xl transition-all cursor-pointer group text-left relative overflow-hidden"
+              className="bg-white p-8 rounded-3xl border-2 border-primary shadow-card cursor-pointer group text-left relative overflow-hidden"
             >
-              <div className="w-14 h-14 bg-gold-100 text-gold-500 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <div className="absolute top-4 right-4 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">
+                Recommandé
+              </div>
+              <div className="w-14 h-14 bg-primary-light text-primary rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <Zap size={28} />
               </div>
               <h3 className="text-2xl font-bold mb-1 text-text-main">Profil express</h3>
@@ -407,7 +414,7 @@ function Onboarding() {
               <p className="text-text-secondary mb-8 leading-relaxed text-sm">
                 L'essentiel pour démarrer. Recommandations précises dès la première recherche.
               </p>
-              <button className="w-full py-3 bg-sand-100 text-text-main font-semibold rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
+              <button className="w-full py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 group-hover:bg-primary-hover transition-colors">
                 Commencer →
               </button>
             </div>
@@ -418,21 +425,18 @@ function Onboarding() {
                 setFormData(prev => ({ ...prev, onboardingType: 'long' }));
                 track('onboarding_started', { variant: 'complet' });
               }}
-              className="bg-white p-8 rounded-3xl border-2 border-primary shadow-card cursor-pointer group text-left relative overflow-hidden"
+              className="bg-white p-8 rounded-3xl border border-sand-200 hover:border-primary hover:shadow-xl transition-all cursor-pointer group text-left relative overflow-hidden"
             >
-              <div className="absolute top-4 right-4 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">
-                Recommandé
-              </div>
-              <div className="w-14 h-14 bg-primary-light text-primary rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <div className="w-14 h-14 bg-gold-100 text-gold-500 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <Target size={28} />
               </div>
               <h3 className="text-2xl font-bold mb-1 text-text-main">Profil complet</h3>
               <p className="text-sm font-medium text-primary mb-4">~30 questions · 10 minutes</p>
               <p className="text-text-secondary mb-8 leading-relaxed text-sm">
-                Des recommandations ultra-précises qui tiennent compte de tous vos critères.
+                Des recommandations ultra-précises. À faire maintenant — ou plus tard depuis Mon compte.
               </p>
-              <button className="w-full py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/20 group-hover:bg-primary-hover transition-colors">
-                Meilleurs résultats →
+              <button className="w-full py-3 bg-sand-100 text-text-main font-semibold rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
+                Affiner mon profil →
               </button>
             </div>
           </div>
