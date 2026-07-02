@@ -277,6 +277,7 @@ export default function MegaMenu({ actions, mobileCta, mobileFooter }) {
                   key={entry.id}
                   to={entry.href}
                   onMouseEnter={() => handleEnter(entry)}
+                  onFocus={() => handleEnter(entry)}
                   onClick={() => setOpen(null)}
                   aria-expanded={isOpen}
                   aria-haspopup="true"

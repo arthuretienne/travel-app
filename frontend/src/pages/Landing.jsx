@@ -469,7 +469,8 @@ function Landing() {
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="font-display text-xl font-medium">{dest.city}</h3>
+                        {/* p, pas h3 : label de carte avant le premier h2 — heading-order Lighthouse (audit V3) */}
+                        <p className="font-display text-xl font-medium">{dest.city}</p>
                         <p className="text-sm text-text-secondary">{dest.country}</p>
                       </div>
                       <p className="font-display text-xl font-medium">{formatEUR(dest.price)}</p>

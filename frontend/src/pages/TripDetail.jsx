@@ -760,15 +760,27 @@ export default function TripDetail() {
 
       {/* Invite Friends Modal */}
       {showInviteModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowInviteModal(false); setInviteError(null); } }}
+          onKeyDown={(e) => { if (e.key === 'Escape') { setShowInviteModal(false); setInviteError(null); } }}
+        >
+          {/* role=dialog + aria (audit V3 : modal sans sémantique dialogue) */}
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="invite-modal-title"
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in"
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-text-main flex items-center gap-2">
+              <h3 id="invite-modal-title" className="text-2xl font-bold text-text-main flex items-center gap-2">
                 <UserPlus className="w-6 h-6 text-primary" />
                 Inviter des amis
               </h3>
               <button
+                aria-label="Fermer"
+                autoFocus
                 onClick={() => {
                   setShowInviteModal(false);
                   setInviteEmails([]);
