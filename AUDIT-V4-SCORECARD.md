@@ -167,4 +167,18 @@ Les corrections ci-dessous ont été livrées et **vérifiées en re-test réel*
 - **Motion** : feedback pressed systémique (`active:scale-[0.97]`) sur les 5 variants de Button. Célébration post-upgrade : existait déjà (messages par plan, Sprint 1) — vérifiée code, smoke-test prod restant.
 - TripProposal : la garde d'état vide existait déjà (redirect + null).
 
-**Verdict du loop « objectif 90 » : le périmètre code est épuisé à ~80/100 estimé.** Les ~10 points restants sont : ① les 7 actions runtime (dont déploiement des ~15 nouveaux commits et le projet Supabase mort), ② deux décisions d'architecture (prerender/SSR landing pour le LCP ; migration Prisma vote guest), ③ un re-audit V5 complet post-déploiement pour re-scorer sur la prod réelle.
+**Verdict du loop « objectif 90 » : le périmètre code est épuisé à ~80/100 estimé.** Les ~10 points restants sont : ① les actions runtime restantes (légal, Clerk, Stripe prod, Supabase, rotation clé), ② deux décisions d'architecture (prerender/SSR landing pour le LCP ; migration Prisma vote guest), ③ un re-audit V5 complet post-déploiement pour re-scorer sur la prod réelle.
+
+### Déploiement du 2 juillet (nuit) — la prod rejoint le code
+
+Les **51 commits** ont été poussés (`3ae6a32..6652b98`) : Vercel a déployé en ~1 min (hero self-hosted vérifié en ligne), Render répond 200 (bascule auto du nouveau build). **Lighthouse sur skusku.life POST-déploiement (3 runs, mobile émulé) :**
+
+| Métrique | Prod V3/V4 (avant) | **Prod déployée** |
+|---|---|---|
+| Accessibilité | 93 | **100** |
+| Performance | 63 | **68-71** |
+| LCP | 8,9 s | **5,0-5,4 s** (−43 %) |
+| FCP | 4,1 s | 3,9-4,3 s |
+| CLS | 0 | 0,065-0,069 |
+
+Le LCP restant est l'hydratation React (les images chargent en millisecondes) — même plancher qu'en local. Pour passer sous 2,5 s : prerender/SSR de la landing (décision d'archi). Points de vigilance post-déploiement : si la prod Render pointe le même projet Supabase mort, `/api/travel/signal` répondra désormais **500 honnête** (avant : 200 mensonger) — c'est voulu, mais le bouton « rejeter » affichera une erreur tant que l'URL Supabase n'est pas corrigée ; et les placeholders `[RAISON SOCIALE]` sont visibles publiquement tant qu'ils ne sont pas remplis.
